@@ -44,7 +44,125 @@ intake-requirement → review-document → start-wave [→ register-boundary?]
 ```
 
 Nguồn sự thật runtime: [`harness/COMMAND-GATES.json`](harness/COMMAND-GATES.json)  
-Danh sách command: [`commands/README.md`](commands/README.md)
+Chi tiết từng command: [`commands/README.md`](commands/README.md)
+
+---
+
+## Các bước chạy command
+
+Mỗi bước workflow:
+
+1. `py scripts/harness.py state` — xem `workflow.allowed_next`
+2. `py scripts/build_command_prompt.py <command> …` — spawn agent (copy prompt)
+3. Agent tạo/sửa artifact, trả JSON RETURN (`harness/PROTOCOL.md`)
+4. `py scripts/harness.py <command> complete` — kèm evidence JSON nếu gate yêu cầu
+
+Chỉ chạy command **có trong** `allowed_next`. Sau mỗi `complete`, chạy lại `state`.
+
+### 1. `intake-requirement` (lần đầu — 4 bước nội bộ)
+
+```bash
+py scripts/build_command_prompt.py intake-requirement --step 1 --input "Mô tả sản phẩm / yêu cầu..."
+py scripts/build_command_prompt.py intake-requirement --step 2
+py scripts/build_command_prompt.py intake-requirement --step 3
+py scripts/build_command_prompt.py intake-requirement --step 4
+py scripts/materialize_boundary_agents.py --from-roster docs/plans/project/agent-roster.md
+py scripts/materialize_knowledge_graphs.py --from-roster docs/plans/project/agent-roster.md
+py scripts/materialize_wave_plans.py --from-roadmap docs/plans/project/waves-roadmap.md
+py scripts/harness.py intake-requirement complete
+```
+
+### 2. `review-document`
+
+```bash
+py scripts/build_command_prompt.py review-document
+py scripts/harness.py review-document complete '{"approved": true}'
+```
+
+### 3. `start-wave` (sync matrix + handoff)
+
+`wave_id` linh hoạt: `2`, `02`, `wave-2` → `wave-002`.
+
+```bash
+py scripts/build_command_prompt.py start-wave --wave 2
+py scripts/harness.py start-wave complete '{"wave_id": "2", "wave_title": "Phase 2"}'
+```
+
+### 4. `register-boundary` (tùy chọn)
+
+```bash
+py scripts/harness.py register-boundary catalog-api --materialize
+py scripts/harness.py register-boundary complete
+```
+
+### 5. `start-dev` → `review-dev` → `dev-handoff`
+
+Điền `docs/plans/waves/{wave-id}/wave.md` **§2** (FEAT → boundary) trước khi complete.
+
+```bash
+py scripts/build_command_prompt.py start-dev --list-boundaries
+py scripts/build_command_prompt.py start-dev --boundary order
+# ... implement trong owned_paths ...
+py scripts/harness.py start-dev complete '{"features_in_flight":["FEAT-001"],"boundaries_in_flight":["order"]}'
+
+py scripts/build_command_prompt.py review-dev --boundary order
+py scripts/harness.py review-dev complete
+
+py scripts/build_command_prompt.py dev-handoff
+py scripts/harness.py dev-handoff complete '{"coverage_pct": 85, "handoff_ready": true}'
+```
+
+Lặp `start-dev` / `review-dev` cho từng boundary trong wave.
+
+### 6. `test-plan` → `test-execute`
+
+```bash
+py scripts/build_command_prompt.py test-plan
+py scripts/harness.py test-plan complete
+
+py scripts/build_command_prompt.py test-execute
+py scripts/harness.py test-execute complete '{"test_result": "pass"}'
+# hoặc "fail" → nhánh fix-bugs
+```
+
+### 7. Nhánh test fail: `fix-bugs` → `retest`
+
+```bash
+# Ghi tracking/bugs/ trước
+py scripts/build_command_prompt.py fix-bugs --boundary order
+py scripts/harness.py fix-bugs complete
+
+py scripts/build_command_prompt.py review-dev --boundary order   # self-review sau fix
+py scripts/harness.py retest complete '{"test_result": "pass"}'
+```
+
+### 8. `release` → `end-wave`
+
+```bash
+py scripts/build_command_prompt.py release
+py scripts/harness.py release complete '{"release_ok": true}'
+
+py scripts/build_command_prompt.py end-wave
+py scripts/harness.py end-wave complete '{"end_wave_ok": true}'
+```
+
+Sau `end-wave`: `allowed_next` thường là `start-wave` (wave tiếp) hoặc `intake-requirement` / `apply-cr` nếu đổi scope.
+
+### 9. Đổi scope — `apply-cr` + intake amendment
+
+```bash
+# Tạo tracking/change-requests/CR-001-....md từ TEMPLATE.cr.md
+py scripts/build_command_prompt.py apply-cr --cr CR-001
+py scripts/harness.py apply-cr complete '{"cr_id":"CR-001","cr_path":"tracking/change-requests/CR-001-....md"}'
+
+py scripts/build_command_prompt.py intake-requirement --step 1 --input "CR-001: ..."
+# ... step 2–4 ...
+py scripts/harness.py intake-requirement complete '{"intake_mode":"amendment","cr_id":"CR-001","change_summary":"..."}'
+py scripts/harness.py review-document complete '{"approved": true}'
+# Wave đang mở → start-dev; wave mới → start-wave
+```
+
+Gate checklist đầy đủ: [SETUP-GUIDE.md](SETUP-GUIDE.md#gate-checklist-summary).
 
 ---
 
