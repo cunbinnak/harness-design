@@ -58,19 +58,45 @@ py scripts/harness.py state
 
 ### Quy trình command
 
-```text
-/intake-requirement
-/review-document
-/start-wave
-/start-dev
-/review-dev
-/dev-handoff
-/test-plan
-/test-execute
-/release
-/end-wave
-/show-state
+Trong **Cursor / Claude**: gọi slash command (mở `commands/<tên>.md`) → chạy agent theo prompt → khi artifact đạt gate thì **complete**:
+
+```bash
+py scripts/harness.py <command> complete
+py scripts/harness.py <command> complete '<json evidence>'   # nếu gate yêu cầu
 ```
+
+Luôn xem bước được phép: `/show-state` hoặc `py scripts/harness.py state` (`workflow.allowed_next`). **Không** sửa `harness/STATE.json` tay.
+
+| Thứ tự | Slash | Việc cần làm | Ví dụ `complete` |
+|--------|--------|----------------|------------------|
+| 1 | `/intake-requirement` | Phân tích dự án, plan mọi wave, roster, agents (4 bước pipeline) | `py scripts/harness.py intake-requirement complete` |
+| 2 | `/review-document` | Duyệt bộ tài liệu plan | `… review-document complete '{"approved": true}'` |
+| 3 | `/start-wave` | Mở một wave; sync matrix từ roster | `… start-wave complete '{"wave_id":"1","wave_title":"Wave 1"}'` |
+| 4 | `/start-dev` | Dev theo boundary (`--boundary` trong prompt) | `… start-dev complete '{"features_in_flight":["FEAT-001"],"boundaries_in_flight":["order"]}'` |
+| 5 | `/review-dev` | Self-review code boundary | `… review-dev complete` |
+| 6 | `/dev-handoff` | Bàn giao dev → QA (coverage, compose) | `… dev-handoff complete '{"coverage_pct":85,"handoff_ready":true}'` |
+| 7 | `/test-plan` | Viết test case registry | `… test-plan complete` |
+| 8 | `/test-execute` | Chạy test | `… test-execute complete '{"test_result":"pass"}'` |
+| 9 | `/release` | Release candidate | `… release complete '{"release_ok": true}'` |
+| 10 | `/end-wave` | Đóng wave | `… end-wave complete '{"end_wave_ok": true}'` |
+| — | `/show-state` | Xem stage + `allowed_next` | `py scripts/harness.py state` |
+
+**Ví dụ intake (bước 1):**
+
+```bash
+/intake-requirement
+py scripts/build_command_prompt.py intake-requirement --step 1 --input "CRM cho SME, 3 wave..."
+# --step 2, 3, 4 ...
+py scripts/harness.py intake-requirement complete
+```
+
+**Wave tiếp theo** (plan đã có, không đổi scope): bỏ `/intake-requirement` và `/review-document`, bắt đầu từ `/start-wave` với `wave_id` mới (vd. `"2"` → `wave-002`).
+
+**Test fail:** `/fix-bugs` → `/retest` (thay vì `/release`).
+
+**Đổi scope:** `/apply-cr` → `/intake-requirement` (amendment) → `/review-document` — chi tiết [commands/apply-cr.md](commands/apply-cr.md).
+
+Chi tiết gate & hooks: [SETUP-GUIDE.md](SETUP-GUIDE.md) · [commands/README.md](commands/README.md).
 
 ---
 
