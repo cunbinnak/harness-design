@@ -58,18 +58,18 @@ py scripts/harness.py state
 
 ### Quy trình command
 
-```bash
-py scripts/harness.py intake-requirement complete
-py scripts/harness.py review-document complete '{"approved": true}'
-py scripts/harness.py start-wave complete '{"wave_id": "1", "wave_title": "Wave 1"}'
-py scripts/harness.py start-dev complete '{"features_in_flight":["FEAT-001"],"boundaries_in_flight":["order"]}'
-py scripts/harness.py review-dev complete
-py scripts/harness.py dev-handoff complete '{"coverage_pct": 85, "handoff_ready": true}'
-py scripts/harness.py test-plan complete
-py scripts/harness.py test-execute complete '{"test_result": "pass"}'
-py scripts/harness.py release complete '{"release_ok": true}'
-py scripts/harness.py end-wave complete '{"end_wave_ok": true}'
-py scripts/harness.py state
+```text
+/intake-requirement
+/review-document
+/start-wave
+/start-dev
+/review-dev
+/dev-handoff
+/test-plan
+/test-execute
+/release
+/end-wave
+/show-state
 ```
 
 ---
