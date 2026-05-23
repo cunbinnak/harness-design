@@ -19,6 +19,10 @@ learnings:
   gotchas: []
   patterns: []
 
+discipline:
+  do_not_repeat: []
+  blockers: []
+
 integrations:
   depends_on: []
   exposes: []

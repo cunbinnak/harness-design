@@ -7,10 +7,10 @@
 | Trạng thái | `boundaries` |
 |------------|--------------|
 | BOOTSTRAP | `[]` |
-| Sau **sync-boundaries** (sau **start-wave**) | Một row per `boundary_id` trong `agent-roster.md` |
+| Sau **start-wave** (`run_sync_matrix`) | Một row per `boundary_id` + `integrations[]` từ `integrations-matrix.md` |
 | **register-boundary** | Thêm row lẻ (boundary mới ngoài roster) |
 
-**Không** điền lúc intake — chưa mở wave. Điền sau **start-wave**, tại bước **sync-boundaries**.
+**Không** điền lúc intake — chưa mở wave. Điền khi **`start-wave` complete** (script `sync_matrix_from_roster.py`).
 
 ## Schema mỗi boundary
 
@@ -48,7 +48,7 @@ Cặp boundary gọi nhau (sau architect bước 3 có thể bổ sung tay hoặ
 ## Lệnh liên quan
 
 ```bash
-py scripts/harness.py sync-boundaries complete
+py scripts/harness.py start-wave complete
 py scripts/harness.py register-boundary catalog-api --materialize
 ```
 

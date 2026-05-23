@@ -9,9 +9,8 @@ core:
     args: "<input>"
   - id: review-document
     evidence: '{"approved": true}'
-  - id: prepare-dev
-    evidence: '{"features_in_flight":[],"boundaries_in_flight":[]}'
   - id: start-dev
+    evidence: '{"features_in_flight":[],"boundaries_in_flight":[]}'
   - id: review-dev
   - id: dev-handoff
     evidence: '{"coverage_pct": 85, "handoff_ready": true}'
@@ -20,6 +19,9 @@ core:
     evidence: '{"test_result": "pass"}'
 
 extended:
+  - id: apply-cr
+    args: "--cr CR-001"
+    evidence: '{"cr_id": "CR-001", "cr_path": "tracking/change-requests/CR-001-....md"}'
   - id: register-boundary
   - id: fix-bugs
   - id: retest

@@ -1,20 +1,27 @@
 ---
-description: "Harness: start-wave"
-argument-hint: "<wave-title>"
+description: "Harness command: start-wave"
+argument-hint: "[wave-title]"
 ---
 
-# /start-wave <wave-title>
+# /start-wave [wave-title]
 
-M? wave m?i � `STATE.wave`, handoff, trigger `start_wave`. **Bu?c d?u** m?i v�ng.
+Mở **một** wave — sau `review-document` (lần đầu) hoặc sau `end-wave` (wave tiếp, không đổi scope).
 
-**Agent:** [`agents/start-wave-agent.md`](../agents/start-wave-agent.md)
+**Agent:** [start-wave-agent.md](../agents/start-wave-agent.md)
 
-**Input:** title (optional) � evidence `wave_title`
+## `wave_id` (linh hoạt)
+
+| Bạn nhập | Chuẩn hóa thành |
+|----------|-----------------|
+| `2`, `02` | `wave-002` |
+| `wave-2` | `wave-002` |
+| `wave-002` | `wave-002` |
 
 ```bash
-python scripts/harness.py start-wave complete '{"wave_title": "Wave 1"}'
-python scripts/harness.py can start-wave
+py scripts/build_command_prompt.py start-wave --wave 2
+py scripts/harness.py start-wave complete '{"wave_id": "2", "wave_title": "Phase 2"}'
 ```
 
-Ti?p theo: `intake-requirement`.
+Roster chỉ nạp boundaries có `waves_participating` chứa wave này.
 
+Guide: [SETUP-GUIDE.md](../SETUP-GUIDE.md)

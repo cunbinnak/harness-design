@@ -1,19 +1,27 @@
 ---
-description: "Harness: start-wave � m? wave (sau intake + review, ?� c� plan)"
-argument-hint: "<wave-title>"
+description: "Harness command: start-wave"
+argument-hint: "[wave-title]"
 ---
 
-# /start-wave <wave-title>
+# /start-wave [wave-title]
 
-M? wave th?c thi � **sau** `/intake-requirement` v� `/review-document`. B?t bu?c ?� c� plan tr�n disk.
+Mở **một** wave — sau `review-document` (lần đầu) hoặc sau `end-wave` (wave tiếp, không đổi scope).
 
-**T? ??ng khi complete:** handoff, n?p roster, ??ng b? `SERVICE-BOUNDARY-MATRIX.json`.
+**Agent:** [start-wave-agent.md](../agents/start-wave-agent.md)
+
+## `wave_id` (linh hoạt)
+
+| Bạn nhập | Chuẩn hóa thành |
+|----------|-----------------|
+| `2`, `02` | `wave-002` |
+| `wave-2` | `wave-002` |
+| `wave-002` | `wave-002` |
 
 ```bash
-py scripts/build_command_prompt.py start-wave
-py scripts/harness.py start-wave complete '{"wave_title": "Wave 1"}'
+py scripts/build_command_prompt.py start-wave --wave 2
+py scripts/harness.py start-wave complete '{"wave_id": "2", "wave_title": "Phase 2"}'
 ```
 
-Ti?p theo: `/start-dev` (c� `--boundary <id>`).
+Roster chỉ nạp boundaries có `waves_participating` chứa wave này.
 
-Gates: [`harness/COMMAND-GATES.json`](../harness/COMMAND-GATES.json)
+Guide: [SETUP-GUIDE.md](../SETUP-GUIDE.md)

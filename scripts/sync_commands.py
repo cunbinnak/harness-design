@@ -41,7 +41,7 @@ def body_for(cmd_id: str, extra: str = "") -> str:
             f"python scripts/harness.py can {cmd_id}",
             "```",
             "",
-            "Gates: `harness/COMMAND-GATES.json`. Hướng dẫn: `HUONG-DAN-SETUP.md`.",
+            "Gates: `harness/COMMAND-GATES.json`. Huong dan: `SETUP-GUIDE.md`.",
         ]
     )
 

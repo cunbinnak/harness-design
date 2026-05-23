@@ -37,10 +37,21 @@
         { "type": "artifact_glob", "pattern": "docs/architecture/hld/hld-*.md", "min": 1 },
         { "type": "artifact_glob", "pattern": "docs/architecture/api/api-*.md", "min": 1 },
         { "type": "artifact_glob", "pattern": "docs/architecture/data-model/data-model-*.md", "min": 1 },
-        { "type": "artifact_glob", "pattern": "docs/architecture/ux/ux-fe.md", "min": 1 },
-        { "type": "artifact_glob", "pattern": "docs/plans/waves/*/wave.md", "min": 1 },
+        { "type": "fe_ux_documents" },
+        { "type": "all_waves_planned", "min_waves": 1 },
+        { "type": "adr_minimum", "pattern": "docs/architecture/adr/ADR-*.md", "min": 3 },
+        { "type": "integrations_matrix_filled" },
+        { "type": "artifact_glob", "pattern": "docs/architecture/infra/docker-compose.yml", "min": 1 },
         { "type": "dev_agent_sets_complete", "min_boundaries": 1 },
-        { "type": "fe_agent_set_complete", "boundary_id": "fe" }
+        { "type": "fe_agent_sets_complete" },
+        { "type": "knowledge_graphs_per_roster" },
+        { "type": "roster_waves_documented" }
+      ],
+      "gates_amendment": [
+        { "type": "artifact_glob", "pattern": "docs/product/PROJECT.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/plans/project/waves-roadmap.md", "min": 1 },
+        { "type": "roster_waves_documented" },
+        { "type": "artifact_glob", "pattern": "docs/plans/waves/*/wave.md", "min": 1 }
       ],
       "next_allowed": ["review-document"]
     },
@@ -51,11 +62,11 @@
       "gates": [
         { "type": "evidence_field", "field": "approved", "equals": true }
       ],
-      "next_allowed": ["start-wave"]
+      "next_allowed": ["start-wave", "apply-cr"]
     },
     "start-wave": {
-      "description": "Mở wave thực thi — bắt buộc đã có plan (sau intake + duyệt)",
-      "requires_previous": ["review-document"],
+      "description": "Mở wave thực thi — sau review hoặc sau end-wave (wave tiếp theo, không đổi scope)",
+      "requires_previous_any": ["review-document", "end-wave"],
       "wave_bootstrap": true,
       "sets_stage": "IMPLEMENTATION_PLAN",
       "load_wave_roster": true,
@@ -63,11 +74,11 @@
       "gates": [
         { "type": "artifact_glob", "pattern": "docs/plans/project/waves-roadmap.md", "min": 1 },
         { "type": "artifact_glob", "pattern": "docs/plans/project/agent-roster.md", "min": 1 },
-        { "type": "artifact_glob", "pattern": "docs/plans/waves/*/wave.md", "min": 1 },
+        { "type": "wave_plan_ready" },
         { "type": "artifact_glob", "pattern": "handoff/wave-*.md", "min": 1 },
         { "type": "matrix_covers_roster" }
       ],
-      "next_allowed": ["start-dev", "register-boundary"]
+      "next_allowed": ["start-dev", "register-boundary", "apply-cr"]
     },
     "register-boundary": {
       "description": "Đăng ký thêm một boundary (ngoài roster) vào matrix — tùy chọn",
@@ -92,14 +103,14 @@
         "boundaries_in_flight": "boundaries_in_flight"
       },
       "run_build_context": true,
-      "next_allowed": ["review-dev"]
+      "next_allowed": ["review-dev", "apply-cr"]
     },
     "review-dev": {
       "description": "Tự review code",
       "requires_previous": ["start-dev"],
       "sets_stage": "SELF_REVIEW",
       "gates": [{ "type": "wave_active" }],
-      "next_allowed": ["dev-handoff", "start-dev"]
+      "next_allowed": ["dev-handoff", "start-dev", "apply-cr"]
     },
     "dev-handoff": {
       "description": "Bàn giao dev→QA khi coverage đạt ngưỡng",
@@ -109,7 +120,8 @@
       "gates": [
         { "type": "wave_active" },
         { "type": "coverage_min", "field": "coverage_pct" },
-        { "type": "evidence_field", "field": "handoff_ready", "equals": true }
+        { "type": "evidence_field", "field": "handoff_ready", "equals": true },
+        { "type": "docker_compose_ready", "min_services": 1 }
       ],
       "on_fail_next": ["review-dev", "start-dev"],
       "next_allowed": ["test-plan"]
@@ -184,6 +196,17 @@
         { "type": "artifact_glob", "pattern": "handoff/wave-*.md", "min": 1 }
       ],
       "post_reset_wave": true,
+      "next_allowed": ["start-wave", "intake-requirement", "apply-cr"]
+    },
+    "apply-cr": {
+      "description": "Phân tích CR (file = đã duyệt) → chuẩn bị intake amendment",
+      "requires_previous_any": ["review-document", "start-wave", "start-dev", "end-wave"],
+      "pipeline": "harness/CR-INTAKE-PIPELINE.json",
+      "orchestrator_agent": "agents/apply-cr-agent.md",
+      "gates": [
+        { "type": "cr_artifact_exists" },
+        { "type": "cr_plan_section" }
+      ],
       "next_allowed": ["intake-requirement"]
     }
   }

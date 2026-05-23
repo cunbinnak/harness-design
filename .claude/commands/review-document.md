@@ -1,19 +1,15 @@
 ---
-description: "Harness: review-document"
+description: "Harness command: review-document"
 argument-hint: ""
 ---
 
 # /review-document
 
-Ðánh giá tài li?u — không gap / mâu thu?n gi?a product, plan, architecture.
-
-**Input:** scope (optional)
-
-**Agent:** [`agents/review-document-agent.md`](../agents/review-document-agent.md)
-
-**Evidence:** `{"approved": true}` — xem `'{"approved": true}'`
+**Agent:** [review-document-agent.md](../agents/review-document-agent.md)
 
 ```bash
+python scripts/build_command_prompt.py review-document
 python scripts/harness.py review-document complete '{"approved": true}'
 ```
 
+Kiá»ƒm tra bá»™ 3 dev agents/boundary + pipeline intake trong handoff.

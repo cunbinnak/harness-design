@@ -1,0 +1,44 @@
+{
+  "version": 2,
+  "description": "Index ràng buộc agent — nội dung áp dụng chung: .cursor/rules/harness-agent-discipline.mdc + KG",
+  "always_apply_rule": ".cursor/rules/harness-agent-discipline.mdc",
+  "kg_paths": {
+    "shared": "knowledge-base/shared.knowledge-graph.yaml",
+    "read_before_work": [
+      "implementation.in_progress",
+      "decisions",
+      "discipline.do_not_repeat",
+      "discipline.blockers",
+      "learnings.gotchas"
+    ],
+    "write_after_work": [
+      "decisions",
+      "discipline.do_not_repeat",
+      "discipline.blockers",
+      "implementation.in_progress",
+      "implementation.completed"
+    ]
+  },
+  "rules": [
+    { "id": 1, "key": "no_redo_completed_stage", "enforcement": ["gate", "rule"] },
+    { "id": 2, "key": "no_new_task_while_in_progress", "enforcement": ["rule", "kg"] },
+    { "id": 3, "key": "no_skip_blocker", "enforcement": ["rule", "kg"] },
+    { "id": 4, "key": "no_reopen_decided_adr", "enforcement": ["rule", "kg"] },
+    { "id": 5, "key": "no_duplicate_artifacts", "enforcement": ["rule", "gate"] },
+    { "id": 6, "key": "no_invent_boundary", "enforcement": ["rule", "gate"] },
+    { "id": 7, "key": "no_edit_outside_owned_paths", "enforcement": ["hook"] },
+    { "id": 8, "key": "no_cross_boundary_without_cr", "enforcement": ["rule", "gate"] },
+    { "id": 9, "key": "no_skip_handoff_on_stage_change", "enforcement": ["rule"] },
+    { "id": 10, "key": "must_log_knowledge", "enforcement": ["rule", "kg"] },
+    { "id": 11, "key": "must_log_do_not_repeat", "enforcement": ["rule", "kg"] },
+    { "id": 12, "key": "no_proceed_with_open_questions", "enforcement": ["rule", "kg"] },
+    { "id": 13, "key": "no_change_requirement_mid_impl", "enforcement": ["rule"] },
+    { "id": 14, "key": "must_log_bug_on_fix", "enforcement": ["gate"] },
+    { "id": 15, "key": "fix_then_review_retest", "enforcement": ["gate", "rule"] },
+    { "id": 16, "key": "no_manual_state_edit", "enforcement": ["hook"] },
+    { "id": 17, "key": "must_use_built_context", "enforcement": ["rule"] },
+    { "id": 18, "key": "spec_over_kg", "enforcement": ["rule"] },
+    { "id": 19, "key": "sync_features_in_flight", "enforcement": ["gate", "rule"] },
+    { "id": 20, "key": "spawn_only_allowed_stage", "enforcement": ["hook", "rule"] }
+  ]
+}

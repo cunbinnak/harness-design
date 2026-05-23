@@ -1,12 +1,19 @@
 # Wave {wave-id}
 
-> **Một file / wave** — tránh loãng: plan (intake) + assignment (prepare-dev) cùng tài liệu.
+> **Một file / wave** — plan (intake §1) + assignment (trước `start-dev` §2) cùng tài liệu.
 
 ---
 
 ## 1. Implementation plan
 
 > Điền ở **intake bước 4** (program-planner). Tham chiếu `docs/product/PROJECT.md`, FEAT, `docs/architecture/`.
+
+### Lịch wave này
+
+- **Thời lượng ước lượng:** (vd. 4 tuần)
+- **FEAT trong wave:** (liệt kê)
+- **Mục tiêu deliverable:** (1–2 câu)
+- **Phụ thuộc wave trước:** (wave-00X hoặc —)
 
 ### UX deliverable (quyết định lúc plan)
 
@@ -30,9 +37,9 @@ Mỗi task → `implementation.backlog` trong KG boundary tương ứng.
 
 ---
 
-## 2. Assignment (prepare-dev)
+## 2. Assignment (trước start-dev)
 
-> Cập nhật ở **`prepare-dev`** — gắn FEAT → boundary → agent trước `start-dev`.
+> Điền trước **`start-dev complete`** — gắn FEAT → boundary → agent.
 
 ### Wave meta
 
@@ -51,7 +58,7 @@ Mỗi task → `implementation.backlog` trong KG boundary tương ứng.
 - `features_in_flight`: []
 - `boundaries_in_flight`: []
 
-### Evidence (tham khảo cho `harness.py prepare-dev complete`)
+### Evidence (tham khảo cho `harness.py start-dev complete`)
 
 ```json
 {

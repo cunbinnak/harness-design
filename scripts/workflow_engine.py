@@ -33,6 +33,13 @@ def _enforce_pre_complete_hooks(
     if not ok:
         raise ValueError(msg)
 
+    blocker_hook = (rules.get("hooks") or {}).get("discipline_blockers", {})
+    from hooks.discipline_kg import check_blockers  # noqa: WPS433
+
+    ok, msg = check_blockers(state, blocker_hook, context=f"complete {command_id}")
+    if not ok:
+        raise ValueError(msg)
+
 
 def ensure_workflow(state: dict[str, Any]) -> dict[str, Any]:
     if "workflow" not in state or not isinstance(state["workflow"], dict):
@@ -69,14 +76,28 @@ def _apply_sets_stage(state: dict[str, Any], stage: str | None) -> None:
 
 
 def _wave_bootstrap(command_id: str, evidence: dict[str, Any]) -> None:
+    from state_engine import copy_handoff_template  # noqa: WPS433
+
     state = load_state()
+    from wave_ids import normalize_wave_id  # noqa: WPS433
+
+    wave_id = normalize_wave_id(evidence.get("wave_id"))
     if state["stage"] == "BOOTSTRAP" or not state["wave"].get("id"):
         apply_transition("start_wave", updated_by=command_id)
         state = load_state()
-        title = evidence.get("wave_title")
-        if title:
-            state["wave"]["title"] = title
-            save_state(state, updated_by=command_id)
+    state["wave"]["id"] = wave_id
+    try:
+        state["wave"]["number"] = int(wave_id.rsplit("-", 1)[-1])
+    except ValueError:
+        state["wave"]["number"] = 1
+    if evidence.get("wave_title"):
+        state["wave"]["title"] = evidence["wave_title"]
+    hf = copy_handoff_template(wave_id)
+    state["handoff"] = {
+        "file": str(hf.relative_to(repo_root())).replace("\\", "/"),
+        "last_sync_at": None,
+    }
+    save_state(state, updated_by=command_id)
 
 
 def _sync_state_fields(state: dict[str, Any], evidence: dict[str, Any], sync_cfg: dict[str, str]) -> None:
@@ -96,7 +117,9 @@ def complete_command(
     wf = state["workflow"]
     if command_id not in wf.get("allowed_next", []):
         raise ValueError(
-            f"command {command_id!r} not allowed; allowed_next={wf.get('allowed_next')}"
+            "HARNESS — KHÔNG ĐƯỢC PHÉP. Dừng ngay.\n"
+            f"command {command_id!r} not in workflow.allowed_next={wf.get('allowed_next')!r}.\n"
+            "Không sửa STATE thủ công; hoàn thành đúng bước trước."
         )
 
     _enforce_pre_complete_hooks(command_id, evidence, state)
@@ -109,7 +132,9 @@ def complete_command(
         state = ensure_workflow(load_state())
 
     if cmd_cfg.get("load_wave_roster"):
-        wave_id = (state.get("wave") or {}).get("id") or "wave-001"
+        from wave_ids import normalize_wave_id  # noqa: WPS433
+
+        wave_id = normalize_wave_id(evidence.get("wave_id") or (state.get("wave") or {}).get("id"))
         import load_wave_roster as lwr  # noqa: WPS433
 
         lwr.load_for_wave(wave_id)
@@ -153,6 +178,11 @@ def complete_command(
     wf["evidence"][command_id] = evidence
     _checkpoint_append(state, command_id, "pass", evidence)
 
+    if command_id == "apply-cr" and evidence.get("cr_id"):
+        wf["pending_cr"] = evidence["cr_id"]
+    if command_id == "intake-requirement" and evidence.get("intake_mode") == "amendment":
+        wf.pop("pending_cr", None)
+
     completed = list(wf.get("completed") or [])
     if command_id not in completed:
         completed.append(command_id)
@@ -191,9 +221,11 @@ def complete_command(
     if cmd_cfg.get("post_reset_wave"):
         state = apply_transition("reset_wave", updated_by=updated_by)
         state = ensure_workflow(load_state())
-        state["workflow"]["allowed_next"] = ["intake-requirement"]
-        state["workflow"]["completed"] = []
-        state["workflow"]["last_completed"] = None
+        state["workflow"]["allowed_next"] = ["start-wave", "intake-requirement"]
+        state["workflow"]["completed"] = ["end-wave"]
+        state["workflow"]["last_completed"] = "end-wave"
+        meta = state.setdefault("meta", {})
+        meta["plan_baseline"] = True
 
     save_state(state, updated_by=updated_by)
 

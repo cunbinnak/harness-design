@@ -1,0 +1,16 @@
+# Skeleton — architect (intake bước 3) bổ sung service;
+# dev-handoff: bắt buộc `docker compose up` chạy được cho test local.
+#
+# Ví dụ sau khi có boundary customer, sales:
+#   services:
+#     postgres:
+#       image: postgres:16-alpine
+#       environment:
+#         POSTGRES_PASSWORD: dev
+#       ports: ["5432:5432"]
+#     customer-api:
+#       build: ../../../services/customer
+#       ports: ["8081:8080"]
+#       depends_on: [postgres]
+
+services: {}

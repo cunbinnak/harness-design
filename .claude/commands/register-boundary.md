@@ -1,9 +1,9 @@
-﻿---
-description: "Harness: register-boundary"
-argument-hint: "<boundary_id>"
+---
+description: "Harness command: register-boundary"
+argument-hint: ""
 ---
 
-# /register-boundary <boundary_id>
+# /register-boundary
 
 Đăng ký service: matrix + agent + knowledge graph (+ `services/` nếu materialize).
 
@@ -12,4 +12,3 @@ argument-hint: "<boundary_id>"
 ```bash
 python scripts/harness.py register-boundary catalog-api --materialize
 ```
-

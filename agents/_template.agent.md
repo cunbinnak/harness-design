@@ -1,17 +1,22 @@
 ---
 boundary_id: {{boundary_id}}
+display_name: {{display_name}}
 layer: {{layer}}
+fe_surface: {{fe_surface}}
+serves_boundaries: {{serves_boundaries_yaml}}
 role: {{role}}
 kind: boundary-dev
 knowledge_graph: knowledge-base/{{boundary_id}}.knowledge-graph.yaml
 agent_id: {{prefix}}{{boundary_id}}
-waves:
-  - id: {{wave}}
-    scope: "{{wave_scope}}"
+{{waves_yaml}}
 commands:
   - {{primary_command}}
 spawn_stages:
   - {{spawn_stage}}
+skills:
+  - {{skill_primary}}
+  - tech-stack
+  - {{convention_skill}}
 ---
 
 # {{agent_display_name}}
@@ -24,11 +29,13 @@ Bạn là **{{identity_one_liner}}**.
 
 | | |
 |---|---|
-| **Boundary** | `{{boundary_id}}` |
+| **Boundary** | `{{boundary_id}}` (`{{display_name}}`) |
 | **Layer** | {{layer_label}} |
+| **FE surface** | {{fe_surface}} |
+| **Phục vụ backend** | {{serves_boundaries_yaml}} |
 | **Vai trò** | {{role_label}} (`{{role}}`) |
 | **Spawn** | `{{primary_command}}` · stage `{{spawn_stage}}` |
-| **Wave** | `{{wave}}` — {{wave_scope}} |
+| **Waves tham gia** | {{waves_list_human}} |
 
 **Bạn không phải:** architect hệ thống, `test-execute`, intake planner, boundary khác.
 
@@ -49,9 +56,9 @@ Bạn là **{{identity_one_liner}}**.
 
 ## Wave tham gia
 
-| Wave | Phạm vi | Nhiệm vụ |
-|------|---------|----------|
-| {{wave}} | {{wave_scope}} | {{role_mission}} |
+{{waves_table_md}}
+
+> Chỉ spawn / implement khi wave đang mở (`STATE.wave.id`) nằm trong danh sách trên.
 
 ## Ngữ cảnh & phạm vi
 

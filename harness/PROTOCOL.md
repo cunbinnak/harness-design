@@ -12,6 +12,7 @@ Giao thức orchestrator (Harness) ↔ sub-agent (model). **Harness = lớp ngo�
 | Shared memory | `knowledge-base/*.knowledge-graph.yaml` |
 | Context rules | `harness/CONTEXT-RULES.json` |
 | Spec sản phẩm | `docs/` |
+| Agent discipline | `.cursor/rules/harness-agent-discipline.mdc` + `knowledge-base` (`discipline.*`) |
 
 ## Sub-agent (triển khai sau)
 
@@ -22,7 +23,7 @@ Khi `start-dev` / `fix-bugs`: orchestrator spawn agent theo boundary (`agents/{b
 3. Trả **RETURN SCHEMA** (JSON only).
 4. `log-knowledge` + cập nhật handoff/tracking; `spawn-end` nếu dùng spawn.
 
-Command workflow: `harness.py complete <command>` — xem `HUONG-DAN-SETUP.md`.
+Command workflow: `harness.py <command> complete` — see `SETUP-GUIDE.md`.
 
 ## RETURN SCHEMA
 
@@ -56,7 +57,7 @@ python scripts/harness.py complete <command> [evidence.json]
 | `test-execute` | `test_result`: pass/fail |
 | `release` | test pass + `release_ok` |
 
-Hook: `scripts/hooks/run_hook.py transition_gate`.
+Hooks: `scripts/hooks/README.md` · `run_hook.py` · IDE `ide_bridge.py` (discipline_blockers, discipline_kg_return).
 
 ## Pass / fail (trigger STATE-MACHINE — tham chiếu)
 

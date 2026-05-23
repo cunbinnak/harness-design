@@ -1,6 +1,6 @@
 # FEAT-XXX: (tiêu đề)
 
-> Tham chiếu tổng quan dự án: [PROJECT.md](PROJECT.md)
+> Tham chiếu: [PROJECT.md](PROJECT.md) · **Ưu tiên:** Must | Should | Could
 
 ## Mục tiêu
 
@@ -8,8 +8,18 @@
 
 ## Acceptance criteria
 
-- [ ] AC-1
-- [ ] AC-2
+- [ ] AC-1: (testable — Given/When/Then hoặc điều kiện đo được)
+- [ ] AC-2:
+
+## Business rules
+
+| ID | Rule |
+|----|------|
+| BR-1 | |
+
+## Phụ thuộc
+
+- Depends on: (FEAT-xxx hoặc —)
 
 ## Phạm vi
 

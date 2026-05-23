@@ -9,3 +9,5 @@
 - **Command khác** → `agents/{command}-agent.md` + `build_command_prompt.py <command>`
 
 Không có `_template.intake-agent` hay `_template.command-agent`.
+
+**Discipline:** rule `.cursor/rules/harness-agent-discipline.mdc` (always apply) + đọc/ghi `knowledge-base/shared.knowledge-graph.yaml` (`discipline`, `decisions`, `implementation.in_progress`).

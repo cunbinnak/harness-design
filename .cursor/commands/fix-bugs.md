@@ -1,17 +1,15 @@
-﻿---
-description: "Harness: fix-bugs"
+---
+description: "Harness command: fix-bugs"
 argument-hint: ""
 ---
 
 # /fix-bugs
 
-Sửa bug sau `test-execute` fail.
-
-**Artifact:** `tracking/bugs/**`
+Sửa bug — spawn `fix-{boundary}-agent.md`.
 
 ```bash
+python scripts/build_command_prompt.py fix-bugs --boundary order
 python scripts/harness.py fix-bugs complete
 ```
 
-Tiếp theo: `retest`
-
+Pre: `test-execute` fail. Artifact: `tracking/bugs/**`

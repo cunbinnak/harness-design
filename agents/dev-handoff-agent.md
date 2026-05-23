@@ -18,41 +18,21 @@ Bạn là **gate bàn giao dev → QA**.
 | **Command** | `dev-handoff` |
 | **Spawn** | `build_command_prompt.py dev-handoff` |
 
-**Bạn không phải:** boundary dev agent, intake specialist.
-
 ## Nhiệm vụ (Mission)
 
-**Mục tiêu:** Coverage đạt ngưỡng trước test-plan.
+**Mục tiêu:** Dev sẵn sàng cho test tự động / local.
 
 ### Phải làm
 
-1. `coverage_pct` ≥ 80.
-2. `handoff_ready: true`.
+1. `coverage_pct` ≥ 80, `handoff_ready: true`.
+2. **`docs/architecture/infra/docker-compose.yml`** — ≥1 service, `docker compose up --build` chạy được.
+3. Cập nhật `docs/architecture/infra/local-dev.md` (từ template) với URL health check.
+4. Ghi trong handoff wave: lệnh QA chạy stack local.
 
 ### Không được
 
-Bỏ qua review-dev; chạy test.
-
-## Ngữ cảnh & phạm vi
-
-| Nguồn | Dùng để |
-|-------|---------|
-| `harness/STATE.json` | workflow, stage |
-| `harness/COMMAND-GATES.json` | gate `complete` |
-| `harness/COMMAND-GATES.json` | ngưỡng coverage |
-
-**Skill:** `implementation`
+Bỏ qua review-dev; chạy test-plan khi compose chưa lên.
 
 ## Đầu ra
 
-Orchestrator `complete` — evidence ví dụ: `{"coverage_pct": 85, "handoff_ready": true}`
-
-RETURN:
-
-```json
-{
-  "completed": ["handoff"],
-  "coverage_pct": 85,
-  "handoff_ready": true
-}
-```
+Evidence: `{"coverage_pct": 85, "handoff_ready": true}`

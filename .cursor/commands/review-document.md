@@ -1,17 +1,15 @@
 ---
-description: "Harness: review-document"
+description: "Harness command: review-document"
 argument-hint: ""
 ---
 
 # /review-document
 
-Duy?t tài li?u sau intake — không gap gi?a product, architecture, plans.
+**Agent:** [review-document-agent.md](../agents/review-document-agent.md)
 
 ```bash
-py scripts/build_command_prompt.py review-document
-py scripts/harness.py review-document complete '{"approved": true}'
+python scripts/build_command_prompt.py review-document
+python scripts/harness.py review-document complete '{"approved": true}'
 ```
 
-Ti?p theo: `/start-wave`.
-
-Gates: [`harness/COMMAND-GATES.json`](../harness/COMMAND-GATES.json)
+Kiá»ƒm tra bá»™ 3 dev agents/boundary + pipeline intake trong handoff.

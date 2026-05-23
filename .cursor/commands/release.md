@@ -1,19 +1,13 @@
 ---
-description: "Harness: release"
+description: "Harness command: release"
 argument-hint: ""
 ---
 
 # /release
 
-Release + dóng wave (g?p complete-wave).
-
-**Agent:** [`agents/release-agent.md`](../agents/release-agent.md)
-
-**Evidence:** `{"release_ok": true}` — `'{"release_ok": true}'`
+**Agent:** [release-agent.md](../agents/release-agent.md)
 
 ```bash
+python scripts/build_command_prompt.py release
 python scripts/harness.py release complete '{"release_ok": true}'
 ```
-
-Sau release: STATE s?n sàng wave m?i ? `intake-requirement`.
-

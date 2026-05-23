@@ -62,6 +62,19 @@ def parse_features_from_plan(plan_path: Path | None, wave: str) -> list[str]:
 def parse_boundaries_for_wave(roster_path: Path | None, wave: str) -> list[str]:
     if not roster_path:
         return []
+    from materialize_boundary_agents import parse_roster_row  # noqa: WPS433
+    from wave_ids import normalize_wave_id  # noqa: WPS433
+
+    wave = normalize_wave_id(wave)
+    rows = parse_roster_row(roster_path)
+    if rows:
+        return sorted(
+            {
+                r.boundary_id
+                for r in rows
+                if wave in [normalize_wave_id(w) for w in r.waves]
+            }
+        )
     text = _read(roster_path)
     in_matrix = False
     boundaries: list[str] = []
@@ -125,7 +138,9 @@ def apply_to_state(wave: str, features: list[str], boundaries: list[str]) -> dic
 
 def load_for_wave(wave: str) -> dict:
     """Parse plan + roster and apply to STATE. Returns summary dict."""
-    wave = wave.replace("_", "-")
+    from wave_ids import normalize_wave_id  # noqa: WPS433
+
+    wave = normalize_wave_id(wave)
     plan = find_wave_plan(wave)
     roster = find_roster()
     features = parse_features_from_plan(plan, wave)

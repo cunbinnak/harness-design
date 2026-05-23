@@ -1,6 +1,6 @@
 ---
 name: self-review
-description: Tự rà soát trước khi chuyển reviewer-agent.
+description: Tự rà soát trước review-dev (boundary agent) hoặc reviewer-agent (cross-boundary).
 ---
 
 # Self Review Skill

@@ -58,7 +58,7 @@ def _check_gate(
         if missing:
             return (
                 f"matrix_covers_roster: SERVICE-BOUNDARY-MATRIX missing {missing} "
-                f"(run: py scripts/harness.py sync-boundaries)"
+                f"(run: py scripts/harness.py start-wave complete — sync matrix tự chạy)"
             )
         return None
     if gtype == "evidence_field":
@@ -114,7 +114,145 @@ def _check_gate(
         if not _dev_set_complete(root, fe_id):
             return (
                 f"fe_agent_set_complete: need agents/{fe_id}-agent.md, "
-                f"fix-{fe_id}-agent.md, review-{fe_id}-agent.md (materialize --include-fe)"
+                f"fix-{fe_id}-agent.md, review-{fe_id}-agent.md"
+            )
+        return None
+    if gtype == "fe_agent_sets_complete":
+        from hooks.harness_policy import fe_boundary_ids  # noqa: WPS433
+
+        from materialize_boundary_agents import parse_roster_row  # noqa: WPS433
+        from load_wave_roster import find_roster  # noqa: WPS433
+
+        roster_path = find_roster()
+        fe_ids = (
+            [r.boundary_id for r in parse_roster_row(roster_path) if r.layer == "fe"]
+            if roster_path
+            else fe_boundary_ids(root)
+        )
+        if not fe_ids:
+            return None
+        missing = [f for f in fe_ids if not _dev_set_complete(root, f)]
+        if missing:
+            return (
+                f"fe_agent_sets_complete: missing agent set for FE boundaries {missing} "
+                f"(py scripts/materialize_boundary_agents.py --from-roster ...)"
+            )
+        return None
+    if gtype == "fe_ux_documents":
+        from materialize_boundary_agents import parse_roster_row  # noqa: WPS433
+        from load_wave_roster import find_roster  # noqa: WPS433
+
+        roster_path = find_roster()
+        if not roster_path:
+            return "fe_ux_documents: agent-roster.md not found"
+        fe_rows = [r for r in parse_roster_row(roster_path) if r.layer == "fe"]
+        if not fe_rows:
+            return None
+        missing_ux = [
+            r.boundary_id
+            for r in fe_rows
+            if not (root / f"docs/architecture/ux/ux-{r.boundary_id}.md").is_file()
+        ]
+        if missing_ux:
+            return f"fe_ux_documents: missing docs/architecture/ux/ux-{{id}}.md for {missing_ux}"
+        return None
+    if gtype == "knowledge_graphs_per_roster":
+        from materialize_boundary_agents import parse_roster_row  # noqa: WPS433
+        from load_wave_roster import find_roster  # noqa: WPS433
+
+        roster_path = find_roster()
+        if not roster_path:
+            return "knowledge_graphs_per_roster: agent-roster.md not found"
+        missing_kg = []
+        for row in parse_roster_row(roster_path):
+            p = root / f"knowledge-base/{row.boundary_id}.knowledge-graph.yaml"
+            if not p.is_file():
+                missing_kg.append(row.boundary_id)
+        if missing_kg:
+            return (
+                f"knowledge_graphs_per_roster: missing KG for {missing_kg} "
+                f"(py scripts/materialize_knowledge_graphs.py --from-roster ...)"
+            )
+        return None
+    if gtype == "integrations_matrix_filled":
+        p = root / "docs/architecture/integrations-matrix.md"
+        if not p.is_file():
+            return "integrations_matrix_filled: docs/architecture/integrations-matrix.md missing"
+        lines = [
+            ln
+            for ln in p.read_text(encoding="utf-8").splitlines()
+            if ln.startswith("|") and "---" not in ln and "from_boundary" not in ln
+        ]
+        if len(lines) < 1:
+            return "integrations_matrix_filled: add at least one integration row"
+        return None
+    if gtype == "adr_minimum":
+        n = _glob_count(root, gate.get("pattern", "docs/architecture/adr/ADR-*.md"))
+        if n < int(gate.get("min", 3)):
+            return f"adr_minimum: need >={gate.get('min', 3)} ADR files, got {n}"
+        return None
+    if gtype == "all_waves_planned":
+        from materialize_wave_plans import parse_wave_ids_from_roadmap  # noqa: WPS433
+
+        roadmap = root / "docs/plans/project/waves-roadmap.md"
+        if not roadmap.is_file():
+            return "all_waves_planned: waves-roadmap.md missing"
+        wave_ids = parse_wave_ids_from_roadmap(roadmap)
+        if len(wave_ids) < int(gate.get("min_waves", 1)):
+            return f"all_waves_planned: need >={gate.get('min_waves', 1)} waves in roadmap, got {len(wave_ids)}"
+        missing = []
+        thin = []
+        for wid in wave_ids:
+            p = root / "docs/plans/waves" / wid / "wave.md"
+            if not p.is_file():
+                missing.append(wid)
+            elif len(p.read_text(encoding="utf-8").strip()) < int(gate.get("min_chars", 400)):
+                thin.append(wid)
+        if missing:
+            return (
+                f"all_waves_planned: missing wave.md for {missing} "
+                f"(py scripts/materialize_wave_plans.py --from-roadmap ...)"
+            )
+        if thin:
+            return f"all_waves_planned: wave plan too empty for {thin} — fill §1 (goals, FEAT, duration)"
+        return None
+    if gtype == "roster_waves_documented":
+        from materialize_boundary_agents import parse_roster_row  # noqa: WPS433
+        from load_wave_roster import find_roster  # noqa: WPS433
+
+        roster_path = find_roster()
+        if not roster_path:
+            return "roster_waves_documented: agent-roster.md missing"
+        missing = [r.boundary_id for r in parse_roster_row(roster_path) if not r.waves]
+        if missing:
+            return f"roster_waves_documented: fill waves_participating for {missing}"
+        return None
+    if gtype == "wave_plan_ready":
+        from wave_ids import normalize_wave_id  # noqa: WPS433
+
+        wid = normalize_wave_id(
+            evidence.get("wave_id") or (state.get("wave") or {}).get("id")
+        )
+        p = root / "docs/plans/waves" / wid / "wave.md"
+        if not p.is_file():
+            return f"wave_plan_ready: missing {p} — complete intake plan for {wid} first"
+        return None
+    if gtype == "docker_compose_ready":
+        p = root / "docs/architecture/infra/docker-compose.yml"
+        if not p.is_file():
+            return "docker_compose_ready: docs/architecture/infra/docker-compose.yml missing"
+        try:
+            import yaml  # noqa: WPS433
+
+            data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+        except Exception as exc:
+            return f"docker_compose_ready: invalid yaml: {exc}"
+        services = data.get("services") or {}
+        min_svc = int(gate.get("min_services", 1))
+        if len(services) < min_svc:
+            return (
+                f"docker_compose_ready: need >={min_svc} service(s) in compose "
+                f"(dev-handoff: QA test local)"
             )
         return None
     if gtype == "wave_roster_synced":
@@ -131,6 +269,38 @@ def _check_gate(
         val = evidence.get(field)
         if not isinstance(val, list) or len(val) < int(gate.get("min", 1)):
             return f"evidence.{field} must be list with >={gate.get('min', 1)} items"
+        return None
+    if gtype == "cr_artifact_exists":
+        cr_id = evidence.get("cr_id")
+        cr_path = evidence.get("cr_path")
+        if cr_path:
+            p = root / str(cr_path).replace("\\", "/")
+            if not p.is_file():
+                return f"cr_artifact_exists: missing {cr_path}"
+            return None
+        if not cr_id:
+            return "cr_artifact_exists: evidence.cr_id or cr_path required"
+        candidates = list((root / "tracking/change-requests").glob(f"{cr_id}*.md"))
+        if not candidates:
+            return f"cr_artifact_exists: no file matching tracking/change-requests/{cr_id}*.md"
+        return None
+    if gtype == "cr_plan_section":
+        cr_id = evidence.get("cr_id")
+        cr_path = evidence.get("cr_path")
+        p: Path | None = None
+        if cr_path:
+            p = root / str(cr_path).replace("\\", "/")
+        elif cr_id:
+            found = list((root / "tracking/change-requests").glob(f"{cr_id}*.md"))
+            p = found[0] if found else None
+        if not p or not p.is_file():
+            return "cr_plan_section: CR file not found"
+        text = p.read_text(encoding="utf-8")
+        if "Kế hoạch cập nhật" not in text and "Ke hoach cap nhat" not in text:
+            return "cr_plan_section: add § Kế hoạch cập nhật in CR file (apply-cr agent)"
+        thin = len(text.strip()) < 200
+        if thin:
+            return "cr_plan_section: CR file too empty — complete apply-cr analysis"
         return None
     return f"unknown gate type: {gtype!r}"
 
@@ -179,7 +349,16 @@ def check_command(
     if wave.get("completed_at") and command_id != "intake-requirement":
         errors.append("wave already completed")
 
-    for gate in cmd_cfg.get("gates") or []:
+    gate_list = list(cmd_cfg.get("gates") or [])
+    if command_id == "intake-requirement" and evidence.get("intake_mode") == "amendment":
+        gate_list = list(cmd_cfg.get("gates_amendment") or gate_list)
+        cr_id = evidence.get("cr_id")
+        if cr_id and "apply-cr" not in completed:
+            errors.append(
+                f"intake amendment for {cr_id!r}: complete apply-cr first "
+                f"(py scripts/harness.py apply-cr complete)"
+            )
+    for gate in gate_list:
         msg = _check_gate(gate, root=root, state=state, evidence=evidence, thresholds=thresholds)
         if msg:
             errors.append(msg)
@@ -209,7 +388,7 @@ def check_command(
 
 def allowed_next(state: dict[str, Any]) -> list[str]:
     wf = state.get("workflow") or {}
-    return list(wf.get("allowed_next") or ["start-wave"])
+    return list(wf.get("allowed_next") or ["intake-requirement"])
 
 
 def can_run(command_id: str, state: dict[str, Any]) -> dict[str, Any]:
@@ -235,12 +414,12 @@ INTAKE_SPECIALIST_SUFFIXES = frozenset({
 HARNESS_COMMAND_AGENT_SUFFIXES = frozenset({
     "start-wave-agent.md",
     "review-document-agent.md",
-    "prepare-dev-agent.md",
     "dev-handoff-agent.md",
     "test-plan-agent.md",
     "test-execute-agent.md",
     "release-agent.md",
     "end-wave-agent.md",
+    "apply-cr-agent.md",
 })
 
 DEV_AGENT_PREFIXES = ("", "fix-", "review-")

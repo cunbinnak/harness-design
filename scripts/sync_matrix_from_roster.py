@@ -15,8 +15,9 @@ import re
 from pathlib import Path
 
 from harness_lib import get_boundary, repo_root
-from materialize_boundary_agents import FE_BOUNDARY_IDS, parse_roster
+from materialize_boundary_agents import FE_BOUNDARY_IDS, parse_roster, parse_roster_row
 from state_engine import register_boundary
+from harness_lib import load_json
 
 
 def find_production_roster() -> Path:
@@ -53,6 +54,9 @@ def default_owned_paths(boundary_id: str, layer: str) -> list[str]:
 
 
 def parse_roster_with_layer(path: Path) -> list[tuple[str, str]]:
+    parsed = parse_roster_row(path)
+    if parsed:
+        return [(r.boundary_id, r.layer) for r in parsed]
     text = path.read_text(encoding="utf-8")
     rows: list[tuple[str, str]] = []
     for line in text.splitlines():
@@ -65,6 +69,43 @@ def parse_roster_with_layer(path: Path) -> list[tuple[str, str]]:
         layer_col = cols[1] if len(cols) > 1 else ""
         rows.append((bid, _layer_for(bid, layer_col)))
     return rows
+
+
+def parse_integrations_matrix(path: Path) -> list[dict]:
+    if not path.is_file():
+        return []
+    out: list[dict] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("|") or "---" in line or "from_boundary" in line:
+            continue
+        cols = [c.strip() for c in line.split("|") if c.strip()]
+        if len(cols) < 4:
+            continue
+        out.append(
+            {
+                "from": cols[0],
+                "to": cols[1],
+                "kind": cols[2],
+                "contract": cols[3],
+            }
+        )
+    return out
+
+
+def sync_integrations_to_matrix() -> int:
+    root = repo_root()
+    matrix_path = root / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
+    doc = root / "docs/architecture/integrations-matrix.md"
+    integrations = parse_integrations_matrix(doc)
+    if not integrations:
+        return 0
+    data = load_json(matrix_path)
+    data["integrations"] = integrations
+    matrix_path.write_text(
+        __import__("json").dumps(data, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return len(integrations)
 
 
 def sync_from_roster(*, dry_run: bool = False) -> dict:
@@ -97,7 +138,14 @@ def sync_from_roster(*, dry_run: bool = False) -> dict:
         register_boundary(row)
         added.append(bid)
 
-    return {"added": added, "skipped": skipped, "roster": str(roster_path)}
+    n_int = sync_integrations_to_matrix()
+
+    return {
+        "added": added,
+        "skipped": skipped,
+        "roster": str(roster_path),
+        "integrations_synced": n_int,
+    }
 
 
 def main() -> int:

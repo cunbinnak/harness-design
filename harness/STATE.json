@@ -24,6 +24,15 @@
     "agents": [],
     "knowledge_graphs": [
       "knowledge-base/shared.knowledge-graph.yaml"
+    ],
+    "kg_discipline": {
+      "in_progress": [],
+      "do_not_repeat": [],
+      "blockers": [],
+      "active_decisions": []
+    },
+    "rules": [
+      ".cursor/rules/harness-agent-discipline.mdc"
     ]
   },
   "spawn": {
@@ -52,8 +61,8 @@
     "deferred_items": []
   },
   "meta": {
-    "revision": 1,
-    "updated_at": "2026-05-20T00:00:00Z",
+    "revision": 2,
+    "updated_at": "2026-05-23T14:11:44Z",
     "updated_by": "script",
     "notes": "BOOTSTRAP: khung trống. Shared memory: knowledge-base/shared.knowledge-graph.yaml. Boundary: SERVICE-BOUNDARY-MATRIX.json (rỗng)."
   }

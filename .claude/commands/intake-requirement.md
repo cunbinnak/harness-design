@@ -1,20 +1,31 @@
-﻿---
-description: "Harness: intake-requirement"
+---
+description: "Harness command: intake-requirement"
 argument-hint: "<input>"
 ---
 
 # /intake-requirement <input>
 
-Nhận yêu cầu → **thiết kế toàn cục** (waves, agent roster) + tài liệu wave hiện tại.
+**Command đầu tiên** — phân tích yêu cầu & lập kế hoạch (**trước** `start-wave`).
 
-**Pre:** [`start-wave`](start-wave.md) đã complete.
+Orchestrator: [intake-orchestrator-agent.md](../agents/intake-orchestrator-agent.md)
 
-**Agent:** [`agents/intake-requirement-agent.md`](../agents/intake-requirement-agent.md)
-
-**Artifact:** `handoff/wave-NNN.md`, `docs/product/FEAT-*.md`, `docs/plans/*.md`
+## Chạy
 
 ```bash
-python scripts/harness.py can intake-requirement
-python scripts/harness.py intake-requirement complete
+py scripts/build_command_prompt.py intake-requirement --step 1 --input "..."
+py scripts/build_command_prompt.py intake-requirement --step 2
+py scripts/build_command_prompt.py intake-requirement --step 3
+py scripts/build_command_prompt.py intake-requirement --step 4
+py scripts/materialize_boundary_agents.py --boundaries order,product --wave wave-001
+py scripts/harness.py intake-requirement complete
 ```
 
+## Sau intake
+
+1. `review-document`
+2. `start-wave` (sync matrix từ roster — không cần lệnh riêng)
+3. `start-dev` → … → `release` → `end-wave`
+
+Đổi scope sau này: [`apply-cr`](apply-cr.md) → intake `amendment` → `review-document`.
+
+[SETUP-GUIDE.md](../SETUP-GUIDE.md)

@@ -18,7 +18,9 @@ py scripts/harness.py intake-requirement complete
 ## Sau intake
 
 1. `review-document`
-2. `start-wave` (cần plan đã có)
-3. `sync-boundaries` → `prepare-dev` → dev → release
+2. `start-wave` (sync matrix từ roster — không cần lệnh riêng)
+3. `start-dev` → … → `release` → `end-wave`
 
-[docs/LUONG-PHAT-TRIEN-SAN-PHAM.md](../docs/LUONG-PHAT-TRIEN-SAN-PHAM.md)
+Đổi scope sau này: [`apply-cr`](apply-cr.md) → intake `amendment` → `review-document`.
+
+[SETUP-GUIDE.md](../SETUP-GUIDE.md)

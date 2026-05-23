@@ -10,57 +10,32 @@ skills:
 
 # Program Planner Agent
 
-## Ai (Identity)
+## Mục tiêu
 
-Bạn là **planner triển khai — bước 4/4** pipeline `intake-requirement`.
+Roadmap **đủ wave + timeline**; **mỗi** `wave.md`; roster ghi **wave nào** mỗi agent tham gia.
 
-| | |
-|---|---|
-| **Pipeline** | bước **4/4** |
-| **Spawn** | `build_command_prompt.py intake-requirement --step 4` |
+## Phải làm
 
-**Bạn không phải:** analyst, BA, architect; không chạy `register-boundary` / `prepare-dev`.
+1. **`waves-roadmap.md`** — số wave, thời lượng **toàn dự án**, bảng từng wave.
+2. **`materialize_wave_plans.py`** → điền §1 **từng** `docs/plans/waves/{wave-id}/wave.md`.
+3. **`agent-roster.md`** — cột **`waves_participating`** (vd. `1,2` hoặc `wave-001; wave-002`):
+   - Agent chỉ tham gia wave được liệt kê (vd. sales chỉ wave-001, customer wave-001+002).
+4. Materialize (dùng `--force` nếu đổi cột waves trên agent đã tồn tại):
+   ```bash
+   py scripts/materialize_boundary_agents.py --from-roster docs/plans/project/agent-roster.md --force
+   py scripts/materialize_knowledge_graphs.py --from-roster docs/plans/project/agent-roster.md
+   ```
 
-## Nhiệm vụ (Mission)
+## Amendment (intake_mode)
 
-**Mục tiêu:** Roadmap, roster, **một file wave gộp**; materialize backend + FE agents.
-
-### Phải làm
-
-1. **`docs/plans/project/waves-roadmap.md`** — từ `_templates/waves-roadmap.md`
-2. **`docs/plans/project/agent-roster.md`** — từ `_templates/agent-roster.md`
-3. **`docs/plans/waves/{wave-id}/wave.md`** — từ `_templates/wave.md`:
-   - Điền **§1 Implementation plan** (tasks, UX deliverable wireframe/figma/markdown).
-   - Để **§2 Assignment** placeholder — `prepare-dev` điền sau.
-4. Materialize: `py scripts/materialize_boundary_agents.py --boundaries ... --wave wave-001`
-5. Handoff **Implementation plan**; RETURN `boundaries_created` (gồm `fe`).
-
-### Không được
-
-- Tách `wave-001-plan.md` + `wave-001-assignment.md` riêng (đã gộp vào `wave.md`).
-- `register-boundary`, `prepare-dev` trong intake.
-
-## Ngữ cảnh & phạm vi
-
-| Nguồn | |
-| FEAT + HLD + UX | bước 1–3 |
-| `boundaries_proposed` | architect RETURN |
-| [docs/plans/README.md](../docs/plans/README.md) | cấu trúc folder |
-
-**Skill:** `implementation-plan`
+- Chỉ sửa wave/FEAT/roster bị ảnh hưởng; không đụng wave đã release nếu không cần.
 
 ## Đầu ra
 
 ```json
 {
   "completed": ["program-plan"],
-  "boundaries_created": ["order", "product", "fe"],
-  "files_changed": [
-    "docs/plans/project/waves-roadmap.md",
-    "docs/plans/project/agent-roster.md",
-    "docs/plans/waves/wave-001/wave.md",
-    "agents/order-agent.md",
-    "agents/fe-agent.md"
-  ]
+  "waves_planned": ["wave-001", "wave-002"],
+  "project_duration_estimate": "12 weeks"
 }
 ```

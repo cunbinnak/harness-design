@@ -1,17 +1,13 @@
-﻿---
-description: "Harness: test-plan"
+---
+description: "Harness command: test-plan"
 argument-hint: ""
 ---
 
 # /test-plan
 
-Lên **kế hoạch** và viết test case (chưa chạy test).
-
-**Agent:** [`agents/test-plan-agent.md`](../agents/test-plan-agent.md)
-
-**Artifact:** `tracking/test-case-registry/**`
+**Agent:** [test-plan-agent.md](../agents/test-plan-agent.md)
 
 ```bash
+python scripts/build_command_prompt.py test-plan
 python scripts/harness.py test-plan complete
 ```
-

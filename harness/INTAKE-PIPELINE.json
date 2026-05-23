@@ -10,7 +10,7 @@
       "agent": "agents/requirement-analyst-agent.md",
       "skill": "requirement-analysis",
       "adlc_stage": "REQUIREMENT_INTAKE",
-      "summary": "PROJECT.md tổng quan dự án + draft FEAT"
+      "summary": "Toàn dự án: PROJECT + catalog FEAT draft + NFR/assumptions/open questions"
     },
     {
       "id": "business-analyst",
@@ -18,7 +18,7 @@
       "agent": "agents/business-analyst-agent.md",
       "skill": "business-analysis",
       "adlc_stage": "BUSINESS_ANALYSIS",
-      "summary": "Làm đầy PROJECT + FEAT (rules, AC)"
+      "summary": "AC testable, BR-*, boundaries_suggested, traceability FEAT"
     },
     {
       "id": "solution-architect",
@@ -26,7 +26,7 @@
       "agent": "agents/solution-architect-agent.md",
       "skill": "technical-design",
       "adlc_stage": "TECHNICAL_DESIGN",
-      "summary": "hld + api + data-model + ux per boundary (ux-fe bắt buộc)"
+      "summary": "ADR 3–5, hld/api/data-model/ux per boundary, integrations-matrix, infra compose skeleton"
     },
     {
       "id": "program-planner",
@@ -34,7 +34,7 @@
       "agent": "agents/program-planner-agent.md",
       "skill": "implementation-plan",
       "adlc_stage": "IMPLEMENTATION_PLAN",
-      "summary": "project roadmap, roster, waves/{id}/wave.md (plan gộp)"
+      "summary": "Roadmap + timeline; mọi wave có wave.md; materialize agents+KG"
     }
   ],
   "gate_after_pipeline": "harness/COMMAND-GATES.json commands.intake-requirement.gates"

@@ -128,6 +128,36 @@ def main() -> int:
         print("OK")
         return 0
 
+    if args.hook_id == "discipline_blockers":
+        from hooks.discipline_kg import check_blockers  # noqa: WPS433
+
+        ok, msg = check_blockers(state, hook, context="complete command")
+        if not ok:
+            print(msg, file=sys.stderr)
+            return 1
+        print("OK")
+        return 0
+
+    if args.hook_id == "discipline_kg_return":
+        from hooks.discipline_kg import check_kg_return  # noqa: WPS433
+
+        ok, msg = check_kg_return(payload.get("body") or {}, hook)
+        if not ok:
+            print(msg, file=sys.stderr)
+            return 1
+        print("OK")
+        return 0
+
+    if args.hook_id == "spawn_stage":
+        from hooks.discipline_kg import check_spawn_stage  # noqa: WPS433
+
+        ok, msg = check_spawn_stage(state, hook)
+        if not ok:
+            print(msg, file=sys.stderr)
+            return 1
+        print("OK")
+        return 0
+
     print(f"hook {args.hook_id} not wired in run_hook.py", file=sys.stderr)
     return 64
 

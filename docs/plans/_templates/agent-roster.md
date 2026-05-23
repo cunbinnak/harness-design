@@ -1,9 +1,16 @@
-## Boundary agents (generated at intake)
+## Boundary agents (generated at intake step 4)
 
-| boundary_id | Layer | Dev | Fix | Review | Wave |
-|-------------|-------|-----|-----|--------|------|
-| order | backend | agents/order-agent.md | agents/fix-order-agent.md | agents/review-order-agent.md | wave-001 |
-| product | backend | agents/product-agent.md | agents/fix-product-agent.md | agents/review-product-agent.md | wave-001 |
-| fe | frontend | agents/fe-agent.md | agents/fix-fe-agent.md | agents/review-fe-agent.md | wave-001 |
+| boundary_id | layer | waves_participating | serves_boundaries | fe_surface |
+|-------------|-------|---------------------|-------------------|------------|
+| customer | backend | 1, 2 | — | — |
+| sales | backend | 1 | — | — |
+| fe-web | fe | 1, 2 | customer,sales | web-app |
 
-> `materialize_boundary_agents.py` tự thêm boundary `fe` trừ khi `--no-fe`.
+> **waves_participating:** số wave (`1`, `2`, `02`) hoặc `wave-001`, hoặc `1;2`, hoặc `all` (mọi wave trong roadmap). Harness chuẩn hóa → `wave-001`, `wave-002`, …
+>
+> Agent materialize ghi **đủ wave** vào frontmatter `agents/*-agent.md` (không chỉ wave-001).
+>
+> ```bash
+> py scripts/materialize_boundary_agents.py --from-roster docs/plans/project/agent-roster.md
+> py scripts/materialize_knowledge_graphs.py --from-roster docs/plans/project/agent-roster.md
+> ```

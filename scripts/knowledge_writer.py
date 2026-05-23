@@ -57,12 +57,47 @@ def append_learning(
     save_kg(graph_path, data)
 
 
+def append_do_not_repeat(
+    graph_path: str,
+    text: str,
+    *,
+    updated_by: str = "script",
+) -> None:
+    data = load_kg(graph_path)
+    disc = data.setdefault("discipline", {"do_not_repeat": [], "blockers": []})
+    items = disc.setdefault("do_not_repeat", [])
+    if text not in items:
+        items.append(text)
+    learn = data.setdefault("learnings", {"gotchas": [], "patterns": []})
+    if text not in learn.setdefault("gotchas", []):
+        learn["gotchas"].append(text)
+    data.setdefault("meta", {})["updated_by"] = updated_by
+    save_kg(graph_path, data)
+
+
+def append_blocker(
+    graph_path: str,
+    text: str,
+    *,
+    updated_by: str = "script",
+) -> None:
+    data = load_kg(graph_path)
+    disc = data.setdefault("discipline", {"do_not_repeat": [], "blockers": []})
+    items = disc.setdefault("blockers", [])
+    if text not in items:
+        items.append(text)
+    data.setdefault("meta", {})["updated_by"] = updated_by
+    save_kg(graph_path, data)
+
+
 def main() -> None:
     if len(sys.argv) < 4:
         print(
             "Usage:\n"
             "  knowledge_writer.py decision <graph.yaml> '<json>'\n"
-            "  knowledge_writer.py learning <graph.yaml> gotcha|pattern '<text>'",
+            "  knowledge_writer.py learning <graph.yaml> gotcha|pattern '<text>'\n"
+            "  knowledge_writer.py do-not-repeat <graph.yaml> '<text>'\n"
+            "  knowledge_writer.py blocker <graph.yaml> '<text>'",
             file=sys.stderr,
         )
         sys.exit(64)
@@ -80,6 +115,14 @@ def main() -> None:
                 sys.exit(1)
             append_learning(path, kind, text)
             print(f"appended {kind}")
+        elif cmd == "do-not-repeat":
+            text = arg
+            append_do_not_repeat(path, text)
+            print("appended do_not_repeat")
+        elif cmd == "blocker":
+            text = arg
+            append_blocker(path, text)
+            print("appended blocker")
         else:
             print(f"unknown cmd: {cmd}", file=sys.stderr)
             sys.exit(64)

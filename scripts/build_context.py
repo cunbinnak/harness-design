@@ -8,6 +8,7 @@ from harness_lib import (
     STAGE_DOC_GLOBS,
     expand_globs,
     get_boundary,
+    load_kg,
     load_machine,
     repo_root,
     skill_for_stage,
@@ -45,6 +46,27 @@ def build_context() -> dict:
             if row and row.get("knowledge_graph"):
                 kgs.append(row["knowledge_graph"])
     ctx["knowledge_graphs"] = sorted(set(kgs))
+
+    shared_kg = root / "knowledge-base" / "shared.knowledge-graph.yaml"
+    if shared_kg.is_file():
+        data = load_kg(str(shared_kg.relative_to(root)).replace("\\", "/"))
+        impl = data.get("implementation") or {}
+        disc = data.get("discipline") or {}
+        learn = data.get("learnings") or {}
+        active_dec = [
+            d.get("id")
+            for d in (data.get("decisions") or [])
+            if isinstance(d, dict) and d.get("status", "active") == "active"
+        ]
+        ctx["kg_discipline"] = {
+            "in_progress": list(impl.get("in_progress") or []),
+            "do_not_repeat": list(disc.get("do_not_repeat") or [])
+            + list(learn.get("gotchas") or []),
+            "blockers": list(disc.get("blockers") or []),
+            "active_decisions": active_dec,
+        }
+
+    ctx["rules"] = [".cursor/rules/harness-agent-discipline.mdc"]
 
     agents: list[str] = []
     if ab:

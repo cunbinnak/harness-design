@@ -10,7 +10,7 @@ knowledge_graph: knowledge-base/shared.knowledge-graph.yaml
 
 Đánh giá **cross-boundary**, RC — **không** sở hữu code service.
 
-**Không thay:** `review-document-agent` (doc), `review-dev-agent` (code self-review), `release-agent` (ship).
+**Không thay:** `review-document-agent` (doc), `review-{boundary}-agent` (code self-review), `release-agent` (ship).
 
 ## Đọc khi chạy
 

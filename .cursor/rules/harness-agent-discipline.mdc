@@ -1,0 +1,60 @@
+---
+description: Ràng buộc harness + KG — mọi agent/orchestrator trong repo ADLC
+alwaysApply: true
+---
+
+# Harness agent discipline
+
+**Nguồn sự thật:** spec = `docs/` · trạng thái = `knowledge-base/*.yaml` · workflow = `harness.py complete` (không sửa `STATE.json` tay).
+
+## Trước mỗi lượt làm việc — đọc KG
+
+Đọc `knowledge-base/shared.knowledge-graph.yaml` (và KG boundary nếu đang dev):
+
+| Trường KG | Dùng để |
+|-----------|---------|
+| `implementation.in_progress` | **Không** mở task mới trùng id / cùng mục tiêu (rule 2) |
+| `decisions` (`status: active`) | **Không** debate lại — đổi = CR + supersede (rule 4) |
+| `discipline.do_not_repeat` + `learnings.gotchas` | Việc đã lỗi — **không lặp** (rule 11) |
+| `discipline.blockers` | **Không** tiếp tục cho đến khi gỡ hoặc CR (rule 3, 12) |
+
+`STATE.context` (sau `build_context`) liệt kê path cần đọc — không bỏ qua (rule 17).
+
+## Sau mỗi lượt — ghi KG
+
+- Quyết định mới → `decisions[]` (một id, `status: active`)
+- Lỗi / gotcha dễ lặp → `discipline.do_not_repeat` hoặc `learnings.gotchas`
+- Blocker → `discipline.blockers`
+- RETURN SCHEMA: `kg_appended` liệt kê id đã ghi (rule 10)
+
+```bash
+py scripts/knowledge_writer.py decision knowledge-base/shared.knowledge-graph.yaml '{"context":"...","decision":"...","rationale":"..."}'
+py scripts/knowledge_writer.py do-not-repeat knowledge-base/shared.knowledge-graph.yaml "mô tả việc không được lặp"
+```
+
+## 20 quy tắc (tóm tắt)
+
+| # | Không | Phải |
+|---|--------|------|
+| 1 | Làm lại command đã `complete` | Chỉ `workflow.allowed_next` |
+| 2 | Task mới khi `in_progress` còn | Hoàn thành / defer |
+| 3 | Bỏ blocker | Ghi KG + chờ / CR |
+| 4 | Mở lại ADR đã accepted | Supersede qua CR |
+| 5 | Trùng artifact spec | Sửa file hiện có |
+| 6 | Đoán boundary | roster + matrix |
+| 7 | Sửa ngoài `owned_paths` | hook matrix |
+| 8 | Cross-boundary không CR | `apply-cr` |
+| 9 | Đổi stage không handoff | `handoff/wave-*.md` |
+| 10 | Xong không ghi KG | `kg_appended` |
+| 11 | Không `do_not_repeat` | Ghi khi dễ lặp |
+| 12 | Tiếp khi TBD lớn | CR / escalate |
+| 13 | Đổi requirement lúc impl/test | CR + intake amendment |
+| 14 | Fix không log bug | `tracking/bugs/` |
+| 15 | Fix không review/retest | `review-dev` / `retest` |
+| 16 | Sửa STATE tay | `harness.py complete` |
+| 17 | Bỏ context | Đọc `STATE.context` |
+| 18 | KG thay spec | `docs/` là spec |
+| 19 | Quên `features_in_flight` | evidence `start-dev` |
+| 20 | Spawn sai stage | `spawn.allowed_stages` |
+
+Index máy (gate/hook): `harness/AGENT-DISCIPLINE.json` · Hook KG: `discipline_blockers`, `discipline_kg_return` trong `HOOK-RULES.json`

@@ -11,47 +11,45 @@ skills:
 
 ## Ai (Identity)
 
-Bạn là **reviewer tài liệu sau intake**.
+**Reviewer tài liệu sau intake** — gate trước khi mở wave.
 
 | | |
 |---|---|
 | **Command** | `review-document` |
 | **Spawn** | `build_command_prompt.py review-document` |
 
-**Bạn không phải:** boundary dev agent, intake specialist.
+## Checklist (toàn dự án vs wave-001)
 
-## Nhiệm vụ (Mission)
+### Cấp dự án
 
-**Mục tiêu:** Cross-check tài liệu; gate trước dev.
+- [ ] `PROJECT.md` đủ template (scope, NFR, glossary, assumptions)
+- [ ] Mọi capability chính có `FEAT-*.md` với AC testable
+- [ ] ADR ≥3, stack/arch/auth thống nhất
+- [ ] `integrations-matrix.md` có hàng thật
 
-### Phải làm
+### Cấp triển khai
 
-1. Pipeline intake trong handoff.
-2. Bộ 3 dev agents/boundary backend **và** bộ FE (`fe-agent`, `fix-fe-agent`, `review-fe-agent`).
-3. `approved: true` nếu pass.
-4. Sau complete: bước tiếp theo **`start-wave`** (plan đã sẵn sàng).
+- [ ] `waves-roadmap.md`: số wave, thời lượng toàn dự án, bảng từng wave
+- [ ] Mỗi wave trong roadmap có `docs/plans/waves/{id}/wave.md` §1 đủ (FEAT, lịch)
+- [ ] `agent-roster.md` + mỗi boundary: 3 agents (`{id}`, `fix-{id}`, `review-{id}`)
+- [ ] Mỗi FE boundary: `ux-{id}.md` + `serves_boundaries` trong roster
+- [ ] `knowledge-base/{boundary}.knowledge-graph.yaml` tồn tại
+- [ ] `wave-001/wave.md` §1: FEAT → boundary map
 
-### Không được
+### Không pass nếu
 
-Sửa `services/`; `start-wave` trước khi `approved`.
-
-## Ngữ cảnh & phạm vi
-
-| Nguồn | Dùng để |
-|-------|---------|
-| `harness/STATE.json` | workflow, stage |
-| `harness/COMMAND-GATES.json` | gate `complete` |
-| docs/product/PROJECT.md, FEAT-*, docs/plans, docs/architecture/{hld,api,data-model,ux}/ | |
-
-**Skill:** `business-analysis`
+- FEAT Must không map boundary
+- Thiếu agent set / KG / ADR
+- Mâu thuẫn PROJECT vs ADR
 
 ## Đầu ra
 
-Evidence JSON: `{"approved": true}`
+Evidence: `{"approved": true}` hoặc `false` + liệt kê gap trong RETURN `needs_review`.
 
 ```json
 {
-  "completed": ["doc-review"],
+  "approved": true,
+  "completed": ["cross-check-intake"],
   "needs_review": []
 }
 ```

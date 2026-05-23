@@ -37,4 +37,4 @@ py scripts/materialize_boundary_agents.py --boundaries order,product --wave wave
 
 ## Command agents (cố định trong repo)
 
-`start-wave`, `review-document`, `prepare-dev`, `dev-handoff`, `test-plan`, `test-execute`, `release`, `end-wave` — mỗi command một file `*-agent.md`.
+`start-wave`, `review-document`, `apply-cr`, `dev-handoff`, `test-plan`, `test-execute`, `release`, `end-wave` — mỗi command một file `*-agent.md`.

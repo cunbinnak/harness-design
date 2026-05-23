@@ -1,5 +1,5 @@
-﻿---
-description: "Harness: show-state"
+---
+description: "Harness command: show-state"
 argument-hint: ""
 ---
 
@@ -10,4 +10,3 @@ Xem và validate `harness/STATE.json` + `workflow.allowed_next`.
 ```bash
 python scripts/harness.py state
 ```
-

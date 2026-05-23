@@ -5,18 +5,18 @@
       {
         "matcher": "Write|StrReplace|Edit",
         "command": "py scripts/hooks/ide_bridge.py --ide cursor --event pre_edit",
-        "failClosed": false
+        "failClosed": true
       },
       {
         "matcher": "Shell",
         "command": "py scripts/hooks/ide_bridge.py --ide cursor --event pre_shell",
-        "failClosed": false
+        "failClosed": true
       }
     ],
     "stop": [
       {
         "command": "py scripts/hooks/ide_bridge.py --ide cursor --event post_agent",
-        "failClosed": false
+        "failClosed": true
       }
     ]
   }

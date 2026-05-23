@@ -11,11 +11,11 @@ Trước implementation hoặc khi thay đổi kiến trúc.
 
 ## Hoạt động
 
-1. API / event contract, versioning, backward compatibility.
-2. Mỗi boundary: `hld/`, `api/`, `data-model/`, `ux/` — `*-{id}.md` theo template; `ux-fe.md` bắt buộc khi có UI.
-3. Cập nhật knowledge graph.
-4. Cập nhật `SERVICE-BOUNDARY-MATRIX` nếu ranh giới đổi.
+1. **ADR** — `docs/architecture/adr/ADR-001` … `005` (stack, BE arch, auth, UI, PDF).
+2. Mỗi boundary: `hld/`, `api/`, `data-model/`, `ux/ux-{id}.md` (mỗi FE boundary một file UX).
+3. `integrations-matrix.md` + `infra/docker-compose.yml` skeleton.
+4. KG per boundary — planner materialize `knowledge-base/{id}.knowledge-graph.yaml`.
 
 ## Done
 
-- ADR hoặc tài liệu thiết kế ngắn gọn đã được liên kết trong repo.
+- ADR accepted; integrations có ít nhất một hàng thật.

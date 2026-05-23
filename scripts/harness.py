@@ -25,7 +25,7 @@ CORE = [
     "test-plan",
     "test-execute",
 ]
-EXTENDED = ["register-boundary", "fix-bugs", "retest", "release", "end-wave"]
+EXTENDED = ["apply-cr", "register-boundary", "fix-bugs", "retest", "release", "end-wave"]
 ALL = CORE + EXTENDED
 
 
@@ -102,11 +102,6 @@ def main() -> int:
         mat = "--materialize" in rest
         bid = rest[0]
         return cmd_register(bid, mat)
-    if verb == "sync-boundaries":
-        if rest and rest[0] == "complete":
-            return cmd_complete("sync-boundaries", None)
-        return cmd_complete("sync-boundaries", None)
-
     if verb in ALL:
         if rest and rest[0] == "complete":
             ev = rest[1] if len(rest) > 1 else None

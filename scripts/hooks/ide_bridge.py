@@ -210,12 +210,18 @@ def handle_pre_shell(payload: dict[str, Any], ide: str) -> None:
     if not cmd:
         _allow(ide)
 
+    state = load_state()
+    from hooks.harness_policy import check_shell_allowed  # noqa: WPS433
+
+    ok, msg = check_shell_allowed(cmd, state)
+    if not ok:
+        _deny(ide, "pre_shell", msg)
+
     parsed = _parse_harness_complete(cmd)
     if not parsed:
         _allow(ide)
 
     command_id, evidence = parsed
-    state = load_state()
     rules = _hook_rules()
 
     from hooks.workflow_allowed import check as wf_check  # noqa: WPS433
@@ -235,6 +241,14 @@ def handle_pre_shell(payload: dict[str, Any], ide: str) -> None:
     result = check_command(command_id, state, evidence)
     if not result["ok"]:
         _deny(ide, "pre_shell", "Gates failed:\n" + "\n".join(result["errors"]))
+
+    blocker_hook = rules.get("hooks", {}).get("discipline_blockers", {})
+    from hooks.discipline_kg import check_blockers  # noqa: WPS433
+
+    ok, msg = check_blockers(state, blocker_hook, context=f"complete {command_id}")
+    if not ok:
+        _deny(ide, "pre_shell", msg)
+
     _allow(ide)
 
 
@@ -262,6 +276,13 @@ def handle_pre_spawn(payload: dict[str, Any], ide: str) -> None:
     blob = json.dumps(ti, ensure_ascii=False)
     boundary = _boundary_from_text(blob) or state.get("active_boundary")
     tool = _tool_name(payload)
+
+    stage_hook = rules.get("hooks", {}).get("spawn_stage", {})
+    from hooks.discipline_kg import check_spawn_stage  # noqa: WPS433
+
+    ok, msg = check_spawn_stage(state, stage_hook)
+    if not ok:
+        _deny(ide, "pre_spawn", msg)
 
     if tool in ("Task", "Agent", "Subagent", "SubagentStart") or payload.get("hook_event_name") == "SubagentStart":
         hook = rules.get("hooks", {}).get("dev_agent_spawn", {})
@@ -314,6 +335,14 @@ def handle_post_agent(payload: dict[str, Any], ide: str) -> None:
     ok, msg = check(body, hook)
     if not ok:
         _deny(ide, "post_agent", f"RETURN SCHEMA invalid: {msg}")
+
+    kg_hook = rules.get("hooks", {}).get("discipline_kg_return", {})
+    from hooks.discipline_kg import check_kg_return  # noqa: WPS433
+
+    ok, msg = check_kg_return(body, kg_hook)
+    if not ok:
+        _deny(ide, "post_agent", msg)
+
     _allow(ide)
 
 

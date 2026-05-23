@@ -24,15 +24,20 @@
 - `domain` — entities, relationships
 - `implementation` — backlog, in_progress, completed
 - **`decisions`** — quyết định đã chốt (id, context, decision, rationale, status)
-- `learnings` — gotchas, patterns
+- **`discipline`** — `do_not_repeat`, `blockers` (rule harness — đọc trước mỗi lượt)
+- `learnings` — gotchas, patterns (đồng bộ với `do_not_repeat` khi ghi qua `knowledge_writer.py do-not-repeat`)
 - `integrations` — phụ thuộc boundary khác (tham chiếu matrix)
 
 ## Ghi nhận
 
 ```bash
 python scripts/knowledge_writer.py decision knowledge-base/shared.knowledge-graph.yaml '{"context":"...","decision":"...","rationale":"..."}'
+python scripts/knowledge_writer.py do-not-repeat knowledge-base/shared.knowledge-graph.yaml "không được ..."
+python scripts/knowledge_writer.py blocker knowledge-base/shared.knowledge-graph.yaml "chờ ..."
 ```
 
-Xem [`HUONG-DAN-SETUP.md`](../HUONG-DAN-SETUP.md).
+Rule chung (Cursor): `.cursor/rules/harness-agent-discipline.mdc` (`alwaysApply: true`).
+
+See [`SETUP-GUIDE.md`](../SETUP-GUIDE.md).
 
 **Nguyên tắc:** Một decision — một entry; supersede bằng `status: superseded` + `supersedes: DEC-xxx`.

@@ -1,19 +1,22 @@
-﻿---
-description: "Harness: start-dev — triển khai theo boundary"
-argument-hint: "<boundary_id>"
+---
+description: "Harness command: start-dev"
+argument-hint: ""
 ---
 
-# /start-dev [boundary_id]
+# /start-dev
 
-Bắt đầu code boundary — agent `agents/{boundary}-agent.md`.
+Spawn **dev boundary agent** (`{boundary}-agent.md`) đã tạo lúc intake bước 4.
 
-**Gồm:** điền `docs/plans/waves/{wave-id}/wave.md` §2 Assignment (trước đây là `prepare-dev`).
+**Agent:** `agents/{boundary}-agent.md`
 
 ```bash
-py scripts/build_command_prompt.py start-dev --boundary customer
-py scripts/harness.py start-dev complete '{"features_in_flight":["FEAT-001-..."],"boundaries_in_flight":["customer","sales","fe"]}'
+py scripts/build_command_prompt.py start-dev --list-boundaries
+py scripts/build_command_prompt.py start-dev --boundary order
+py scripts/harness.py start-dev complete '{"features_in_flight":["FEAT-001"],"boundaries_in_flight":["order"]}'
 ```
 
-Tiếp theo: `/review-dev`.
+**Trước khi complete:** điền `docs/plans/waves/{wave-id}/wave.md` §2 (gán FEAT → boundary) và evidence `features_in_flight` / `boundaries_in_flight`.
 
-Gates: [`harness/COMMAND-GATES.json`](../harness/COMMAND-GATES.json)
+Hook `dev_agent_spawn`: file agent phải tồn tại trước spawn.
+
+[SETUP-GUIDE.md](../SETUP-GUIDE.md)
