@@ -4,7 +4,7 @@
 
 ## Tổng quan
 
-(vai trò boundary trong hệ thống; tham chiếu `docs/product/PROJECT.md`)
+(vai trò boundary trong hệ thống; tham chiếu `docs/architecture/PROJECT.md`)
 
 ## Luồng chính
 

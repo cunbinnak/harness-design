@@ -53,7 +53,7 @@ py scripts/harness.py review-document complete '{"approved": true}'
   "completed": ["cr-analyzed"],
   "cr_id": "CR-001",
   "needs_intake": true,
-  "affected_docs": ["docs/product/FEAT-002.md"],
+  "affected_docs": ["docs/architecture/feat/FEAT-002.md"],
   "boundaries_affected": ["customer"],
   "files_changed": ["tracking/change-requests/CR-001-....md"],
   "kg_appended": ["decision:DEC-..."]

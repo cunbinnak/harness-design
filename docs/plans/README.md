@@ -19,7 +19,7 @@ docs/plans/
 
 | File | Ai tạo | Nội dung |
 |------|--------|----------|
-| `project/waves-roadmap.md` | Intake bước 4 | Bao nhiêu wave, FEAT theo wave |
+| `project/waves-roadmap.md` | Intake bước 4 | Bao nhiêu wave, FEAT theo wave (`docs/architecture/feat/`) |
 | `project/agent-roster.md` | Intake bước 4 | Boundary → 3 agent paths |
 | `waves/{wave-id}/wave.md` | Intake: §1 Plan · trước `start-dev`: §2 Assignment | **Gộp** — tránh tách `plan` / `assignment` ra nhiều file |
 

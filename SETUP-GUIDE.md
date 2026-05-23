@@ -108,7 +108,7 @@ Sync slash commands after editing `commands/`: `py scripts/sync_commands.py`.
 
 | Command | Main artifacts / evidence |
 |---------|---------------------------|
-| `intake-requirement` | product, architecture, ADR≥3, plans, roster, agents, KG/boundary, integrations |
+| `intake-requirement` | `docs/architecture/PROJECT.md`, `docs/architecture/feat/FEAT-*`, ADR≥3, plans, roster, agents, KG/boundary, integrations |
 | `review-document` | `approved: true` |
 | `start-wave` | handoff, matrix synced from roster |
 | `start-dev` | `wave.md` §2, `features_in_flight`, `boundaries_in_flight` |

@@ -54,6 +54,6 @@ RETURN phải có:
   "completed": ["business-rules", "ac-complete"],
   "features_refined": ["FEAT-001-...", "FEAT-002-..."],
   "boundaries_suggested": ["customer", "sales", "fe-web"],
-  "files_changed": ["docs/product/PROJECT.md", "docs/product/FEAT-001-....md"]
+  "files_changed": ["docs/architecture/PROJECT.md", "docs/architecture/feat/FEAT-001-....md"]
 }
 ```

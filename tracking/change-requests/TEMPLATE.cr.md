@@ -15,7 +15,7 @@
 
 | File / vùng | Hành động |
 |-------------|-----------|
-| docs/product/FEAT-xxx.md | sửa AC … |
+| docs/architecture/feat/FEAT-xxx.md | sửa AC … |
 | docs/plans/waves/wave-00N/wave.md | bổ sung task … |
 | docs/architecture/… | chỉ nếu ảnh hưởng boundary |
 

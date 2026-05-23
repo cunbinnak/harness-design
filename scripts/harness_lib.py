@@ -20,8 +20,8 @@ ORCHESTRATOR_BOUNDARIES = frozenset({"reviewer"})
 KINDS = frozenset({"backend", "bff", "web", "mobile", "reviewer"})
 
 STAGE_DOC_GLOBS: dict[str, list[str]] = {
-    "REQUIREMENT_INTAKE": ["docs/product/**"],
-    "BUSINESS_ANALYSIS": ["docs/product/**"],
+    "REQUIREMENT_INTAKE": ["docs/architecture/PROJECT.md", "docs/architecture/feat/**"],
+    "BUSINESS_ANALYSIS": ["docs/architecture/PROJECT.md", "docs/architecture/feat/**"],
     "TECHNICAL_DESIGN": ["docs/architecture/**"],
     "IMPLEMENTATION_PLAN": ["docs/plans/**", "docs/architecture/**"],
     "IMPLEMENTATION": ["docs/architecture/**", "docs/plans/**"],

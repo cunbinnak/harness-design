@@ -203,8 +203,8 @@ def build_intake_step(step: int, user_input: str | None) -> str:
     if step > 1:
         parts.extend([
             _inline_header("PRIOR ARTIFACTS"),
-            "- docs/product/PROJECT.md",
-            "- docs/product/FEAT-*.md",
+            "- docs/architecture/PROJECT.md",
+            "- docs/architecture/feat/FEAT-*.md",
             "- handoff/wave-*.md",
             "- docs/architecture/hld/, api/, data-model/, ux/ (sau bước 3)",
             "",

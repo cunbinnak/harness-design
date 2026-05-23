@@ -1,6 +1,6 @@
 # FEAT-XXX: (tiêu đề)
 
-> Tham chiếu: [PROJECT.md](PROJECT.md) · **Ưu tiên:** Must | Should | Could
+> Tham chiếu: [PROJECT.md](../PROJECT.md) · **Ưu tiên:** Must | Should | Could
 
 ## Mục tiêu
 
@@ -28,7 +28,7 @@
 
 ## UX / UI (nếu có)
 
-- Luồng / màn hình: `docs/architecture/ux/ux-fe.md` (hoặc ux boundary tương ứng)
+- Luồng / màn hình: `docs/architecture/ux/ux-*.md`
 - AC UI map vào bảng UX hoặc AC bên dưới
 
 ## Boundary dự kiến
@@ -37,5 +37,5 @@
 
 ## Liên kết
 
-- Wave: `STATE.wave.id`
+- Wave: `docs/plans/waves/{wave-id}/wave.md` · roadmap: `docs/plans/project/waves-roadmap.md`
 - Knowledge: backlog item tương ứng trong KG

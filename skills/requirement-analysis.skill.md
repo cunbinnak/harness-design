@@ -13,7 +13,7 @@ Giai đoạn đầu wave hoặc khi có thay đổi phạm vi.
 
 1. Thu thập và phân loại yêu cầu chức năng / phi chức năng.
 2. Ghi ràng buộc và giả định.
-3. Liên kết tới `docs/product/` và knowledge graph tương ứng.
+3. Liên kết tới `docs/architecture/PROJECT.md`, `docs/architecture/feat/FEAT-*.md` và knowledge graph tương ứng.
 
 ## Done
 

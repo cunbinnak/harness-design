@@ -24,5 +24,5 @@
 
 ## References
 
-- `docs/product/PROJECT.md`
+- `docs/architecture/PROJECT.md`
 - `docs/architecture/hld/…` (nếu có)

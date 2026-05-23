@@ -6,7 +6,7 @@
 
 ## 1. Implementation plan
 
-> Điền ở **intake bước 4** (program-planner). Tham chiếu `docs/product/PROJECT.md`, FEAT, `docs/architecture/`.
+> Điền ở **intake bước 4** (program-planner). Tham chiếu `docs/architecture/PROJECT.md`, `docs/architecture/feat/FEAT-*.md`.
 
 ### Lịch wave này
 

@@ -6,9 +6,8 @@ Khung repo áp dụng **Harness** (lớp điều phối **ngoài model**) cho ph
 
 ```
 AGENTS.md
-docs/product/          # PROJECT.md + FEAT-*
-docs/architecture/     # adr/, hld/, api/, data-model/, ux/, infra/
-docs/plans/            # project/ + waves/{id}/wave.md
+docs/architecture/     # PROJECT.md, feat/FEAT-*, adr/, hld/, api/, ux/, infra/
+docs/plans/            # project/, waves/{id}/wave.md
 harness/
   STATE.json
   STATE-MACHINE.json

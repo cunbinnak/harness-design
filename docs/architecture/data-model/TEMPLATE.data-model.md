@@ -44,4 +44,4 @@ erDiagram
 ## Tham chiếu
 
 - HLD: `docs/architecture/hld/hld-{boundary_id}.md`
-- FEAT: `docs/product/FEAT-*.md`
+- FEAT: `docs/architecture/feat/FEAT-*.md`

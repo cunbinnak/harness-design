@@ -24,8 +24,8 @@ wireframe_path: ""     # nếu wireframe trong repo
 ## Phạm vi UX
 
 - **Persona / vai trò:**
-- **FEAT liên quan:** (link `docs/product/FEAT-*.md`)
-- **Tham chiếu dự án:** `docs/product/PROJECT.md`
+- **FEAT liên quan:** (link `docs/architecture/feat/FEAT-*.md`)
+- **Tham chiếu dự án:** `docs/architecture/PROJECT.md`
 
 ## Nguyên tắc & ràng buộc
 

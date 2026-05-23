@@ -1,6 +1,6 @@
 # PROJECT — (tên dự án / sản phẩm)
 
-> Tài liệu **gốc** mô tả *cả dự án là gì*. Tạo/cập nhật ở intake bước 1–2. Các `FEAT-*.md` chi tiết hóa phần deliverable.
+> Tài liệu **gốc** mô tả *cả dự án là gì*. Tạo thành `docs/architecture/PROJECT.md` ở intake bước 1–2. FEAT → `docs/architecture/feat/`.
 
 ## Tổng quan
 
@@ -33,7 +33,7 @@
 ## Trải nghiệm người dùng (tóm tắt cấp dự án)
 
 - **Persona chính:**
-- **Nguyên tắc UX** (ngắn gọn; màn hình chi tiết → `docs/architecture/ux/ux-fe.md`)
+- **Nguyên tắc UX** (ngắn gọn; màn hình chi tiết → `docs/architecture/ux/ux-*.md`)
 
 ## Thuật ngữ (glossary)
 
@@ -44,7 +44,7 @@
 ## Lộ trình tóm tắt (tham chiếu)
 
 - Chi tiết wave: `docs/plans/project/waves-roadmap.md` · wave hiện tại: `docs/plans/waves/{wave-id}/wave.md`
-- FEAT hiện tại: `docs/product/FEAT-*.md`
+- FEAT: `docs/architecture/feat/FEAT-*.md`
 
 ## Liên kết harness
 

@@ -16,7 +16,7 @@ pipeline: harness/INTAKE-PIPELINE.json
 
 | Chế độ | Khi nào | `complete` evidence |
 |--------|---------|---------------------|
-| **full** | Lần đầu / chưa có `docs/product/PROJECT.md` | `{}` hoặc không có `intake_mode` |
+| **full** | Lần đầu / chưa có `docs/architecture/PROJECT.md` | `{}` hoặc không có `intake_mode` |
 | **amendment** | Sau **`apply-cr complete`** hoặc đổi scope có CR | `{"intake_mode": "amendment", "cr_id": "CR-001", "change_summary": "..."}` |
 
 **CR:** luôn `apply-cr` trước intake amendment khi có `cr_id` (gate). Đọc § Kế hoạch cập nhật trong file CR.

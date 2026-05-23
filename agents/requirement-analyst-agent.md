@@ -34,7 +34,7 @@ Bạn phân tích **cả sản phẩm/dự án** ở mức **vision + phạm vi 
 
 ## Phải làm
 
-1. **`docs/product/PROJECT.md`** — mọi mục trong [TEMPLATE.project.md](../docs/product/TEMPLATE.project.md), tối thiểu:
+1. **`docs/architecture/PROJECT.md`** — mọi mục trong [TEMPLATE.project.md](../docs/architecture/TEMPLATE.project.md), tối thiểu:
    - Tổng quan, đối tượng, **in/out scope (dự án)**
    - Mục tiêu / KPI cấp dự án
    - **Ràng buộc & giả định** (stack draft → architect chốt ADR)
@@ -42,7 +42,7 @@ Bạn phân tích **cả sản phẩm/dự án** ở mức **vision + phạm vi 
    - Glossary
    - **Open questions** (bullet, ai trả lời)
 2. **Hỏi lại user** nếu chưa rõ: số wave dự kiến, thời gian go-live, ràng buộc nhân sự — ghi vào `open_questions` hoặc PROJECT.
-3. **`docs/product/FEAT-*.md`** — **mọi** capability chính từ input (không bỏ sót module nghiệp vụ); mỗi file:
+3. **`docs/architecture/feat/FEAT-*.md`** — **mọi** capability chính từ input (không bỏ sót module nghiệp vụ); mỗi file ([TEMPLATE.feat.md](../docs/architecture/feat/TEMPLATE.feat.md)):
    - Mục tiêu, phạm vi in/out **FEAT**
    - AC **draft** (BA bước 2 làm đầy)
    - Ưu tiên: `Must | Should | Could` (MoSCoW) trong metadata đầu file
@@ -69,6 +69,6 @@ Trong RETURN, liệt kê rõ:
   "features_proposed": ["FEAT-001-...", "FEAT-002-..."],
   "open_questions": ["..."],
   "assumptions": ["..."],
-  "files_changed": ["docs/product/PROJECT.md", "docs/product/FEAT-001-....md"]
+  "files_changed": ["docs/architecture/PROJECT.md", "docs/architecture/feat/FEAT-001-....md"]
 }
 ```
