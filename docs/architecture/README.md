@@ -21,6 +21,10 @@ docs/architecture/
 
 Template: [TEMPLATE.project.md](TEMPLATE.project.md) · [feat/TEMPLATE.feat.md](feat/TEMPLATE.feat.md)
 
+```bash
+py scripts/materialize_ux_documents.py --from-roster docs/plans/project/agent-roster.md
+```
+
 ## Boundary & FE
 
 - **Backend:** `customer`, `sales`, … → `hld-{id}.md`, `api-{id}.md`, `data-model-{id}.md`.

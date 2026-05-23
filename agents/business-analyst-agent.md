@@ -37,7 +37,8 @@ Biến draft bước 1 thành **spec nghiệp vụ có thể kiểm thử** — 
 
 ## Không được
 
-- HLD/API/data-model; roster; materialize.
+- HLD/API/data-model; roster; materialize agents bằng tay (dùng script bước 4).
+- Sửa file trong `scripts/` — chỉ chạy lệnh.
 
 ## Handoff → bước 3 (Architect)
 

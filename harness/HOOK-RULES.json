@@ -4,17 +4,21 @@
     "owned_paths": {
       "when": "pre_edit",
       "severity": "block",
-      "description": "Chỉ sửa path trong owned_paths hoặc allowlist orchestrator",
+      "description": "Chỉ sửa owned_paths hoặc allowlist orchestrator — không sửa scripts/harness config",
       "allowlist_prefixes": [
         "docs/",
         "handoff/",
         "tracking/",
         "knowledge-base/",
-        "harness/",
-        "commands/",
-        "agents/",
-        "skills/",
-        "scripts/"
+        "agents/"
+      ],
+      "denylist_prefixes": [
+        "scripts/",
+        "harness/STATE.json",
+        "harness/STATE-MACHINE.json",
+        "harness/COMMAND-GATES.json",
+        "harness/HOOK-RULES.json",
+        ".cursor/hooks.json"
       ]
     },
     "return_schema": {

@@ -154,7 +154,10 @@ def _check_gate(
             if not (root / f"docs/architecture/ux/ux-{r.boundary_id}.md").is_file()
         ]
         if missing_ux:
-            return f"fe_ux_documents: missing docs/architecture/ux/ux-{{id}}.md for {missing_ux}"
+            return (
+                f"fe_ux_documents: missing docs/architecture/ux/ux-{{id}}.md for {missing_ux} "
+                f"(py scripts/materialize_ux_documents.py --from-roster docs/plans/project/agent-roster.md)"
+            )
         return None
     if gtype == "knowledge_graphs_per_roster":
         from materialize_boundary_agents import parse_roster_row  # noqa: WPS433
@@ -467,6 +470,9 @@ def _boundary_agent_files(root: Path) -> list[Path]:
 
 def path_allowed_for_edit(path: str, state: dict[str, Any], hook_cfg: dict[str, Any]) -> bool:
     norm = path.replace("\\", "/")
+    for deny in hook_cfg.get("denylist_prefixes") or []:
+        if norm.startswith(deny.replace("\\", "/")) or norm == deny.strip("/"):
+            return False
     prefixes = hook_cfg.get("allowlist_prefixes") or []
     if any(norm.startswith(p) for p in prefixes):
         return True

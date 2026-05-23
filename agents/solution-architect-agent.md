@@ -51,6 +51,15 @@ Từ `docs/architecture/adr/TEMPLATE.adr.md`:
 | Data model | `docs/architecture/data-model/data-model-{boundary_id}.md` |
 | UX | `docs/architecture/ux/ux-{boundary_id}.md` — **bắt buộc** cho mọi boundary `layer: fe` |
 
+**UX (bắt buộc — chạy script trước khi điền nội dung):**
+
+```bash
+py scripts/materialize_ux_documents.py --boundaries fe-web,fe-admin
+# hoặc mọi id FE từ boundaries_proposed / boundaries_suggested (bước 2)
+```
+
+Sau đó **điền** từng `ux-{id}.md` (flows, màn hình, FEAT links) — không bỏ file trống skeleton.
+
 #### 3. Integrations & infra
 
 - `docs/architecture/integrations-matrix.md` — ít nhất một hàng sync thật (FE→BE hoặc BE→BE).
@@ -74,7 +83,8 @@ Mọi FEAT **Must** phải map ít nhất một boundary.
 
 ### Không được
 
-Materialize agents/KG; code trong `services/`.
+- Materialize agents/KG bằng tay; code trong `services/`.
+- **Sửa** file trong `scripts/` — chỉ chạy `py scripts/materialize_ux_documents.py ...` rồi điền `docs/architecture/ux/`.
 
 ## Ngữ cảnh
 

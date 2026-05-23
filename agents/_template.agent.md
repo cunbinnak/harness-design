@@ -52,6 +52,7 @@ Bạn là **{{identity_one_liner}}**.
 
 ### Không được
 
+- Sửa bất kỳ file trong `scripts/`, `harness/COMMAND-GATES.json`, `harness/STATE.json` — chỉ **chạy** lệnh harness/materialize.
 {{role_forbidden}}
 
 ## Wave tham gia

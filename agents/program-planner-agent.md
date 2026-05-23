@@ -22,9 +22,15 @@ Roadmap **đủ wave + timeline**; **mỗi** `wave.md`; roster ghi **wave nào**
    - Agent chỉ tham gia wave được liệt kê (vd. sales chỉ wave-001, customer wave-001+002).
 4. Materialize (dùng `--force` nếu đổi cột waves trên agent đã tồn tại):
    ```bash
+   py scripts/materialize_ux_documents.py --from-roster docs/plans/project/agent-roster.md
    py scripts/materialize_boundary_agents.py --from-roster docs/plans/project/agent-roster.md --force
    py scripts/materialize_knowledge_graphs.py --from-roster docs/plans/project/agent-roster.md
    ```
+
+## Không được
+
+- Sửa `scripts/materialize_*.py` hoặc harness config — chỉ gọi lệnh trong block Materialize.
+- Tạo/sửa `agents/*-agent.md` bằng tay — dùng `materialize_boundary_agents.py`.
 
 ## Amendment (intake_mode)
 

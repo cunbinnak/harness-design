@@ -215,6 +215,18 @@ def build_intake_step(step: int, user_input: str | None) -> str:
         _inline_header("SKILL"),
         _read(skill_path),
     ])
+    if step == 3:
+        parts.extend([
+            _inline_header("UX FILES (bắt buộc)"),
+            "Mỗi FE boundary (`fe-web`, `fe-admin`, …) phải có `docs/architecture/ux/ux-{boundary_id}.md`.",
+            "",
+            "```bash",
+            "py scripts/materialize_ux_documents.py --boundaries <fe-ids-from-boundaries_suggested>",
+            "```",
+            "",
+            "Rồi điền nội dung UX trong từng file (không chỉ skeleton).",
+            "",
+        ])
     if step == 4:
         parts.extend([
             _inline_header("PLANS (đề xuất A — file wave gộp)"),
@@ -232,6 +244,7 @@ def build_intake_step(step: int, user_input: str | None) -> str:
             "- `agents/review-{boundary_id}-agent.md` — review-dev",
             "",
             "Materialize từ roster (mỗi FE boundary một id, vd. fe-web):",
+            "`py scripts/materialize_ux_documents.py --from-roster docs/plans/project/agent-roster.md`",
             "`py scripts/materialize_boundary_agents.py --from-roster docs/plans/project/agent-roster.md`",
             "`py scripts/materialize_knowledge_graphs.py --from-roster docs/plans/project/agent-roster.md`",
             "",

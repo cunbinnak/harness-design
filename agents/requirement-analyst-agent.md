@@ -51,6 +51,7 @@ Bạn phân tích **cả sản phẩm/dự án** ở mức **vision + phạm vi 
 ## Không được
 
 - `docs/architecture/*`, plans, agents, handoff wave, code.
+- **Sửa** `scripts/` hoặc harness config — chỉ `py scripts/...` trong Shell.
 
 ## Handoff → bước 2 (BA)
 

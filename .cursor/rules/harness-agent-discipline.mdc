@@ -42,7 +42,7 @@ py scripts/knowledge_writer.py do-not-repeat knowledge-base/shared.knowledge-gra
 | 4 | Mở lại ADR đã accepted | Supersede qua CR |
 | 5 | Trùng artifact spec | Sửa file hiện có |
 | 6 | Đoán boundary | roster + matrix |
-| 7 | Sửa ngoài `owned_paths` | hook matrix |
+| 7 | Sửa ngoài `owned_paths` / sửa `scripts/` | hook matrix — **chạy** `py scripts/...`, không edit file script |
 | 8 | Cross-boundary không CR | `apply-cr` |
 | 9 | Đổi stage không handoff | `handoff/wave-*.md` |
 | 10 | Xong không ghi KG | `kg_appended` |

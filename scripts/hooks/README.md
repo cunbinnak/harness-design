@@ -7,7 +7,7 @@
 
 | Event | Hook id | Mô tả |
 |-------|---------|--------|
-| `pre_edit` | `owned_paths` | Chỉ sửa owned_paths / allowlist |
+| `pre_edit` | `owned_paths` | `docs/`, `handoff/`, `tracking/`, `KG`, `agents/` — **không** `scripts/` |
 | `pre_shell` | `workflow_allowed_next`, `evidence_schema`, `transition_gate`, `discipline_blockers` | Khi `harness.py … complete` |
 | `pre_spawn` | `spawn_active`, `dev_agent_spawn`, `spawn_stage` | Trước sub-agent |
 | `post_agent` | `return_schema`, `discipline_kg_return` | Khi `spawn.active` — JSON RETURN + kg_appended |

@@ -33,6 +33,11 @@ pipeline: harness/INTAKE-PIPELINE.json
 - **Không bắt buộc** intake nếu scope không đổi → `start-wave` với `wave_id` wave tiếp theo (`2`, `wave-002`, …).
 - **Bắt buộc** intake (amendment) khi có thay đổi nghiệp vụ / boundary / timeline.
 
+## Orchestrator — không sửa harness
+
+- Sub-agent / intake: **không** edit `scripts/`, `harness/STATE.json`, `COMMAND-GATES.json`.
+- Chỉ **chạy** `py scripts/harness.py`, `materialize_*.py`, `build_command_prompt.py` qua terminal.
+
 ## Quy trình (tuần tự)
 
 | # | Agent | Output chính |
