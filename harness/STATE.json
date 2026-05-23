@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "project": {
+    "id": "adlc-design",
+    "display_name": "ADLC Design Harness"
+  },
+  "wave": {
+    "id": null,
+    "number": null,
+    "title": null,
+    "started_at": null,
+    "completed_at": null
+  },
+  "stage": "BOOTSTRAP",
+  "previous_stage": null,
+  "features_in_flight": [],
+  "boundaries_in_flight": [],
+  "active_boundary": null,
+  "owned_paths": [],
+  "non_negotiables": [],
+  "context": {
+    "docs": [],
+    "skills": [],
+    "agents": [],
+    "knowledge_graphs": [
+      "knowledge-base/shared.knowledge-graph.yaml"
+    ]
+  },
+  "spawn": {
+    "allowed_stages": [
+      "IMPLEMENTATION",
+      "FIX_MANUAL_BUGS"
+    ],
+    "active": null
+  },
+  "workflow": {
+    "last_completed": null,
+    "completed": [],
+    "allowed_next": [
+      "intake-requirement"
+    ],
+    "evidence": {}
+  },
+  "checkpoints": [],
+  "handoff": {
+    "file": null,
+    "last_sync_at": null
+  },
+  "tracking": {
+    "bugs": [],
+    "change_requests": [],
+    "deferred_items": []
+  },
+  "meta": {
+    "revision": 1,
+    "updated_at": "2026-05-20T00:00:00Z",
+    "updated_by": "script",
+    "notes": "BOOTSTRAP: khung trống. Shared memory: knowledge-base/shared.knowledge-graph.yaml. Boundary: SERVICE-BOUNDARY-MATRIX.json (rỗng)."
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/hooks/run_ide_bridge.bat",
+            "args": ["--ide", "claude", "--event", "session_start"],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/hooks/run_ide_bridge.bat",
+            "args": ["--ide", "claude", "--event", "pre_edit"]
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/hooks/run_ide_bridge.bat",
+            "args": ["--ide", "claude", "--event", "pre_shell"]
+          }
+        ]
+      },
+      {
+        "matcher": "Task|Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/hooks/run_ide_bridge.bat",
+            "args": ["--ide", "claude", "--event", "pre_spawn"]
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/hooks/run_ide_bridge.bat",
+            "args": ["--ide", "claude", "--event", "pre_spawn"]
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/hooks/run_ide_bridge.bat",
+            "args": ["--ide", "claude", "--event", "post_agent"]
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "scripts/hooks/run_ide_bridge.bat",
+            "args": ["--ide", "claude", "--event", "post_agent"]
+          }
+        ]
+      }
+    ]
+  }
+}

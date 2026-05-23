@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "description": "Registry boundary + owned_paths. BOOTSTRAP: []. Điền khi start-wave complete (sync roster). Doc: harness/SERVICE-BOUNDARY-MATRIX.md",
+  "boundaries": [],
+  "integrations": []
+}

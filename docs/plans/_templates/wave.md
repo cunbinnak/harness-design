@@ -1,0 +1,69 @@
+# Wave {wave-id}
+
+> **Một file / wave** — tránh loãng: plan (intake) + assignment (prepare-dev) cùng tài liệu.
+
+---
+
+## 1. Implementation plan
+
+> Điền ở **intake bước 4** (program-planner). Tham chiếu `docs/product/PROJECT.md`, FEAT, `docs/architecture/`.
+
+### UX deliverable (quyết định lúc plan)
+
+| Boundary | Hình thức | Ghi chú |
+|----------|-----------|---------|
+| fe | markdown \| wireframe \| figma \| mixed | `docs/architecture/ux/ux-fe.md` + link/asset nếu có |
+
+### Tasks theo boundary
+
+| boundary_id | Task | Phụ thuộc | AC |
+|-------------|------|-----------|-----|
+| | | | |
+
+### Thứ tự triển khai
+
+1.
+
+### Knowledge-base
+
+Mỗi task → `implementation.backlog` trong KG boundary tương ứng.
+
+---
+
+## 2. Assignment (prepare-dev)
+
+> Cập nhật ở **`prepare-dev`** — gắn FEAT → boundary → agent trước `start-dev`.
+
+### Wave meta
+
+- **id:** {wave-id}
+- **title:** (từ `STATE.wave.title`)
+
+### Bảng giao việc
+
+| FEAT | boundary_id | agent | AC / scope |
+|------|-------------|-------|------------|
+| | | | |
+
+### Context load
+
+- Docs đã đọc:
+- `features_in_flight`: []
+- `boundaries_in_flight`: []
+
+### Evidence (tham khảo cho `harness.py prepare-dev complete`)
+
+```json
+{
+  "features_in_flight": [],
+  "boundaries_in_flight": []
+}
+```
+
+---
+
+## 3. Tiến độ & ghi chú (tùy chọn)
+
+| Ngày | Ghi chú |
+|------|---------|
+| | |

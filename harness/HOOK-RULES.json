@@ -1,0 +1,72 @@
+{
+  "version": 2,
+  "hooks": {
+    "owned_paths": {
+      "when": "pre_edit",
+      "severity": "block",
+      "description": "Chỉ sửa path trong owned_paths hoặc allowlist orchestrator",
+      "allowlist_prefixes": [
+        "docs/",
+        "handoff/",
+        "tracking/",
+        "knowledge-base/",
+        "harness/",
+        "commands/",
+        "agents/",
+        "skills/",
+        "scripts/"
+      ]
+    },
+    "return_schema": {
+      "when": "post_agent",
+      "severity": "block",
+      "description": "Message cuối sub-agent phải là JSON RETURN SCHEMA",
+      "required_fields": [
+        "completed",
+        "deferred",
+        "needs_review",
+        "files_changed",
+        "build",
+        "lint",
+        "test"
+      ],
+      "failure_mode": "FM-012"
+    },
+    "transition_gate": {
+      "when": "pre_transition",
+      "severity": "block",
+      "description": "Bắt buộc gate_runner.check_command — không complete thủ công STATE",
+      "runner": "gate_runner.check_command"
+    },
+    "workflow_allowed_next": {
+      "when": "pre_complete_command",
+      "severity": "block",
+      "description": "Command phải nằm trong workflow.allowed_next — không nhảy bước"
+    },
+    "spawn_active": {
+      "when": "pre_spawn",
+      "severity": "block",
+      "description": "spawn.active phải null trước spawn-begin"
+    },
+    "wave_open": {
+      "when": "pre_command",
+      "severity": "block",
+      "description": "Wave chưa completed (trừ intake / duyệt plan trước khi mở wave)",
+      "except_commands": ["intake-requirement", "review-document"]
+    },
+    "dev_agent_spawn": {
+      "when": "pre_spawn",
+      "severity": "block",
+      "description": "start-dev/fix-bugs/review-dev: file agent dev phải tồn tại trên disk",
+      "commands": ["start-dev", "fix-bugs", "review-dev"]
+    }
+  },
+  "command_evidence_schema": {
+    "review-document": { "required": ["approved"], "types": { "approved": "boolean" } },
+    "dev-handoff": { "required": ["coverage_pct", "handoff_ready"] },
+    "test-execute": { "required": ["test_result"], "in": { "test_result": ["pass", "fail"] } },
+    "release": { "required": ["release_ok"] },
+    "end-wave": { "required": ["end_wave_ok"] },
+    "prepare-dev": { "required": ["features_in_flight", "boundaries_in_flight"], "list_min": 1 }
+  }
+}

@@ -1,0 +1,9 @@
+# Generated slash-command copies (source: commands/ + sync_commands.py)
+# Uncomment to always regenerate locally:
+# .cursor/commands/
+# .claude/commands/
+
+__pycache__/
+*.py[cod]
+.venv/
+spawn-prompt.md

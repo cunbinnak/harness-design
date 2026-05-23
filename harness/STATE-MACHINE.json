@@ -1,0 +1,72 @@
+{
+  "version": 2,
+  "initial_state": "BOOTSTRAP",
+  "states": {
+    "BOOTSTRAP": {
+      "description": "Chưa bắt đầu wave/feature, khởi tạo",
+      "skill": null
+    },
+    "REQUIREMENT_INTAKE": {
+      "description": "Nhận và chuẩn hóa yêu cầu",
+      "skill": "requirement-analysis"
+    },
+    "BUSINESS_ANALYSIS": {
+      "description": "Phân tích nghiệp vụ, rule, edge case",
+      "skill": "business-analysis"
+    },
+    "TECHNICAL_DESIGN": {
+      "description": "Thiết kế kỹ thuật, API, data model, flow",
+      "skill": "technical-design"
+    },
+    "IMPLEMENTATION_PLAN": {
+      "description": "Chia kế hoạch implement",
+      "skill": "implementation-plan"
+    },
+    "IMPLEMENTATION": {
+      "description": "Code implementation (gồm unit test BE)",
+      "skill": "implementation",
+      "spawn_allowed": true
+    },
+    "SELF_REVIEW": {
+      "description": "Agent/dev tự review code và artifact",
+      "skill": "self-review"
+    },
+    "SPECIALIST_TESTING": {
+      "description": "Test agent/QC specialist phân tích và test",
+      "skill": "specialist-testing"
+    },
+    "BUG_LOGGING": {
+      "description": "Ghi nhận bug nếu test fail",
+      "skill": "bug-logging"
+    },
+    "FIX_MANUAL_BUGS": {
+      "description": "Fix bug từ test/QC/manual",
+      "skill": "implementation",
+      "spawn_allowed": true
+    },
+    "RELEASE_CANDIDATE": {
+      "description": "Ứng viên release",
+      "skill": "release-candidate"
+    },
+    "DONE": {
+      "description": "Hoàn tất wave/feature",
+      "skill": null
+    }
+  },
+  "transitions": [
+    { "from": "BOOTSTRAP", "to": "REQUIREMENT_INTAKE", "trigger": "start_wave" },
+    { "from": "REQUIREMENT_INTAKE", "to": "BUSINESS_ANALYSIS", "trigger": "advance" },
+    { "from": "BUSINESS_ANALYSIS", "to": "TECHNICAL_DESIGN", "trigger": "advance" },
+    { "from": "TECHNICAL_DESIGN", "to": "IMPLEMENTATION_PLAN", "trigger": "advance" },
+    { "from": "IMPLEMENTATION_PLAN", "to": "IMPLEMENTATION", "trigger": "advance" },
+    { "from": "IMPLEMENTATION", "to": "SELF_REVIEW", "trigger": "advance" },
+    { "from": "SELF_REVIEW", "to": "SPECIALIST_TESTING", "trigger": "advance" },
+    { "from": "SELF_REVIEW", "to": "IMPLEMENTATION", "trigger": "review_fail" },
+    { "from": "SPECIALIST_TESTING", "to": "RELEASE_CANDIDATE", "trigger": "tests_pass" },
+    { "from": "SPECIALIST_TESTING", "to": "BUG_LOGGING", "trigger": "tests_fail" },
+    { "from": "BUG_LOGGING", "to": "FIX_MANUAL_BUGS", "trigger": "advance" },
+    { "from": "FIX_MANUAL_BUGS", "to": "SPECIALIST_TESTING", "trigger": "retest" },
+    { "from": "RELEASE_CANDIDATE", "to": "DONE", "trigger": "release_ok" },
+    { "from": "DONE", "to": "BOOTSTRAP", "trigger": "reset_wave" }
+  ]
+}

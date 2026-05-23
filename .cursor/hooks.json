@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "matcher": "Write|StrReplace|Edit",
+        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event pre_edit",
+        "failClosed": false
+      },
+      {
+        "matcher": "Shell",
+        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event pre_shell",
+        "failClosed": false
+      }
+    ],
+    "stop": [
+      {
+        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event post_agent",
+        "failClosed": false
+      }
+    ]
+  }
+}

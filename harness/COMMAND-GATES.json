@@ -1,0 +1,190 @@
+{
+  "version": 2,
+  "thresholds": {
+    "coverage_backend_pct": 80
+  },
+  "workflow_sequence": [
+    "intake-requirement",
+    "review-document",
+    "start-wave",
+    "register-boundary",
+    "start-dev",
+    "review-dev",
+    "dev-handoff",
+    "test-plan",
+    "test-execute",
+    "release",
+    "end-wave"
+  ],
+  "commands": {
+    "intake-requirement": {
+      "description": "Nhận yêu cầu → phân tích → lập kế hoạch (chưa mở wave)",
+      "requires_previous": [],
+      "sets_stage": "IMPLEMENTATION_PLAN",
+      "pipeline": "harness/INTAKE-PIPELINE.json",
+      "orchestrator_agent": "agents/intake-orchestrator-agent.md",
+      "internal_stages": [
+        "REQUIREMENT_INTAKE",
+        "BUSINESS_ANALYSIS",
+        "TECHNICAL_DESIGN",
+        "IMPLEMENTATION_PLAN"
+      ],
+      "gates": [
+        { "type": "artifact_glob", "pattern": "docs/plans/project/waves-roadmap.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/plans/project/agent-roster.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/product/PROJECT.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/product/FEAT-*.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/architecture/hld/hld-*.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/architecture/api/api-*.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/architecture/data-model/data-model-*.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/architecture/ux/ux-fe.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/plans/waves/*/wave.md", "min": 1 },
+        { "type": "dev_agent_sets_complete", "min_boundaries": 1 },
+        { "type": "fe_agent_set_complete", "boundary_id": "fe" }
+      ],
+      "next_allowed": ["review-document"]
+    },
+    "review-document": {
+      "description": "Duyệt tài liệu kế hoạch trước khi mở wave",
+      "requires_previous": ["intake-requirement"],
+      "sets_stage": "IMPLEMENTATION_PLAN",
+      "gates": [
+        { "type": "evidence_field", "field": "approved", "equals": true }
+      ],
+      "next_allowed": ["start-wave"]
+    },
+    "start-wave": {
+      "description": "Mở wave thực thi — bắt buộc đã có plan (sau intake + duyệt)",
+      "requires_previous": ["review-document"],
+      "wave_bootstrap": true,
+      "sets_stage": "IMPLEMENTATION_PLAN",
+      "load_wave_roster": true,
+      "run_sync_matrix": true,
+      "gates": [
+        { "type": "artifact_glob", "pattern": "docs/plans/project/waves-roadmap.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/plans/project/agent-roster.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "docs/plans/waves/*/wave.md", "min": 1 },
+        { "type": "artifact_glob", "pattern": "handoff/wave-*.md", "min": 1 },
+        { "type": "matrix_covers_roster" }
+      ],
+      "next_allowed": ["start-dev", "register-boundary"]
+    },
+    "register-boundary": {
+      "description": "Đăng ký thêm một boundary (ngoài roster) vào matrix — tùy chọn",
+      "requires_previous": ["start-wave"],
+      "sets_stage": null,
+      "gates": [{ "type": "matrix_non_empty" }],
+      "next_allowed": ["register-boundary", "start-dev"]
+    },
+    "start-dev": {
+      "description": "Bắt đầu triển khai code (gồm gán FEAT→boundary trong wave.md §2)",
+      "requires_previous": ["start-wave"],
+      "sets_stage": "IMPLEMENTATION",
+      "gates": [
+        { "type": "wave_active" },
+        { "type": "matrix_non_empty" },
+        { "type": "artifact_glob", "pattern": "docs/plans/waves/*/wave.md", "min": 1 },
+        { "type": "evidence_list_min", "field": "features_in_flight", "min": 1 },
+        { "type": "evidence_list_min", "field": "boundaries_in_flight", "min": 1 }
+      ],
+      "sync_state": {
+        "features_in_flight": "features_in_flight",
+        "boundaries_in_flight": "boundaries_in_flight"
+      },
+      "run_build_context": true,
+      "next_allowed": ["review-dev"]
+    },
+    "review-dev": {
+      "description": "Tự review code",
+      "requires_previous": ["start-dev"],
+      "sets_stage": "SELF_REVIEW",
+      "gates": [{ "type": "wave_active" }],
+      "next_allowed": ["dev-handoff", "start-dev"]
+    },
+    "dev-handoff": {
+      "description": "Bàn giao dev→QA khi coverage đạt ngưỡng",
+      "requires_previous": ["review-dev"],
+      "sets_stage": "SPECIALIST_TESTING",
+      "transition_trigger": "advance",
+      "gates": [
+        { "type": "wave_active" },
+        { "type": "coverage_min", "field": "coverage_pct" },
+        { "type": "evidence_field", "field": "handoff_ready", "equals": true }
+      ],
+      "on_fail_next": ["review-dev", "start-dev"],
+      "next_allowed": ["test-plan"]
+    },
+    "test-plan": {
+      "description": "Lên kế hoạch và viết test case",
+      "requires_previous": ["dev-handoff"],
+      "sets_stage": "SPECIALIST_TESTING",
+      "gates": [
+        { "type": "registry_has_cases", "pattern": "tracking/test-case-registry/**", "min": 1 }
+      ],
+      "next_allowed": ["test-execute"]
+    },
+    "test-execute": {
+      "description": "Agent test chạy theo plan",
+      "requires_previous": ["test-plan"],
+      "gates": [
+        { "type": "registry_has_cases", "pattern": "tracking/test-case-registry/**", "min": 1 },
+        { "type": "evidence_field", "field": "test_result", "in": ["pass", "fail"] }
+      ],
+      "branches": {
+        "pass": {
+          "sets_stage": "RELEASE_CANDIDATE",
+          "transition_trigger": "tests_pass",
+          "next_allowed": ["release"]
+        },
+        "fail": {
+          "sets_stage": "BUG_LOGGING",
+          "transition_trigger": "tests_fail",
+          "next_allowed": ["fix-bugs"]
+        }
+      }
+    },
+    "fix-bugs": {
+      "description": "Sửa bug sau test fail",
+      "requires_previous": ["test-execute"],
+      "sets_stage": "FIX_MANUAL_BUGS",
+      "transition_trigger": "advance",
+      "gates": [
+        { "type": "artifact_glob", "pattern": "tracking/bugs/**", "min": 1 }
+      ],
+      "next_allowed": ["retest"]
+    },
+    "retest": {
+      "description": "Chạy lại test sau fix",
+      "requires_previous": ["fix-bugs"],
+      "sets_stage": "SPECIALIST_TESTING",
+      "transition_trigger": "retest",
+      "gates": [{ "type": "evidence_field", "field": "test_result", "in": ["pass", "fail"] }],
+      "branches": {
+        "pass": { "next_allowed": ["release"] },
+        "fail": { "next_allowed": ["fix-bugs"] }
+      }
+    },
+    "release": {
+      "description": "Release candidate — checklist, release notes",
+      "requires_previous_any": ["test-execute", "retest"],
+      "requires_test_pass": true,
+      "sets_stage": "RELEASE_CANDIDATE",
+      "transition_trigger": "release_ok",
+      "gates": [
+        { "type": "wave_active" },
+        { "type": "evidence_field", "field": "release_ok", "equals": true }
+      ],
+      "next_allowed": ["end-wave"]
+    },
+    "end-wave": {
+      "description": "Đóng wave — archive handoff, reset STATE, sẵn sàng wave mới",
+      "requires_previous": ["release"],
+      "gates": [
+        { "type": "evidence_field", "field": "end_wave_ok", "equals": true },
+        { "type": "artifact_glob", "pattern": "handoff/wave-*.md", "min": 1 }
+      ],
+      "post_reset_wave": true,
+      "next_allowed": ["intake-requirement"]
+    }
+  }
+}

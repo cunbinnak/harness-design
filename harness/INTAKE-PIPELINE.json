@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "command": "intake-requirement",
+  "orchestrator_agent": "agents/intake-orchestrator-agent.md",
+  "handoff_section": "Intake pipeline",
+  "steps": [
+    {
+      "id": "requirement-analyst",
+      "order": 1,
+      "agent": "agents/requirement-analyst-agent.md",
+      "skill": "requirement-analysis",
+      "adlc_stage": "REQUIREMENT_INTAKE",
+      "summary": "PROJECT.md tổng quan dự án + draft FEAT"
+    },
+    {
+      "id": "business-analyst",
+      "order": 2,
+      "agent": "agents/business-analyst-agent.md",
+      "skill": "business-analysis",
+      "adlc_stage": "BUSINESS_ANALYSIS",
+      "summary": "Làm đầy PROJECT + FEAT (rules, AC)"
+    },
+    {
+      "id": "solution-architect",
+      "order": 3,
+      "agent": "agents/solution-architect-agent.md",
+      "skill": "technical-design",
+      "adlc_stage": "TECHNICAL_DESIGN",
+      "summary": "hld + api + data-model + ux per boundary (ux-fe bắt buộc)"
+    },
+    {
+      "id": "program-planner",
+      "order": 4,
+      "agent": "agents/program-planner-agent.md",
+      "skill": "implementation-plan",
+      "adlc_stage": "IMPLEMENTATION_PLAN",
+      "summary": "project roadmap, roster, waves/{id}/wave.md (plan gộp)"
+    }
+  ],
+  "gate_after_pipeline": "harness/COMMAND-GATES.json commands.intake-requirement.gates"
+}

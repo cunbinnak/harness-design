@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "description": "Quy tắc build context và shared memory. Chi tiết: knowledge-base/README.md",
+  "memory_layers": {
+    "ephemeral": "harness/STATE.json",
+    "durable_specs": "docs/",
+    "shared_memory": "knowledge-base/*.knowledge-graph.yaml",
+    "continuity": "handoff/",
+    "evidence": "tracking/"
+  },
+  "rules": [
+    "Ưu tiên tham chiếu path trong repo; không dán nội dung dài vào chat.",
+    "Boundary và owned_paths chỉ từ SERVICE-BOUNDARY-MATRIX.json.",
+    "Decisions và learnings ghi vào knowledge-base qua log-knowledge.",
+    "Ghi failure mode đã xác nhận vào FAILURE-MODES.md hoặc tracking tương ứng.",
+    "Sub-agent không tự sửa STATE.json; orchestrator merge RETURN SCHEMA."
+  ],
+  "context_build": {
+    "include_knowledge_base": true,
+    "include_handoff_when_set": true,
+    "excluded_paths_globs": []
+  },
+  "max_context_tokens_hint": null
+}

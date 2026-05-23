@@ -1,0 +1,28 @@
+version: 1
+kind: knowledge-graph
+boundary_id: null
+
+domain:
+  entities: []
+  relationships: []
+
+implementation:
+  status: bootstrap
+  current_focus: null
+  backlog: []
+  in_progress: []
+  completed: []
+
+decisions: []
+
+learnings:
+  gotchas: []
+  patterns: []
+
+integrations:
+  depends_on: []
+  exposes: []
+
+meta:
+  updated_at: null
+  updated_by: null

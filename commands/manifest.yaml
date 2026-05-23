@@ -1,0 +1,33 @@
+# version: 2
+# CLI: python scripts/harness.py
+
+core:
+  - id: start-wave
+    args: "[wave-title]"
+    evidence: '{"wave_title": "Wave 1"}'
+  - id: intake-requirement
+    args: "<input>"
+  - id: review-document
+    evidence: '{"approved": true}'
+  - id: prepare-dev
+    evidence: '{"features_in_flight":[],"boundaries_in_flight":[]}'
+  - id: start-dev
+  - id: review-dev
+  - id: dev-handoff
+    evidence: '{"coverage_pct": 85, "handoff_ready": true}'
+  - id: test-plan
+  - id: test-execute
+    evidence: '{"test_result": "pass"}'
+
+extended:
+  - id: register-boundary
+  - id: fix-bugs
+  - id: retest
+    evidence: '{"test_result": "pass"}'
+  - id: release
+    evidence: '{"release_ok": true}'
+  - id: end-wave
+    evidence: '{"end_wave_ok": true}'
+
+meta:
+  - show-state
