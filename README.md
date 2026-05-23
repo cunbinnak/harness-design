@@ -56,11 +56,9 @@ py scripts/state_engine.py validate
 py scripts/harness.py state
 ```
 
-### Quy trình command
+### Lần đầu (dự án / wave 1)
 
-Chi tiết intake 4 bước, spawn agent, CR, hooks: **[SETUP-GUIDE.md](SETUP-GUIDE.md)**.
-
-Tóm tắt (chỉ `complete` khi artifact + gate đạt; xem `allowed_next` trước mỗi lệnh):
+Intake 4 bước, spawn agent, artifact, CR: **[SETUP-GUIDE.md](SETUP-GUIDE.md)**.
 
 ```bash
 py scripts/harness.py intake-requirement complete
@@ -76,9 +74,23 @@ py scripts/harness.py end-wave complete '{"end_wave_ok": true}'
 py scripts/harness.py state
 ```
 
-Gates: [`harness/COMMAND-GATES.json`](harness/COMMAND-GATES.json).
+### Wave tiếp theo (lần 2+, plan đã có — không intake lại)
 
-**Không** sửa `STATE.json` tay. Prompt agent: `py scripts/build_command_prompt.py <command> [--step N] [--boundary id] [--wave 2]`.
+Sau `end-wave`, đổi `wave_id` / evidence cho wave mới. Đổi scope → xem SETUP-GUIDE (`apply-cr`).
+
+```bash
+py scripts/harness.py start-wave complete '{"wave_id": "2", "wave_title": "Wave 2"}'
+py scripts/harness.py start-dev complete '{"features_in_flight":["FEAT-001"],"boundaries_in_flight":["order"]}'
+py scripts/harness.py review-dev complete
+py scripts/harness.py dev-handoff complete '{"coverage_pct": 85, "handoff_ready": true}'
+py scripts/harness.py test-plan complete
+py scripts/harness.py test-execute complete '{"test_result": "pass"}'
+py scripts/harness.py release complete '{"release_ok": true}'
+py scripts/harness.py end-wave complete '{"end_wave_ok": true}'
+py scripts/harness.py state
+```
+
+Gates: [`harness/COMMAND-GATES.json`](harness/COMMAND-GATES.json) · **Không** sửa `STATE.json` tay.
 
 ---
 
