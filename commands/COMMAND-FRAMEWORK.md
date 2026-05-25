@@ -1,24 +1,25 @@
-# Khung Command
+# Command Framework
 
-> Gates: [`harness/COMMAND-GATES.json`](../harness/COMMAND-GATES.json) · Hooks: [`harness/HOOK-RULES.json`](../harness/HOOK-RULES.json)
+> Setup + flow đầy đủ: [`SETUP-GUIDE.md`](../SETUP-GUIDE.md) · Danh sách 16 command: [`README.md`](README.md) · Gates: [`harness/COMMAND-GATES.json`](../harness/COMMAND-GATES.json)
 
-Luồng đầy đủ, intake 4 bước, CR, gate checklist: **[SETUP-GUIDE.md](../SETUP-GUIDE.md)**
-
-Danh sách command: **[README.md](README.md)**
-
-## Ai chạy?
-
-| Command | Agent |
-|---------|--------|
-| `intake-requirement` | 4 specialist (pipeline) + orchestrator |
-| `apply-cr` | apply-cr-agent → intake amendment |
-| `start-wave`, `review-document`, `test-*`, `release`, `end-wave` | `agents/{command}-agent.md` |
-| `start-dev` / `fix-bugs` / `review-dev` | `agents/{prefix}{boundary}-agent.md` |
+## 1 command = 2 lệnh
 
 ```bash
-py scripts/build_command_prompt.py start-wave --wave 2
-py scripts/build_command_prompt.py start-dev --boundary order
-py scripts/harness.py start-wave complete '{"wave_id": "2", "wave_title": "Phase 2"}'
+py scripts/build_command_prompt.py <command> [--step N] [--boundary X]   # spawn agent
+py scripts/harness.py <command> complete '<json evidence>'              # gate + transition
 ```
 
-Discipline: [`.cursor/rules/harness-agent-discipline.mdc`](../.cursor/rules/harness-agent-discipline.mdc) + shared KG
+## Ai chạy command nào?
+
+| Command | Agent |
+|---------|-------|
+| `intake-requirement` | 4 specialist (pipeline `harness/PIPELINES.json#intake-requirement`) |
+| `apply-cr` | `agents/apply-cr-agent.md` |
+| `start-dev` / `fix-bugs` / `review-dev` | `agents/{prefix}{boundary}-agent.md` (materialize từ `_template.agent.md`) |
+| Còn lại | `agents/{command}-agent.md` |
+
+## Discipline
+
+- Rule luôn bật: [`.cursor/rules/harness-agent-discipline.mdc`](../.cursor/rules/harness-agent-discipline.mdc)
+- Doc scope per agent: `agent_roles` registry trong [`harness/AGENT-DISCIPLINE.json`](../harness/AGENT-DISCIPLINE.json)
+- KG shared: [`knowledge-base/shared.knowledge-graph.yaml`](../knowledge-base/shared.knowledge-graph.yaml)

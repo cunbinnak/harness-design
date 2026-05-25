@@ -1,5 +1,6 @@
 ---
 agent_id: review-document
+role: review:document
 command: review-document
 kind: harness-command
 knowledge_graph: knowledge-base/shared.knowledge-graph.yaml

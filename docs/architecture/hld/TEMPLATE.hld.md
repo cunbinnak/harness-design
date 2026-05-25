@@ -1,31 +1,116 @@
 # HLD — {boundary_id}
 
-> Boundary: `{boundary_id}` · Layer: (backend | fe)
+> **Purpose:** Mô tả cấu trúc nội bộ + flow chính của boundary `{boundary_id}`.
+> **Owner:** `intake:solution-architect` (intake bước 3).
+> **Audience:** `dev:backend` / `dev:frontend` / `review:*` của boundary này, `fix:*` khi sửa bug.
+> **Out of scope:**
+> - Endpoints chi tiết → [`../api/api-{boundary_id}.md`](../api/)
+> - DB schema + state machine → [`../data-model/data-model-{boundary_id}.md`](../data-model/)
+> - UI wireframes → [`../ux/ux-{boundary_id}.md`](../ux/) (nếu FE)
+> - Cross-boundary calls → [`../integrations-matrix.md`](../integrations-matrix.md)
+> - NFR cấp dự án → [`../PROJECT.md`](../PROJECT.md) (HLD chỉ ghi REFINEMENT nếu boundary stricter)
+> - Deployment commands → [`../infra/local-dev.md`](../infra/) + `docker-compose.yml`
 
-## Tổng quan
+---
 
-(vai trò boundary trong hệ thống; tham chiếu `docs/architecture/PROJECT.md`)
+**Boundary:** `{boundary_id}` · **Layer:** `{layer}` (backend | bff | fe | mobile)
+**Wave first introduced:** `{wave_id}` · **FEAT phục vụ:** (list FEAT-xxx)
 
-## Luồng chính
+---
 
-(sequence / activity — FEAT liên quan)
+## 1. System Context (C4 L1)
 
-## Contract & tài liệu liên quan
+> Vị trí của `{boundary_id}` trong hệ thống — actor nào dùng, gọi/được gọi từ đâu.
 
-| Loại | File |
-|------|------|
-| API | `docs/architecture/api/api-{boundary_id}.md` |
-| Data model | `docs/architecture/data-model/data-model-{boundary_id}.md` |
-| UX | `docs/architecture/ux/ux-{boundary_id}.md` |
+```
+[Actor] ───► [FE/Client] ───► [{boundary_id}] ───► [Downstream boundaries / DB]
+```
 
-## Tích hợp
+- **Upstream caller:** (boundary nào gọi vào — link `integrations-matrix.md` để biết kind: HTTP/event)
+- **Downstream calls:** (boundary nào được gọi — link `integrations-matrix.md`)
+- **Storage:** (DB type — chi tiết schema ở [`data-model-{boundary_id}.md`](../data-model/))
 
-(boundary khác — sau này khớp `SERVICE-BOUNDARY-MATRIX.json` → `integrations`)
+## 2. Internal Components (C4 L2)
 
-## Quyết định kiến trúc (ADR tóm tắt)
+> Phân rã `{boundary_id}` thành các module/layer nội bộ — KHÔNG vẽ hệ thống ngoài.
 
-- ADR-…: (1–2 dòng; chi tiết có thể vào KG)
+```
+services/{boundary_id}/
+├── api/                # HTTP handler / Router (parse, validate DTO)
+├── domain/             # Business logic (services + ports)
+├── infra/              # Adapter (DB repo, HTTP client outbound)
+├── dto/                # Request/Response schema + validation
+├── config/             # Env, DI wiring
+└── tests/              # unit + integration
+```
 
-## Rủi ro / mở
+| Layer | Trách nhiệm | Pattern |
+|-------|-------------|---------|
+| api | Parse request, validate DTO, map errors | Controller |
+| domain | Execute business rule, orchestrate repo | Service / Use-case |
+| infra | DB query, HTTP outbound | Adapter / Repository impl |
+| dto | Input/output schema | Pydantic / Zod / Bean |
 
--
+## 3. Key Flows (Sequence)
+
+> Mỗi FEAT `Must` → ít nhất 1 flow. Ghi rõ BR-x tại bước thực thi (không lặp BR detail — link FEAT).
+
+### Flow 1 — {FEAT-XXX}: {tên luồng}
+
+```
+Client          {boundary} API     Domain Service     DB
+  │── POST ───►│                    │                  │
+  │            │── validate ───────►│                  │
+  │            │                    │── check BR-1 ───►│
+  │            │                    │── INSERT ───────►│
+  │◄── 201 ────│◄── response ───────│                  │
+```
+
+**Business rules thực thi:** BR-1, BR-2 (chi tiết: [`FEAT-XXX`](../feat/))
+**Error paths:** xem error codes trong [`api-{boundary_id}.md`](../api/)
+
+### Flow 2 — {FEAT-YYY}: (thêm nếu cần)
+
+## 4. Internal Data Flow (nếu phức tạp)
+
+> Mô tả dữ liệu biến đổi qua các lớp NỘI BỘ. Bỏ qua nếu CRUD đơn giản.
+
+```
+[HTTP JSON] → (validate) → [Request DTO] → (map) → [Domain Entity] → (persist) → [DB row]
+                                                                                   │
+[HTTP JSON] ← (serialize) ← [Response DTO] ← (map) ← [Domain Entity] ◄─────────────┘
+```
+
+## 5. Resilience patterns (outbound calls)
+
+> Áp dụng cho mỗi downstream call. Inbound resilience là việc của caller.
+
+| Downstream | Timeout | Retry | Circuit breaker | Fallback |
+|------------|---------|-------|----------------|----------|
+| {boundary_b} | (ms) | (strategy) | (threshold) | (behavior) |
+
+## 6. NFR refinements (boundary-specific only)
+
+> Chỉ ghi nếu **stricter hơn** [`PROJECT.md`](../PROJECT.md) NFR hoặc boundary-specific. Mặc định kế thừa từ PROJECT.
+
+| Attribute | Project target | Boundary target (stricter) | Cơ chế |
+|-----------|---------------|---------------------------|--------|
+| (vd Performance) | p95 < 200ms | p95 < 100ms | DB index, connection pool max=20 |
+
+## 7. ADR references
+
+| ADR | Áp dụng vào boundary này thế nào |
+|-----|----------------------------------|
+| ADR-001 (tech stack) | Dùng {framework}, {ORM} |
+| ADR-002 (architecture) | Layered: `api → domain → infra` |
+| ADR-003 (auth) | Middleware JWT validate mọi endpoint trừ `/health` |
+
+**Quyết định cục bộ (không lên ADR):** ghi vào KG `decisions` thay vì HLD.
+
+## 8. Risks & Open questions
+
+| # | Risk / Question | Severity | Owner | Status |
+|---|----------------|---------|-------|--------|
+| R1 | | High/Med/Low | | Open/Resolved |
+
+Blockers thực sự → ghi vào KG `discipline.blockers` (chặn `complete`).

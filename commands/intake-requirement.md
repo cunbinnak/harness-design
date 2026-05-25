@@ -6,6 +6,8 @@ Orchestrator: [intake-orchestrator-agent.md](../agents/intake-orchestrator-agent
 
 ## Chạy
 
+Mỗi `--step N` **cập nhật `harness/STATE.json`** (`stage` + `workflow.pipeline.active_step`) trước khi in prompt — resume sau này đọc STATE hoặc `py scripts/intake_pipeline.py show`.
+
 ```bash
 py scripts/build_command_prompt.py intake-requirement --step 1 --input "..."
 py scripts/build_command_prompt.py intake-requirement --step 2

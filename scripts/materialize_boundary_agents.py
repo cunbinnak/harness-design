@@ -47,7 +47,7 @@ ROLE_META = {
         "skill_primary": "implementation",
         "identity": "kỹ sư sửa bug boundary `{bid}`",
         "display": "fix-{bid} Bug Fix Agent",
-        "mission": "Sửa lỗi trong owned_paths; ghi `tracking/bugs/`.",
+        "mission": "Sửa lỗi trong owned_paths; ghi `tracking/waves/{wave-id}/bugs/`.",
         "forbidden": "- Feature mới ngoài bug scope.\n- test-execute / release.",
     },
     "review": {
@@ -62,6 +62,193 @@ ROLE_META = {
         "forbidden": "- Triển khai feature mới.\n- Chạy test-plan/execute.",
     },
 }
+
+# Map (layer, role) → key in harness/AGENT-DISCIPLINE.json[agent_roles]
+REGISTRY_ROLE_KEY = {
+    ("backend", "dev"): "dev:backend",
+    ("backend", "fix"): "fix:backend",
+    ("backend", "review"): "review:backend",
+    ("fe", "dev"): "dev:frontend",
+    ("fe", "fix"): "fix:frontend",
+    ("fe", "review"): "review:frontend",
+}
+
+
+# Per-layer content blocks injected via {{layer_block}} placeholder.
+# Avoids all-in-one template noise — BE agent sees only BE rules, FE agent sees only FE rules.
+LAYER_BLOCKS = {
+    "backend": """## Skills áp dụng (Backend)
+
+| Skill | Khi nào dùng |
+|-------|--------------|
+| [`{{skill_primary}}`](../skills/{{skill_primary}}/SKILL.md) | Mọi task BE — quy trình implement |
+| [`backend-conventions`](../skills/backend-conventions/SKILL.md) | Code style + coding standards BE |
+| [`ref-back-end-pattern`](../skills/ref-back-end-pattern/SKILL.md) | Cấu trúc thư mục + layered architecture (api/domain/infra) |
+| [`ref-back-end-config`](../skills/ref-back-end-config/SKILL.md) | Mẫu config YAML/env, docker-compose entry, secrets management |
+| [`tech-stack`](../skills/tech-stack/SKILL.md) | Framework / lib chuẩn của project |
+| [`self-review`](../skills/self-review/SKILL.md) | Chỉ khi role là `review:backend` |
+
+**KHÔNG load** `frontend-conventions`, `frontend-implementation`, `ref-front-end-*` — ngoài layer.
+
+---
+
+## Rule Backend cứng
+
+| # | Rule | Tham chiếu |
+|---|------|-----------|
+| BE-1 | Mọi endpoint (trừ `/health`) phải validate JWT Bearer | ADR-003 |
+| BE-2 | Parse + validate DTO ở api layer — trả 400 trước khi vào domain | api-{{boundary_id}}.md |
+| BE-3 | HTTP status code chuẩn: 200/201/204/400/401/403/404/409/500 | api-{{boundary_id}}.md |
+| BE-4 | Error format JSON `{"error":"CODE","message":"..."}` nhất quán | api-{{boundary_id}}.md |
+| BE-5 | Multi-table write **phải trong transaction** | data-model + ADR-002 |
+| BE-6 | Domain service KHÔNG được import infra trực tiếp — qua port/interface | ref-back-end-pattern |
+| BE-7 | KHÔNG hardcode secret — dùng env (`config/`) | ref-back-end-config |
+| BE-8 | Outbound call có timeout + retry policy | HLD §5 |
+| BE-9 | Migration forward-only, nullable trước backfill trước enforce | data-model |
+| BE-10 | Log structured JSON (request_id, user_id, latency) | PROJECT NFR |
+
+**Coverage ngưỡng:** ≥ 80% (pytest/junit/jest BE).
+
+---
+
+## Test commands (Backend)
+
+```bash
+cd services/{{boundary_id}}
+# Python:
+pytest --cov=. --cov-report=term-missing 2>&1 | tee /tmp/coverage.txt
+# Node BE:
+npm test -- --coverage 2>&1 | tee /tmp/coverage.txt
+# Java:
+mvn test jacoco:report 2>&1 | tee /tmp/coverage.txt
+
+# Lint
+ruff check . || flake8 . || npm run lint || mvn checkstyle:check
+```
+
+---
+
+## Nếu là Review Agent (`review-{{boundary_id}}-agent`)
+
+> Áp dụng chỉ khi `agent_id` prefix `review-`.
+
+**Mục tiêu review BE:**
+1. **Correctness** — BR khớp FEAT AC, Rule BE-1..10
+2. **Coverage** — ≥ 80%
+3. **Quality** — lint pass, no magic constants, error handling đủ
+4. **Security** — input validate, JWT check, no hardcoded secret
+
+**Bắt buộc fix khi:** coverage < 80%, test fail, security ≥ medium, Rule BE-1..10 violation.
+
+Spawn fix-agent khi cần:
+```bash
+py scripts/build_command_prompt.py fix-bugs --boundary {{boundary_id}}
+```
+
+**RETURN review:**
+```json
+{
+  "completed": ["review-{{boundary_id}}"],
+  "build": "pass",
+  "lint": "pass",
+  "test": "pass",
+  "coverage_pct": 85,
+  "review_status": "approved | approved_with_notes | needs_fix",
+  "issues_found": [],
+  "kg_appended": ["review-decision-xxx"]
+}
+```""",
+    "fe": """## Skills áp dụng (Frontend)
+
+| Skill | Khi nào dùng |
+|-------|--------------|
+| [`{{skill_primary}}`](../skills/{{skill_primary}}/SKILL.md) | Mọi task FE — quy trình implement UI |
+| [`frontend-conventions`](../skills/frontend-conventions/SKILL.md) | Code style, component pattern, state management |
+| [`ref-front-end-pattern`](../skills/ref-front-end-pattern/SKILL.md) | Cấu trúc thư mục FE (src/pages/components/hooks/services/stores) |
+| [`ref-front-end-config`](../skills/ref-front-end-config/SKILL.md) | Mẫu config FE (package.json scripts, .env, Vite/Webpack, Dockerfile FE) |
+| [`tech-stack`](../skills/tech-stack/SKILL.md) | Framework FE chuẩn (React/Vue/Angular...) |
+| [`self-review`](../skills/self-review/SKILL.md) | Chỉ khi role là `review:frontend` |
+
+**KHÔNG load** `backend-conventions`, `implementation` (BE-focused), `ref-back-end-*` — ngoài layer.
+
+---
+
+## Rule Frontend cứng
+
+| # | Rule | Tham chiếu |
+|---|------|-----------|
+| FE-1 | Form validate **CẢ client + server** — không tin client | ux validation |
+| FE-2 | Mọi data fetch có **loading / empty / error state** | ux UI states |
+| FE-3 | Protected route có **auth guard** — redirect `/login?redirect={current}` | ux routing |
+| FE-4 | Component reusable: props rõ ràng, KHÔNG hardcode value/string | ref-front-end-pattern |
+| FE-5 | A11y WCAG 2.1 AA: `label`/`aria-*`, focus visible, contrast ≥ 4.5:1 | ux a11y checklist |
+| FE-6 | Responsive: desktop ≥1024, tablet 768-1023, mobile <768 | ux responsive |
+| FE-7 | API call qua service layer (`src/services/`), KHÔNG fetch trong component | ref-front-end-pattern |
+| FE-8 | Token storage: httpOnly cookie hoặc memory (không localStorage cho JWT) | ADR-003 |
+| FE-9 | Error toast/dialog format nhất quán Design System | ADR-004 |
+| FE-10 | Lazy load route + code split cho bundle nặng | NFR performance |
+
+**Coverage ngưỡng:** ≥ 60% (jest/vitest/cypress).
+
+---
+
+## Test commands (Frontend)
+
+```bash
+cd services/{{boundary_id}}
+npm test -- --coverage --watchAll=false 2>&1 | tee /tmp/coverage.txt
+# hoặc: yarn test --coverage
+
+# Lint
+npm run lint
+# A11y (nếu có axe-core)
+npm run a11y || npx jest --testPathPattern=a11y
+
+# E2E (nếu có)
+npx cypress run --headless
+```
+
+---
+
+## Nếu là Review Agent (`review-{{boundary_id}}-agent`)
+
+> Áp dụng chỉ khi `agent_id` prefix `review-`.
+
+**Mục tiêu review FE:**
+1. **UX correctness** — khớp wireframe `ux-{{boundary_id}}.md`
+2. **Coverage** — ≥ 60%
+3. **A11y** — WCAG 2.1 AA checklist
+4. **Quality** — lint pass, component reusable, no inline style chaos
+5. **Security** — XSS prevention (escape user input), token storage đúng (FE-8)
+
+**Bắt buộc fix khi:** coverage < 60%, test fail, A11y A/AA violation, Rule FE-1..10 violation, XSS/security medium+.
+
+Spawn fix-agent khi cần:
+```bash
+py scripts/build_command_prompt.py fix-bugs --boundary {{boundary_id}}
+```
+
+**RETURN review:**
+```json
+{
+  "completed": ["review-{{boundary_id}}"],
+  "build": "pass",
+  "lint": "pass",
+  "test": "pass",
+  "coverage_pct": 65,
+  "coverage_fe_pct": 65,
+  "review_status": "approved | approved_with_notes | needs_fix",
+  "issues_found": [],
+  "kg_appended": ["review-decision-xxx"]
+}
+```""",
+}
+
+COVERAGE_THRESHOLD = {
+    "backend": "80",
+    "fe": "60",
+}
+
 
 LAYER_META = {
     "backend": {
@@ -88,7 +275,7 @@ LAYER_META = {
                 "skill_primary": "frontend-implementation",
                 "identity": "kỹ sư sửa bug FE boundary `{bid}`",
                 "display": "fix-{bid} Frontend Bug Fix Agent",
-                "mission": "Sửa lỗi UI/FE trong owned_paths; ghi `tracking/bugs/`.",
+                "mission": "Sửa lỗi UI/FE trong owned_paths; ghi `tracking/waves/{wave-id}/bugs/`.",
             },
             "review": {
                 **ROLE_META["review"],
@@ -236,17 +423,20 @@ def _fill(
     convention = "frontend-conventions" if row.layer == "fe" else "backend-conventions"
     mission = meta["mission"].format(bid=row.boundary_id, serves=serves)
     wlist = row.waves or [normalize_wave_id(wave)]
+    # Inject layer_block FIRST so inner placeholders ({{boundary_id}}, {{skill_primary}}) get resolved by subsequent .replace() calls
     return (
-        template.replace("{{boundary_id}}", row.boundary_id)
+        template.replace("{{layer_block}}", LAYER_BLOCKS.get(row.layer, LAYER_BLOCKS["backend"]))
+        .replace("{{boundary_id}}", row.boundary_id)
         .replace("{{layer}}", layer["layer"])
         .replace("{{layer_label}}", layer["layer_label"])
         .replace("{{owned_paths_hint}}", owned)
         .replace("{{prefix}}", meta["prefix"])
         .replace("{{role}}", role_key)
+        .replace("{{role_key}}", REGISTRY_ROLE_KEY.get((row.layer, role_key), role_key))
         .replace("{{role_label}}", meta["role_label"])
         .replace("{{primary_command}}", meta["primary_command"])
         .replace("{{spawn_stage}}", meta["spawn_stage"])
-        .replace("{{waves_yaml}}", waves_yaml_block(wlist, wave_scope))
+        .replace("# {{waves_yaml}}", waves_yaml_block(wlist, wave_scope))
         .replace("{{waves_list_human}}", waves_list_human(wlist))
         .replace("{{waves_table_md}}", waves_table_md(wlist, wave_scope, mission))
         .replace("{{role_mission}}", mission)
@@ -258,6 +448,9 @@ def _fill(
         .replace("{{fe_surface}}", row.fe_surface or "—")
         .replace("{{display_name}}", row.display_name)
         .replace("{{convention_skill}}", convention)
+        .replace("{{pattern_skill}}", "ref-back-end-pattern" if row.layer == "backend" else "ref-front-end-pattern")
+        .replace("{{config_skill}}", "ref-back-end-config" if row.layer == "backend" else "ref-front-end-config")
+        .replace("{{coverage_threshold}}", COVERAGE_THRESHOLD.get(row.layer, "80"))
     )
 
 

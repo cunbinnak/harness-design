@@ -1,35 +1,41 @@
-# version: 2
+# version: 3
 # CLI: python scripts/harness.py
 
 core:
-  - id: start-wave
-    args: "[wave-title]"
-    evidence: '{"wave_title": "Wave 1"}'
   - id: intake-requirement
     args: "<input>"
   - id: review-document
     evidence: '{"approved": true}'
+  - id: start-wave
+    args: "[wave-id]"
+    evidence: '{"wave_id":"1","wave_title":"Wave 1"}'
   - id: start-dev
-    evidence: '{"features_in_flight":[],"boundaries_in_flight":[]}'
+    args: "<boundary_id>"
+    evidence: '{"features_in_flight":["FEAT-001"],"boundaries_in_flight":["order"]}'
   - id: review-dev
+    args: "<boundary_id>"
   - id: dev-handoff
-    evidence: '{"coverage_pct": 85, "handoff_ready": true}'
+    evidence: '{"coverage_pct":85,"coverage_fe_pct":65,"handoff_ready":true}'
   - id: test-plan
   - id: test-execute
-    evidence: '{"test_result": "pass"}'
-
-extended:
-  - id: apply-cr
-    args: "--cr CR-001"
-    evidence: '{"cr_id": "CR-001", "cr_path": "tracking/change-requests/CR-001-....md"}'
-  - id: register-boundary
-  - id: fix-bugs
-  - id: retest
-    evidence: '{"test_result": "pass"}'
+    evidence: '{"test_result":"pass"}'
   - id: release
     evidence: '{"release_ok": true}'
   - id: end-wave
     evidence: '{"end_wave_ok": true}'
+  - id: done-wave
+    evidence: '{"done_wave_ok": true}'
+
+extended:
+  - id: apply-cr
+    args: "--cr CR-001"
+    evidence: '{"cr_id":"CR-001","cr_path":"tracking/change-requests/CR-001-*.md"}'
+  - id: register-boundary
+    args: "<boundary_id>"
+  - id: fix-bugs
+    args: "<boundary_id>"
+  - id: retest
+    evidence: '{"test_result":"pass"}'
 
 meta:
   - show-state

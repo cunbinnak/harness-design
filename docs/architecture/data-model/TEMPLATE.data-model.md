@@ -1,47 +1,93 @@
 # Data model — {boundary_id}
 
-> Mô hình dữ liệu **sở hữu** bởi boundary `{boundary_id}` (logical / physical tùy giai đoạn).
+> **Purpose:** Source of truth cho entities + schema + state machine mà `{boundary_id}` sở hữu.
+> **Owner:** `intake:solution-architect`.
+> **Audience:** `dev:backend` (implement DB layer), `review:backend`, `test-plan` (biết test data shape).
+> **Out of scope:**
+> - API endpoints → [`../api/api-{boundary_id}.md`](../api/)
+> - Implementation pattern → [`../hld/hld-{boundary_id}.md`](../hld/)
+> - UI rendering → [`../ux/ux-{boundary_id}.md`](../ux/)
 
-## Phạm vi
+---
 
-- **Aggregate / bounded context:**
-- **Nguồn sự thật (source of truth):** boundary này
+## Boundary ownership
 
-## Thực thể & quan hệ
+- **Aggregate / bounded context:** {tên context}
+- **Boundary này là source of truth cho:** {Entity-A, Entity-B}
+- **Đọc-only từ boundary khác:** (entity nào, lấy qua API nào — link `integrations-matrix.md`)
 
-| Entity | Mô tả | Khóa | Quan hệ |
-|--------|--------|------|---------|
-| | | | |
-
-(sơ đồ ER / mermaid tùy chọn)
+## Entities & relationships
 
 ```mermaid
 erDiagram
-  %% ví dụ
+  Entity_A ||--o{ Entity_B : has
+  Entity_B }o--|| Entity_C : references
 ```
 
-## Thuộc tính quan trọng
+| Entity | Mô tả ngắn | Primary key |
+|--------|------------|-------------|
+| Entity_A | (1 dòng) | id (uuid) |
+| Entity_B | | id (uuid) |
 
-| Entity | Field | Kiểu | Ràng buộc / ghi chú |
-|--------|-------|------|---------------------|
-| | | | |
+## Schema chi tiết
 
-## Vòng đời / trạng thái
+### Entity_A
 
-| Entity | State machine / enum |
-|--------|---------------------|
-| | |
+| Field | Kiểu | Constraint | Mô tả |
+|-------|------|-----------|-------|
+| id | uuid | PK, NOT NULL | |
+| name | varchar(100) | NOT NULL, UNIQUE | BR-1 (unique tên) |
+| description | text | NULL | |
+| status | enum | NOT NULL, default 'PENDING' | (xem state machine bên dưới) |
+| created_at | timestamptz | NOT NULL, default now() | |
+| updated_at | timestamptz | NOT NULL, default now() | |
+| created_by | uuid | FK → user.id | |
 
-## Migration & lưu trữ (gợi ý)
+**Indexes:**
+- `idx_entity_a_name` ON `(name)` — UNIQUE
+- `idx_entity_a_status_created` ON `(status, created_at DESC)` — cho list query
 
-- DB / store dự kiến:
-- Chỉ mục / partition:
+### Entity_B
 
-## Đồng bộ với API
+(repeat pattern)
 
-- Operation nào đọc/ghi entity nào → `docs/architecture/api/api-{boundary_id}.md`
+## State machine (entity có status)
 
-## Tham chiếu
+> **OWNER:** Doc này. HLD/API chỉ reference, không định nghĩa lại.
 
-- HLD: `docs/architecture/hld/hld-{boundary_id}.md`
-- FEAT: `docs/architecture/feat/FEAT-*.md`
+### Entity_A — `status` lifecycle
+
+```
+   create
+─────────► PENDING
+              │
+        approve / validate
+              ▼
+           ACTIVE ──── cancel ───► CANCELLED
+              │
+           complete
+              ▼
+           CLOSED
+```
+
+| State | Cho phép action | Forbidden |
+|-------|----------------|-----------|
+| PENDING | approve, cancel | complete |
+| ACTIVE | complete, cancel | approve |
+| CLOSED | — | tất cả |
+| CANCELLED | — | tất cả |
+
+**Transitions implemented at:** `domain/entity-a-service.{ext}` (xem [HLD](../hld/))
+
+## Migration approach
+
+- **Tool:** (alembic / flyway / liquibase / prisma-migrate / ...)
+- **Strategy:** (forward-only / reversible / squash khi wave end)
+- **Seed data:** `services/{boundary_id}/seed/` (dev only)
+- **Breaking change rule:** thêm column NULLABLE trước → backfill → enforce NOT NULL ở migration tiếp
+
+## Reference
+
+- API mapping (endpoint → entity): [`../api/api-{boundary_id}.md`](../api/)
+- Architecture pattern: [`../hld/hld-{boundary_id}.md`](../hld/)
+- FEAT business rules: [`../feat/`](../feat/)

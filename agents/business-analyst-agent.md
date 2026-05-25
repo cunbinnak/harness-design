@@ -1,5 +1,6 @@
 ---
 agent_id: business-analyst
+role: intake:business-analyst
 pipeline_step: 2
 command: intake-requirement
 kind: intake-specialist

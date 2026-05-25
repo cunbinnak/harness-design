@@ -36,7 +36,7 @@ def _check_gate(
             return f"artifact_glob: need >={gate.get('min', 1)} for {gate['pattern']}, got {n}"
         return None
     if gtype == "registry_has_cases":
-        pat = gate.get("pattern", "tracking/test-case-registry/**")
+        pat = gate.get("pattern", "tracking/waves/*/test-cases.md")
         n = _glob_count(root, pat)
         if n < int(gate.get("min", 1)):
             return f"registry_has_cases: need files under {pat}"
@@ -80,9 +80,10 @@ def _check_gate(
             pct = float(val)
         except (TypeError, ValueError):
             return f"evidence.{field} must be numeric"
-        min_pct = float(thresholds.get("coverage_backend_pct", 80))
+        threshold_key = gate.get("threshold_key", "coverage_backend_pct")
+        min_pct = float(thresholds.get(threshold_key, 80))
         if pct < min_pct:
-            return f"coverage {pct}% < threshold {min_pct}%"
+            return f"coverage {field}={pct}% < threshold {min_pct}% ({threshold_key})"
         return None
     if gtype == "wave_open":
         return None
@@ -273,6 +274,20 @@ def _check_gate(
         if not isinstance(val, list) or len(val) < int(gate.get("min", 1)):
             return f"evidence.{field} must be list with >={gate.get('min', 1)} items"
         return None
+    if gtype == "dev_boundary_resolved":
+        from state_engine import resolve_dev_boundary_id  # noqa: WPS433
+
+        bid = resolve_dev_boundary_id(evidence, state)
+        bounds = list(
+            evidence.get("boundaries_in_flight") or state.get("boundaries_in_flight") or []
+        )
+        if not bid:
+            if len(bounds) > 1:
+                return "dev_boundary_resolved: evidence.boundary_id required when multiple boundaries_in_flight"
+            return "dev_boundary_resolved: cannot resolve boundary_id"
+        if bid not in boundary_ids():
+            return f"dev_boundary_resolved: {bid!r} not in SERVICE-BOUNDARY-MATRIX"
+        return None
     if gtype == "cr_artifact_exists":
         cr_id = evidence.get("cr_id")
         cr_path = evidence.get("cr_path")
@@ -349,7 +364,7 @@ def check_command(
             errors.append("requires_test_pass: test-execute or retest must have test_result=pass")
 
     wave = state.get("wave") or {}
-    if wave.get("completed_at") and command_id != "intake-requirement":
+    if wave.get("completed_at") and command_id not in ("intake-requirement", "end-wave"):
         errors.append("wave already completed")
 
     gate_list = list(cmd_cfg.get("gates") or [])

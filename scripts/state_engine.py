@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import Any
 
 from harness_lib import (
+    DEV_AGENT_PREFIX,
+    DEV_COMMANDS,
     FEAT_RE,
     KINDS,
     WAVE_ID_RE,
@@ -52,6 +54,14 @@ STAGES = frozenset({
     "FIX_MANUAL_BUGS",
     "RELEASE_CANDIDATE",
     "DONE",
+})
+# Intake + plan trước start-wave — chưa cần wave.id
+PRE_WAVE_STAGES = frozenset({
+    "BOOTSTRAP",
+    "REQUIREMENT_INTAKE",
+    "BUSINESS_ANALYSIS",
+    "TECHNICAL_DESIGN",
+    "IMPLEMENTATION_PLAN",
 })
 
 
@@ -103,11 +113,13 @@ def validate_state(state: dict[str, Any]) -> list[str]:
     else:
         wid = wave.get("id")
         num = wave.get("number")
-        if stage != "BOOTSTRAP":
+        wave_started = bool(wid or wave.get("started_at"))
+        needs_wave = stage not in PRE_WAVE_STAGES or wave_started
+        if needs_wave:
             if not wid or not WAVE_ID_RE.match(str(wid)):
-                err("wave.id must match wave-NNN when not BOOTSTRAP")
+                err("wave.id must match wave-NNN when wave is active")
             if not isinstance(num, int) or num < 1:
-                err("wave.number must be int >= 1 when not BOOTSTRAP")
+                err("wave.number must be int >= 1 when wave is active")
             if wid and isinstance(num, int):
                 suffix = str(wid).split("-", 1)[-1]
                 try:
@@ -166,6 +178,9 @@ def validate_state(state: dict[str, Any]) -> list[str]:
             err("workflow.allowed_next must be array")
         if not isinstance(wf.get("completed"), list):
             err("workflow.completed must be array")
+        pipe = wf.get("pipeline")
+        if pipe is not None and not isinstance(pipe, dict):
+            err("workflow.pipeline must be object when set")
 
     return errors
 
@@ -296,6 +311,73 @@ def materialize_boundary(boundary_id: str) -> Path:
     return path
 
 
+def resolve_dev_boundary_id(
+    evidence: dict[str, Any] | None,
+    state: dict[str, Any] | None = None,
+) -> str | None:
+    evidence = evidence or {}
+    state = state or load_state()
+    bid = evidence.get("boundary_id")
+    if bid:
+        return str(bid).strip()
+    bounds = list(evidence.get("boundaries_in_flight") or state.get("boundaries_in_flight") or [])
+    if len(bounds) == 1:
+        return bounds[0]
+    active = (state.get("workflow") or {}).get("active_dev") or {}
+    if active.get("boundary_id") and len(bounds) != 1:
+        return active["boundary_id"]
+    return bounds[0] if bounds else None
+
+
+def _spawn_kind_for_row(row: dict[str, Any]) -> str:
+    kind = str(row.get("kind") or "backend")
+    if kind in KINDS:
+        return kind
+    return "backend"
+
+
+def activate_boundary_for_dev(
+    boundary_id: str,
+    command: str = "start-dev",
+    *,
+    with_spawn: bool = True,
+    updated_by: str = "harness",
+    state: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Gắn active_boundary + owned_paths từ matrix; tùy chọn spawn.active cho sub-agent."""
+    if boundary_id not in boundary_ids():
+        raise ValueError(
+            f"boundary {boundary_id!r} not in SERVICE-BOUNDARY-MATRIX — run start-wave first"
+        )
+    row = get_boundary(boundary_id) or {}
+    if state is None:
+        state = load_state()
+    state["active_boundary"] = boundary_id
+    state["owned_paths"] = list(row.get("owned_paths") or [])
+
+    prefix = DEV_AGENT_PREFIX.get(command, "")
+    agent_file = f"agents/{prefix}{boundary_id}-agent.md"
+
+    if with_spawn:
+        state.setdefault("spawn", {})["active"] = {
+            "boundary": boundary_id,
+            "kind": _spawn_kind_for_row(row),
+            "agent_file": agent_file,
+            "frozen_at": utc_now_iso(),
+            "prompt_hash": None,
+        }
+
+    inflight = list(state.get("boundaries_in_flight") or [])
+    if boundary_id not in inflight:
+        state["boundaries_in_flight"] = inflight + [boundary_id]
+
+    wf = state.setdefault("workflow", {})
+    wf["active_dev"] = {"boundary_id": boundary_id, "command": command}
+
+    save_state(state, updated_by=updated_by)
+    return state
+
+
 def spawn_begin(
     boundary: str,
     kind: str,
@@ -322,9 +404,9 @@ def spawn_begin(
     if kind not in KINDS:
         raise ValueError(f"unknown kind: {kind}")
 
-    row = get_boundary(boundary)
+    row = get_boundary(boundary) or {}
     state["active_boundary"] = boundary
-    state["owned_paths"] = list(row.get("owned_paths", [])) if row else []
+    state["owned_paths"] = list(row.get("owned_paths") or [])
 
     state.setdefault("spawn", {})["active"] = {
         "boundary": boundary,
@@ -333,10 +415,9 @@ def spawn_begin(
         "frozen_at": utc_now_iso(),
         "prompt_hash": None,
     }
-    if boundary not in state["boundaries_in_flight"]:
-        state["boundaries_in_flight"] = list(state["boundaries_in_flight"]) + [
-            boundary
-        ]
+    inflight = list(state.get("boundaries_in_flight") or [])
+    if boundary not in inflight:
+        state["boundaries_in_flight"] = inflight + [boundary]
 
     save_state(state, updated_by=updated_by)
     return state

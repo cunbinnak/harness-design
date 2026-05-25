@@ -1,5 +1,6 @@
 ---
 agent_id: apply-cr
+role: apply-cr
 command: apply-cr
 kind: harness-command
 knowledge_graph: knowledge-base/shared.knowledge-graph.yaml

@@ -1,9 +1,9 @@
 ---
 description: "Harness command: start-wave"
-argument-hint: "[wave-title]"
+argument-hint: "[wave-id]"
 ---
 
-# /start-wave [wave-title]
+# /start-wave [wave-id]
 
 Mở **một** wave — sau `review-document` (lần đầu) hoặc sau `end-wave` (wave tiếp, không đổi scope).
 

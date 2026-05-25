@@ -6,10 +6,7 @@
   },
   "wave": {
     "id": null,
-    "number": null,
-    "title": null,
-    "started_at": null,
-    "completed_at": null
+    "number": null
   },
   "stage": "BOOTSTRAP",
   "previous_stage": null,
@@ -48,7 +45,9 @@
     "allowed_next": [
       "intake-requirement"
     ],
-    "evidence": {}
+    "evidence": {},
+    "pipeline": null,
+    "active_command": null
   },
   "checkpoints": [],
   "handoff": {
@@ -61,9 +60,9 @@
     "deferred_items": []
   },
   "meta": {
-    "revision": 2,
-    "updated_at": "2026-05-23T14:11:44Z",
-    "updated_by": "script",
-    "notes": "BOOTSTRAP: khung trống. Shared memory: knowledge-base/shared.knowledge-graph.yaml. Boundary: SERVICE-BOUNDARY-MATRIX.json (rỗng)."
+    "revision": 1,
+    "updated_at": "2026-05-25T15:55:51Z",
+    "updated_by": "reset_for_new_project",
+    "notes": "Fresh starter for project=adlc-design. Run /intake-requirement to begin."
   }
 }

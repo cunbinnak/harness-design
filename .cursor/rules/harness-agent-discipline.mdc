@@ -7,9 +7,17 @@ alwaysApply: true
 
 **Nguồn sự thật:** spec = `docs/` · trạng thái = `knowledge-base/*.yaml` · workflow = `harness.py complete` (không sửa `STATE.json` tay).
 
-## Trước mỗi lượt làm việc — đọc KG
+## Trước mỗi lượt làm việc — hooks + KG
 
-Đọc `knowledge-base/shared.knowledge-graph.yaml` (và KG boundary nếu đang dev):
+**Hooks tự chạy** (xem `scripts/hooks/README.md`):
+
+| Trigger | Trả lời |
+|---------|---------|
+| `session_start` | Stage, allowed_next, pipeline, cảnh báo KG |
+| `pre_task_check` | Được phép? agent/boundary/stage/KG/blockers |
+| `pre_write_check` | Path owned? blockers? why? |
+
+**Đọc KG** (`knowledge-base/shared.knowledge-graph.yaml`):
 
 | Trường KG | Dùng để |
 |-----------|---------|
@@ -20,7 +28,9 @@ alwaysApply: true
 
 `STATE.context` (sau `build_context`) liệt kê path cần đọc — không bỏ qua (rule 17).
 
-## Sau mỗi lượt — ghi KG
+## Sau mỗi lượt — ghi KG + `post_task_log`
+
+Hook `post_task_log` / `on_change_detected` chạy khi sub-agent kết thúc — bắt `kg_appended` nếu có `files_changed`.
 
 - Quyết định mới → `decisions[]` (một id, `status: active`)
 - Lỗi / gotcha dễ lặp → `discipline.do_not_repeat` hoặc `learnings.gotchas`
@@ -30,6 +40,8 @@ alwaysApply: true
 ```bash
 py scripts/knowledge_writer.py decision knowledge-base/shared.knowledge-graph.yaml '{"context":"...","decision":"...","rationale":"..."}'
 py scripts/knowledge_writer.py do-not-repeat knowledge-base/shared.knowledge-graph.yaml "mô tả việc không được lặp"
+py scripts/knowledge_writer.py in-progress knowledge-base/shared.knowledge-graph.yaml "FEAT-001:AC-1"
+py scripts/knowledge_writer.py completed knowledge-base/shared.knowledge-graph.yaml "FEAT-001:AC-1"
 ```
 
 ## 20 quy tắc (tóm tắt)
@@ -49,7 +61,7 @@ py scripts/knowledge_writer.py do-not-repeat knowledge-base/shared.knowledge-gra
 | 11 | Không `do_not_repeat` | Ghi khi dễ lặp |
 | 12 | Tiếp khi TBD lớn | CR / escalate |
 | 13 | Đổi requirement lúc impl/test | CR + intake amendment |
-| 14 | Fix không log bug | `tracking/bugs/` |
+| 14 | Fix không log bug | `tracking/waves/{wave-id}/bugs/` |
 | 15 | Fix không review/retest | `review-dev` / `retest` |
 | 16 | Sửa STATE tay | `harness.py complete` |
 | 17 | Bỏ context | Đọc `STATE.context` |

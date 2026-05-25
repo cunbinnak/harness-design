@@ -85,7 +85,7 @@ def main() -> int:
         return 1
     n1 = sync_target(root, root / ".cursor" / "commands", manifest)
     n2 = sync_target(root, root / ".claude" / "commands", manifest)
-    print(f"Synced {n1} → .cursor/commands, {n2} → .claude/commands")
+    print(f"Synced {n1} -> .cursor/commands, {n2} -> .claude/commands")
     return 0
 
 

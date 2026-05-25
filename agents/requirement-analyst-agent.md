@@ -1,5 +1,6 @@
 ---
 agent_id: requirement-analyst
+role: intake:requirement-analyst
 pipeline_step: 1
 command: intake-requirement
 kind: intake-specialist

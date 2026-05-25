@@ -1,5 +1,6 @@
 ---
 agent_id: start-wave
+role: start-wave
 command: start-wave
 kind: harness-command
 knowledge_graph: knowledge-base/shared.knowledge-graph.yaml

@@ -1,76 +1,87 @@
 # Wave {wave-id}
 
-> **Một file / wave** — plan (intake §1) + assignment (trước `start-dev` §2) cùng tài liệu.
+> **Purpose:** Plan + assignment cho 1 wave — FEAT nào làm, boundary nào đảm nhiệm, timeline.
+> **Owner:** §1 `intake:program-planner` (intake bước 4) · §2 `start-wave` agent (trước start-dev).
+> **Audience:** `start-wave`, `start-dev` agents; reviewer.
+> **Out of scope:**
+> - FEAT spec → [`../../architecture/feat/`](../../architecture/feat/)
+> - HLD per boundary → [`../../architecture/hld/`](../../architecture/hld/)
+> - Test plan → `tracking/waves/{wave-id}/test-cases.md`
+> - Handoff doc → `handoff/{wave-id}.md`
 
 ---
 
-## 1. Implementation plan
+## §1. Plan (intake bước 4)
 
-> Điền ở **intake bước 4** (program-planner). Tham chiếu `docs/architecture/PROJECT.md`, `docs/architecture/feat/FEAT-*.md`.
+> Điền bởi `program-planner` lúc intake. KHÔNG đụng sau khi `start-wave complete`.
 
-### Lịch wave này
+### Meta
 
-- **Thời lượng ước lượng:** (vd. 4 tuần)
-- **FEAT trong wave:** (liệt kê)
-- **Mục tiêu deliverable:** (1–2 câu)
+- **Wave id:** {wave-id}
+- **Title:** {tên wave — vd "MVP", "Phase 2 - Reporting"}
+- **Thời lượng ước lượng:** (vd 4 tuần)
+- **Mục tiêu deliverable:** (1-2 câu)
 - **Phụ thuộc wave trước:** (wave-00X hoặc —)
 
-### UX deliverable (quyết định lúc plan)
+### FEAT trong wave này
 
-| Boundary | Hình thức | Ghi chú |
-|----------|-----------|---------|
-| fe | markdown \| wireframe \| figma \| mixed | `docs/architecture/ux/ux-fe.md` + link/asset nếu có |
+| FEAT | Mục tiêu ngắn | Boundary dự kiến | Ưu tiên |
+|------|--------------|------------------|---------|
+| FEAT-001 | (1 câu) | order, fe-web | Must |
+| FEAT-002 | | customer | Must |
+| FEAT-003 | | analytics | Should |
 
-### Tasks theo boundary
+### UX deliverable (FE boundaries)
 
-| boundary_id | Task | Phụ thuộc | AC |
-|-------------|------|-----------|-----|
-| | | | |
+| Boundary | Hình thức | File / link |
+|----------|-----------|-------------|
+| fe-web | markdown ASCII wireframe | `docs/architecture/ux/ux-fe-web.md` |
+| fe-admin | figma + markdown | `docs/architecture/ux/ux-fe-admin.md` + link figma |
 
-### Thứ tự triển khai
+### Order of implementation
 
-1.
+> Thứ tự logic để dev không bị block. Ghi rõ "FEAT-X cần xong trước FEAT-Y vì..."
 
-### Knowledge-base
-
-Mỗi task → `implementation.backlog` trong KG boundary tương ứng.
+1. FEAT-001 (customer model trước — FEAT-002 phụ thuộc)
+2. FEAT-002
+3. FEAT-003 (parallel với FEAT-002 sau khi customer xong)
 
 ---
 
-## 2. Assignment (trước start-dev)
+## §2. Assignment (trước `start-dev complete`)
 
-> Điền trước **`start-dev complete`** — gắn FEAT → boundary → agent.
-
-### Wave meta
-
-- **id:** {wave-id}
-- **title:** (từ `STATE.wave.title`)
+> Điền/cập nhật bởi `start-wave-agent` sau khi load roster. Đây là input cho `start-dev`.
 
 ### Bảng giao việc
 
-| FEAT | boundary_id | agent | AC / scope |
-|------|-------------|-------|------------|
-| | | | |
+| FEAT | boundary_id | dev agent | AC scope |
+|------|-------------|-----------|---------|
+| FEAT-001 | order | order-agent | AC-1, AC-2, AC-3 |
+| FEAT-001 | fe-web | fe-web-agent | AC-4 (UI) |
+| FEAT-002 | customer | customer-agent | All AC |
+| FEAT-003 | analytics | analytics-agent | AC-1, AC-2 |
 
-### Context load
-
-- Docs đã đọc:
-- `features_in_flight`: []
-- `boundaries_in_flight`: []
-
-### Evidence (tham khảo cho `harness.py start-dev complete`)
+### Evidence cho `start-dev complete`
 
 ```json
 {
-  "features_in_flight": [],
-  "boundaries_in_flight": []
+  "features_in_flight": ["FEAT-001", "FEAT-002"],
+  "boundaries_in_flight": ["order", "customer", "fe-web"]
 }
 ```
 
+(Chạy `start-dev complete` lần đầu cho boundary đầu tiên — các boundary còn lại spawn dev agent riêng.)
+
+### Context đã load (tham khảo, harness auto-fill khi `start-wave`)
+
+- `STATE.features_in_flight` ← từ FEAT list §1
+- `STATE.boundaries_in_flight` ← từ assignment §2
+- `STATE.workflow.wave_dev_agents` ← list agent files theo boundary
+
 ---
 
-## 3. Tiến độ & ghi chú (tùy chọn)
+## §3. Progress notes (optional, free-form)
 
-| Ngày | Ghi chú |
-|------|---------|
+| Date | Note |
+|------|------|
 | | |

@@ -1,11 +1,13 @@
 ---
 description: "Harness command: start-dev"
-argument-hint: ""
+argument-hint: "<boundary_id>"
 ---
 
-# /start-dev
+# /start-dev <boundary_id>
 
 Spawn **dev boundary agent** (`{boundary}-agent.md`) đã tạo lúc intake bước 4.
+
+**Slash:** `/start-dev <boundary_id>` (vd. `order`, `fe-web`)
 
 **Agent:** `agents/{boundary}-agent.md`
 

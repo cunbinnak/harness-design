@@ -1,5 +1,6 @@
 ---
 agent_id: solution-architect
+role: intake:solution-architect
 pipeline_step: 3
 command: intake-requirement
 kind: intake-specialist

@@ -3,7 +3,7 @@ agent_id: intake-orchestrator
 command: intake-requirement
 kind: orchestrator
 knowledge_graph: knowledge-base/shared.knowledge-graph.yaml
-pipeline: harness/INTAKE-PIPELINE.json
+pipeline: harness/PIPELINES.json#intake-requirement
 ---
 
 # Intake Orchestrator Agent
@@ -40,11 +40,15 @@ pipeline: harness/INTAKE-PIPELINE.json
 
 ## Quy trình (tuần tự)
 
-| # | Agent | Output chính |
-|---|--------|----------------|
-| 1 | requirement-analyst | PROJECT, FEAT, open questions |
-| 2 | business-analyst | AC, BR, boundaries_suggested |
-| 3 | solution-architect | ADR, arch, integrations |
-| 4 | program-planner | roadmap + **mọi** `wave.md`, roster **waves_participating**, materialize |
+Mỗi lần chạy `build_command_prompt.py --step N`, harness **ghi STATE** (`stage` + `workflow.pipeline`) trước khi spawn — lần sau đọc STATE biết đang ở bước nào.
+
+| # | Agent | `stage` trong STATE | Output chính |
+|---|--------|---------------------|--------------|
+| 1 | requirement-analyst | `REQUIREMENT_INTAKE` | PROJECT, FEAT, open questions |
+| 2 | business-analyst | `BUSINESS_ANALYSIS` | AC, BR, boundaries_suggested |
+| 3 | solution-architect | `TECHNICAL_DESIGN` | ADR, arch, integrations |
+| 4 | program-planner | `IMPLEMENTATION_PLAN` | roadmap + **mọi** `wave.md`, roster, materialize |
+
+Kiểm tra tiến độ: `py scripts/intake_pipeline.py show`
 
 Sau bước 4: materialize agents + KG → `intake-requirement complete`.

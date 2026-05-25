@@ -6,10 +6,12 @@ from typing import Any
 
 from build_context import build_context
 from gate_runner import allowed_next, check_command, load_gates
-from harness_lib import utc_now_iso, load_json, repo_root
+from harness_lib import DEV_COMMANDS, load_json, repo_root, utc_now_iso
 from state_engine import (
+    activate_boundary_for_dev,
     apply_transition,
     load_state,
+    resolve_dev_boundary_id,
     save_state,
     validate_state,
 )
@@ -47,12 +49,10 @@ def ensure_workflow(state: dict[str, Any]) -> dict[str, Any]:
             "last_completed": None,
             "completed": [],
             "allowed_next": ["intake-requirement"],
-            "evidence": {},
         }
     wf = state["workflow"]
     wf.setdefault("completed", [])
     wf.setdefault("allowed_next", ["intake-requirement"])
-    wf.setdefault("evidence", {})
     return state
 
 
@@ -124,6 +124,17 @@ def complete_command(
 
     _enforce_pre_complete_hooks(command_id, evidence, state)
 
+    from hooks.task_check import format_report, run_trigger  # noqa: WPS433
+
+    pre_report = run_trigger(
+        "pre_state_transition",
+        state,
+        {"command": command_id, "evidence": evidence},
+        block=True,
+    )
+    if pre_report.blocked:
+        raise ValueError(format_report(pre_report))
+
     cfg_all = load_gates()
     cmd_cfg = cfg_all["commands"][command_id]
 
@@ -154,11 +165,25 @@ def complete_command(
     result = check_command(command_id, state, evidence)
     if not result["ok"]:
         _checkpoint_append(state, command_id, "fail", evidence)
-        wf["evidence"][command_id] = evidence
         save_state(state, updated_by=updated_by)
         raise ValueError("Gates failed:\n  - " + "\n  - ".join(result["errors"]))
 
     branch = result.get("branch")
+    # Smart routing for retest: derive auto/manual from state context
+    if command_id == "retest" and branch == "pass":
+        prev = state.get("previous_stage") or ""
+        # Look at checkpoints for last test fail to infer origin
+        chk_fail = next(
+            (c for c in reversed(state.get("checkpoints", []) or [])
+             if c.get("status") == "fail" and c.get("command") in ("test-execute", "manual-test-log")),
+            None,
+        )
+        if chk_fail and chk_fail.get("command") == "manual-test-log":
+            branch = "pass_manual"
+        elif "MANUAL_TEST" in prev:
+            branch = "pass_manual"
+        else:
+            branch = "pass_auto"
     branch_cfg = None
     if branch and cmd_cfg.get("branches"):
         branch_cfg = cmd_cfg["branches"].get(branch)
@@ -175,13 +200,24 @@ def complete_command(
         if branch_cfg.get("next_allowed"):
             next_allowed = list(branch_cfg["next_allowed"])
 
-    wf["evidence"][command_id] = evidence
     _checkpoint_append(state, command_id, "pass", evidence)
 
     if command_id == "apply-cr" and evidence.get("cr_id"):
         wf["pending_cr"] = evidence["cr_id"]
     if command_id == "intake-requirement" and evidence.get("intake_mode") == "amendment":
         wf.pop("pending_cr", None)
+    if command_id == "intake-requirement":
+        pipe = wf.get("pipeline") or {}
+        if pipe.get("command") == "intake-requirement":
+            total = int(pipe.get("total_steps") or 4)
+            wf["pipeline"] = {
+                **pipe,
+                "completed_steps": list(range(1, total + 1)),
+                "active_step": None,
+                "active_step_id": None,
+                "finished_at": utc_now_iso(),
+            }
+        wf.pop("active_command", None)
 
     completed = list(wf.get("completed") or [])
     if command_id not in completed:
@@ -200,13 +236,13 @@ def complete_command(
             _apply_sets_stage(state, sets_stage)
     elif sets_stage:
         _apply_sets_stage(state, sets_stage)
+        save_state(state, updated_by=updated_by)  # Persist stage before reload below
     elif trigger:
         state = apply_transition(trigger, updated_by=updated_by)
         state = ensure_workflow(load_state())
 
     state = ensure_workflow(load_state())
     wf = state["workflow"]
-    wf["evidence"][command_id] = evidence
     wf["completed"] = completed
     wf["last_completed"] = command_id
     wf["allowed_next"] = next_allowed
@@ -215,19 +251,48 @@ def complete_command(
     if sync_cfg:
         _sync_state_fields(state, evidence, sync_cfg)
 
-    if sync_cfg:
-        _sync_state_fields(state, evidence, sync_cfg)
+    if cmd_cfg.get("activate_dev_boundary") and command_id in DEV_COMMANDS:
+        bid = resolve_dev_boundary_id(evidence, state)
+        if bid:
+            activate_boundary_for_dev(
+                bid,
+                command_id,
+                with_spawn=True,
+                updated_by=updated_by,
+                state=state,
+            )
 
     if cmd_cfg.get("post_reset_wave"):
         state = apply_transition("reset_wave", updated_by=updated_by)
         state = ensure_workflow(load_state())
-        state["workflow"]["allowed_next"] = ["start-wave", "intake-requirement"]
-        state["workflow"]["completed"] = ["end-wave"]
-        state["workflow"]["last_completed"] = "end-wave"
+        # Use next_allowed from cmd_cfg (defined in COMMAND-GATES.json), not hardcoded
+        state["workflow"]["allowed_next"] = list(cmd_cfg.get("next_allowed") or ["start-wave", "intake-requirement", "apply-cr"])
+        state["workflow"]["completed"] = [command_id]
+        state["workflow"]["last_completed"] = command_id
         meta = state.setdefault("meta", {})
         meta["plan_baseline"] = True
 
     save_state(state, updated_by=updated_by)
+
+    try:
+        post_report = run_trigger(
+            "post_state_transition",
+            load_state(),
+            {"command": command_id, "evidence": evidence, "at": utc_now_iso()},
+            block=False,
+        )
+        st = load_state()
+        st.setdefault("checkpoints", []).append(
+            {
+                "command": command_id,
+                "at": utc_now_iso(),
+                "status": "post_transition",
+                "evidence": post_report.to_dict(),
+            }
+        )
+        save_state(st, updated_by=f"post_transition:{command_id}")
+    except Exception:
+        pass
 
     if cmd_cfg.get("run_build_context"):
         try:
@@ -242,10 +307,13 @@ def can_command(command_id: str) -> dict[str, Any]:
     state = ensure_workflow(load_state())
     in_list = command_id in allowed_next(state)
     gate = check_command(command_id, state, (state.get("workflow") or {}).get("evidence", {}).get(command_id))
+    gate_errors = gate.get("errors") or []
     return {
         "command": command_id,
         "allowed_next": allowed_next(state),
         "in_allowed_next": in_list,
         "gates_ok": gate["ok"] if in_list else False,
-        "errors": [] if in_list else ["not in allowed_next"] + gate.get("errors", []),
+        "pipeline": (state.get("workflow") or {}).get("pipeline"),
+        "stage": state.get("stage"),
+        "errors": gate_errors if in_list else ["not in allowed_next"] + gate_errors,
     }

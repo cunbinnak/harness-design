@@ -2,6 +2,28 @@
 
 Spec: [docs/AGENT-SPEC.md](../docs/AGENT-SPEC.md)
 
+## Doc scope per agent (`role:` frontmatter)
+
+Mỗi agent khai báo `role:` trong YAML frontmatter. Doc-scope (files agent được đọc) tự động resolve từ central registry **[harness/AGENT-DISCIPLINE.json → `agent_roles`](../harness/AGENT-DISCIPLINE.json)** với placeholder `{boundary}` và `{wave}`.
+
+| Role | Đọc gì (tóm tắt) |
+|------|--------------------|
+| `intake:requirement-analyst` | PROJECT + FEAT/* (draft) |
+| `intake:business-analyst` | PROJECT + FEAT/* (refine AC) |
+| `intake:solution-architect` | PROJECT + FEAT/* (writes ADR/HLD/API/UX) |
+| `intake:program-planner` | PROJECT + FEAT + integrations-matrix (writes plans) |
+| `dev:backend` | wave.md + hld-{boundary} + api-{boundary} + data-model-{boundary} + KG |
+| `dev:frontend` | wave.md + ux-{boundary} + api-*.md (contracts) + KG |
+| `review:backend` | source code {boundary} + hld + api + KG |
+| `review:frontend` | source code {boundary} + ux + KG |
+| `fix:backend` / `fix:frontend` | tracking/waves/{wave}/bugs + source + (HLD/UX) + KG |
+| `dev-handoff` | wave plan + infra + handoff doc |
+| `test-plan` | handoff + FEAT + api (contracts) |
+| `test-execute` | test cases + handoff + infra — **không đọc source code** |
+| `release`, `end-wave`, `apply-cr`, `start-wave`, `review:document`, `cross-boundary-review` | xem registry |
+
+`build_command_prompt.py` inject section **DOCS IN SCOPE** vào prompt agent, list các file scoped theo role.
+
 ## Luồng `/intake-requirement`
 
 Orchestrator: [intake-orchestrator-agent.md](intake-orchestrator-agent.md)

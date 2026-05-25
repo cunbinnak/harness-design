@@ -1,9 +1,9 @@
 ---
 description: "Harness command: register-boundary"
-argument-hint: ""
+argument-hint: "<boundary_id>"
 ---
 
-# /register-boundary
+# /register-boundary <boundary_id>
 
 Đăng ký service: matrix + agent + knowledge graph (+ `services/` nếu materialize).
 

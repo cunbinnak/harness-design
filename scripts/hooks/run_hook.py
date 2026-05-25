@@ -18,19 +18,46 @@ from state_engine import load_state  # noqa: E402
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+            sys.stderr.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
     parser = argparse.ArgumentParser()
     parser.add_argument("hook_id")
     parser.add_argument("--payload", default="{}")
     args = parser.parse_args()
 
     rules = load_json(repo_root() / "harness" / "HOOK-RULES.json")
-    hook = rules.get("hooks", {}).get(args.hook_id)
-    if not hook:
-        print(f"unknown hook: {args.hook_id}", file=sys.stderr)
-        return 64
-
     payload = json.loads(args.payload)
+
+    trigger_ids = set(rules.get("triggers", {}).keys()) | {
+        "session_start",
+        "pre_task_check",
+        "pre_write_check",
+        "pre_state_transition",
+        "post_state_transition",
+        "post_task_log",
+        "on_change_detected",
+    }
+    if args.hook_id not in trigger_ids:
+        hook = rules.get("hooks", {}).get(args.hook_id)
+        if not hook:
+            print(f"unknown hook: {args.hook_id}", file=sys.stderr)
+            return 64
+    else:
+        hook = rules.get("hooks", {}).get("task_checklist", {})
+
     state = load_state()
+
+    if args.hook_id in trigger_ids or args.hook_id == "task_checklist":
+        from hooks.task_check import format_report, run_trigger  # noqa: WPS433
+
+        trigger = args.hook_id if args.hook_id != "task_checklist" else payload.get("trigger", "pre_task_check")
+        report = run_trigger(trigger, state, payload, block=payload.get("block"))
+        print(format_report(report))
+        return 1 if report.blocked else 0
 
     if args.hook_id == "owned_paths":
         from hooks.owned_paths import check  # noqa: WPS433

@@ -20,8 +20,15 @@ import json
 import sys
 from pathlib import Path
 
-from harness_lib import get_boundary, load_json, repo_root
-from state_engine import load_state
+from harness_lib import (
+    agent_role_from_frontmatter,
+    boundary_ids,
+    get_boundary,
+    load_json,
+    repo_root,
+    resolve_role_docs,
+)
+from state_engine import activate_boundary_for_dev, load_state
 
 INTAKE_SPECIALISTS = frozenset({
     "requirement-analyst",
@@ -40,6 +47,7 @@ COMMAND_AGENTS: dict[str, str] = {
     "test-execute": "agents/test-execute-agent.md",
     "release": "agents/release-agent.md",
     "end-wave": "agents/end-wave-agent.md",
+    "done-wave": "agents/done-wave-agent.md",
 }
 
 DEV_COMMAND_PREFIX: dict[str, str] = {
@@ -54,6 +62,8 @@ SKILL_BY_COMMAND: dict[str, str | None] = {
     "test-execute": "specialist-testing",
     "release": "release-candidate",
     "review-document": "business-analysis",
+    "done-wave": "implementation",
+    "end-wave": "implementation",
 }
 
 
@@ -82,6 +92,46 @@ def _state_block() -> str:
 
 def _inline_header(title: str) -> str:
     return f"\n## {title}\n\n"
+
+
+def _resolve_wave_id() -> str | None:
+    state = load_state()
+    return ((state.get("wave") or {}).get("id")) or None
+
+
+def _role_docs_section(
+    role_key: str,
+    *,
+    boundary: str | None = None,
+    wave: str | None = None,
+) -> str:
+    """Build DOCS-IN-SCOPE section from agent_roles registry."""
+    if not role_key:
+        return ""
+    reads = resolve_role_docs(role_key, boundary=boundary, wave=wave or _resolve_wave_id(), direction="reads")
+    writes = resolve_role_docs(role_key, boundary=boundary, wave=wave or _resolve_wave_id(), direction="writes")
+    if not reads and not writes:
+        return ""
+    lines = [_inline_header(f"DOCS IN SCOPE (role: {role_key})"),
+             "Chỉ đọc các file/glob bên dưới — không đọc ngoài phạm vi này (tránh blow up context).",
+             ""]
+    if reads:
+        lines.append("**Reads:**")
+        for r in reads:
+            lines.append(f"- `{r}`")
+        lines.append("")
+    if writes:
+        lines.append("**Writes (owned):**")
+        for w in writes:
+            lines.append(f"- `{w}`")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _agent_role(agent_path: pathlib.Path) -> str | None:
+    """Read role: from agent frontmatter; fallback uses agent_id heuristic."""
+    return agent_role_from_frontmatter(agent_path)
+
 
 
 def dev_agent_rel(command: str, boundary_id: str) -> str:
@@ -120,7 +170,10 @@ def build_apply_cr(*, cr_id: str | None = None, cr_path: str | None = None) -> s
     root = repo_root()
     state = load_state()
     wf = state.get("workflow") or {}
-    ev = (wf.get("evidence") or {}).get("apply-cr") or {}
+    # Read latest apply-cr evidence from checkpoints (audit trail)
+    chk = [c for c in (state.get("checkpoints") or [])
+           if c.get("command") == "apply-cr" and c.get("status") == "pass"]
+    ev = (chk[-1].get("evidence") if chk else {}) or {}
     cid = cr_id or ev.get("cr_id")
     cpath = cr_path or ev.get("cr_path")
     cr_file = _resolve_cr_path(cid, cpath)
@@ -169,25 +222,32 @@ def build_apply_cr(*, cr_id: str | None = None, cr_path: str | None = None) -> s
 
 
 def build_intake_step(step: int, user_input: str | None) -> str:
-    pipeline = load_json(repo_root() / "harness" / "INTAKE-PIPELINE.json")
+    from intake_pipeline import begin_step  # noqa: WPS433
+
+    begin_step(step, updated_by="build_command_prompt")
+    from intake_pipeline import load_pipeline as _load_intake_pipeline  # noqa: WPS433
+    pipeline = _load_intake_pipeline()
     steps = {s["order"]: s for s in pipeline["steps"]}
     if step not in steps:
         raise ValueError(f"step must be 1-{len(steps)}")
     s = steps[step]
     root = repo_root()
     agent_path = root / s["agent"]
-    skill_path = root / "skills" / f"{s['skill']}.skill.md"
+    skill_path = root / "skills" / s['skill'] / "SKILL.md"
 
     parts = [
         f"# INTAKE PIPELINE — step {step}/4: {s['id']}",
         "",
         "You are a fresh subagent. Complete ONLY this step.",
+        f"Harness stage: **{s['adlc_stage']}** (đã ghi vào STATE trước khi spawn).",
         "",
         _inline_header("STATE"),
         _state_block(),
     ]
-    wf = (load_state().get("workflow") or {})
-    cr_ev = (wf.get("evidence") or {}).get("apply-cr") or {}
+    st = load_state()
+    chk = [c for c in (st.get("checkpoints") or [])
+           if c.get("command") == "apply-cr" and c.get("status") == "pass"]
+    cr_ev = (chk[-1].get("evidence") if chk else {}) or {}
     if cr_ev.get("cr_id") or cr_ev.get("cr_path"):
         cr_file = _resolve_cr_path(cr_ev.get("cr_id"), cr_ev.get("cr_path"))
         if cr_file:
@@ -212,6 +272,13 @@ def build_intake_step(step: int, user_input: str | None) -> str:
     parts.extend([
         _inline_header("AGENT SPEC"),
         _read(agent_path),
+    ])
+    role = _agent_role(agent_path)
+    if role:
+        rds = _role_docs_section(role)
+        if rds:
+            parts.append(rds)
+    parts.extend([
         _inline_header("SKILL"),
         _read(skill_path),
     ])
@@ -266,9 +333,14 @@ def build_command_agent(command: str, *, wave_id: str | None = None) -> str:
         _inline_header("AGENT SPEC"),
         _read(root / agent_rel),
     ]
+    role = _agent_role(root / agent_rel)
+    if role:
+        rds = _role_docs_section(role)
+        if rds:
+            parts.append(rds)
     skill = SKILL_BY_COMMAND.get(command)
     if skill:
-        parts.extend([_inline_header("SKILL"), _read(root / "skills" / f"{skill}.skill.md")])
+        parts.extend([_inline_header("SKILL"), _read(root / "skills" / skill / "SKILL.md")])
     if command == "start-wave":
         from wave_ids import normalize_wave_id  # noqa: WPS433
 
@@ -300,6 +372,13 @@ def build_command_agent(command: str, *, wave_id: str | None = None) -> str:
 
 def build_dev_command(command: str, boundary_id: str) -> str:
     root = repo_root()
+    if boundary_id in boundary_ids():
+        activate_boundary_for_dev(
+            boundary_id,
+            command,
+            with_spawn=True,
+            updated_by="build_command_prompt",
+        )
     agent_rel = dev_agent_rel(command, boundary_id)
     agent_path = root / agent_rel
     if not agent_path.is_file():
@@ -319,11 +398,16 @@ def build_dev_command(command: str, boundary_id: str) -> str:
         _read(agent_path),
         _inline_header("KNOWLEDGE GRAPH"),
         _read(root / kg, limit=8000),
-        _inline_header("CONTEXT"),
-        "Wave plan, FEAT in flight, architecture — chỉ sửa owned_paths từ matrix.",
+    ]
+    role = _agent_role(agent_path)
+    if role:
+        rds = _role_docs_section(role, boundary=boundary_id)
+        if rds:
+            parts.append(rds)
+    parts.extend([
         _inline_header("RETURN"),
         "JSON only per PROTOCOL.md.",
-    ]
+    ])
     return "\n".join(parts)
 
 

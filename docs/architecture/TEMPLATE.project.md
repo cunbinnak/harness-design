@@ -1,52 +1,71 @@
-# PROJECT — (tên dự án / sản phẩm)
+# PROJECT — {project_name}
 
-> Tài liệu **gốc** mô tả *cả dự án là gì*. Tạo thành `docs/architecture/PROJECT.md` ở intake bước 1–2. FEAT → `docs/architecture/feat/`.
+> **Purpose:** Mô tả dự án ở cấp cao nhất — vision, scope, KPI, NFR, constraints.
+> **Owner:** `intake:requirement-analyst` (bước 1) → `intake:business-analyst` (bước 2 refine).
+> **Audience:** Mọi agent intake/review, dev (đọc làm bối cảnh), stakeholder.
+> **Out of scope:** Per-boundary design (→ [`hld/`](hld/)), API (→ [`api/`](api/)), UI (→ [`ux/`](ux/)), wave plan (→ [`../plans/`](../plans/)).
+
+---
 
 ## Tổng quan
 
 - **Tên / mã dự án:**
-- **Một câu:** (sản phẩm làm gì cho ai)
+- **One-liner:** (sản phẩm làm gì cho ai)
 - **Vấn đề giải quyết:**
 
-## Đối tượng & ngữ cảnh
+## Đối tượng
 
-- **Người dùng chính:**
+- **Người dùng chính:** (persona — chỉ liệt kê, chi tiết UI ở [`ux/`](ux/))
 - **Bên liên quan:**
-- **Giả định môi trường:** (cloud, on-prem, mobile/web, …)
+- **Giả định môi trường:** (cloud, on-prem, mobile/web...)
 
-## Phạm vi dự án (cấp cao)
+## Phạm vi dự án
 
-| In scope (dự án) | Out of scope (dự án) |
-|------------------|----------------------|
+| In scope | Out of scope |
+|----------|--------------|
 | | |
 
-## Mục tiêu & chỉ số thành công
+## Mục tiêu & KPI
 
-- **Mục tiêu kinh doanh / sản phẩm:**
-- **KPI / done khi nào (cấp dự án):**
+- **Mục tiêu kinh doanh:**
+- **KPI / điều kiện done cấp dự án:**
 
-## Ràng buộc & nguyên tắc
+## Ràng buộc
 
-- **Ràng buộc kỹ thuật / pháp lý / vận hành:**
-- **Nguyên tắc thiết kế** (vd. API-first, bounded context, …)
+- **Pháp lý / compliance:**
+- **Kỹ thuật cứng:** (tech stack bắt buộc, integration phải có...)
+- **Vận hành:** (timeline, team size, budget)
 
-## Trải nghiệm người dùng (tóm tắt cấp dự án)
+## NFR (project-wide)
 
-- **Persona chính:**
-- **Nguyên tắc UX** (ngắn gọn; màn hình chi tiết → `docs/architecture/ux/ux-*.md`)
+> Targets cấp dự án. Boundary có thể refine trong HLD §NFR nếu cần stricter.
 
-## Thuật ngữ (glossary)
+| Attribute | Target |
+|-----------|--------|
+| Performance | (vd. p95 latency < 200ms) |
+| Availability | (vd. 99.5%) |
+| Security | (vd. OWASP Top 10) |
+| Test Coverage | BE ≥ 80%, FE ≥ 60% |
+| Scalability | (vd. {N} req/s @ {users}) |
+| Observability | (vd. structured JSON logs) |
+
+## Nguyên tắc thiết kế
+
+- (vd. API-first, bounded context, event-driven nếu áp dụng)
+
+## Glossary
 
 | Thuật ngữ | Định nghĩa |
 |-----------|------------|
 | | |
 
-## Lộ trình tóm tắt (tham chiếu)
+## Open questions
 
-- Chi tiết wave: `docs/plans/project/waves-roadmap.md` · wave hiện tại: `docs/plans/waves/{wave-id}/wave.md`
-- FEAT: `docs/architecture/feat/FEAT-*.md`
+- [ ] (câu hỏi) → @owner → deadline
 
-## Liên kết harness
+## Liên kết
 
-- Wave: `STATE.wave.id`
-- Knowledge: `knowledge-base/shared.knowledge-graph.yaml`
+- FEAT: [`feat/FEAT-*.md`](feat/)
+- ADR: [`adr/ADR-*.md`](adr/)
+- Plans: [`../plans/project/waves-roadmap.md`](../plans/project/waves-roadmap.md)
+- Shared KG: [`../../knowledge-base/shared.knowledge-graph.yaml`](../../knowledge-base/shared.knowledge-graph.yaml)

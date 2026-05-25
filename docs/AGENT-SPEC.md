@@ -1,45 +1,36 @@
-# Đặc tả file agent
+# Agent Spec
 
-## Một template duy nhất (boundary)
+> Single source for agent structure. Doc scope per role -> [`harness/AGENT-DISCIPLINE.json[agent_roles]`](../harness/AGENT-DISCIPLINE.json).
 
-| File | Dùng khi |
-|------|----------|
-| `agents/_template.agent.md` | Materialize bộ 3 agent cho **mỗi boundary backend** + **FE** (`fe`) ở bước 4 intake |
+## Template (boundary materialization)
 
-```bash
-py scripts/materialize_boundary_agents.py --boundaries order,product --wave wave-001
-# → order, product, fe (3 file × mỗi boundary). Bỏ FE: --no-fe
-```
-
-| Layer | boundary_id mẫu | owned_paths (gợi ý) |
-|-------|-----------------|---------------------|
-| backend | `order`, `product` | `services/{id}/` |
-| fe | `fe`, `frontend` | `apps/`, `packages/`, `services/fe/` |
-
-## Intake & command — file agent cố định (không template riêng)
-
-`/intake-requirement` gọi **từng specialist** theo bước:
+Một template duy nhất: [`agents/_template.agent.md`](../agents/_template.agent.md) — materialize bộ 3 agent (`{id}`, `fix-{id}`, `review-{id}`) cho mỗi boundary.
 
 ```bash
-py scripts/build_command_prompt.py intake-requirement --step 1 --input "..."
-py scripts/build_command_prompt.py intake-requirement --step 2
-# ...
+py scripts/materialize.py boundary-agents --from-roster docs/plans/project/agent-roster.md
 ```
 
-| Bước | Agent file |
-|------|------------|
-| 1 | `requirement-analyst-agent.md` |
-| 2 | `business-analyst-agent.md` |
-| 3 | `solution-architect-agent.md` |
-| 4 | `program-planner-agent.md` (+ materialize backend + FE) |
+Role auto-set theo layer:
 
-Command khác (`start-wave`, `test-execute`, …): một file `agents/{command}-agent.md` — spawn qua `build_command_prompt.py <command>`.
+| Layer | dev role | fix role | review role |
+|-------|---------|---------|------------|
+| backend | `dev:backend` | `fix:backend` | `review:backend` |
+| fe | `dev:frontend` | `fix:frontend` | `review:frontend` |
 
-## Cấu trúc nội dung (mọi `*-agent.md`)
+## Intake & command agents (cố định)
 
-1. **Ai (Identity)** — bạn là ai, không phải ai  
-2. **Nhiệm vụ (Mission)** — mục tiêu, phải làm, không được  
-3. **Ngữ cảnh & phạm vi**  
-4. **Đầu ra** — RETURN JSON (`harness/PROTOCOL.md`)
+`/intake-requirement` spawn 4 specialist theo step (xem `harness/PIPELINES.json`). Mỗi command khác -> `agents/{command}-agent.md`.
 
-Evidence cho `harness.py complete` = **JSON truyền trên CLI**, không có thư mục riêng trong repo.
+## Cấu trúc nội dung mọi `*-agent.md`
+
+1. **Frontmatter** — `agent_id`, `role` (key trong `agent_roles`), `command`, `kind`, `knowledge_graph`, `skills`
+2. **Identity** — agent là ai, không phải ai
+3. **Nhiệm vụ** — phải làm / không được
+4. **Phải làm (steps)** — sequence cụ thể
+5. **RETURN SCHEMA** — JSON theo [PROTOCOL.md](../harness/PROTOCOL.md)
+
+Doc scope **KHÔNG** hardcode trong agent .md — auto-inject từ role registry vào prompt.
+
+## Evidence
+
+Evidence cho `harness.py <cmd> complete` = JSON CLI argument (transient — ghi vào `checkpoints[]`, không có folder lưu).

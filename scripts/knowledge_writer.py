@@ -90,6 +90,39 @@ def append_blocker(
     save_kg(graph_path, data)
 
 
+def append_in_progress(
+    graph_path: str,
+    task_id: str,
+    *,
+    updated_by: str = "script",
+) -> None:
+    data = load_kg(graph_path)
+    impl = data.setdefault("implementation", {})
+    items = impl.setdefault("in_progress", [])
+    if task_id not in items:
+        items.append(task_id)
+    data.setdefault("meta", {})["updated_by"] = updated_by
+    save_kg(graph_path, data)
+
+
+def append_completed(
+    graph_path: str,
+    task_id: str,
+    *,
+    updated_by: str = "script",
+) -> None:
+    data = load_kg(graph_path)
+    impl = data.setdefault("implementation", {})
+    prog = impl.setdefault("in_progress", [])
+    if task_id in prog:
+        prog.remove(task_id)
+    done = impl.setdefault("completed", [])
+    if task_id not in done:
+        done.append(task_id)
+    data.setdefault("meta", {})["updated_by"] = updated_by
+    save_kg(graph_path, data)
+
+
 def main() -> None:
     if len(sys.argv) < 4:
         print(
@@ -97,7 +130,9 @@ def main() -> None:
             "  knowledge_writer.py decision <graph.yaml> '<json>'\n"
             "  knowledge_writer.py learning <graph.yaml> gotcha|pattern '<text>'\n"
             "  knowledge_writer.py do-not-repeat <graph.yaml> '<text>'\n"
-            "  knowledge_writer.py blocker <graph.yaml> '<text>'",
+            "  knowledge_writer.py blocker <graph.yaml> '<text>'\n"
+            "  knowledge_writer.py in-progress <graph.yaml> '<task_id>'\n"
+            "  knowledge_writer.py completed <graph.yaml> '<task_id>'",
             file=sys.stderr,
         )
         sys.exit(64)
@@ -123,6 +158,12 @@ def main() -> None:
             text = arg
             append_blocker(path, text)
             print("appended blocker")
+        elif cmd == "in-progress":
+            append_in_progress(path, arg)
+            print(f"in_progress: {arg}")
+        elif cmd == "completed":
+            append_completed(path, arg)
+            print(f"completed: {arg}")
         else:
             print(f"unknown cmd: {cmd}", file=sys.stderr)
             sys.exit(64)

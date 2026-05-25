@@ -1,21 +1,32 @@
 {
   "version": 1,
   "hooks": {
+    "sessionStart": [
+      {
+        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event session_start",
+        "failClosed": false
+      }
+    ],
     "preToolUse": [
       {
-        "matcher": "Write|StrReplace|Edit",
-        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event pre_edit",
-        "failClosed": true
+        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event pre_write_check",
+        "failClosed": true,
+        "matcher": "Write|StrReplace|Edit"
       },
       {
-        "matcher": "Shell",
-        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event pre_shell",
-        "failClosed": true
+        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event pre_state_transition",
+        "failClosed": true,
+        "matcher": "Shell"
+      },
+      {
+        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event pre_task_check",
+        "failClosed": true,
+        "matcher": "Task"
       }
     ],
     "stop": [
       {
-        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event post_agent",
+        "command": "py scripts/hooks/ide_bridge.py --ide cursor --event post_task_log",
         "failClosed": true
       }
     ]

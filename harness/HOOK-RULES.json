@@ -10,7 +10,8 @@
         "handoff/",
         "tracking/",
         "knowledge-base/",
-        "agents/"
+        "agents/",
+        "commands/"
       ],
       "denylist_prefixes": [
         "scripts/",
@@ -56,13 +57,21 @@
       "when": "pre_command",
       "severity": "block",
       "description": "Wave chưa completed (trừ intake / duyệt plan trước khi mở wave)",
-      "except_commands": ["intake-requirement", "review-document", "apply-cr"]
+      "except_commands": [
+        "intake-requirement",
+        "review-document",
+        "apply-cr"
+      ]
     },
     "dev_agent_spawn": {
       "when": "pre_spawn",
       "severity": "block",
       "description": "start-dev/fix-bugs/review-dev: file agent dev phải tồn tại trên disk",
-      "commands": ["start-dev", "fix-bugs", "review-dev"]
+      "commands": [
+        "start-dev",
+        "fix-bugs",
+        "review-dev"
+      ]
     },
     "discipline_blockers": {
       "when": "pre_complete_command",
@@ -75,24 +84,189 @@
       "when": "post_agent",
       "severity": "block",
       "description": "Sub-agent có thay đổi phải ghi kg_appended hoặc deferred.tracked_in",
-      "requires_kg_when": ["files_changed", "completed"]
+      "requires_kg_when": [
+        "files_changed",
+        "completed"
+      ]
     },
     "spawn_stage": {
       "when": "pre_spawn",
       "severity": "block",
       "description": "Spawn chỉ khi STATE.stage thuộc spawn.allowed_stages"
+    },
+    "task_checklist": {
+      "when": "multi",
+      "severity": "block",
+      "description": "12 câu checklist task — feature, stage, agent, boundary, owned_paths, KG, blockers, why",
+      "block_on_warn": [],
+      "checks": [
+        "feature",
+        "feature_stage",
+        "agent_assigned",
+        "boundary_resolve",
+        "owned_paths",
+        "task_in_stage",
+        "kg_completed",
+        "kg_in_progress",
+        "blockers",
+        "decisions",
+        "do_not_repeat",
+        "why_linked"
+      ]
+    }
+  },
+  "triggers": {
+    "session_start": {
+      "description": "Đầu session — snapshot STATE + KG cảnh báo (non-blocking)",
+      "hooks": [
+        "task_checklist"
+      ],
+      "maps_to": "session_start",
+      "block": false
+    },
+    "pre_task_check": {
+      "description": "Trước spawn / build_command_prompt step — full checklist",
+      "hooks": [
+        "task_checklist",
+        "spawn_stage",
+        "spawn_active"
+      ],
+      "maps_to": "pre_spawn",
+      "block": true
+    },
+    "pre_write_check": {
+      "description": "Trước sửa file — owned_paths + checklist",
+      "hooks": [
+        "owned_paths",
+        "task_checklist"
+      ],
+      "maps_to": "pre_edit",
+      "block": true
+    },
+    "pre_state_transition": {
+      "description": "Trước harness complete / apply_transition",
+      "hooks": [
+        "workflow_allowed_next",
+        "transition_gate",
+        "discipline_blockers",
+        "task_checklist"
+      ],
+      "maps_to": "pre_shell",
+      "block": true
+    },
+    "post_state_transition": {
+      "description": "Sau complete — log checkpoint checklist",
+      "hooks": [
+        "task_checklist"
+      ],
+      "maps_to": "workflow_engine",
+      "block": false
+    },
+    "post_task_log": {
+      "description": "Sau sub-agent — RETURN SCHEMA + kg_appended",
+      "hooks": [
+        "return_schema",
+        "discipline_kg_return",
+        "task_checklist"
+      ],
+      "maps_to": "post_agent",
+      "block": true
+    },
+    "on_change_detected": {
+      "description": "Khi RETURN.files_changed — verify path + feature link",
+      "hooks": [
+        "task_checklist"
+      ],
+      "maps_to": "post_agent",
+      "block": true
     }
   },
   "implementation": "scripts/hooks/README.md",
   "command_evidence_schema": {
-    "review-document": { "required": ["approved"], "types": { "approved": "boolean" } },
-    "start-wave": { "required": [], "optional": ["wave_id", "wave_title"] },
-    "apply-cr": { "required": ["cr_id"], "optional": ["cr_path"] },
-    "intake-requirement": { "optional": ["intake_mode", "change_summary", "cr_id"] },
-    "dev-handoff": { "required": ["coverage_pct", "handoff_ready"] },
-    "test-execute": { "required": ["test_result"], "in": { "test_result": ["pass", "fail"] } },
-    "release": { "required": ["release_ok"] },
-    "end-wave": { "required": ["end_wave_ok"] },
-    "start-dev": { "required": ["features_in_flight", "boundaries_in_flight"], "list_min": 1 }
+    "review-document": {
+      "required": [
+        "approved"
+      ],
+      "types": {
+        "approved": "boolean"
+      }
+    },
+    "start-wave": {
+      "required": [],
+      "optional": [
+        "wave_id",
+        "wave_title"
+      ]
+    },
+    "apply-cr": {
+      "required": [
+        "cr_id"
+      ],
+      "optional": [
+        "cr_path"
+      ]
+    },
+    "intake-requirement": {
+      "optional": [
+        "intake_mode",
+        "change_summary",
+        "cr_id"
+      ]
+    },
+    "dev-handoff": {
+      "required": [
+        "coverage_pct",
+        "handoff_ready"
+      ],
+      "optional": [
+        "coverage_fe_pct"
+      ]
+    },
+    "test-execute": {
+      "required": [
+        "test_result"
+      ],
+      "in": {
+        "test_result": [
+          "pass",
+          "fail"
+        ]
+      }
+    },
+    "release": {
+      "required": [
+        "release_ok"
+      ]
+    },
+    "end-wave": {
+      "required": [
+        "end_wave_ok"
+      ]
+    },
+    "start-dev": {
+      "required": [
+        "features_in_flight",
+        "boundaries_in_flight"
+      ],
+      "optional": [
+        "boundary_id"
+      ],
+      "list_min": 1
+    },
+    "review-dev": {
+      "optional": [
+        "boundary_id"
+      ]
+    },
+    "fix-bugs": {
+      "optional": [
+        "boundary_id"
+      ]
+    },
+    "done-wave": {
+      "required": [
+        "done_wave_ok"
+      ]
+    }
   }
 }

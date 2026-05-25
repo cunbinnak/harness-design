@@ -1,33 +1,45 @@
 # Harness hooks (implementation)
 
-**Cấu hình:** [`harness/HOOK-RULES.json`](../../harness/HOOK-RULES.json)  
-**IDE bridge:** `ide_bridge.py` · **Chạy tay:** `run_hook.py`
+**Logic & checklist:** `task_check.py` · **Quy tắc:** [`harness/HOOK-RULES.json`](../../harness/HOOK-RULES.json)
 
-## Cursor (`.cursor/hooks.json`)
+## Clone repo — dùng ngay (Cursor hoặc Claude Code)
 
-| Event | Hook id | Mô tả |
-|-------|---------|--------|
-| `pre_edit` | `owned_paths` | `docs/`, `handoff/`, `tracking/`, `KG`, `agents/` — **không** `scripts/` |
-| `pre_shell` | `workflow_allowed_next`, `evidence_schema`, `transition_gate`, `discipline_blockers` | Khi `harness.py … complete` |
-| `pre_spawn` | `spawn_active`, `dev_agent_spawn`, `spawn_stage` | Trước sub-agent |
-| `post_agent` | `return_schema`, `discipline_kg_return` | Khi `spawn.active` — JSON RETURN + kg_appended |
+Hook **đã cấu hình sẵn** trong repo. Không cần sync, không cần chạy script phụ.
 
-`failClosed: true` — vi phạm → **HARNESS — KHÔNG ĐƯỢC PHÉP**.
+| IDE | File cấu hình | Ghi chú |
+|-----|----------------|---------|
+| **Cursor** | [`.cursor/hooks.json`](../../.cursor/hooks.json) | Tự load khi mở project |
+| **Claude Code** | [`.claude/settings.local.json`](../../.claude/settings.local.json) → `hooks` | Ưu tiên cao hơn `~/.claude` — commit trong repo |
 
-## Discipline + KG
+## Triggers (tự chạy qua IDE)
 
-- **`discipline_blockers`** — đọc `knowledge-base/shared.knowledge-graph.yaml` → `discipline.blockers`; chặn `harness complete` nếu còn blocker.
-- **`discipline_kg_return`** — sub-agent có `files_changed` / `completed` thì phải có `kg_appended` hoặc `deferred[].tracked_in`.
-- **`spawn_stage`** — `STATE.stage` phải thuộc `spawn.allowed_stages`.
+| Trigger | Cursor | Claude Code |
+|---------|--------|-------------|
+| `session_start` | `sessionStart` | `SessionStart` (async) |
+| `pre_write_check` | Write/Edit | Write/Edit/… |
+| `pre_state_transition` | Shell | Bash |
+| `pre_task_check` | Task | Task/Agent + SubagentStart |
+| `post_task_log` | stop | Stop + SubagentStop |
 
-Rule đầy đủ: [`.cursor/rules/harness-agent-discipline.mdc`](../../.cursor/rules/harness-agent-discipline.mdc).
+`post_state_transition` / `on_change_detected` chạy từ `workflow_engine.py` và `post_task_log` (CLI + IDE).
 
-## Chạy tay
+## 12 câu checklist (`task_check.py`)
+
+feature · feature_stage · agent_assigned · boundary_resolve · owned_paths · task_in_stage · kg_completed · kg_in_progress · blockers · decisions · do_not_repeat · why_linked
+
+## Sửa hook (maintainer)
+
+Khi đổi trigger/event, cập nhật [`.cursor/hooks.json`](../../.cursor/hooks.json) và [`.claude/settings.local.json`](../../.claude/settings.local.json) cho khớp logic.
+
+## Debug (tùy chọn — không phải workflow người dùng)
+
+`run_hook.py` chỉ để dev test từng hook id cũ (`owned_paths`, `discipline_blockers`, …). Agent/end-user **không** cần chạy.
+
+Ghi KG sau task (agent chạy khi cần):
 
 ```bash
-py scripts/hooks/run_hook.py discipline_blockers
-py scripts/hooks/run_hook.py return_schema --payload "{\"body\":{\"completed\":[],\"deferred\":[],\"needs_review\":[],\"files_changed\":[\"a\"],\"build\":\"pass\",\"lint\":\"pass\",\"test\":\"pass\"}}"
-py scripts/hooks/run_hook.py owned_paths --payload "{\"path\":\"docs/x.md\"}"
+py scripts/knowledge_writer.py in-progress knowledge-base/shared.knowledge-graph.yaml "FEAT-001:AC-1"
+py scripts/knowledge_writer.py completed knowledge-base/shared.knowledge-graph.yaml "FEAT-001:AC-1"
 ```
 
-CLI `py scripts/harness.py <cmd> complete` cũng gọi `discipline_blockers` trong `workflow_engine` (không phụ thuộc IDE).
+Rule: [`.cursor/rules/harness-agent-discipline.mdc`](../../.cursor/rules/harness-agent-discipline.mdc)

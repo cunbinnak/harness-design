@@ -25,7 +25,7 @@ CORE = [
     "test-plan",
     "test-execute",
 ]
-EXTENDED = ["apply-cr", "register-boundary", "fix-bugs", "retest", "release", "end-wave"]
+EXTENDED = ["apply-cr", "register-boundary", "fix-bugs", "retest", "release", "end-wave", "done-wave"]
 ALL = CORE + EXTENDED
 
 

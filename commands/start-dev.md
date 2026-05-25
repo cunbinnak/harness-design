@@ -2,6 +2,8 @@
 
 Spawn **dev boundary agent** (`{boundary}-agent.md`) đã tạo lúc intake bước 4.
 
+**Slash:** `/start-dev <boundary_id>` (vd. `order`, `fe-web`)
+
 **Agent:** `agents/{boundary}-agent.md`
 
 ```bash

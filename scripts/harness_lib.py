@@ -17,7 +17,10 @@ except ImportError:
 WAVE_ID_RE = re.compile(r"^wave-[0-9]{3}$")
 FEAT_RE = re.compile(r"^FEAT-[A-Z0-9-]+$")
 ORCHESTRATOR_BOUNDARIES = frozenset({"reviewer"})
-KINDS = frozenset({"backend", "bff", "web", "mobile", "reviewer"})
+KINDS = frozenset({"backend", "bff", "web", "mobile", "fe", "reviewer"})
+
+DEV_COMMANDS = frozenset({"start-dev", "fix-bugs", "review-dev"})
+DEV_AGENT_PREFIX = {"start-dev": "", "fix-bugs": "fix-", "review-dev": "review-"}
 
 STAGE_DOC_GLOBS: dict[str, list[str]] = {
     "REQUIREMENT_INTAKE": ["docs/architecture/PROJECT.md", "docs/architecture/feat/**"],
@@ -26,9 +29,10 @@ STAGE_DOC_GLOBS: dict[str, list[str]] = {
     "IMPLEMENTATION_PLAN": ["docs/plans/**", "docs/architecture/**"],
     "IMPLEMENTATION": ["docs/architecture/**", "docs/plans/**"],
     "SELF_REVIEW": [],
-    "SPECIALIST_TESTING": ["tracking/test-case-registry/**"],
-    "BUG_LOGGING": ["tracking/bugs/**"],
-    "FIX_MANUAL_BUGS": ["tracking/bugs/**"],
+    "SPECIALIST_TESTING": ["tracking/waves/*/test-cases.md"],
+    "BUG_LOGGING": ["tracking/waves/*/bugs/**"],
+    "FIX_MANUAL_BUGS": ["tracking/waves/*/bugs/**"],
+    "MANUAL_TEST": ["tracking/waves/*/manual-test-log.md", "tracking/waves/*/bugs/**"],
     "RELEASE_CANDIDATE": ["docs/plans/**"],
 }
 
@@ -151,3 +155,75 @@ def copy_handoff_template(wave_id: str) -> Path:
         text = text.replace("{wave-id}", wave_id)
         dest.write_text(text, encoding="utf-8")
     return dest
+
+
+# ---- agent_roles registry (central doc-scope) ---------------------------
+
+def discipline_path() -> Path:
+    return repo_root() / "harness" / "AGENT-DISCIPLINE.json"
+
+
+def load_agent_roles() -> dict[str, Any]:
+    """Load agent_roles section from AGENT-DISCIPLINE.json."""
+    data = load_json(discipline_path())
+    return data.get("agent_roles") or {}
+
+
+def resolve_role_docs(
+    role_key: str,
+    *,
+    boundary: str | None = None,
+    wave: str | None = None,
+    direction: str = "reads",
+) -> list[str]:
+    """Expand role registry entry into concrete glob list with placeholders filled.
+
+    direction: 'reads' (default) or 'writes'.
+    Unknown placeholders are left as-is.
+    """
+    roles = load_agent_roles()
+    role = roles.get(role_key)
+    if not isinstance(role, dict):
+        return []
+    patterns = role.get(direction) or []
+    out: list[str] = []
+    for pat in patterns:
+        p = pat
+        if boundary is not None:
+            p = p.replace("{boundary}", boundary)
+        if wave is not None:
+            p = p.replace("{wave}", wave)
+        out.append(p)
+    return out
+
+
+def resolve_role_docs_expanded(
+    role_key: str,
+    *,
+    boundary: str | None = None,
+    wave: str | None = None,
+) -> list[str]:
+    """Like resolve_role_docs but expands ** globs to actual files via expand_globs."""
+    patterns = resolve_role_docs(role_key, boundary=boundary, wave=wave, direction="reads")
+    if not patterns:
+        return []
+    return expand_globs(repo_root(), patterns)
+
+
+def agent_role_from_frontmatter(agent_md_path: Path) -> str | None:
+    """Read 'role:' field from agent .md YAML frontmatter."""
+    if not agent_md_path.is_file():
+        return None
+    text = agent_md_path.read_text(encoding="utf-8")
+    if not text.startswith("---"):
+        return None
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return None
+    fm = parts[1]
+    for line in fm.splitlines():
+        line = line.strip()
+        if line.startswith("role:"):
+            return line.split(":", 1)[1].strip()
+    return None
+

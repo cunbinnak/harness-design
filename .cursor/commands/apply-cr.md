@@ -7,7 +7,7 @@ argument-hint: "--cr CR-001"
 
 **Phân tích Change Request** và chuẩn bị **intake amendment**. File CR tồn tại = coi như **đã duyệt** (không bước approve riêng).
 
-Orchestrator: [apply-cr-agent.md](../agents/apply-cr-agent.md) · Pipeline: [CR-INTAKE-PIPELINE.json](../harness/CR-INTAKE-PIPELINE.json)
+Orchestrator: [apply-cr-agent.md](../agents/apply-cr-agent.md) · Pipeline: [PIPELINES.json](../harness/PIPELINES.json) (entry `apply-cr`)
 
 ## Khi nào
 

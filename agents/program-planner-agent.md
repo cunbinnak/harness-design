@@ -1,5 +1,6 @@
 ---
 agent_id: program-planner
+role: intake:program-planner
 pipeline_step: 4
 command: intake-requirement
 kind: intake-specialist

@@ -11,12 +11,16 @@ Orchestrator: [intake-orchestrator-agent.md](../agents/intake-orchestrator-agent
 
 ## Chạy
 
+Mỗi `--step N` **cập nhật `harness/STATE.json`** (`stage` + `workflow.pipeline.active_step`) trước khi in prompt — resume sau này đọc STATE hoặc `py scripts/intake_pipeline.py show`.
+
 ```bash
 py scripts/build_command_prompt.py intake-requirement --step 1 --input "..."
 py scripts/build_command_prompt.py intake-requirement --step 2
 py scripts/build_command_prompt.py intake-requirement --step 3
 py scripts/build_command_prompt.py intake-requirement --step 4
-py scripts/materialize_boundary_agents.py --boundaries order,product --wave wave-001
+py scripts/materialize_ux_documents.py --from-roster docs/plans/project/agent-roster.md
+py scripts/materialize_boundary_agents.py --from-roster docs/plans/project/agent-roster.md
+py scripts/materialize_knowledge_graphs.py --from-roster docs/plans/project/agent-roster.md
 py scripts/harness.py intake-requirement complete
 ```
 

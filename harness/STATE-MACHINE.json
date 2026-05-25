@@ -51,22 +51,102 @@
     "DONE": {
       "description": "Hoàn tất wave/feature",
       "skill": null
+    },
+    "MANUAL_TEST": {
+      "description": "Wave shipped, manual UAT in progress (infra still up)",
+      "skill": "specialist-testing"
     }
   },
   "transitions": [
-    { "from": "BOOTSTRAP", "to": "REQUIREMENT_INTAKE", "trigger": "start_wave" },
-    { "from": "REQUIREMENT_INTAKE", "to": "BUSINESS_ANALYSIS", "trigger": "advance" },
-    { "from": "BUSINESS_ANALYSIS", "to": "TECHNICAL_DESIGN", "trigger": "advance" },
-    { "from": "TECHNICAL_DESIGN", "to": "IMPLEMENTATION_PLAN", "trigger": "advance" },
-    { "from": "IMPLEMENTATION_PLAN", "to": "IMPLEMENTATION", "trigger": "advance" },
-    { "from": "IMPLEMENTATION", "to": "SELF_REVIEW", "trigger": "advance" },
-    { "from": "SELF_REVIEW", "to": "SPECIALIST_TESTING", "trigger": "advance" },
-    { "from": "SELF_REVIEW", "to": "IMPLEMENTATION", "trigger": "review_fail" },
-    { "from": "SPECIALIST_TESTING", "to": "RELEASE_CANDIDATE", "trigger": "tests_pass" },
-    { "from": "SPECIALIST_TESTING", "to": "BUG_LOGGING", "trigger": "tests_fail" },
-    { "from": "BUG_LOGGING", "to": "FIX_MANUAL_BUGS", "trigger": "advance" },
-    { "from": "FIX_MANUAL_BUGS", "to": "SPECIALIST_TESTING", "trigger": "retest" },
-    { "from": "RELEASE_CANDIDATE", "to": "DONE", "trigger": "release_ok" },
-    { "from": "DONE", "to": "BOOTSTRAP", "trigger": "reset_wave" }
+    {
+      "from": "BOOTSTRAP",
+      "to": "REQUIREMENT_INTAKE",
+      "trigger": "start_wave"
+    },
+    {
+      "from": "REQUIREMENT_INTAKE",
+      "to": "BUSINESS_ANALYSIS",
+      "trigger": "advance"
+    },
+    {
+      "from": "BUSINESS_ANALYSIS",
+      "to": "TECHNICAL_DESIGN",
+      "trigger": "advance"
+    },
+    {
+      "from": "TECHNICAL_DESIGN",
+      "to": "IMPLEMENTATION_PLAN",
+      "trigger": "advance"
+    },
+    {
+      "from": "IMPLEMENTATION_PLAN",
+      "to": "IMPLEMENTATION",
+      "trigger": "advance"
+    },
+    {
+      "from": "IMPLEMENTATION",
+      "to": "SELF_REVIEW",
+      "trigger": "advance"
+    },
+    {
+      "from": "SELF_REVIEW",
+      "to": "SPECIALIST_TESTING",
+      "trigger": "advance"
+    },
+    {
+      "from": "SELF_REVIEW",
+      "to": "IMPLEMENTATION",
+      "trigger": "review_fail"
+    },
+    {
+      "from": "SPECIALIST_TESTING",
+      "to": "RELEASE_CANDIDATE",
+      "trigger": "tests_pass"
+    },
+    {
+      "from": "SPECIALIST_TESTING",
+      "to": "BUG_LOGGING",
+      "trigger": "tests_fail"
+    },
+    {
+      "from": "BUG_LOGGING",
+      "to": "FIX_MANUAL_BUGS",
+      "trigger": "advance"
+    },
+    {
+      "from": "FIX_MANUAL_BUGS",
+      "to": "SPECIALIST_TESTING",
+      "trigger": "retest"
+    },
+    {
+      "from": "RELEASE_CANDIDATE",
+      "to": "DONE",
+      "trigger": "release_ok"
+    },
+    {
+      "from": "DONE",
+      "to": "BOOTSTRAP",
+      "trigger": "reset_wave"
+    },
+    {
+      "from": "DONE",
+      "to": "MANUAL_TEST",
+      "trigger": "end_wave_ok"
+    },
+    {
+      "from": "MANUAL_TEST",
+      "to": "BUG_LOGGING",
+      "trigger": "bug_logged"
+    },
+    {
+      "from": "MANUAL_TEST",
+      "to": "BOOTSTRAP",
+      "trigger": "reset_wave"
+    },
+    {
+      "from": "FIX_MANUAL_BUGS",
+      "to": "MANUAL_TEST",
+      "trigger": "retest_manual"
+    }
   ]
 }
