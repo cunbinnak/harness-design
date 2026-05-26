@@ -123,6 +123,75 @@ def append_completed(
     save_kg(graph_path, data)
 
 
+def append_entity(graph_path: str, payload: dict[str, Any], *, updated_by: str = "script") -> None:
+    """Add entity to domain.entities. Payload: {name, description?, attributes?, owner_boundary?}"""
+    data = load_kg(graph_path)
+    domain = data.setdefault("domain", {"entities": [], "relationships": []})
+    entities = domain.setdefault("entities", [])
+    name = payload.get("name")
+    if not name:
+        raise ValueError("entity requires 'name' field")
+    if any(isinstance(e, dict) and e.get("name") == name for e in entities):
+        return
+    entities.append({
+        "name": name,
+        "description": payload.get("description", ""),
+        "attributes": payload.get("attributes", []),
+        "owner_boundary": payload.get("owner_boundary"),
+    })
+    data.setdefault("meta", {})["updated_by"] = updated_by
+    save_kg(graph_path, data)
+
+
+def append_relationship(graph_path: str, payload: dict[str, Any], *, updated_by: str = "script") -> None:
+    """Add relationship. Payload: {from, to, kind (1-1|1-N|N-N|references), description?}"""
+    data = load_kg(graph_path)
+    domain = data.setdefault("domain", {"entities": [], "relationships": []})
+    rels = domain.setdefault("relationships", [])
+    fr, to, kind = payload.get("from"), payload.get("to"), payload.get("kind")
+    if not (fr and to and kind):
+        raise ValueError("relationship requires from, to, kind fields")
+    key = (fr, to, kind)
+    if any(isinstance(r, dict) and (r.get("from"), r.get("to"), r.get("kind")) == key for r in rels):
+        return
+    rels.append({"from": fr, "to": to, "kind": kind, "description": payload.get("description", "")})
+    data.setdefault("meta", {})["updated_by"] = updated_by
+    save_kg(graph_path, data)
+
+
+def append_backlog(graph_path: str, task_id: str, description: str = "", *, updated_by: str = "script") -> None:
+    """Add task to implementation.backlog (chưa start)."""
+    data = load_kg(graph_path)
+    impl = data.setdefault("implementation", {})
+    items = impl.setdefault("backlog", [])
+    if any((b.get("id") if isinstance(b, dict) else b) == task_id for b in items):
+        return
+    items.append({"id": task_id, "description": description} if description else task_id)
+    data.setdefault("meta", {})["updated_by"] = updated_by
+    save_kg(graph_path, data)
+
+
+def append_integration(graph_path: str, direction: str, payload: dict[str, Any], *, updated_by: str = "script") -> None:
+    """direction: depends_on | exposes. Payload: {boundary, contract, kind?}"""
+    data = load_kg(graph_path)
+    integ = data.setdefault("integrations", {"depends_on": [], "exposes": []})
+    if direction not in ("depends_on", "exposes"):
+        raise ValueError("direction must be depends_on or exposes")
+    items = integ.setdefault(direction, [])
+    boundary = payload.get("boundary")
+    if not boundary:
+        raise ValueError("integration requires 'boundary' field")
+    if any(isinstance(i, dict) and i.get("boundary") == boundary for i in items):
+        return
+    items.append({
+        "boundary": boundary,
+        "contract": payload.get("contract", ""),
+        "kind": payload.get("kind", "http"),
+    })
+    data.setdefault("meta", {})["updated_by"] = updated_by
+    save_kg(graph_path, data)
+
+
 def main() -> None:
     if len(sys.argv) < 4:
         print(
@@ -132,7 +201,11 @@ def main() -> None:
             "  knowledge_writer.py do-not-repeat <graph.yaml> '<text>'\n"
             "  knowledge_writer.py blocker <graph.yaml> '<text>'\n"
             "  knowledge_writer.py in-progress <graph.yaml> '<task_id>'\n"
-            "  knowledge_writer.py completed <graph.yaml> '<task_id>'",
+            "  knowledge_writer.py completed <graph.yaml> '<task_id>'\n"
+            "  knowledge_writer.py backlog <graph.yaml> '<task_id>' ['<description>']\n"
+            "  knowledge_writer.py entity <graph.yaml> '<json>'\n"
+            "  knowledge_writer.py relationship <graph.yaml> '<json>'\n"
+            "  knowledge_writer.py integration <graph.yaml> depends_on|exposes '<json>'",
             file=sys.stderr,
         )
         sys.exit(64)
@@ -164,6 +237,24 @@ def main() -> None:
         elif cmd == "completed":
             append_completed(path, arg)
             print(f"completed: {arg}")
+        elif cmd == "backlog":
+            desc = sys.argv[4] if len(sys.argv) > 4 else ""
+            append_backlog(path, arg, desc)
+            print(f"backlog: {arg}")
+        elif cmd == "entity":
+            payload = json.loads(arg)
+            append_entity(path, payload)
+            print(f"entity: {payload.get('name')}")
+        elif cmd == "relationship":
+            payload = json.loads(arg)
+            append_relationship(path, payload)
+            print(f"relationship: {payload.get('from')} -> {payload.get('to')}")
+        elif cmd == "integration":
+            direction = arg
+            json_str = sys.argv[4] if len(sys.argv) > 4 else "{}"
+            payload = json.loads(json_str)
+            append_integration(path, direction, payload)
+            print(f"integration {direction}: {payload.get('boundary')}")
         else:
             print(f"unknown cmd: {cmd}", file=sys.stderr)
             sys.exit(64)

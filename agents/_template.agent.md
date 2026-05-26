@@ -60,13 +60,50 @@ Bạn là **{{identity_one_liner}}**.
 
 3. **Owned paths:** {{owned_paths_hint}} — chỉ sửa trong đây.
 
-4. **Ghi KG sau mỗi task** (hook `post_task_log` chặn nếu thiếu `kg_appended`):
+4. **Ghi KG đầy đủ sau mỗi task** (hook `post_task_log` chặn nếu thiếu `kg_appended`):
+
+   **Task lifecycle** (BẮT BUỘC mỗi FEAT/AC):
    ```bash
    py scripts/knowledge_writer.py in-progress   knowledge-base/{{boundary_id}}.knowledge-graph.yaml "FEAT-001:AC-1"
    py scripts/knowledge_writer.py completed     knowledge-base/{{boundary_id}}.knowledge-graph.yaml "FEAT-001:AC-1"
-   py scripts/knowledge_writer.py decision      knowledge-base/{{boundary_id}}.knowledge-graph.yaml '{"context":"...","decision":"...","rationale":"..."}'
-   py scripts/knowledge_writer.py do-not-repeat knowledge-base/{{boundary_id}}.knowledge-graph.yaml "lỗi cụ thể đã gặp"
    ```
+
+   **Domain model** (BẮT BUỘC khi tạo/sửa entity hoặc relationship):
+   ```bash
+   py scripts/knowledge_writer.py entity       knowledge-base/{{boundary_id}}.knowledge-graph.yaml \
+     '{"name":"Order","description":"Customer order","attributes":["id","customer_id","status"],"owner_boundary":"{{boundary_id}}"}'
+
+   py scripts/knowledge_writer.py relationship knowledge-base/{{boundary_id}}.knowledge-graph.yaml \
+     '{"from":"Order","to":"Customer","kind":"N-1","description":"order belongs to customer"}'
+   ```
+
+   **Integrations** (BẮT BUỘC khi gọi cross-boundary):
+   ```bash
+   # Outbound: boundary này gọi boundary khác
+   py scripts/knowledge_writer.py integration knowledge-base/{{boundary_id}}.knowledge-graph.yaml depends_on \
+     '{"boundary":"auth","contract":"docs/architecture/api/api-auth.md","kind":"http"}'
+
+   # Inbound: boundary này được boundary khác gọi
+   py scripts/knowledge_writer.py integration knowledge-base/{{boundary_id}}.knowledge-graph.yaml exposes \
+     '{"boundary":"fe-admin","contract":"docs/architecture/api/api-{{boundary_id}}.md","kind":"http"}'
+   ```
+
+   **Decisions + Learnings** (KHI có quyết định đáng nhớ hoặc gặp gotcha):
+   ```bash
+   py scripts/knowledge_writer.py decision      knowledge-base/{{boundary_id}}.knowledge-graph.yaml \
+     '{"context":"Validation strategy","decision":"Pydantic at handler","rationale":"Catch error sớm","alternatives_rejected":["domain-level validate"]}'
+
+   py scripts/knowledge_writer.py do-not-repeat knowledge-base/{{boundary_id}}.knowledge-graph.yaml "Lỗi cụ thể đã gặp + cách tránh"
+
+   py scripts/knowledge_writer.py learning      knowledge-base/{{boundary_id}}.knowledge-graph.yaml pattern "Pattern đã chứng minh"
+   ```
+
+   **Blockers** (KHI có vấn đề chặn không tự giải quyết được):
+   ```bash
+   py scripts/knowledge_writer.py blocker knowledge-base/{{boundary_id}}.knowledge-graph.yaml "Chờ @owner: chi tiết X"
+   ```
+
+   **Quy tắc:** mỗi `files_changed` phải có ít nhất 1 KG write tương ứng. RETURN `kg_appended` list rõ từng entry.
 
 ### Không được
 
