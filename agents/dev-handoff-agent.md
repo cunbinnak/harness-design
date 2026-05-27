@@ -57,15 +57,44 @@ cd -
 
 Coverage thấp → DỪNG, spawn fix-{boundary}-agent → review-dev → quay lại.
 
-### Bước 2 — Build infra (BẮT BUỘC, không skip)
+### Bước 2 — Build infra (BẮT BUỘC, không skip, CÓ PROOF)
+
+#### 2.1 Verify compose file ở ĐÚNG vị trí
+
+```bash
+WAVE_ID="{wave-id}"
+COMPOSE="docs/architecture/infra/docker-compose.yml"
+
+# COMPOSE PHẢI ở đúng path duy nhất này — KHÔNG cho phép file compose khác
+[ -f "$COMPOSE" ] || { echo "FAIL: $COMPOSE missing — báo apply-cr / intake amendment"; exit 1; }
+
+# Tìm compose file SAI vị trí (BE/FE dev tạo nhầm)
+WRONG_COMPOSE=$(find . -name "docker-compose*.yml" -not -path "./docs/architecture/infra/*" -not -path "./node_modules/*" 2>/dev/null)
+if [ -n "$WRONG_COMPOSE" ]; then
+    echo "FAIL: compose file ở sai vị trí (vi phạm BE-11/FE-11):"
+    echo "$WRONG_COMPOSE"
+    echo "→ Move entries vào $COMPOSE, xóa file sai"
+    exit 1
+fi
+
+# Verify MỌI boundary_in_flight có entry trong compose
+for b in $(py scripts/harness.py state | python -c "import sys,json; print(' '.join(json.load(sys.stdin).get('boundaries_in_flight',[])))"); do
+    grep -qE "^  $b:" "$COMPOSE" || { echo "FAIL: boundary '$b' thiếu entry trong $COMPOSE"; exit 1; }
+done
+echo "compose verified: $COMPOSE"
+```
+
+#### 2.2 Build + start (FORCE rebuild)
 
 ```bash
 cd docs/architecture/infra
 [ -f .env ] || cp .env.example .env
 
-docker-compose up --build -d        # force rebuild → verify Dockerfile đúng
+# BUILD - capture log để chứng minh đã chạy
+mkdir -p ../../../tracking/waves/$WAVE_ID
+docker-compose up --build -d 2>&1 | tee ../../../tracking/waves/$WAVE_ID/docker-build.log
 
-# Wait healthy (max 120s)
+# Wait healthy max 120s
 for i in $(seq 1 24); do
     sleep 5
     UNHEALTHY=$(docker-compose ps --format json | python -c "
@@ -76,11 +105,36 @@ print(','.join(bad) if bad else '')")
     [ -z "$UNHEALTHY" ] && break
     echo "Waiting (${i}/24): $UNHEALTHY"
 done
-
-docker-compose ps     # All Up + healthy
+cd -
 ```
 
-Có service unhealthy/restarting → DỪNG, debug Dockerfile / depends_on / env.
+#### 2.3 PROOF artifact (BẮT BUỘC)
+
+```bash
+# Capture docker-compose ps full output → proof
+docker-compose -f docs/architecture/infra/docker-compose.yml ps --format json     > tracking/waves/$WAVE_ID/docker-ps.json
+
+docker-compose -f docs/architecture/infra/docker-compose.yml ps     > tracking/waves/$WAVE_ID/docker-ps.txt
+
+# Verify all services Up + healthy
+BAD=$(cat tracking/waves/$WAVE_ID/docker-ps.json | python -c "
+import sys, json
+data = [json.loads(l) for l in sys.stdin if l.strip()]
+bad = [(s.get('Service'), s.get('State'), s.get('Health','')) for s in data if s.get('State') != 'running' or s.get('Health','') == 'unhealthy']
+if bad:
+    for b in bad: print(b)
+    sys.exit(1)
+print('all healthy')")
+
+[ "$BAD" = "all healthy" ] && echo "INFRA UP OK" || { echo "INFRA FAIL: $BAD"; exit 1; }
+```
+
+**Artifacts BẮT BUỘC sau Bước 2:**
+- `tracking/waves/{wave-id}/docker-build.log` — output `docker-compose up --build`
+- `tracking/waves/{wave-id}/docker-ps.json` — service status JSON (cross-ref)
+- `tracking/waves/{wave-id}/docker-ps.txt` — human readable
+
+Có service unhealthy/restarting → DỪNG, debug Dockerfile / depends_on / env, KHÔNG complete.
 
 ### Bước 3 — Smoke FUNCTIONAL (không chỉ /health)
 

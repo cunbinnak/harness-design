@@ -106,6 +106,8 @@ LAYER_BLOCKS = {
 | BE-8 | Outbound call có timeout + retry policy | HLD §5 |
 | BE-9 | Migration forward-only, nullable trước backfill trước enforce | data-model |
 | BE-10 | Log structured JSON (request_id, user_id, latency) | PROJECT NFR |
+| BE-11 | KHÔNG tạo `docker-compose.yml` mới — entry đã có tại `docs/architecture/infra/docker-compose.yml` (do architect chốt). Chỉ tạo `services/{{boundary_id}}/Dockerfile` + `.dockerignore` | ref-back-end-config |
+| BE-12 | KHÔNG sửa `docs/architecture/infra/docker-compose.yml` — báo `apply-cr` nếu cần đổi entry (port, env, depends_on) | discipline |
 
 **Coverage ngưỡng:** ≥ 80% (pytest/junit/jest BE).
 
@@ -187,6 +189,8 @@ py scripts/build_command_prompt.py fix-bugs --boundary {{boundary_id}}
 | FE-8 | Token storage: httpOnly cookie hoặc memory (không localStorage cho JWT) | ADR-003 |
 | FE-9 | Error toast/dialog format nhất quán Design System | ADR-004 |
 | FE-10 | Lazy load route + code split cho bundle nặng | NFR performance |
+| FE-11 | KHÔNG tạo `docker-compose.yml` mới — entry đã có tại `docs/architecture/infra/docker-compose.yml` (do architect chốt). Chỉ tạo `services/{{boundary_id}}/Dockerfile` (multi-stage build → nginx serve) | ref-front-end-config |
+| FE-12 | KHÔNG sửa `docs/architecture/infra/docker-compose.yml` — báo `apply-cr` nếu cần đổi entry (port, env, depends_on) | discipline |
 
 **Coverage ngưỡng:** ≥ 60% (jest/vitest/cypress).
 

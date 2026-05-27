@@ -289,6 +289,16 @@
         {
           "type": "docker_compose_ready",
           "min_services": 1
+        },
+        {
+          "type": "artifact_glob",
+          "pattern": "tracking/waves/*/docker-ps.json",
+          "min": 1
+        },
+        {
+          "type": "artifact_glob",
+          "pattern": "tracking/waves/*/docker-build.log",
+          "min": 1
         }
       ],
       "on_fail_next": [
