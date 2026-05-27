@@ -334,6 +334,11 @@
             "pass",
             "fail"
           ]
+        },
+        {
+          "type": "artifact_glob",
+          "pattern": "tracking/waves/*/test-logs/TC-*.log",
+          "min": 1
         }
       ],
       "branches": {
@@ -365,6 +370,11 @@
         },
         {
           "type": "dev_boundary_resolved"
+        },
+        {
+          "type": "artifact_glob",
+          "pattern": "tracking/waves/*/bugs/verification/*.log",
+          "min": 1
         }
       ],
       "activate_dev_boundary": true,

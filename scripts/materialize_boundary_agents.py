@@ -47,7 +47,7 @@ ROLE_META = {
         "skill_primary": "implementation",
         "identity": "kỹ sư sửa bug boundary `{bid}`",
         "display": "fix-{bid} Bug Fix Agent",
-        "mission": "Sửa lỗi trong owned_paths; ghi `tracking/waves/{wave-id}/bugs/`.",
+        "mission": "REPRODUCE bug (re-run failing TC) → FIX trong owned_paths → VERIFY (re-run TC + regression). Update bug ticket reproduced_at/fixed_at + verification log.",
         "forbidden": "- Feature mới ngoài bug scope.\n- test-execute / release.",
     },
     "review": {
@@ -275,7 +275,7 @@ LAYER_META = {
                 "skill_primary": "frontend-implementation",
                 "identity": "kỹ sư sửa bug FE boundary `{bid}`",
                 "display": "fix-{bid} Frontend Bug Fix Agent",
-                "mission": "Sửa lỗi UI/FE trong owned_paths; ghi `tracking/waves/{wave-id}/bugs/`.",
+                "mission": "REPRODUCE UI bug (re-run failing E2E TC + visual check) → FIX trong owned_paths → VERIFY (re-run + visual regression). Update bug ticket cycle fields.",
             },
             "review": {
                 **ROLE_META["review"],
