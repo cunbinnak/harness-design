@@ -333,10 +333,62 @@ def waves_yaml_block(waves: list[str], scope: str) -> str:
     return "\n".join(lines)
 
 
-def waves_table_md(waves: list[str], scope: str, mission: str) -> str:
-    hdr = "| Wave | Phạm vi | Vai trò boundary |\n|------|---------|------------------|\n"
-    rows = "\n".join(f"| `{w}` | {scope} | {mission} |" for w in waves)
-    return hdr + rows
+
+def parse_wave_feats_for_boundary(wave_md_path, boundary_id):
+    """Parse wave.md §1 FEAT table, return rows where boundary column contains boundary_id.
+
+    Returns list of dicts: [{id, goal, priority}, ...]
+    """
+    if not wave_md_path.is_file():
+        return []
+    text = wave_md_path.read_text(encoding="utf-8")
+    feats = []
+    in_feat_table = False
+    for line in text.splitlines():
+        ls = line.strip()
+        # Detect section start: "### FEAT trong wave" hoặc heading có FEAT
+        if "FEAT trong wave" in ls or (ls.startswith("###") and "FEAT" in ls):
+            in_feat_table = True
+            continue
+        if in_feat_table:
+            # End section: heading khác hoặc dòng trống sau table
+            if ls.startswith("##") or ls.startswith("###"):
+                in_feat_table = False
+                continue
+            if ls.startswith("|") and "FEAT-" in ls:
+                cols = [c.strip() for c in ls.split("|") if c.strip()]
+                if len(cols) >= 3:
+                    feat_id = cols[0]
+                    goal = cols[1] if len(cols) > 1 else ""
+                    boundaries = cols[2] if len(cols) > 2 else ""
+                    priority = cols[3] if len(cols) > 3 else "Must"
+                    # Boundary match: split by comma/whitespace
+                    blist = [b.strip() for b in boundaries.replace(";", ",").split(",")]
+                    if boundary_id in blist or boundary_id in boundaries:
+                        feats.append({"id": feat_id, "goal": goal, "priority": priority})
+    return feats
+
+
+def waves_table_md(waves: list[str], scope: str, mission: str, boundary_id: str = "") -> str:
+    """Render wave participation table với FEAT cụ thể per wave (parse từ wave.md §1)."""
+    hdr = "| Wave | FEAT cho boundary | Scope cụ thể | Wave plan file |\n|------|------------------|------------|----------------|\n"
+    rows_list = []
+    root = repo_root()
+    for w in waves:
+        wave_md = root / "docs/plans/waves" / w / "wave.md"
+        feats = parse_wave_feats_for_boundary(wave_md, boundary_id) if boundary_id else []
+        if feats:
+            feat_str = ", ".join(f["id"] for f in feats)
+            # Concat goals, truncate
+            goal_str = "; ".join(f["goal"][:60] for f in feats if f["goal"])[:200]
+            if not goal_str:
+                goal_str = scope
+        else:
+            feat_str = "(see wave.md)"
+            goal_str = scope
+        wave_link = f"`docs/plans/waves/{w}/wave.md`"
+        rows_list.append(f"| `{w}` | {feat_str} | {goal_str} | {wave_link} |")
+    return hdr + "\n".join(rows_list)
 
 
 def waves_list_human(waves: list[str]) -> str:
@@ -442,7 +494,7 @@ def _fill(
         .replace("{{spawn_stage}}", meta["spawn_stage"])
         .replace("# {{waves_yaml}}", waves_yaml_block(wlist, wave_scope))
         .replace("{{waves_list_human}}", waves_list_human(wlist))
-        .replace("{{waves_table_md}}", waves_table_md(wlist, wave_scope, mission))
+        .replace("{{waves_table_md}}", waves_table_md(wlist, wave_scope, mission, row.boundary_id))
         .replace("{{role_mission}}", mission)
         .replace("{{identity_one_liner}}", meta["identity"].format(bid=row.boundary_id, serves=serves))
         .replace("{{agent_display_name}}", meta["display"].format(bid=row.boundary_id, serves=serves))

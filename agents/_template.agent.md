@@ -141,4 +141,10 @@ Bạn là **{{identity_one_liner}}**.
 
 {{waves_table_md}}
 
-> Chỉ spawn / implement khi wave đang mở (`STATE.wave.id`) nằm trong danh sách trên.
+**Quy tắc đọc wave plan:**
+- Bảng trên đã list FEAT cụ thể boundary `{{boundary_id}}` phải làm mỗi wave (parse từ `wave.md` §1).
+- Khi spawn cho wave hiện tại (`STATE.wave.id`), BẮT BUỘC đọc **đầy đủ** `docs/plans/waves/{{STATE.wave.id}}/wave.md`:
+  - §1 Plan: FEAT list + thứ tự + ràng buộc
+  - §2 Assignment: AC scope cụ thể giao cho boundary này (start-wave-agent điền)
+- Nếu cột "FEAT cho boundary" hiển thị `(see wave.md)` → wave plan chưa fill — báo orchestrator (chưa thể start-dev).
+- Chỉ implement FEAT trong wave đang mở; FEAT của wave khác KHÔNG được làm trước.
