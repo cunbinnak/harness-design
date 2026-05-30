@@ -24,6 +24,58 @@ Sub-agent `kind=backend` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
 8. **Test**: unit (domain/application) + integration (api + DB testcontainer); coverage ≥ **80%**.
 9. **KG**: append entity/event/decision vào `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` sau khi xong.
 
+## Entity (JPA — Java/Spring)
+1. **KHÔNG dùng `@Data` / `@EqualsAndHashCode` / `@ToString` (all-field) trên `@Entity`.** Lý do:
+   - `equals`/`hashCode` trên mọi field break khi entity nằm trong `Set`/`Map` (hashCode đổi sau persist) và gây StackOverflow ở quan hệ bidirectional.
+   - `toString` all-field trigger lazy-load oan và log lộ dữ liệu.
+2. **Dùng getter/setter tường minh** (hoặc `@Getter`/`@Setter` field-level riêng lẻ — KHÔNG `@Data`).
+3. **`equals`/`hashCode`**: dựa trên business/natural key ổn định (hoặc id sau persist + `@NaturalId`), KHÔNG dùng toàn bộ field.
+4. **`toString`**: chỉ field scalar (id, code…), KHÔNG include collection/association.
+5. Constructor: `protected` no-arg cho JPA + constructor có tham số để khởi tạo hợp lệ (giữ invariant).
+
+```java
+// Tránh
+@Entity @Data
+class Order { @Id Long id; @OneToMany List<OrderLine> lines; }
+
+// Nên
+@Entity
+@Getter @Setter
+class Order {
+    @Id @GeneratedValue Long id;
+    @Column(nullable = false) String code;
+    @OneToMany(mappedBy = "order") List<OrderLine> lines = new ArrayList<>();
+    protected Order() {}                       // JPA
+    public Order(String code) { this.code = code; }
+    @Override public boolean equals(Object o) { /* theo code (natural key) */ }
+    @Override public int hashCode() { return Objects.hash(code); }
+    @Override public String toString() { return "Order{id=%d, code=%s}".formatted(id, code); }
+}
+```
+
+## Interface + impl
+1. **Service & repository khai báo qua interface trước, impl riêng** — caller phụ thuộc abstraction, KHÔNG phụ thuộc impl cụ thể.
+2. **Port (repository/gateway interface)** đặt ở `domain/ports/`; **impl (adapter)** ở `infrastructure/` (DIP — domain không biết JPA/HTTP).
+3. **Application service**: interface (`OrderService`) + impl (`OrderServiceImpl`); controller inject interface.
+4. **Constructor injection** (`final` field) — KHÔNG `@Autowired` trên field/setter.
+5. Naming: `XxxService` đi với `XxxServiceImpl`; port `XxxRepository` (trong `domain/ports/`) đi với adapter `XxxRepositoryAdapter`/`JpaXxxRepository` (trong `infrastructure/`).
+
+```java
+// domain/ports/OrderRepository.java   (interface — domain định nghĩa)
+public interface OrderRepository { Optional<Order> findByCode(String code); Order save(Order o); }
+
+// infrastructure/JpaOrderRepository.java   (impl — adapter)
+@Repository
+class JpaOrderRepository implements OrderRepository { /* dùng Spring Data / EntityManager */ }
+
+// application/OrderServiceImpl.java   (constructor injection)
+@Service
+class OrderServiceImpl implements OrderService {
+    private final OrderRepository repo;
+    OrderServiceImpl(OrderRepository repo) { this.repo = repo; }   // KHÔNG @Autowired field
+}
+```
+
 ## Naming & package
 - **File**: theo stack — `PascalCase.java` (Java) / `kebab-case.ts` (Node) / `snake_case.py` (Python).
 - **Class**: `PascalCase` (`OrderService`). **Method**: `camelCase`/`snake_case` theo stack. **Constant**: `UPPER_SNAKE_CASE`.

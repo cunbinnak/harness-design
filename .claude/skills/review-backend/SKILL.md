@@ -26,10 +26,10 @@ git diff --name-only main...HEAD  # scope check
 8. **KG**: entity/event/decision đã append vào `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml`.
 
 ## Anti-patterns cần flag
-- ❌ Business rule trong `api/` controller (chỉ parse + delegate).
-- ❌ SQL/ORM trong `domain/` (chỉ trong `infrastructure/`).
-- ❌ Test chỉ assert "không throw" mà không verify giá trị.
-- ❌ `@Transactional` ở sai layer (nên ở `application/`).
+- Business rule trong `api/` controller (chỉ parse + delegate).
+- SQL/ORM trong `domain/` (chỉ trong `infrastructure/`).
+- Test chỉ assert "không throw" mà không verify giá trị.
+- `@Transactional` ở sai layer (nên ở `application/`).
 
 ## Output
 RETURN SCHEMA với `review_result: pass|fail`, `coverage_pct`, `checklist_summary{total,passed,failed,skipped_na}`, `needs_review[]` (file + concern), `fix_loops_triggered`.

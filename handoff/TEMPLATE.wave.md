@@ -21,7 +21,7 @@
 | **Features hoàn thành** | FEAT-XXX, FEAT-YYY (link [`docs/architecture/feat/`](../docs/architecture/feat/)) |
 | **Boundaries** | (list {prefix}-{boundary}) |
 | **Coverage per-kind** | BE {pct}% / BFF {pct}% / FE {pct}% (ngưỡng BE 80 / BFF 70 / FE 60) |
-| **Build status** | ✅ / ❌ |
+| **Build status** | pass / fail |
 
 ## 2. Service inventory (runtime)
 
@@ -93,13 +93,13 @@ Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
 
 - **Date:** {date}
 - **Released by:** dev team
-- **Manual test ready:** ✅
+- **Manual test ready:** yes
 - **Infra status:** Running (do NOT stop until done-wave)
 
 ### Wave Done (sau `done-wave`)
 
 - **Date:** {date}
-- **UAT result:** ✅ Approved by {stakeholder}
+- **UAT result:** Approved by {stakeholder}
 - **Bugs fixed during UAT:** BUG-XXX (hoặc "None")
 - **Infra:** Stopped (`docker-compose down`)
 - **Next wave:** wave-{N+1} (nếu có plan) / TBD

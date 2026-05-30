@@ -25,9 +25,9 @@ git diff --name-only main...HEAD
 7. **No secrets**; **Owned paths** ⊆ boundary; **KG** appended (ops + loaders + cache keys).
 
 ## Anti-patterns cần flag
-- ❌ Resolver `Promise.all` map gọi REST từng item thay vì DataLoader.
-- ❌ Trả nguyên error backend ra client (leak stack/internal).
-- ❌ Cache response chứa field theo role mà key không gồm role/user.
+- Resolver `Promise.all` map gọi REST từng item thay vì DataLoader.
+- Trả nguyên error backend ra client (leak stack/internal).
+- Cache response chứa field theo role mà key không gồm role/user.
 
 ## Output
 RETURN SCHEMA: `review_result`, `coverage_pct`, `checklist_summary`, `needs_review[]`, `fix_loops_triggered`.

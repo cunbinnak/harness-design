@@ -24,11 +24,11 @@ BFF = GraphQL gateway: aggregate nhiều backend REST (`api-{backend}.md`) thàn
 8. **KG**: append GraphQL ops + DataLoader specs + cache keys vào `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml`.
 
 ## Anti-patterns (review flag)
-- ❌ Business logic (tính giá, eligibility) trong resolver → phải ở backend.
-- ❌ Resolver gọi backend trong vòng lặp không qua DataLoader (N+1).
-- ❌ Cache key thiếu tenant/user prefix cho data nhạy cảm.
-- ❌ Remove/rename field trong SDL không qua deprecate cycle.
-- ❌ Decode JWT lặp lại trong từng resolver thay vì context.
+- Business logic (tính giá, eligibility) trong resolver → phải ở backend.
+- Resolver gọi backend trong vòng lặp không qua DataLoader (N+1).
+- Cache key thiếu tenant/user prefix cho data nhạy cảm.
+- Remove/rename field trong SDL không qua deprecate cycle.
+- Decode JWT lặp lại trong từng resolver thay vì context.
 
 ## Naming
 - **Resolver file**: `{type}.resolver.ts`. **Loader**: `{entity}.loader.ts`. **Schema**: `{domain}.graphql`. **Test**: `*.spec.ts`.

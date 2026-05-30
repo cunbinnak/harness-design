@@ -109,7 +109,7 @@ SCR-001 ── action ──► SCR-002 ── submit ──► SCR-003 (success
 │  {Title}                        [✕] │
 ├─────────────────────────────────────┤
 │  Tên *  [___________________]       │
-│   ⚠ Tên không được để trống         │
+│   ! Tên không được để trống         │
 │  Mô tả  [textarea, 3 rows]          │
 │  Status: ○ Active ● Pending         │
 ├─────────────────────────────────────┤

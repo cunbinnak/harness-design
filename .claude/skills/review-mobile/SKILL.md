@@ -26,9 +26,9 @@ git diff --name-only main...HEAD
 7. **Owned paths** ⊆ boundary.
 
 ## Anti-patterns cần flag
-- ❌ Mutation offline retry không idempotent → tạo bản ghi trùng.
-- ❌ Lưu token/biometric vào SharedPreferences plain (phải secure storage).
-- ❌ Widget gọi API trực tiếp thay vì qua repository/provider.
+- Mutation offline retry không idempotent → tạo bản ghi trùng.
+- Lưu token/biometric vào SharedPreferences plain (phải secure storage).
+- Widget gọi API trực tiếp thay vì qua repository/provider.
 
 ## Output
 RETURN SCHEMA: `review_result`, `coverage_pct`, `checklist_summary`, `needs_review[]`, `fix_loops_triggered`.

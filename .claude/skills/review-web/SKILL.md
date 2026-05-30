@@ -28,10 +28,10 @@ git diff --name-only main...HEAD
 7. **Owned paths** ⊆ boundary.
 
 ## Anti-patterns cần flag
-- ❌ `components/` gọi API trực tiếp (phải qua `hooks/` → `api/`).
-- ❌ Tính tiền/giảm giá ở FE.
-- ❌ Hardcode role string thay vì đọc `roles[]` từ JWT.
-- ❌ Bỏ trạng thái error (chỉ render khi success).
+- `components/` gọi API trực tiếp (phải qua `hooks/` → `api/`).
+- Tính tiền/giảm giá ở FE.
+- Hardcode role string thay vì đọc `roles[]` từ JWT.
+- Bỏ trạng thái error (chỉ render khi success).
 
 ## Output
 RETURN SCHEMA: `review_result`, `coverage_pct`, `checklist_summary`, `needs_review[]`, `fix_loops_triggered`.
