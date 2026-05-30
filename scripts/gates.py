@@ -37,6 +37,47 @@ def check_coverage(evidence: dict, min_pct: int, field: str = "coverage_pct") ->
     return False, f"evidence.{field}={val} < {min_pct}"
 
 
+# Ngưỡng coverage theo kind boundary (per-kind gate cho dev-handoff).
+COVERAGE_THRESHOLD_PER_KIND = {
+    "backend": 80,
+    "bff": 70,
+    "web": 60,
+    "mobile": 60,
+}
+DEFAULT_COVERAGE_MIN = 80  # fallback khi không xác định được kind (strictest)
+
+
+def _active_boundary_kind(state: dict, root: Path | None = None) -> str | None:
+    """Tra kind của active_boundary từ harness/SERVICE-BOUNDARY-MATRIX.json."""
+    boundary = state.get("active_boundary")
+    if not boundary:
+        return None
+    root = root or REPO_ROOT
+    matrix_file = root / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
+    if not matrix_file.is_file():
+        return None
+    try:
+        data = json.loads(matrix_file.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return None
+    for b in data.get("boundaries", []):
+        if b.get("boundary_id") == boundary:
+            return b.get("kind")
+    return None
+
+
+def check_coverage_per_kind(
+    evidence: dict, state: dict, field: str = "coverage_pct"
+) -> tuple[bool, str]:
+    """Check coverage_pct >= ngưỡng theo kind active_boundary (BE80/BFF70/web60/mobile60)."""
+    kind = evidence.get("kind") or _active_boundary_kind(state)
+    min_pct = COVERAGE_THRESHOLD_PER_KIND.get(kind, DEFAULT_COVERAGE_MIN)
+    val = evidence.get(field, 0)
+    if isinstance(val, (int, float)) and val >= min_pct:
+        return True, ""
+    return False, f"evidence.{field}={val} < {min_pct} (kind={kind or 'unknown'})"
+
+
 def check_int_min(evidence: dict, field: str, min_val: int) -> tuple[bool, str]:
     """Check evidence[field] is int >= min_val."""
     val = evidence.get(field, 0)
@@ -135,7 +176,7 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "review-dev": [],  # entry only, no evidence required
     "dev-handoff": [
-        {"kind": "coverage", "field": "coverage_pct", "min": 80},
+        {"kind": "coverage_per_kind", "field": "coverage_pct"},
         {"kind": "flag", "field": "review_result", "expected": "pass"},
     ],
     "test-plan": [
@@ -168,6 +209,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_flag(evidence, rule["field"], rule["expected"])
         if kind == "coverage":
             return check_coverage(evidence, rule["min"], rule.get("field", "coverage_pct"))
+        if kind == "coverage_per_kind":
+            return check_coverage_per_kind(evidence, state, rule.get("field", "coverage_pct"))
         if kind == "int_min":
             return check_int_min(evidence, rule["field"], rule["min"])
         if kind == "non_empty":
@@ -232,6 +275,13 @@ def _selftest() -> int:
         evidence={"coverage_pct": 75, "review_result": "pass"},
     )
     assert not ok and "coverage_pct=75" in errs[0]
+
+    # per-kind coverage thresholds (BE80 / BFF70 / web60 / mobile60)
+    assert check_coverage_per_kind({"coverage_pct": 65, "kind": "web"}, {})[0] is True
+    assert check_coverage_per_kind({"coverage_pct": 72, "kind": "bff"}, {})[0] is True
+    assert check_coverage_per_kind({"coverage_pct": 60, "kind": "mobile"}, {})[0] is True
+    assert check_coverage_per_kind({"coverage_pct": 65, "kind": "backend"}, {})[0] is False
+    assert check_coverage_per_kind({"coverage_pct": 79, "kind": None}, {})[0] is False  # default 80
 
     print("OK: gates.py selftest passed")
     return 0

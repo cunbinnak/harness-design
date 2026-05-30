@@ -1,15 +1,20 @@
 ---
 name: specialist-testing
-description: Thiết kế và chạy kiểm thử chuyên sâu (API, contract, hồi quy).
+description: Thiết kế kiểm thử chuyên sâu (contract, regression, isolation, perf, security) bổ sung vào registry.
 ---
 
 # Specialist Testing Skill
 
-## Hoạt động
+## Khi load
+Bổ trợ `test-plan-agent` / `test-execute-agent` khi wave cần loại test khó vượt mức CRUD cơ bản.
 
-1. Bổ sung / cập nhật case trong `tracking/waves/{wave-id}/test-cases.md` (1 file/wave, cột `Type: auto | manual`).
-2. Lưu báo cáo vào `tracking/waves/{wave-id}/test-results.md` (auto only — manual log riêng ở `manual-test-log.md` stage MANUAL_TEST).
+## Hoạt động
+1. Bổ sung TC chuyên sâu vào `tracking/wave-{N}/test-case-registry.md` — cùng format heading `## TC-{N}-{slug}` + frontmatter (`type`, `boundary`, `feature`, `ac`, `priority`):
+   - **contract**: verify API/event contract khớp `api-{boundary}.md` / `{boundary}-events.md` (consumer ↔ provider).
+   - **regression**: TC-R* chốt lại bug đã fix (link `BUG-NNN`).
+   - **isolation**: unit/integration biên domain (mock infra).
+   - **perf / security**: chỉ khi NFR trong `PROJECT.md` yêu cầu.
+2. Mỗi TC trace tối thiểu 1 `FEAT-N:AC-M`. Kết quả chạy ghi ở `tracking/wave-{N}/test-report.md` (do test-execute).
 
 ## Done
-
-- Kết quả được tham chiếu trong handoff hoặc wave summary.
+- TC chuyên sâu đã vào registry, có AC trace, priority đúng (P0 blocker / P1 must / P2 nice).

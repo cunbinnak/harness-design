@@ -7,7 +7,7 @@
 > - Endpoints chi tiết → [`../api/api-{boundary_id}.md`](../api/)
 > - DB schema + state machine → [`../data-model/data-model-{boundary_id}.md`](../data-model/)
 > - UI wireframes → [`../ux/ux-{boundary_id}.md`](../ux/) (nếu FE)
-> - Cross-boundary calls → [`../integrations-matrix.md`](../integrations-matrix.md)
+> - Cross-boundary calls → [`../integrations/`](../integrations/) (`INTEG-INT-*.md` / `INTEG-EXT-*.md`)
 > - NFR cấp dự án → [`../PROJECT.md`](../PROJECT.md) (HLD chỉ ghi REFINEMENT nếu boundary stricter)
 > - Deployment commands → [`../infra/local-dev.md`](../infra/) + `docker-compose.yml`
 
@@ -26,8 +26,8 @@
 [Actor] ───► [FE/Client] ───► [{boundary_id}] ───► [Downstream boundaries / DB]
 ```
 
-- **Upstream caller:** (boundary nào gọi vào — link `integrations-matrix.md` để biết kind: HTTP/event)
-- **Downstream calls:** (boundary nào được gọi — link `integrations-matrix.md`)
+- **Upstream caller:** (boundary nào gọi vào — link `integrations/INTEG-*.md` để biết kind: HTTP/event)
+- **Downstream calls:** (boundary nào được gọi — link `integrations/INTEG-*.md`)
 - **Storage:** (DB type — chi tiết schema ở [`data-model-{boundary_id}.md`](../data-model/))
 
 ## 2. Internal Components (C4 L2)
@@ -35,11 +35,11 @@
 > Phân rã `{boundary_id}` thành các module/layer nội bộ — KHÔNG vẽ hệ thống ngoài.
 
 ```
-services/{boundary_id}/
-├── api/                # HTTP handler / Router (parse, validate DTO)
-├── domain/             # Business logic (services + ports)
-├── infra/              # Adapter (DB repo, HTTP client outbound)
-├── dto/                # Request/Response schema + validation
+services/{prefix}-{boundary_id}/      # cấu trúc chi tiết theo kind → ref-{kind}-pattern
+├── api/                # Controller/handler + DTO (parse, validate, map error→HTTP)
+├── application/        # Use case / orchestration (Layered) — gộp vào domain nếu DDD nhẹ
+├── domain/             # Business logic (entity, VO) + ports/
+├── infrastructure/     # Adapter (DB repo, messaging, HTTP client outbound, cache)
 ├── config/             # Env, DI wiring
 └── tests/              # unit + integration
 ```
@@ -102,7 +102,7 @@ Client          {boundary} API     Domain Service     DB
 | ADR | Áp dụng vào boundary này thế nào |
 |-----|----------------------------------|
 | ADR-001 (tech stack) | Dùng {framework}, {ORM} |
-| ADR-002 (architecture) | Layered: `api → domain → infra` |
+| ADR-002 (architecture) | Layered: `api → application → domain → infrastructure` (hoặc DDD theo ADR) |
 | ADR-003 (auth) | Middleware JWT validate mọi endpoint trừ `/health` |
 
 **Quyết định cục bộ (không lên ADR):** ghi vào KG `decisions` thay vì HLD.

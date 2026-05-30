@@ -7,7 +7,7 @@
 > - Implementation chi tiết → [`../hld/hld-{boundary_id}.md`](../hld/)
 > - DB schema → [`../data-model/data-model-{boundary_id}.md`](../data-model/)
 > - UI usage → [`../ux/ux-{boundary_id}.md`](../ux/) (nếu FE)
-> - Cross-boundary call chains → [`../integrations-matrix.md`](../integrations-matrix.md)
+> - Cross-boundary call chains → [`../integrations/`](../integrations/) (`INTEG-INT-*.md` / `INTEG-EXT-*.md`)
 
 ---
 
@@ -20,7 +20,7 @@
 | **Versioning** | URL path (`/v1/...`) |
 | **Auth scheme** | Bearer JWT (header `Authorization: Bearer <token>`) — trừ endpoints public |
 | **Content-Type** | `application/json` |
-| **OpenAPI spec** | (nếu có: `services/{boundary_id}/openapi.yaml`) |
+| **OpenAPI spec** | (nếu có: `services/{prefix}-{boundary_id}/openapi.yaml`) |
 
 ## Common error format
 

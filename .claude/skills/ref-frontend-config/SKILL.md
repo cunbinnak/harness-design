@@ -53,7 +53,7 @@ VITE_FEATURE_NEW_DASHBOARD=true
 services:
   {boundary_id}:
     build:
-      context: ../../services/{boundary_id}
+      context: ../../services/{prefix}-{boundary_id}
       dockerfile: Dockerfile
       target: production
     image: {project_name}/{boundary_id}:latest

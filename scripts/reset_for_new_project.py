@@ -86,7 +86,7 @@ def collect_targets() -> dict[str, list[Path]]:
     # docs/architecture project-specific files
     arch = root / "docs/architecture"
     if arch.is_dir():
-        for name in ("PROJECT.md", "integrations-matrix.md"):
+        for name in ("PROJECT.md",):
             f = arch / name
             if f.is_file():
                 targets["remove"].append(f)
@@ -97,12 +97,18 @@ def collect_targets() -> dict[str, list[Path]]:
             ("api", "api-"),
             ("data-model", "data-model-"),
             ("ux", "ux-"),
+            ("integrations", "INTEG-"),
         ]:
             d = arch / sub
             if d.is_dir():
                 for f in d.glob(f"{prefix}*.md"):
                     if not f.name.startswith("TEMPLATE"):
                         targets["remove"].append(f)
+        events = arch / "events"
+        if events.is_dir():
+            for f in events.glob("*-events.md"):
+                if not f.name.startswith("TEMPLATE"):
+                    targets["remove"].append(f)
         infra = arch / "infra"
         if infra.is_dir():
             for name in ("docker-compose.yml", "local-dev.md"):
@@ -123,12 +129,9 @@ def collect_targets() -> dict[str, list[Path]]:
     # tracking
     tracking = root / "tracking"
     if tracking.is_dir():
-        # Per-wave folder structure: remove entire tracking/waves/* (wave artifacts)
-        waves_dir = tracking / "waves"
-        if waves_dir.is_dir():
-            for child in waves_dir.iterdir():
-                if child.name == ".gitkeep":
-                    continue
+        # Per-wave folders: tracking/wave-{N}/ (wave artifacts)
+        for child in sorted(tracking.glob("wave-*")):
+            if child.is_dir():
                 targets["remove"].append(child)
         # Cross-wave: change-requests (keep TEMPLATE)
         cr_dir = tracking / "change-requests"

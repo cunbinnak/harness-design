@@ -1,70 +1,70 @@
 ---
 name: ref-backend-pattern
-description: Mẫu cấu trúc thư mục + layered architecture cho backend boundary. Tuning theo stack project.
+description: Cấu trúc thư mục + kiến trúc backend boundary — Layered hoặc DDD tactical theo ADR. Layer responsibilities, forbidden patterns.
 ---
 
-# Reference: Backend Project Structure
+# Reference: Backend Structure (Layered | DDD)
 
-> **Purpose:** Mô tả cấu trúc thư mục chuẩn của 1 backend boundary trong project. Agent BE load skill này để biết build code theo layout nào.
-> **Audience:** `dev:backend`, `fix:backend`, `review:backend`.
-> **Tuning:** Mỗi project có thể điều chỉnh tùy stack (Python/Java/Node/Go). Edit file này sau khi chốt ADR tech stack.
+> **Purpose:** Layout chuẩn 1 backend boundary. Agent BE load để biết build theo cấu trúc nào.
+> **Audience:** `dev:backend`, `fix:backend`, `review:backend` — load on-demand từ `rules-backend`.
+> **Tách bạch:** cấu trúc = file này · config (application.yml, security, kafka…) = `ref-backend-config` · convention bắt buộc = `rules-backend`.
+> **Tuning:** chọn mô hình + đặt tên layer theo **ADR backend-architecture**. Edit file này sau khi chốt ADR.
 
-## Cấu trúc thư mục chuẩn
+## 1. Chọn mô hình (ghi trong ADR backend-architecture)
+
+| Mô hình | Khi dùng | Đặc trưng |
+|---|---|---|
+| **Layered** | CRUD, domain ít phức tạp | Luồng thẳng `api → application → domain → infrastructure` |
+| **DDD tactical** | Nghiệp vụ phức tạp, aggregate rõ, nhiều invariant | `domain/` là trung tâm (aggregate + VO + port), `application/` orchestrate use case |
+
+Một boundary = một repo polyrepo, root `services/{prefix}-{boundary}/` (prefix = `project.service_prefix`).
+
+## 2. Layout — Layered
 
 ```
-services/{boundary_id}/
-├── api/                # Tầng vào — HTTP handler / Router / Controller
-│   ├── routes.{ext}
-│   └── {entity}-handler.{ext}
-├── domain/             # Business logic
-│   ├── {entity}-service.{ext}
-│   └── ports/          # Interface repo (Hexagonal)
-│       └── {entity}-repository.{ext}
-├── infra/              # Adapter — DB, cache, HTTP client outbound
-│   ├── {entity}-repo-pg.{ext}
-│   └── http-client-{ext_svc}.{ext}
-├── dto/                # Request/Response schema + validation
-│   ├── {entity}-request.{ext}
-│   └── {entity}-response.{ext}
-├── config/             # Env, DI wiring
+services/{prefix}-{boundary}/
+├── api/              # Controller/handler + DTO request/response + validation; map error → HTTP code
+├── application/      # Use case / application service; orchestrate domain qua port
+├── domain/           # Entity, value object, domain service
+│   └── ports/        # Interface repository / gateway (DIP)
+├── infrastructure/   # Adapter: repo impl (JPA/SQL), messaging, HTTP client outbound, cache
+├── config/           # Env binding, DI wiring, app startup  (chi tiết → ref-backend-config)
 └── tests/
-    ├── unit/           # Test domain pure (mock infra)
-    └── integration/    # Test với DB/cache thật (testcontainers / compose)
+    ├── unit/         # Domain/application thuần, mock infra
+    └── integration/  # api + DB/cache thật (testcontainers / docker-compose)
 ```
 
-## Trách nhiệm từng layer
+## 3. Layout — DDD tactical
 
-| Layer | Trách nhiệm | Pattern | Phụ thuộc |
-|-------|-------------|---------|-----------|
-| `api/` | Parse request, validate DTO, map error → HTTP code | Controller | dto, domain |
-| `domain/` | Business rule, orchestrate repo qua port | Service / Use-case | ports (interface) |
-| `domain/ports/` | Interface abstraction | Port | (none) |
-| `infra/` | DB query, HTTP outbound, cache | Adapter / Repository impl | domain/ports |
-| `dto/` | Input/output schema, validation | Pydantic / Zod / Bean | (none) |
-| `config/` | Env, DI, app startup | (framework-specific) | (all) |
-| `tests/unit/` | Test domain pure, mock infra | (framework test) | domain |
-| `tests/integration/` | Test với DB/cache thật | Testcontainers | infra |
+```
+services/{prefix}-{boundary}/
+├── domain/           # Aggregate root, entity, value object, domain event, ports/ (repo interface)
+├── application/      # Use case / command handler; transaction boundary
+├── infrastructure/   # Adapter impl các port + persistence + messaging
+├── api/              # Inbound adapter (REST/GraphQL controller) + DTO
+├── config/           # DI wiring  (chi tiết → ref-backend-config)
+└── tests/{unit,integration}
+```
 
-## Naming conventions
+## 4. Trách nhiệm từng layer
 
-- **File:** `kebab-case.{ext}` (vd `order-service.py`, `customer-handler.ts`)
-- **Class:** `PascalCase` (vd `OrderService`, `CustomerHandler`)
-- **Function/Method:** `snake_case` (Python/Ruby) hoặc `camelCase` (Node/Java)
-- **Constant:** `UPPER_SNAKE_CASE`
-- **Test file:** `{entity}-{layer}-test.{ext}` hoặc `test_{module}.py`
+| Layer | Trách nhiệm | Phụ thuộc |
+|---|---|---|
+| `api/` | Parse request, validate DTO, map error → HTTP status | dto, application |
+| `application/` | Orchestrate use case, transaction, gọi domain qua port | domain, ports |
+| `domain/` | Business rule, invariant, entity/VO/aggregate | (none — pure) |
+| `domain/ports/` | Interface abstraction (repo/gateway) | (none) |
+| `infrastructure/` | Repo impl, DB query, messaging, HTTP outbound, cache | domain/ports |
+| `config/` | Env, DI, startup | (all) |
 
-## Forbidden patterns
+## 5. Forbidden patterns
+- `api/` import trực tiếp `infrastructure/` — phải qua `application/`/`domain`.
+- `domain/` import `infrastructure/` — chỉ qua `domain/ports/` (DIP).
+- Business logic trong `api/` handler — chỉ parse + delegate.
+- SQL/ORM call trong `domain/` — chỉ trong `infrastructure/`.
+- Import code từ `services/{prefix}-{other}/` — cross-boundary chỉ qua HTTP/event theo `docs/architecture/integrations/INTEG-*.md`.
 
-- `api/` import trực tiếp từ `infra/` — phải qua `domain/`
-- `domain/` import từ `infra/` — chỉ qua `domain/ports/` (DIP)
-- Logic nghiệp vụ trong `api/` handler — chỉ parse + delegate
-- SQL/ORM call trong `domain/` — chỉ trong `infra/`
-
-## Khi nào tuning skill này
-
-- Project dùng framework khác layered (vd: clean architecture, hexagonal đầy đủ) → cập nhật folder names
-- Stack đặc biệt (vd: Spring có `repository/`, `entity/`, `mapper/`) → bổ sung
-- Microservice với BFF/CQRS → thêm layer riêng
-
-Edit trực tiếp file này khi project có decision khác chuẩn — đồng bộ với `docs/architecture/adr/ADR-002-backend-architecture.md`.
-
+## 7. Done
+- Cấu trúc khớp mô hình chốt trong ADR backend-architecture + `hld-{boundary}.md`.
+- API khớp `api-{boundary}.md`; schema khớp `data-model-{boundary}.md`.
+- Build chạy được (`./mvnw` / `./gradlew` / runner stack).

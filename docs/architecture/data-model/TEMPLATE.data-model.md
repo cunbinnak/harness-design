@@ -14,7 +14,7 @@
 
 - **Aggregate / bounded context:** {tên context}
 - **Boundary này là source of truth cho:** {Entity-A, Entity-B}
-- **Đọc-only từ boundary khác:** (entity nào, lấy qua API nào — link `integrations-matrix.md`)
+- **Đọc-only từ boundary khác:** (entity nào, lấy qua API nào — link `integrations/INTEG-*.md`)
 
 ## Entities & relationships
 
@@ -83,7 +83,7 @@ erDiagram
 
 - **Tool:** (alembic / flyway / liquibase / prisma-migrate / ...)
 - **Strategy:** (forward-only / reversible / squash khi wave end)
-- **Seed data:** `services/{boundary_id}/seed/` (dev only)
+- **Seed data:** `services/{prefix}-{boundary_id}/seed/` (dev only)
 - **Breaking change rule:** thêm column NULLABLE trước → backfill → enforce NOT NULL ở migration tiếp
 
 ## Reference

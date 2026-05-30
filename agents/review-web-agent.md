@@ -4,7 +4,7 @@ role: "review:web"
 command: review-dev
 kind_filter: web
 primary_skill: review-web
-secondary_skills: [rules-web, ref-frontend-config, ref-frontend-pattern, ref-frontend-conventions]
+secondary_skills: [rules-web, ref-frontend-config, ref-frontend-pattern]
 chain_spawn:
   - "fix-{prefix}-{boundary}-agent (khi fail)"
 kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
@@ -52,8 +52,7 @@ kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
 - **Available on-demand**:
   - `rules-web` — convention bắt buộc (verify code khớp)
   - `ref-frontend-config` — config pattern (verify package.json, env, build)
-  - `ref-frontend-pattern` — component structure pattern
-  - `ref-frontend-conventions` — naming/folder convention
+  - `ref-frontend-pattern` — cấu trúc thư mục + tổ chức component (data layer REST/BFF)
 
 > **Rules cụ thể nằm trong skill** — tune skill khi cần customize per-project.
 

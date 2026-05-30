@@ -31,3 +31,18 @@ py scripts/harness.py start-dev complete '{"boundary": "order-management"}'
 - Implement AC trong FEAT
 - Append KG, return RETURN SCHEMA
 
+## kind_matrix
+
+> Nguồn chuẩn (single source of truth): `scripts/build_prompt.py` — `PRIMARY_SKILLS_PER_KIND` / `REVIEW_SKILLS_PER_KIND` / `REF_SKILLS_PER_KIND`. Bảng này chỉ mirror để tra cứu; sửa code map khi đổi.
+
+| kind | primary (invoke ngay) | review | ref on-demand | scaffold | data layer |
+|---|---|---|---|---|---|
+| `backend` | `rules-backend` | `review-backend` | `ref-backend-config`, `ref-backend-pattern` | `pom.xml` / `build.gradle` | expose REST/GraphQL contract |
+| `bff` | `rules-bff` | `review-bff` | — | `package.json` (Apollo) | GraphQL gateway → backend REST |
+| `web` | `rules-web` | `review-web` | `ref-frontend-config`, `ref-frontend-pattern` | `package.json` (Vite) | REST trực tiếp BE (default) \| BFF optional |
+| `mobile` | `rules-mobile` | `review-mobile` | — | `pubspec.yaml` (Flutter) | REST trực tiếp BE (default) \| BFF optional |
+
+- **Primary** = `rules-{kind}` (hub) → tự ref tới pattern/config khi cần.
+- `ref-{kind}-config` + `ref-{kind}-pattern` chỉ tồn tại cho `backend`/`web`; `bff`/`mobile` dùng convention trong `rules-{kind}`.
+- Skills wave-level (không theo kind): `test-plan`, `test-execute`, `specialist-testing`, `bug-logging`, `infra-local-dev`.
+

@@ -11,9 +11,9 @@ Sau requirement-analysis khi cần làm rõ luồng và hợp đồng giữa bê
 
 ## Hoạt động
 
-1. Vẽ / mô tả luồng chính và ngoại lệ.
-2. Xác định bounded context và đề xuất ánh xạ service (tham chiếu ma trận).
+1. Vẽ / mô tả luồng chính và ngoại lệ (happy path + edge case).
+2. Refine `FEAT-*.md`: AC testable, business rule `BR-*`, và `boundaries_suggested` (bounded context → boundary nào đảm nhận).
 
 ## Done
 
-- Luồng đã được peer-review với product-service / order / payment agent tương ứng.
+- Mỗi FEAT có AC testable + BR-* + `boundaries_suggested` (khớp verify intake step 2).

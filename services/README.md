@@ -4,14 +4,14 @@ Thư mục **materialize** — không có service cố định lúc BOOTSTRAP.
 
 ## Quy tắc
 
-- Boundary định nghĩa trong `harness/SERVICE-BOUNDARY-MATRIX.json` → `materialized_path` (vd. `services/catalog-api/`).
-- Folder con **chỉ xuất hiện** khi stage `IMPLEMENTATION` (hoặc script `materialize_boundary`).
-- **Không** coi `product-service/` / ví dụ cũ là spec thật nếu chưa có trong matrix.
+- Boundary định nghĩa trong `harness/SERVICE-BOUNDARY-MATRIX.json`; service folder = `services/{prefix}-{boundary}/` (prefix = `project.service_prefix`, vd. `crm-catalog`).
+- Folder con **chỉ xuất hiện** khi stage `DEV` (sub-agent scaffold ở `/start-dev`, push lên repo riêng polyrepo).
+- **Không** coi ví dụ cũ là spec thật nếu chưa có trong matrix.
 
 ## Cấu trúc gợi ý (sau materialize)
 
 ```
-services/{boundary_id}/
+services/{prefix}-{boundary}/
   README.md
   src/
   tests/

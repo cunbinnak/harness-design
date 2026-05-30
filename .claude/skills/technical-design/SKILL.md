@@ -11,10 +11,10 @@ Trước implementation hoặc khi thay đổi kiến trúc.
 
 ## Hoạt động
 
-1. **ADR** — `docs/architecture/adr/ADR-001` … `005` (stack, BE arch, auth, UI, PDF).
-2. Mỗi boundary: `hld/`, `api/`, `data-model/`, `ux/ux-{id}.md` (mỗi FE boundary một file UX).
-3. `integrations-matrix.md` + `infra/docker-compose.yml` skeleton.
-4. KG per boundary — planner materialize `knowledge-base/{id}.knowledge-graph.yaml`.
+1. **ADR** — `docs/architecture/adr/ADR-NNN-*.md` cho mỗi quyết định kiến trúc lớn (vd: tech-stack, backend-architecture, auth, ui-kit, …). Đánh số tuần tự; ≥ 3 ADR (tham chiếu theo **chủ đề**, không hardcode số).
+2. Mỗi boundary: `hld/hld-{boundary}.md`, `api/api-{boundary}.md`, `data-model/data-model-{boundary}.md` (backend), `ux/ux-{boundary}.md` (mỗi FE boundary một file).
+3. `integrations/INTEG-{INT|EXT}-*.md` + `infra/docker-compose.yml` skeleton.
+4. KG per boundary — planner materialize `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml`.
 
 ## Done
 

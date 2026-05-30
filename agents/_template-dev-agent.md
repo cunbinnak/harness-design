@@ -56,8 +56,7 @@ matrix_revision: {{matrix_revision}}
 - **Primary** (invoke ngay khi spawn): `rules-{{kind}}`
 - **Available on-demand** (invoke chỉ khi đụng tình huống cụ thể):
   - `ref-{{kind}}-config` — Spring config / package.json / pubspec setup
-  - `ref-{{kind}}-pattern` — code idiom, repository pattern
-  - `ref-{{kind}}-conventions` — naming, package structure
+  - `ref-{{kind}}-pattern` — kiến trúc + cấu trúc thư mục (Layered/DDD)
 
 ## Owned paths
 

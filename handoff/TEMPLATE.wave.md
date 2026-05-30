@@ -6,9 +6,9 @@
 > **Out of scope:**
 > - Architecture → `docs/architecture/hld/`
 > - API spec → `docs/architecture/api/`
-> - Test cases → `tracking/waves/{wave-id}/test-cases.md`
-> - Test results → `tracking/waves/{wave-id}/test-results.md`
-> - Bugs → `tracking/waves/{wave-id}/bugs/`
+> - Test cases → `tracking/wave-{N}/test-case-registry.md`
+> - Test results → `tracking/wave-{N}/test-report.md`
+> - Bugs → `tracking/wave-{N}/bugs.md`
 
 ---
 
@@ -19,8 +19,8 @@
 | **Wave** | {wave-id} ({wave-title}) |
 | **Stage hiện tại** | (cập nhật theo từng giai đoạn) |
 | **Features hoàn thành** | FEAT-XXX, FEAT-YYY (link [`docs/architecture/feat/`](../docs/architecture/feat/)) |
-| **Boundaries** | (list boundary_id) |
-| **Coverage BE / FE** | {pct}% / {pct}% (ngưỡng 80 / 60) |
+| **Boundaries** | (list {prefix}-{boundary}) |
+| **Coverage per-kind** | BE {pct}% / BFF {pct}% / FE {pct}% (ngưỡng BE 80 / BFF 70 / FE 60) |
 | **Build status** | ✅ / ❌ |
 
 ## 2. Service inventory (runtime)
@@ -56,22 +56,22 @@ Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
 
 ## 5. UAT Instructions (sau `end-wave`)
 
-> Stakeholder/QA verify ở stage MANUAL_TEST. Bug log → `tracking/waves/{wave-id}/bugs/` với `origin: manual`.
+> Stakeholder/QA verify ở stage MANUAL_TEST. Bug log → `tracking/wave-{N}/bugs.md` với `origin: manual`.
 
 1. App URL: `http://localhost:{PORT}` (xem §2 service inventory)
 2. Test credentials: (lấy từ `.env` dev account)
-3. Manual test cases: `tracking/waves/{wave-id}/test-cases.md` — filter cột `Type: manual`
-4. Ghi kết quả: `tracking/waves/{wave-id}/manual-test-log.md`
-5. Nếu phát hiện bug:
+3. Manual test cases: `tracking/wave-{N}/test-case-registry.md` — filter `type: manual`
+4. Ghi kết quả manual vào `tracking/wave-{N}/test-report.md` (§Manual Tests)
+5. Nếu phát hiện bug → thêm section vào `tracking/wave-{N}/bugs.md`:
+   ```markdown
+   ## BUG-NNN — {title}
+   status: open
+   origin: manual
+   severity: medium
+   boundary: {prefix}-{boundary}
    ```
-   tracking/waves/{wave-id}/bugs/BUG-{n}-{short}.md
-     frontmatter:
-       origin: manual
-       severity: medium
-       status: open
-   ```
-   Báo dev → `/fix-bugs --boundary X` → `/retest` (smart route về MANUAL_TEST).
-6. Clean → `/done-wave` (teardown + reset).
+   Báo dev → `/fix-bugs <BUG-NNN>` (chain fix + review, in-state MANUAL_TEST).
+6. Clean → `/end-wave` (UAT signed → DONE) → `/done-wave` (teardown + reset).
 
 ## 6. Known issues & deferred
 

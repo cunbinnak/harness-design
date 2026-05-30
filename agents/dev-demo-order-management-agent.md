@@ -62,8 +62,7 @@ matrix_revision: 1
 - **Primary** (invoke ngay khi spawn): `rules-backend`
 - **Available on-demand** (invoke chỉ khi đụng tình huống cụ thể):
   - `ref-backend-config` — Spring config / package.json / pubspec setup
-  - `ref-backend-pattern` — code idiom, repository pattern
-  - `ref-backend-conventions` — naming, package structure
+  - `ref-backend-pattern` — kiến trúc + cấu trúc thư mục (Layered/DDD)
 
 ## Owned paths
 

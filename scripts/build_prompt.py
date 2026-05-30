@@ -122,9 +122,9 @@ REVIEW_SKILLS_PER_KIND = {
 }
 
 REF_SKILLS_PER_KIND = {
-    "backend": ["ref-backend-config", "ref-backend-pattern", "ref-backend-conventions"],
+    "backend": ["ref-backend-config", "ref-backend-pattern"],
     "bff": [],
-    "web": ["ref-frontend-config", "ref-frontend-pattern", "ref-frontend-conventions"],
+    "web": ["ref-frontend-config", "ref-frontend-pattern"],
     "mobile": [],
 }
 

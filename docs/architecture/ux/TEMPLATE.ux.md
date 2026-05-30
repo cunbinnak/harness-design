@@ -16,7 +16,7 @@
 |---|---|
 | **Persona chính** | (vai trò — chi tiết user ở [PROJECT.md](../PROJECT.md)) |
 | **Platform** | Web SPA / Mobile / Hybrid |
-| **Design system** | (khớp ADR-004 nếu có) |
+| **Design system** | (khớp ADR ui-kit nếu có) |
 | **Ngôn ngữ** | (vi / en / multi) |
 | **A11y target** | WCAG 2.1 AA |
 | **BE boundaries phục vụ** | (list `{be_id}` — đọc API từ [`../api/`](../api/)) |
