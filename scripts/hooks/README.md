@@ -1,45 +1,97 @@
-# Harness hooks (implementation)
+# Hooks (v4)
 
-**Logic & checklist:** `task_check.py` · **Quy tắc:** [`harness/HOOK-RULES.json`](../../harness/HOOK-RULES.json)
+Hook implementation cho ADLC Design Harness. Pure-function policies + single dispatcher entry.
 
-## Clone repo — dùng ngay (Cursor hoặc Claude Code)
+## Cấu trúc
 
-Hook **đã cấu hình sẵn** trong repo. Không cần sync, không cần chạy script phụ.
-
-| IDE | File cấu hình | Ghi chú |
-|-----|----------------|---------|
-| **Cursor** | [`.cursor/hooks.json`](../../.cursor/hooks.json) | Tự load khi mở project |
-| **Claude Code** | [`.claude/settings.local.json`](../../.claude/settings.local.json) → `hooks` | Ưu tiên cao hơn `~/.claude` — commit trong repo |
-
-## Triggers (tự chạy qua IDE)
-
-| Trigger | Cursor | Claude Code |
-|---------|--------|-------------|
-| `session_start` | `sessionStart` | `SessionStart` (async) |
-| `pre_write_check` | Write/Edit | Write/Edit/… |
-| `pre_state_transition` | Shell | Bash |
-| `pre_task_check` | Task | Task/Agent + SubagentStart |
-| `post_task_log` | stop | Stop + SubagentStop |
-
-`post_state_transition` / `on_change_detected` chạy từ `workflow_engine.py` và `post_task_log` (CLI + IDE).
-
-## 12 câu checklist (`task_check.py`)
-
-feature · feature_stage · agent_assigned · boundary_resolve · owned_paths · task_in_stage · kg_completed · kg_in_progress · blockers · decisions · do_not_repeat · why_linked
-
-## Sửa hook (maintainer)
-
-Khi đổi trigger/event, cập nhật [`.cursor/hooks.json`](../../.cursor/hooks.json) và [`.claude/settings.local.json`](../../.claude/settings.local.json) cho khớp logic.
-
-## Debug (tùy chọn — không phải workflow người dùng)
-
-`run_hook.py` chỉ để dev test từng hook id cũ (`owned_paths`, `discipline_blockers`, …). Agent/end-user **không** cần chạy.
-
-Ghi KG sau task (agent chạy khi cần):
-
-```bash
-py scripts/knowledge_writer.py in-progress knowledge-base/shared.knowledge-graph.yaml "FEAT-001:AC-1"
-py scripts/knowledge_writer.py completed knowledge-base/shared.knowledge-graph.yaml "FEAT-001:AC-1"
+```
+scripts/hooks/
+├── README.md
+├── __init__.py
+├── dispatcher.py    Single entry — route 9 events tới handler
+└── policies.py      Pure check functions (no side effect)
 ```
 
-Rule: [`.cursor/rules/harness-agent-discipline.mdc`](../../.cursor/rules/harness-agent-discipline.mdc)
+## 9 events
+
+Tất cả route qua `dispatcher.py --event <name>`. Config trong `.claude/settings.json`.
+
+| Event | Matcher | Behavior |
+|-------|---------|----------|
+| SessionStart | startup\|resume | Inject brief STATE đầu session |
+| UserPromptSubmit | * | Inject `[HARNESS stage=X ...]` header mỗi turn |
+| Notification | * | Inject state header |
+| PreCompact | * | Pin STATE summary + 3 recent transitions trước compaction |
+| PreToolUse | Bash | Check `harness <X> complete` gate; deny nếu sai |
+| PreToolUse | Write\|Edit\|MultiEdit | Block protected files (STATE.json, STATE-MACHINE.json, settings.json) |
+| PreToolUse | Task | KHÔNG block theo stage; inject boundary reminder cho dev-spawn |
+| PostToolUse | Bash | Append checkpoint sau `harness complete` success |
+| SubagentStop | * | Parse RETURN SCHEMA JSON, validate fields |
+| Stop | * | (stub — sẽ implement build/lint/test runner per kind sau) |
+| SessionEnd | * | Cleanup `spawn.active` nếu stale |
+
+## Output format (Claude Code spec)
+
+**Allow** (silent): exit 0 với stdout rỗng.
+
+**Deny** (PreToolUse):
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "..."
+  }
+}
+```
+
+**Inject context** (SessionStart / UserPromptSubmit / PreCompact / Notification):
+```json
+{"additionalContext": "..."}
+```
+
+**Block** (Stop / SubagentStop):
+```json
+{"decision": "block", "reason": "..."}
+```
+
+## Fail-open policy
+
+Hook crash → exit 0 (allow tool through). Lý do: hook v4 đang stable hóa; bug trong policy không nên block user.
+
+```python
+try:
+    handler(payload)
+except Exception as e:
+    sys.stderr.write(f"hook dispatcher error [{event}]: {e}\n")
+    return 0  # fail-open
+```
+
+## Policies (pure functions)
+
+`policies.py` chứa 5 nhóm:
+
+| Nhóm | Functions | Dùng ở event |
+|------|-----------|--------------|
+| State formatting | `format_state_brief`, `state_header_line`, `memory_marker` | SessionStart, UserPromptSubmit, PreCompact, Notification |
+| Protected files | `is_protected_file`, `safe_rel_path` | PreToolUse(Write\|Edit) |
+| Bash gate | `parse_harness_complete` | PreToolUse(Bash), PostToolUse(Bash) |
+| Return schema | `extract_json_object`, `validate_return_schema` | SubagentStop |
+| Task spawn | `detect_dev_spawn`, `boundary_reminder` | PreToolUse(Task) |
+
+## Debug
+
+Test 1 event với mock stdin:
+
+```bash
+echo '{"tool_name":"Bash","tool_input":{"command":"py scripts/harness.py start-dev complete {\"boundary\":\"x\"}"}}' \
+  | py scripts/hooks/dispatcher.py --event PreToolUse
+```
+
+Output JSON nếu deny, empty nếu allow.
+
+## Liên quan
+
+- Hook config: [`../../.claude/settings.json`](../../.claude/settings.json)
+- Protocol: [`../../harness/PROTOCOL.md`](../../harness/PROTOCOL.md)
+- State machine: [`../../harness/STATE-MACHINE.json`](../../harness/STATE-MACHINE.json)

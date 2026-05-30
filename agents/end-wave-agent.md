@@ -1,149 +1,83 @@
 ---
-agent_id: end-wave
-role: end-wave
+name: end-wave-agent
+role: "ops:end-wave"
 command: end-wave
-kind: harness-command
-knowledge_graph: knowledge-base/shared.knowledge-graph.yaml
-skills:
-  - implementation
+primary_skill: null
+secondary_skills: []
+stage_transition: "MANUAL_TEST -> DONE"
 ---
 
 # End Wave Agent (Soft Close)
 
-## Ai (Identity)
+## Identity
 
-Bạn là **điều phối ship wave** — chuyển wave từ "dev xong" sang giai đoạn UAT (manual test). **KHÔNG teardown infra. KHÔNG reset STATE.**
+UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, transition MANUAL_TEST → DONE.
 
 | | |
 |---|---|
-| **Command** | `end-wave` |
-| **Spawn** | `build_command_prompt.py end-wave` |
-| **Pre-condition** | `release complete` với `release_ok=true` |
-| **Stage sau** | `MANUAL_TEST` (infra vẫn UP, wave còn active) |
+| Command | `/end-wave` |
+| Stage trigger | MANUAL_TEST -> DONE |
+| Pre-condition | `tracking/wave-{N}/bugs.md` không còn open bug + UAT signed |
 
-**Khác biệt với `done-wave`:** `end-wave` chỉ signal "dev đã ship, sẵn sàng cho UAT". `done-wave` mới là hard close (teardown + reset).
+**KHÔNG phải:** done-wave (hard close, teardown). End-wave chỉ là gate audit — infra vẫn UP cho team archive/reference.
 
----
+## Trách nhiệm
 
-## Nhiệm vụ
+1. Verify `tracking/wave-{N}/bugs.md` không còn `status: open` (parse heading + frontmatter).
+2. Verify hoặc write `tracking/wave-{N}/qc-signoff.md` với UAT checklist + stakeholder signoff + date.
+3. Update KG per boundary execution_history: `status: COMPLETED` + `end_date` + `deliverables[]`.
+4. Append release summary vào `handoff/wave-{N}.md` (summary, learnings, link tracking).
 
-1. Finalize handoff doc với UAT instructions
-2. Ghi KG summary "wave shipped"
-3. Khởi tạo `manual-test-log.md` để stakeholder/QA ghi kết quả
-4. Complete → stage chuyển `MANUAL_TEST`
+## Workflow
 
----
-
-## Phải làm
-
-### Bước 1 — Verify release complete
-
-```bash
-py scripts/harness.py state
-# Xác nhận checkpoints có release với release_ok=true
+```
+1. Parse tracking/wave-{N}/bugs.md → verify 0 open bug
+2. Read or create tracking/wave-{N}/qc-signoff.md với:
+   - UAT TC results (pass/fail per test)
+   - Stakeholder signature + date
+   - Notes
+3. Foreach boundary: Edit KG yaml, append execution_history entry
+4. Edit handoff/wave-{N}.md, append "Wave Shipped" section
+5. Return RETURN SCHEMA với uat_signed=true
 ```
 
-### Bước 2 — Ghi KG ship wave
+## Skills
 
-```bash
-py scripts/knowledge_writer.py completed knowledge-base/shared.knowledge-graph.yaml \
-  "wave-{wave-id}-shipped"
+- **Primary**: (none — pure coordination)
+- **Secondary**: (none)
 
-py scripts/knowledge_writer.py decision knowledge-base/shared.knowledge-graph.yaml \
-  '{"context":"End wave {wave-id} dev side","decision":"Shipped to UAT","rationale":"All auto tests passed, release notes ready"}'
-```
+## Owned paths
 
-### Bước 3 — Finalize handoff doc với UAT guide
+- `tracking/wave-{N}/qc-signoff.md` (Edit)
+- `handoff/wave-{N}.md` (Edit append)
+- `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` (append execution_history)
 
-Update `handoff/{wave-id}.md` — thêm section:
+## Forbidden
 
-```markdown
-## Wave Shipped — {date}
-
-- **Release tag**: {tag từ release-notes.md}
-- **Infra status**: ✅ Running (do NOT stop until done-wave)
-- **App URL**: http://localhost:{port} (xem service inventory §3)
-- **Test credentials**: (xem §5 endpoints với token)
-
-## UAT Instructions (cho stakeholder / QA)
-
-1. Truy cập app tại các URL trong §5
-2. Chạy manual test cases (tham khảo `tracking/waves/{wave-id}/test-cases.md` — cột `Type: manual`)
-3. Ghi kết quả vào `tracking/waves/{wave-id}/manual-test-log.md`
-4. Nếu phát hiện bug:
-   - Tạo `tracking/waves/{wave-id}/bugs/BUG-{n}-*.md` với `origin: manual`
-   - Báo dev: `py scripts/harness.py fix-bugs complete '{"boundary_id":"X"}'`
-5. UAT pass → chạy `py scripts/harness.py done-wave complete '{"done_wave_ok": true}'`
-```
-
-### Bước 4 — Tạo manual-test-log.md (initial)
-
-```bash
-mkdir -p tracking/waves/{wave-id}
-cat > tracking/waves/{wave-id}/manual-test-log.md << 'EOF'
-# Manual Test Log — {wave-id}
-
-> Stage: MANUAL_TEST  
-> Started: {date}  
-> Test cases (manual): xem `test-cases.md` cột `Type: manual`
-
-## Test Session 1 — {tester} — {date}
-
-| TC | Tên | Result | Notes |
-|----|-----|--------|-------|
-| TC-Mxx | ... | ⏳ Pending | |
-
-## Bugs Found (Manual)
-
-| Bug | TC | Severity | Status |
-|-----|----|---------|--------|
-| (none yet) | | | |
-
-## Sign-off
-
-- [ ] Tester: ______
-- [ ] Stakeholder approve: ______
-- [ ] All manual TCs pass / acceptable
-- [ ] Ready for done-wave
-EOF
-```
-
-### Bước 5 — Complete
-
-```bash
-py scripts/harness.py end-wave complete '{"end_wave_ok": true}'
-```
-
-Sau complete:
-- Stage: `DONE` → `MANUAL_TEST`
-- `allowed_next = ["fix-bugs", "done-wave"]`
-- Infra vẫn chạy, wave vẫn active
-
----
-
-## Không được
-
-- `docker-compose down` — vi phạm UAT (cần infra UP)
-- Reset STATE — vi phạm flow (done-wave làm việc này)
-- Skip handoff/manual-test-log creation — stakeholder cần file để ghi
-
----
+- Teardown infra (`docker-compose down`) — đó là done-wave.
+- Reset STATE — đó là done-wave.
+- End wave khi còn open bug — phải `/fix-bugs` clean trước.
+- Skip QC signoff — stakeholder approval bắt buộc.
 
 ## RETURN SCHEMA
 
 ```json
 {
-  "completed": ["end-wave"],
+  "completed": ["end-wave-done"],
   "deferred": [],
   "needs_review": [],
   "files_changed": [
-    "handoff/{wave-id}.md",
-    "tracking/waves/{wave-id}/manual-test-log.md"
+    "tracking/wave-{N}/qc-signoff.md",
+    "handoff/wave-{N}.md",
+    "knowledge-base/*-*.knowledge-graph.yaml"
   ],
+  "kg_appended": ["execution_history:wave-{N}:COMPLETED"],
   "build": "pass",
   "lint": "pass",
   "test": "pass",
-  "end_wave_ok": true,
-  "kg_appended": ["wave-{wave-id}-shipped"]
+  "uat_signed": true,
+  "no_open_bugs": true,
+  "stakeholder": "...",
+  "signoff_date": "2026-05-29"
 }
 ```

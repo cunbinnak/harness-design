@@ -1,50 +1,37 @@
 ---
-description: "Harness command: test-execute"
-argument-hint: ""
+name: test-execute
+description: "Build service local + run auto test. Internal loop: fail -> spawn fix -> retest -> pass. Auto-transition MANUAL_TEST khi pass."
+when_state: ['TEST_PLAN']
+sets_stage: TEST_EXECUTE
+spawn:
+  agent: "test-execute-agent"
+  skills: [test-execute, specialist-testing, bug-logging, infra-local-dev]
+gates: [{type: int_min, field: test_cases_count, min: 1}]
 ---
 
 # /test-execute
 
-Chạy **auto** test (Type: auto trong test-cases.md) — smoke + integration + E2E auto.
+## Mục đích
 
-**Agent:** [test-execute-agent.md](../agents/test-execute-agent.md) · **Role:** `test-execute`
+Build & run service local theo docker-compose. Execute test cases theo registry. Fail -> log bug + spawn fix sub-agent -> retest. Loop tới pass.
 
-## Luồng
-
-```
-docker-compose up --build -d  →  Smoke /health 200?
-                                   ├ FAIL → docker down → fix-bugs
-                                   └ PASS → Integration/E2E auto
-                                              ↓
-                                       test-results.md + bugs/
-                                              ↓
-                                       docker-compose down (BẮT BUỘC)
-                                              ↓
-                                  pass → release  |  fail → fix-bugs
-```
-
-## Output (per-wave folder)
-
-| File | Nội dung |
-|------|---------|
-| `tracking/waves/{wave-id}/test-results.md` | Summary + chi tiết từng TC |
-| `tracking/waves/{wave-id}/bugs/BUG-{n}-*.md` | Bug ticket (field `origin: auto`) |
-
-**Field `origin: auto`** trong bug ticket → `retest` smart-route về `SPECIALIST_TESTING`.
-
-## Chạy
+## Build prompt + spawn
 
 ```bash
-py scripts/build_command_prompt.py test-execute
-py scripts/harness.py test-execute complete '{"test_result": "pass"}'  # hoặc "fail"
+py scripts/build_prompt.py test-execute
+py scripts/harness.py test-execute complete '{"test_cases_count": 15, "test_result": "pass"}'
+# auto-transition: STATE.stage -> MANUAL_TEST
 ```
 
-## Sau fail
+## Agent internal loop
 
-```bash
-py scripts/build_command_prompt.py fix-bugs --boundary {boundary_id}
-py scripts/harness.py fix-bugs complete '{"boundary_id": "{boundary_id}"}'
-py scripts/harness.py retest complete '{"test_result": "pass"}'
+```
+1. docker-compose up -d
+2. Run test cases (Postman/Playwright/...) per skill test-execute
+3. Fail -> log BUG-NNN vào tracking/wave-N/bugs.md (origin: auto)
+        -> spawn fix-{prefix-boundary}-agent fix
+        -> back to step 2
+4. All pass -> return {test_result: pass, ...}
+5. Harness auto-transition TEST_EXECUTE -> MANUAL_TEST
 ```
 
-**Lưu ý:** TC `Type: manual` trong test-cases.md → KHÔNG chạy ở đây. Chạy ở stage MANUAL_TEST (sau `end-wave`).

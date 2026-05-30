@@ -1,36 +1,25 @@
-# end-wave (soft close)
+---
+name: end-wave
+description: "UAT đã signed off. Soft close wave -> DONE."
+when_state: ['MANUAL_TEST']
+sets_stage: DONE
+spawn:
+  agent: "end-wave-agent"
+  skills: []
+gates: [{type: flag, field: uat_signed, expected: true}, {type: no_open_bugs}]
+---
 
-Ship wave → **MANUAL_TEST** stage. **KHÔNG** teardown, **KHÔNG** reset.
+# /end-wave
 
-**Agent:** [end-wave-agent.md](../agents/end-wave-agent.md) · **Role:** `end-wave`
+## Mục đích
 
-## Hành vi
+UAT đã signed off, không còn open bug. Soft close: wave kết thúc logic, infra vẫn UP cho post-mortem.
 
-| | Trước | Sau |
-|---|------|-----|
-| Stage | DONE | **MANUAL_TEST** |
-| Infra | Up | **Vẫn Up** (cho UAT) |
-| `wave.id` | Active | **Vẫn active** |
-| `allowed_next` | — | `["fix-bugs", "done-wave"]` |
-
-## Output
-
-1. Finalize `handoff/{wave-id}.md` — thêm section "Wave Shipped" + UAT guide
-2. Tạo `tracking/waves/{wave-id}/manual-test-log.md` (skeleton cho stakeholder điền)
-3. KG: `wave-{wave-id}-shipped` decision
-
-## Chạy
+## Build prompt + spawn
 
 ```bash
-py scripts/build_command_prompt.py end-wave
-py scripts/harness.py end-wave complete '{"end_wave_ok": true}'
+py scripts/build_prompt.py end-wave
+py scripts/harness.py end-wave complete '{"uat_signed": true}'
+# gates also check no_open_bugs trong tracking/wave-N/bugs.md
 ```
 
-Gate: `release complete`, `end_wave_ok: true`, `handoff/wave-*.md` tồn tại.
-
-## Sau end-wave: 2 đường
-
-| Tình huống | Lệnh |
-|-----------|------|
-| UAT pass — không bug | `/done-wave` |
-| UAT fail — có bug manual | `/fix-bugs --boundary X` → `/retest` (smart route về MANUAL_TEST) |

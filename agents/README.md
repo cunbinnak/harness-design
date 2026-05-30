@@ -1,62 +1,101 @@
 # Agents
 
-Spec: [docs/AGENT-SPEC.md](../docs/AGENT-SPEC.md)
+Source of truth: 20 file trong `agents/` (16 singleton command + 2 templates + 2 sample materialized + README).
 
-## Doc scope per agent (`role:` frontmatter)
+State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 states, 13 commands).
 
-Mỗi agent khai báo `role:` trong YAML frontmatter. Doc-scope (files agent được đọc) tự động resolve từ central registry **[harness/AGENT-DISCIPLINE.json → `agent_roles`](../harness/AGENT-DISCIPLINE.json)** với placeholder `{boundary}` và `{wave}`.
+## Agent inventory
 
-| Role | Đọc gì (tóm tắt) |
-|------|--------------------|
-| `intake:requirement-analyst` | PROJECT + FEAT/* (draft) |
-| `intake:business-analyst` | PROJECT + FEAT/* (refine AC) |
-| `intake:solution-architect` | PROJECT + FEAT/* (writes ADR/HLD/API/UX) |
-| `intake:program-planner` | PROJECT + FEAT + integrations-matrix (writes plans) |
-| `dev:backend` | wave.md + hld-{boundary} + api-{boundary} + data-model-{boundary} + KG |
-| `dev:frontend` | wave.md + ux-{boundary} + api-*.md (contracts) + KG |
-| `review:backend` | source code {boundary} + hld + api + KG |
-| `review:frontend` | source code {boundary} + ux + KG |
-| `fix:backend` / `fix:frontend` | tracking/waves/{wave}/bugs + source + (HLD/UX) + KG |
-| `dev-handoff` | wave plan + infra + handoff doc |
-| `test-plan` | handoff + FEAT + api (contracts) |
-| `test-execute` | test cases + handoff + infra — **không đọc source code** |
-| `release`, `end-wave`, `apply-cr`, `start-wave`, `review:document`, `cross-boundary-review` | xem registry |
+### Intake (4 specialists + main orchestrate)
 
-`build_command_prompt.py` inject section **DOCS IN SCOPE** vào prompt agent, list các file scoped theo role.
+`/intake-requirement` được orchestrate bởi **Claude main** (no orchestrator agent — flat pattern). Main spawn 4 specialists tuần tự:
 
-## Luồng `/intake-requirement`
+| Step | Agent | Skill primary | Output chính |
+|------|-------|---------------|--------------|
+| 1 | [requirement-analyst-agent](requirement-analyst-agent.md) | `requirement-analysis` | PROJECT.md + FEAT-*.md draft + project.service_prefix |
+| 2 | [business-analyst-agent](business-analyst-agent.md) | `business-analysis` | FEAT refined (AC testable + BR + boundaries_suggested) |
+| 3 | [solution-architect-agent](solution-architect-agent.md) | `technical-design` | ADR + HLD + API + data-model + UX + events + integrations + infra/docker-compose |
+| 4 | [program-planner-agent](program-planner-agent.md) | `implementation-plan` | WAVE-SEQUENCE + wave-001 + MATRIX + materialize per-boundary dev/fix/KG |
 
-Orchestrator: [intake-orchestrator-agent.md](intake-orchestrator-agent.md)
+### Review (5 singletons)
 
-Mỗi bước spawn **một specialist** (không gộp 4 vai một lượt):
+| Agent | Command | Skill primary | Mode |
+|-------|---------|---------------|------|
+| [review-document-agent](review-document-agent.md) | `/review-document` | `business-analysis` | revision (feedback) + sanity-check (no arg) |
+| [review-backend-agent](review-backend-agent.md) | `/review-dev` (kind=backend) | `review-backend` | Internal loop: review → spawn fix → re-review |
+| [review-bff-agent](review-bff-agent.md) | `/review-dev` (kind=bff) | `review-bff` | Same |
+| [review-web-agent](review-web-agent.md) | `/review-dev` (kind=web) | `review-web` | Same |
+| [review-mobile-agent](review-mobile-agent.md) | `/review-dev` (kind=mobile) | `review-mobile` | Same |
 
-```bash
-py scripts/build_command_prompt.py intake-requirement --step 1 --input "..."
-py scripts/build_command_prompt.py intake-requirement --step 2
-py scripts/build_command_prompt.py intake-requirement --step 3
-py scripts/build_command_prompt.py intake-requirement --step 4
+> Review agents là **singleton per kind** (1 file dùng cho mọi boundary cùng kind).
+> Rules/checklist cụ thể nằm trong skill (project-customizable), KHÔNG hardcode trong agent file.
+
+### Operations (6 ops)
+
+| Agent | Command | Skill primary | Stage transition |
+|-------|---------|---------------|------------------|
+| [start-wave-agent](start-wave-agent.md) | `/start-wave` | (none — pure orchestration) | INTAKE → WAVE_OPEN |
+| [dev-handoff-agent](dev-handoff-agent.md) | `/dev-handoff` | `infra-local-dev` | REVIEW_DEV → DEV_HANDOFF |
+| [test-plan-agent](test-plan-agent.md) | `/test-plan` | `test-plan` | DEV_HANDOFF → TEST_PLAN |
+| [test-execute-agent](test-execute-agent.md) | `/test-execute` | `test-execute` | TEST_PLAN → TEST_EXECUTE → (auto) MANUAL_TEST |
+| [end-wave-agent](end-wave-agent.md) | `/end-wave` | (none) | MANUAL_TEST → DONE |
+| [done-wave-agent](done-wave-agent.md) | `/done-wave` | `infra-local-dev` | DONE → BOOTSTRAP |
+
+### Side (1)
+
+| Agent | Command | Skill primary | Stage transition |
+|-------|---------|---------------|------------------|
+| [apply-cr-agent](apply-cr-agent.md) | `/apply-cr <CR-ID>` | `business-analysis` | DONE → INTAKE (amendment mode) |
+
+## Materialize per-boundary (after intake)
+
+Sau intake step 4 + `/start-wave`, `materialize.py` gen per boundary:
+
+| Type | File | Template |
+|------|------|----------|
+| Dev | `agents/dev-{prefix}-{boundary}-agent.md` | [_template-dev-agent.md](_template-dev-agent.md) |
+| Fix | `agents/fix-{prefix}-{boundary}-agent.md` | [_template-fix-agent.md](_template-fix-agent.md) |
+| KG | `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` | [TEMPLATE.boundary-kg.yaml](../knowledge-base/TEMPLATE.boundary-kg.yaml) |
+
+Sample materialized (test fixture):
+- [dev-demo-order-management-agent.md](dev-demo-order-management-agent.md)
+- [fix-demo-order-management-agent.md](fix-demo-order-management-agent.md)
+
+## v4 agent file structure
+
+Mỗi agent có 7 sections:
+
+```yaml
+---
+name: <agent-name>
+role: "<role-namespace>:<sub-role>"  # vd "intake:requirement-analyst", "review:backend"
+command: <slash-command>              # spawn command
+pipeline_step: <N|null>               # 1-4 cho intake specialist
+primary_skill: <skill-name|null>      # invoke ngay khi spawn
+secondary_skills: [...]               # available on-demand
+stage_transition: "<from> -> <to>"    # state machine transition
+---
+
+# Title
+
+## Identity            — role, command, stage
+## Trách nhiệm         — artifacts to produce
+## Workflow            — process steps
+## Skills              — primary + secondary
+## Owned paths         — file patterns agent có thể edit
+## Forbidden           — gì NOT làm
+## RETURN SCHEMA       — JSON template
 ```
 
-| Bước | Agent |
-|------|--------|
-| 1 | [requirement-analyst-agent.md](requirement-analyst-agent.md) |
-| 2 | [business-analyst-agent.md](business-analyst-agent.md) |
-| 3 | [solution-architect-agent.md](solution-architect-agent.md) |
-| 4 | [program-planner-agent.md](program-planner-agent.md) |
+## Workflow
 
-Bước 4: materialize từ [_template.agent.md](_template.agent.md) — **backend boundaries + FE (`fe`)**.
+1. Edit agent file ở `agents/` (root, source of truth)
+2. (Optional) Test build prompt: `py scripts/build_prompt.py <command> --stats`
+3. Slash command sẽ dùng agent file khi spawn sub-agent
 
-```bash
-py scripts/materialize_boundary_agents.py --boundaries order,product --wave wave-001
-```
+## Liên quan
 
-## Dev agents (tạo ở bước 4)
-
-| Layer | boundary | Dev | Fix | Review | Command |
-|-------|----------|-----|-----|--------|---------|
-| Backend | `{b}` | `{b}-agent.md` | `fix-{b}-agent.md` | `review-{b}-agent.md` | `start-dev --boundary {b}` |
-| Frontend | `fe` | `fe-agent.md` | `fix-fe-agent.md` | `review-fe-agent.md` | `start-dev --boundary fe` |
-
-## Command agents (cố định trong repo)
-
-`start-wave`, `review-document`, `apply-cr`, `dev-handoff`, `test-plan`, `test-execute`, `release`, `end-wave` — mỗi command một file `*-agent.md`.
+- [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) — state + transitions
+- [harness/SERVICE-BOUNDARY-MATRIX.json](../harness/SERVICE-BOUNDARY-MATRIX.json) — boundary metadata
+- [commands/README.md](../commands/README.md) — slash commands
+- Root [CLAUDE.md](../CLAUDE.md) — router file

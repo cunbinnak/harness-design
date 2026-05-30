@@ -1,33 +1,31 @@
-# apply-cr
+---
+name: apply-cr
+description: "Change request amendment. Chỉ allow từ DONE state. Re-trigger intake."
+when_state: ['DONE']
+sets_stage: INTAKE
+spawn:
+  agent: "apply-cr-agent"
+  skills: []
+gates: [{type: non_empty, field: cr_id}]
+---
 
-**Phân tích Change Request** và chuẩn bị **intake amendment**. File CR tồn tại = coi như **đã duyệt** (không bước approve riêng).
+# /apply-cr
 
-Orchestrator: [apply-cr-agent.md](../agents/apply-cr-agent.md) · Pipeline: [PIPELINES.json](../harness/PIPELINES.json) (entry `apply-cr`)
+## Mục đích
 
-## Khi nào
+Sau khi wave done, nếu có scope change -> tạo CR file -> chạy `/apply-cr` -> re-trigger intake amendment để phân tích lại impact.
 
-- Thay đổi scope / nghiệp vụ / boundary sau khi đã có plan (`review-document` trở đi)
-- Giữa dev (`start-dev`, `review-dev`) hoặc sau `end-wave`
-
-## Chạy
-
-1. Tạo `tracking/change-requests/CR-NNN-*.md` từ [TEMPLATE.cr.md](../tracking/change-requests/TEMPLATE.cr.md)
-2. Phân tích CR:
-
-```bash
-py scripts/build_command_prompt.py apply-cr --cr CR-001
-py scripts/harness.py apply-cr complete '{"cr_id":"CR-001","cr_path":"tracking/change-requests/CR-001-....md"}'
-```
-
-3. Intake amendment (bắt buộc sau `apply-cr` nếu có `cr_id`):
+## Build prompt + spawn
 
 ```bash
-py scripts/build_command_prompt.py intake-requirement --step 1 --input "CR-001: ..."
-# ... step 2–4 ...
-py scripts/harness.py intake-requirement complete '{"intake_mode":"amendment","cr_id":"CR-001","change_summary":"..."}'
-py scripts/harness.py review-document complete '{"approved": true}'
+# Tạo CR file trước
+# tracking/change-requests/CR-001-add-payment.md (theo TEMPLATE)
+py scripts/build_prompt.py apply-cr --cr-id CR-001
+py scripts/harness.py apply-cr complete '{"cr_id": "CR-001"}'
+# STATE.stage -> INTAKE (amendment mode)
 ```
 
-Wave đang mở: tiếp `start-dev` (không cần `start-wave` lại). Wave mới / sau `end-wave`: `start-wave`.
+## Sau khi vào INTAKE
 
-Discipline: rule `.cursor/rules/harness-agent-discipline.mdc` + shared KG
+Chạy lại `/intake-requirement` với evidence `{"intake_mode": "amendment", "cr_id": "CR-001"}` để 4 step pipeline phân tích CR.
+

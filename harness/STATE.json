@@ -1,8 +1,9 @@
 {
-  "version": 2,
+  "version": 4,
   "project": {
     "id": "adlc-design",
-    "display_name": "ADLC Design Harness"
+    "display_name": "ADLC Design Harness",
+    "service_prefix": null
   },
   "wave": {
     "id": null,
@@ -10,59 +11,23 @@
   },
   "stage": "BOOTSTRAP",
   "previous_stage": null,
-  "features_in_flight": [],
-  "boundaries_in_flight": [],
   "active_boundary": null,
-  "owned_paths": [],
-  "non_negotiables": [],
-  "context": {
-    "docs": [],
-    "skills": [],
-    "agents": [],
-    "knowledge_graphs": [
-      "knowledge-base/shared.knowledge-graph.yaml"
-    ],
-    "kg_discipline": {
-      "in_progress": [],
-      "do_not_repeat": [],
-      "blockers": [],
-      "active_decisions": []
-    },
-    "rules": [
-      ".cursor/rules/harness-agent-discipline.mdc"
-    ]
-  },
+  "wave_boundaries": [],
+  "wave_features": [],
   "spawn": {
-    "allowed_stages": [
-      "IMPLEMENTATION",
-      "FIX_MANUAL_BUGS"
-    ],
     "active": null
   },
   "workflow": {
     "last_completed": null,
-    "completed": [],
-    "allowed_next": [
-      "intake-requirement"
-    ],
-    "evidence": {},
-    "pipeline": null,
-    "active_command": null
+    "history": []
   },
-  "checkpoints": [],
   "handoff": {
-    "file": null,
-    "last_sync_at": null
-  },
-  "tracking": {
-    "bugs": [],
-    "change_requests": [],
-    "deferred_items": []
+    "file": null
   },
   "meta": {
     "revision": 1,
-    "updated_at": "2026-05-25T15:55:51Z",
-    "updated_by": "reset_for_new_project",
-    "notes": "Fresh starter for project=adlc-design. Run /intake-requirement to begin."
+    "updated_at": "2026-05-30T02:01:48.911310+00:00",
+    "updated_by": "complete:start-wave",
+    "notes": "Fresh STATE for v4 harness. Stage=BOOTSTRAP, allowed_next compute động từ STATE-MACHINE.json[states][BOOTSTRAP].allowed_commands."
   }
 }

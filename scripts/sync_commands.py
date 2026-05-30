@@ -1,93 +1,64 @@
-#!/usr/bin/env python3
-"""Sync commands/manifest.yaml → .cursor/commands and .claude/commands."""
+"""
+Sync commands/*.md -> .claude/commands/ (and optionally .cursor/commands/).
+
+Source of truth: commands/<name>.md (with frontmatter name, description, when_state, sets_stage, gates).
+Target: copy to .claude/commands/<name>.md so Claude Code picks up slash commands.
+
+Usage:
+  py scripts/sync_commands.py            # sync to .claude/ only
+  py scripts/sync_commands.py --cursor   # also sync to .cursor/commands/
+"""
 
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("PyYAML required: pip install pyyaml", file=sys.stderr)
-    raise SystemExit(1) from None
+REPO = Path(__file__).resolve().parent.parent
+SRC = REPO / "commands"
+CLAUDE_DST = REPO / ".claude" / "commands"
+CURSOR_DST = REPO / ".cursor" / "commands"
+
+SKIP_NAMES = {"README.md"}
 
 
-def repo_root() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
-def frontmatter(cmd_id: str, args: str = "") -> str:
-    hint = f" {args}" if args else ""
-    return (
-        f"---\n"
-        f"description: \"Harness command: {cmd_id}\"\n"
-        f"argument-hint: \"{hint.strip()}\"\n"
-        f"---\n\n"
-        f"# /{cmd_id}{hint}\n\n"
-    )
-
-
-def body_for(cmd_id: str, extra: str = "") -> str:
-    complete_line = f"python scripts/harness.py {cmd_id} complete"
-    if extra:
-        complete_line += f" {extra}"
-    return "\n".join(
-        [
-            "Orchestrator: chạy agent (sau này) → artifact → complete.",
-            "",
-            "```bash",
-            complete_line,
-            f"python scripts/harness.py can {cmd_id}",
-            "```",
-            "",
-            "Gates: `harness/COMMAND-GATES.json`. Huong dan: `SETUP-GUIDE.md`.",
-        ]
-    )
-
-
-def collect_commands(manifest: dict) -> list[tuple[str, str, str]]:
-    out: list[tuple[str, str, str]] = []
-    for section in ("core", "extended", "meta"):
-        for item in manifest.get(section) or []:
-            if isinstance(item, str):
-                out.append((item, "", ""))
-            elif isinstance(item, dict):
-                cid = item["id"]
-                args = item.get("args", "")
-                ev = item.get("evidence")
-                extra = "evidence.json" if isinstance(ev, dict) and ev else ""
-                out.append((cid, args, extra))
-    return out
-
-
-def sync_target(root: Path, target_dir: Path, manifest: dict) -> int:
-    target_dir.mkdir(parents=True, exist_ok=True)
-    n = 0
-    for cmd_id, args, extra in collect_commands(manifest):
-        doc_path = root / "commands" / f"{cmd_id}.md"
-        if doc_path.is_file():
-            content = doc_path.read_text(encoding="utf-8")
-            lines = content.splitlines()
-            body = "\n".join(lines[1:]).lstrip() if lines and lines[0].startswith("# ") else content
-        else:
-            body = body_for(cmd_id, extra)
-        (target_dir / f"{cmd_id}.md").write_text(frontmatter(cmd_id, args) + body, encoding="utf-8")
-        n += 1
-    return n
+def sync_to(dst: Path) -> int:
+    dst.mkdir(parents=True, exist_ok=True)
+    src_names = {f.name for f in SRC.glob("*.md") if f.name not in SKIP_NAMES}
+    for old in dst.glob("*.md"):
+        if old.name not in src_names:
+            old.unlink()
+            print(f"  removed: {dst.relative_to(REPO)}/{old.name}")
+    count = 0
+    for f in SRC.glob("*.md"):
+        if f.name in SKIP_NAMES:
+            continue
+        target = dst / f.name
+        shutil.copy2(f, target)
+        count += 1
+        print(f"  synced:  {dst.relative_to(REPO)}/{f.name}")
+    return count
 
 
 def main() -> int:
-    root = repo_root()
-    manifest = yaml.safe_load((root / "commands" / "manifest.yaml").read_text(encoding="utf-8"))
-    if not isinstance(manifest, dict):
-        print("Invalid manifest.yaml", file=sys.stderr)
-        return 1
-    n1 = sync_target(root, root / ".cursor" / "commands", manifest)
-    n2 = sync_target(root, root / ".claude" / "commands", manifest)
-    print(f"Synced {n1} -> .cursor/commands, {n2} -> .claude/commands")
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+    targets = [CLAUDE_DST]
+    if "--cursor" in sys.argv:
+        targets.append(CURSOR_DST)
+
+    total = 0
+    for dst in targets:
+        print(f"\nSyncing to {dst.relative_to(REPO)}/")
+        total += sync_to(dst)
+    print(f"\nTotal files synced: {total}")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

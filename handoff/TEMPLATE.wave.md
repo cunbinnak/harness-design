@@ -85,7 +85,7 @@ Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
 
 | ID | Decision | KG |
 |----|----------|-----|
-| DEC-XXX | (1 dòng tóm tắt) | `knowledge-base/shared.knowledge-graph.yaml` |
+| DEC-XXX | (1 dòng tóm tắt) | `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` |
 
 ## 8. Sign-off (cập nhật khi `end-wave` / `done-wave`)
 

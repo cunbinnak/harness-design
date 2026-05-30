@@ -1,46 +1,43 @@
 ﻿#!/usr/bin/env python3
-"""Reset harness for a new project.
+"""Reset harness for a new project (v4 — TODO: full rewrite).
 
-Clears all project-specific artifacts so the repo becomes a clean starter.
-Preserves: framework code, templates, skills, hooks, core agents.
+⚠️ STATUS: STUB — script này chưa được update cho v4 structure.
+File paths + agent inventory + KG locations đã thay đổi nhiều ở rebuild v4.
 
-KEEP (never touched):
+KEEP (v4 structure, never touched):
   - scripts/**
-  - skills/**
-  - harness/{STATE-MACHINE,COMMAND-GATES,HOOK-RULES,AGENT-DISCIPLINE,PIPELINES}.json
-  - .claude/, .cursor/, .gitignore, README.md, SETUP-GUIDE.md
-  - agents/{_template.agent.md, README.md, intake-orchestrator-agent.md,
-    requirement-analyst-agent.md, business-analyst-agent.md,
-    solution-architect-agent.md, program-planner-agent.md, apply-cr-agent.md,
-    start-wave-agent.md, review-document-agent.md, dev-handoff-agent.md,
-    test-plan-agent.md, test-execute-agent.md, release-agent.md,
-    end-wave-agent.md, reviewer-agent.md}
-  - knowledge-base/{TEMPLATE.knowledge-graph.yaml, shared.knowledge-graph.yaml (content reset)}
-  - docs/architecture/{TEMPLATE.*.md, README.md, *.gitkeep}
+  - .claude/skills/**
+  - harness/{STATE-MACHINE.json, PROTOCOL.md}
+  - .claude/settings.json, .gitignore, README.md, SETUP-GUIDE.md, AGENTS.md, CLAUDE.md
+  - agents/{_template-*.md, README.md, ALL singleton command agents (16 files)}
+  - knowledge-base/TEMPLATE.boundary-kg.yaml
+  - docs/architecture/{TEMPLATE.*.md, README.md} + folder structure
+  - docs/plans/{TEMPLATE.*.md, README.md}
+  - tracking/{_templates/*, README.md}
   - handoff/TEMPLATE.wave.md
-  - tracking/**/TEMPLATE.*.md and .gitkeep
+  - commands/**, .claude/commands/**
 
-REMOVE (project-specific):
-  - docs/architecture/{PROJECT.md, integrations-matrix.md}
-  - docs/architecture/{feat,adr,hld,api,data-model,ux}/{FEAT,ADR,hld,api,data-model,ux}-*.md
-  - docs/architecture/infra/docker-compose.yml + local-dev.md
-  - docs/plans/project/**
-  - docs/plans/waves/**
-  - tracking/{test-case-registry,test-reports,releases,bugs,change-requests}/[^TEMPLATE]*
+REMOVE (project-specific artifacts):
+  - docs/architecture/PROJECT.md
+  - docs/architecture/{feat,adr,hld,api,data-model,ux,events,integrations}/[non-TEMPLATE files]
+  - docs/architecture/infra/docker-compose.yml (preserve TEMPLATE if exists)
+  - docs/plans/WAVE-SEQUENCE.md + wave-*.md
+  - tracking/wave-*/  (entire folders)
   - handoff/wave-*.md
-  - Boundary-specific agents (derived from current SERVICE-BOUNDARY-MATRIX.json)
-  - knowledge-base/[^shared,^TEMPLATE].knowledge-graph.yaml
-  - services/** (if exists)
+  - agents/{dev-,fix-}*-agent.md (materialized per boundary)
+  - knowledge-base/*.knowledge-graph.yaml (except TEMPLATE)
+  - services/** (if exists — should be gitignored)
 
 RESET:
   - harness/STATE.json -> BOOTSTRAP initial state (preserves project.id)
   - harness/SERVICE-BOUNDARY-MATRIX.json -> empty boundaries
-  - knowledge-base/shared.knowledge-graph.yaml -> fresh template content
 
-Usage:
-  py scripts/reset_for_new_project.py --dry-run            # preview
-  py scripts/reset_for_new_project.py --confirm            # do it
+Usage (when stub replaced with real impl):
+  py scripts/reset_for_new_project.py --dry-run
+  py scripts/reset_for_new_project.py --confirm
   py scripts/reset_for_new_project.py --confirm --project-id my-new-app --display-name "My New App"
+
+TODO Step 21+: Rewrite full v4 implementation.
 """
 
 from __future__ import annotations

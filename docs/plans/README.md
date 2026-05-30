@@ -1,37 +1,67 @@
-# docs/plans — Cấu trúc (đề xuất A, file wave gộp)
+# Plans
 
-```text
+Roadmap dự án + per-wave plans. Flat structure (không nested).
+
+## Cấu trúc
+
+```
 docs/plans/
-  README.md
-  project/                          # cấp dự án
-    waves-roadmap.md
-    agent-roster.md
-  waves/
-    wave-001/
-      wave.md                       # plan + assignment trong một file
-    wave-002/
-      wave.md
-  _templates/
-    waves-roadmap.md
-    agent-roster.md
-    wave.md
+├── README.md
+├── TEMPLATE.WAVE-SEQUENCE.md   (template roadmap)
+├── TEMPLATE.wave.md            (template per-wave)
+├── WAVE-SEQUENCE.md            (intake step 4 sinh, full project roadmap)
+├── wave-001.md                 (intake step 4 sinh, wave 1 detail)
+├── wave-002.md
+└── wave-NNN.md
 ```
 
-| File | Ai tạo | Nội dung |
-|------|--------|----------|
-| `project/waves-roadmap.md` | Intake bước 4 | Bao nhiêu wave, FEAT theo wave (`docs/architecture/feat/`) |
-| `project/agent-roster.md` | Intake bước 4 | Boundary → 3 agent paths |
-| `waves/{wave-id}/wave.md` | Intake: §1 Plan · trước `start-dev`: §2 Assignment | **Gộp** — tránh tách `plan` / `assignment` ra nhiều file |
+## Files
 
-## Vì sao gộp `wave.md`?
+| File | Created by | Purpose |
+|------|-----------|---------|
+| `TEMPLATE.WAVE-SEQUENCE.md` | repo (template) | Skeleton cho overall roadmap |
+| `TEMPLATE.wave.md` | repo (template) | Skeleton cho per-wave detail |
+| `WAVE-SEQUENCE.md` | program-planner-agent (intake step 4) | Full project roadmap: số wave, boundary breakdown, timeline, resource, risks |
+| `wave-{NNN}.md` | program-planner-agent (intake step 4) | Per-wave plan: boundaries, features, dependencies, exit criteria, rollback |
 
-- Một wave = một nơi đọc (plan + ai làm gì).
-- Trước `start-dev complete`, orchestrator **bổ sung section 2** trong cùng file (không tạo `wave-001-assignment.md` riêng).
+## Workflow
 
-## Legacy (không dùng nữa)
+```
+Intake step 4 (program-planner):
+  → Read PROJECT.md + FEAT-*.md + ADR + HLD per boundary
+  → Write WAVE-SEQUENCE.md (overall roadmap với N waves)
+  → Write wave-001.md (chi tiết wave đầu)
+  → (Optional) Write wave-002.md, ... nếu plan rõ
+  → Write harness/SERVICE-BOUNDARY-MATRIX.json (boundary metadata)
+  → Run materialize.py (gen dev/fix agents + KG per boundary)
 
-- `docs/plans/waves-roadmap.md` (phẳng)
-- `docs/plans/project-agent-roster.md`
-- `docs/plans/wave-001-plan.md`, `wave-001-assignment.md`
+/start-wave <N>:
+  → Read wave-{NNN}.md
+  → Verify boundaries trong MATRIX
+  → Transition INTAKE → WAVE_OPEN
+```
 
-Script `load_wave_roster.py` ưu tiên path mới, fallback path cũ nếu còn file.
+## Per-wave structure
+
+Mỗi `wave-{NNN}.md` chứa:
+- Overview (wave ID, goal, duration)
+- Boundaries in scope
+- Features in scope với AC count
+- Dependencies cross-wave
+- Implementation order
+- Risks + mitigations
+- Exit criteria
+- Rollback plan
+
+## Relationship với tracking/
+
+`docs/plans/wave-{NNN}.md` = **kế hoạch trước khi làm**.
+`tracking/wave-{NNN}/` = **artifacts trong và sau khi làm** (test cases, report, bugs, signoff).
+
+## Liên quan
+
+- [agents/program-planner-agent.md](../../agents/program-planner-agent.md)
+- [agents/start-wave-agent.md](../../agents/start-wave-agent.md)
+- [harness/SERVICE-BOUNDARY-MATRIX.json](../../harness/SERVICE-BOUNDARY-MATRIX.json)
+- [tracking/README.md](../../tracking/README.md)
+- Root [CLAUDE.md](../../CLAUDE.md)

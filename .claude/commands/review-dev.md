@@ -1,56 +1,35 @@
 ---
-description: "Harness command: review-dev"
-argument-hint: "<boundary_id>"
+name: review-dev
+description: "Self-review code. Internal loop: review-{kind} agent spawn fix sub-agents tới pass."
+when_state: ['DEV']
+sets_stage: REVIEW_DEV
+spawn:
+  agent: "review-{kind}-agent (singleton per kind)"
+  skills: review-{kind}
+gates: []
 ---
 
-# /review-dev <boundary_id>
+# /review-dev
 
-Self-review code theo boundary — spawn `review-{boundary}-agent.md`.
+## Mục đích
 
-**Slash:** `/review-dev <boundary_id>`
+Review code dev vừa làm. Check coverage, convention, KG. Phát hiện issue -> spawn fix sub-agent fix -> re-review. Loop tới pass.
 
-## Luồng
-
-```
-review-dev
-    │
-    ▼
-review-{boundary}-agent
-    ├── chạy tests + coverage
-    ├── coverage BE ≥ 80% && FE ≥ 60% ?
-    │       ├── YES → report approved → harness complete
-    │       └── NO  → spawn fix-{boundary}-agent → fix → re-run tests → approve
-    └── code quality, security check
-```
-
-## Ngưỡng bắt buộc
-
-| Metric | Ngưỡng | Hành động nếu thiếu |
-|--------|--------|---------------------|
-| BE coverage | ≥ 80% | Spawn `fix-{boundary}-agent`, không approve |
-| FE coverage | ≥ 60% | Spawn `fix-{boundary}-agent`, không approve |
-| Unit test pass | 100% | Fix trước khi approve |
-| Security (≥ medium) | 0 issues | Fix trước khi approve |
-
-## Chạy
+## Build prompt + spawn
 
 ```bash
-# Build prompt cho boundary cụ thể
-py scripts/build_command_prompt.py review-dev --boundary order
-
-# Complete (sau khi review-{boundary}-agent approved)
-py scripts/harness.py review-dev complete
-# hoặc với boundary_id (khi nhiều boundary)
-py scripts/harness.py review-dev complete '{"boundary_id": "order"}'
+py scripts/build_prompt.py review-dev --boundary order-management
+# agent review-backend (cho kind=backend) tự loop fix + review
+py scripts/harness.py review-dev complete '{}'
 ```
 
-## Agent
+## Agent internal loop
 
-`agents/review-{boundary_id}-agent.md` (materialized từ `_template.agent.md`)
+```
+1. Review code trong services/{prefix-boundary}/ theo skill review-{kind}
+2. Phát hiện issue (coverage < 80, lint fail, convention violate) -> spawn fix-{prefix-boundary}-agent
+3. Fix agent sửa -> trở lại step 1
+4. Loop tới pass tất cả
+5. Return {review_result: pass, coverage_pct: 85, ...}
+```
 
-Xem section **"Nếu bạn là Review Agent"** trong template agent để biết luồng chi tiết.
-
-## Sau review-dev
-
-- Approved → `dev-handoff`
-- Issues fixed → `review-dev` lại (nếu cần) hoặc `dev-handoff` ngay

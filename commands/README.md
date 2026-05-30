@@ -1,40 +1,66 @@
 # Commands
 
-Nguồn sự thật: [`harness/COMMAND-GATES.json`](../harness/COMMAND-GATES.json) · Luồng tổng quan: [`COMMAND-FRAMEWORK.md`](COMMAND-FRAMEWORK.md) · Setup: [`SETUP-GUIDE.md`](../SETUP-GUIDE.md)
+Source of truth: 12 command file ở `commands/*.md`. Sync sang `.claude/commands/` qua `py scripts/sync_commands.py`.
 
-## Wave flow (chuẩn)
+State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 states, 14 transitions).
 
-| # | Command | Stage sau | Ghi chú |
-|---|---------|-----------|---------|
-| 1 | [intake-requirement](intake-requirement.md) | IMPLEMENTATION_PLAN | BOOTSTRAP — 4 step pipeline |
-| 2 | [review-document](review-document.md) | IMPLEMENTATION_PLAN | Duyệt plan |
-| 3 | [start-wave](start-wave.md) | IMPLEMENTATION_PLAN | Mở wave + sync matrix từ roster |
-| 4 | [start-dev](start-dev.md) | IMPLEMENTATION | Dev theo boundary |
-| 5 | [review-dev](review-dev.md) | SELF_REVIEW | Self-review code + coverage |
-| 6 | [dev-handoff](dev-handoff.md) | SPECIALIST_TESTING | Dev → QA (BE≥80%, FE≥60%) |
-| 7 | [test-plan](test-plan.md) | SPECIALIST_TESTING | `tracking/waves/{wave}/test-cases.md` |
-| 8 | [test-execute](test-execute.md) | RELEASE_CANDIDATE (pass) / BUG_LOGGING (fail) | Auto test only |
-| 9 | [release](release.md) | DONE | `tracking/waves/{wave}/release-notes.md` |
-| 10 | [end-wave](end-wave.md) | **MANUAL_TEST** | Soft close — giữ infra, ship UAT |
-| 11 | [done-wave](done-wave.md) | BOOTSTRAP | Hard close — teardown + reset |
+## Wave flow
 
-## Fail / nhánh phụ
+| # | Command | From state | To state | Note |
+|---|---------|-----------|----------|------|
+| 1 | [intake-requirement](intake-requirement.md) | BOOTSTRAP / INTAKE | INTAKE | 4-step pipeline, iterative user confirm |
+| 2 | [review-document](review-document.md) | INTAKE | INTAKE | Gate: approved=true |
+| 3 | [start-wave](start-wave.md) | INTAKE | WAVE_OPEN | Materialize agents+KG per boundary |
+| 4 | [start-dev](start-dev.md) | WAVE_OPEN | DEV | Spawn dev sub-agent (kind-aware) |
+| 5 | [review-dev](review-dev.md) | DEV | REVIEW_DEV | Internal loop fix+review till pass |
+| 6 | [dev-handoff](dev-handoff.md) | REVIEW_DEV | DEV_HANDOFF | Gate: coverage>=80, infra ready |
+| 7 | [test-plan](test-plan.md) | DEV_HANDOFF | TEST_PLAN | Sinh test-case-registry |
+| 8 | [test-execute](test-execute.md) | TEST_PLAN | TEST_EXECUTE | Build local + run + fix loop. Pass -> auto MANUAL_TEST |
+| 9 | [fix-bugs](fix-bugs.md) | MANUAL_TEST | MANUAL_TEST | Chain fix+review sub-agent |
+| 10 | [end-wave](end-wave.md) | MANUAL_TEST | DONE | Gate: uat_signed + no_open_bugs |
+| 11 | [done-wave](done-wave.md) | DONE | BOOTSTRAP | Teardown infra, reset |
+| 12 | [apply-cr](apply-cr.md) | DONE | INTAKE | CR amendment |
 
-| # | Command | Khi nào | Stage |
-|---|---------|---------|-------|
-| 12 | [fix-bugs](fix-bugs.md) | Auto fail (`test-execute`) hoặc manual fail (`MANUAL_TEST`) | FIX_MANUAL_BUGS |
-| 13 | [retest](retest.md) | Sau fix — smart route auto/manual | SPECIALIST_TESTING hoặc MANUAL_TEST |
+## Removed in v4
 
-## Side commands
+- `release.md` — auto-transition TEST_EXECUTE -> MANUAL_TEST khi test_result=pass (không cần command)
+- `retest.md` — internal loop trong test-execute/fix-bugs (không cần command)
+- `register-boundary.md` — gộp vào start-wave materialize
+- `show-state.md` — đã có `py scripts/harness.py state`
 
-| # | Command | Khi nào |
-|---|---------|---------|
-| 14 | [apply-cr](apply-cr.md) | Thay đổi scope → intake amendment |
-| 15 | [register-boundary](register-boundary.md) | Boundary ngoài roster (rare) |
-| 16 | [show-state](show-state.md) | Inspect STATE.json |
+## Command file frontmatter
 
-## Quy tắc
+```yaml
+---
+name: dev-handoff
+description: ...
+when_state: [REVIEW_DEV]
+sets_stage: DEV_HANDOFF
+spawn:
+  agent: dev-handoff-agent
+  skills: [infra-local-dev]
+gates:
+  - {type: coverage, field: coverage_pct, min: 80}
+  - {type: flag, field: review_result, expected: pass}
+---
+```
 
-- Sau sửa file trong `commands/`: chạy `py scripts/sync_commands.py` (propagate sang `.claude/`, `.cursor/`)
-- Mỗi command 2 lệnh: `build_command_prompt.py <cmd>` (spawn) + `harness.py <cmd> complete` (gate + transition)
-- Check `harness.py state` để xem `workflow.allowed_next` — KHÔNG sửa STATE tay
+Field meaning:
+- `when_state`: command chỉ allowed khi STATE.stage ∈ list này
+- `sets_stage`: stage sau khi transition thành công
+- `spawn.agent`: sub-agent file cần spawn
+- `spawn.skills`: skills cần load (per kind nếu materialized)
+- `gates`: list rule check evidence trước khi transition
+
+## Workflow
+
+1. **Sửa command**: edit `commands/<name>.md` ở repo root
+2. **Sync**: `py scripts/sync_commands.py` (propagate to `.claude/commands/`)
+3. **Re-generate hàng loạt**: `py scripts/gen_commands.py` (dữ liệu spec ở trong script)
+
+## Liên quan
+
+- [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) — state + transitions
+- [harness/PROTOCOL.md](../harness/PROTOCOL.md) — chi tiết protocol orchestrator↔sub-agent
+- [agents/README.md](../agents/README.md) — agent inventory + materialize
+- Root [CLAUDE.md](../CLAUDE.md) — router file, SLASH COMMANDS section

@@ -1,48 +1,87 @@
 ---
-agent_id: program-planner
-role: intake:program-planner
-pipeline_step: 4
+name: program-planner-agent
+role: "intake:program-planner"
 command: intake-requirement
-kind: intake-specialist
-knowledge_graph: knowledge-base/shared.knowledge-graph.yaml
-skills:
-  - implementation-plan
+pipeline_step: 4
+primary_skill: implementation-plan
+secondary_skills: []
+mode_support: [full, amendment]
+kg_target: null
 ---
 
 # Program Planner Agent
 
-## Mục tiêu
+## Identity
 
-Roadmap **đủ wave + timeline**; **mỗi** `wave.md`; roster ghi **wave nào** mỗi agent tham gia.
+**Specialist bước 4/4** của pipeline `/intake-requirement`. Spawn bởi Claude main (no orchestrator agent — flat pattern).
 
-## Phải làm
+| | |
+|---|---|
+| Pipeline step | 4/4 |
+| Skill primary | `implementation-plan` |
+| Spawn cmd | `py scripts/build_prompt.py intake-requirement --step 4` |
 
-1. **`waves-roadmap.md`** — số wave, thời lượng **toàn dự án**, bảng từng wave.
-2. **`materialize_wave_plans.py`** → điền §1 **từng** `docs/plans/waves/{wave-id}/wave.md`.
-3. **`agent-roster.md`** — cột **`waves_participating`** (vd. `1,2` hoặc `wave-001; wave-002`):
-   - Agent chỉ tham gia wave được liệt kê (vd. sales chỉ wave-001, customer wave-001+002).
-4. Materialize (dùng `--force` nếu đổi cột waves trên agent đã tồn tại):
-   ```bash
-   py scripts/materialize_ux_documents.py --from-roster docs/plans/project/agent-roster.md
-   py scripts/materialize_boundary_agents.py --from-roster docs/plans/project/agent-roster.md --force
-   py scripts/materialize_knowledge_graphs.py --from-roster docs/plans/project/agent-roster.md
-   ```
+**KHÔNG phải:** specialist khác (4 step độc lập), reviewer (review-document).
 
-## Không được
+## Mục đích
 
-- Sửa `scripts/materialize_*.py` hoặc harness config — chỉ gọi lệnh trong block Materialize.
-- Tạo/sửa `agents/*-agent.md` bằng tay — dùng `materialize_boundary_agents.py`.
+Roadmap đủ wave + timeline. Mỗi wave plan chi tiết. MATRIX với boundary metadata. Materialize per-boundary agents + KG qua script.
 
-## Amendment (intake_mode)
+## Trách nhiệm — produce artifacts
 
-- Chỉ sửa wave/FEAT/roster bị ảnh hưởng; không đụng wave đã release nếu không cần.
+- docs/plans/WAVE-SEQUENCE.md (số wave, thời lượng dự án, bảng từng wave)
+- docs/plans/wave-001.md (chi tiết wave đầu)
+- harness/SERVICE-BOUNDARY-MATRIX.json (boundary metadata: kind, prefix, tech, owned_paths, depends_on, consumed_by, wave)
+- agents/dev-{prefix}-{boundary}-agent.md per boundary (qua materialize.py)
+- agents/fix-{prefix}-{boundary}-agent.md per boundary (qua materialize.py)
+- knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml per boundary (qua materialize.py)
 
-## Đầu ra
+## Workflow
+
+1. Read tất cả intake artifacts (PROJECT, FEAT, ADR, HLD/API/data-model/UX/events/integrations).
+2. Write docs/plans/WAVE-SEQUENCE.md: số wave (vd 3 waves), thời lượng dự án (vd 12 weeks), bảng từng wave (boundaries + features + effort estimate).
+3. Write docs/plans/wave-001.md chi tiết: boundaries tham gia, FEAT in scope, exit criteria.
+4. Write harness/SERVICE-BOUNDARY-MATRIX.json (qua Edit tool): array boundaries với fields boundary_id, kind, prefix, purpose, wave, tech {language, framework, data_store}, owned_paths (auto từ template), depends_on, consumed_by.
+5. Run: py scripts/materialize.py - script đọc MATRIX → gen 3 file per boundary (dev-agent, fix-agent, KG yaml skeleton).
+6. Verify materialize output: ls agents/dev-* fix-* | wc -l == số boundary; ls knowledge-base/*.knowledge-graph.yaml == số boundary.
+7. Cuối: nhắc user 'Intake 4-step done. Review wave plan + MATRIX. Nếu cần chỉnh: /review-document. Nếu OK: /approve-document.'
+
+## Skills
+
+- **Primary** (invoke ngay): `implementation-plan`
+- **Available on-demand**: none (specialist focus 1 skill chính)
+
+## Owned paths
+
+- docs/plans/WAVE-SEQUENCE.md
+- docs/plans/wave-*.md
+- harness/SERVICE-BOUNDARY-MATRIX.json
+- agents/dev-*-agent.md (qua materialize.py)
+- agents/fix-*-agent.md (qua materialize.py)
+- knowledge-base/*-*.knowledge-graph.yaml (qua materialize.py)
+
+## Forbidden
+
+- Tạo agents/dev-* fix-* bằng tay - PHẢI qua materialize.py.
+- Sửa scripts/materialize.py.
+- Quyết tech stack (bước 3 đã chốt qua ADR).
+- Code trong services/.
+
+## RETURN SCHEMA
+
+Dòng cuối message PHẢI là JSON:
 
 ```json
 {
-  "completed": ["program-plan"],
-  "waves_planned": ["wave-001", "wave-002"],
-  "project_duration_estimate": "12 weeks"
+  "completed": ["step-4-done"],
+  "deferred": [],
+  "needs_review": [],
+  "files_changed": ["docs/architecture/..."],
+  "kg_appended": [],
+  "build": "pass",
+  "lint": "pass",
+  "test": "pass",
+  "step_completed": 4,
+  "waves_planned": ["wave-001","wave-002"], "project_duration_estimate": "12 weeks", "boundaries_materialized": ["order-mgmt","customer-mgmt"], "user_confirmed": true
 }
 ```

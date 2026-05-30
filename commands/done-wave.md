@@ -1,42 +1,25 @@
-# done-wave (hard close)
+---
+name: done-wave
+description: "Hard close: teardown infra, archive wave artifacts, reset -> BOOTSTRAP."
+when_state: ['DONE']
+sets_stage: BOOTSTRAP
+spawn:
+  agent: "done-wave-agent"
+  skills: [infra-local-dev]
+gates: [{type: flag, field: teardown_ok, expected: true}]
+---
 
-Đóng wave thực sự → teardown infra + reset STATE cho wave kế tiếp.
+# /done-wave
 
-**Agent:** [done-wave-agent.md](../agents/done-wave-agent.md) · **Role:** `done-wave`
+## Mục đích
 
-## Pre-condition
+Teardown infra (docker-compose down --volumes), archive wave artifacts vào handoff/wave-N.md, reset STATE -> BOOTSTRAP cho wave kế tiếp.
 
-- Stage hiện tại = `MANUAL_TEST` (sau `end-wave complete`)
-- UAT clean: **không còn bug "Open"** trong `tracking/waves/{wave-id}/bugs/`
-
-## Hành vi
-
-| | Trước | Sau |
-|---|------|-----|
-| Stage | MANUAL_TEST | **BOOTSTRAP** |
-| Infra | Up | **Down** (`docker-compose down`) |
-| `wave.id` | `wave-001` | `null` (reset) |
-| `boundaries_in_flight` | `[...]` | `[]` |
-| `allowed_next` | — | `["start-wave", "intake-requirement", "apply-cr"]` |
-
-## Output
-
-1. `docker-compose down` (BẮT BUỘC)
-2. KG shared: `wave-{wave-id}-done` decision + learnings từ UAT
-3. Finalize `handoff/{wave-id}.md` — section "Wave Done"
-
-## Chạy
+## Build prompt + spawn
 
 ```bash
-py scripts/build_command_prompt.py done-wave
-py scripts/harness.py done-wave complete '{"done_wave_ok": true}'
+py scripts/build_prompt.py done-wave
+docker-compose -f docs/architecture/infra/docker-compose.yml down --volumes
+py scripts/harness.py done-wave complete '{"teardown_ok": true}'
 ```
 
-Gate: `done_wave_ok: true`. Hook check không còn bug Open.
-
-## Sau done-wave
-
-| Tình huống | Lệnh |
-|-----------|------|
-| Wave kế tiếp đã plan, không đổi scope | `/start-wave` với `wave_id` mới |
-| Có CR / thay đổi nghiệp vụ | `/apply-cr` → `/intake-requirement` (amendment) → `/review-document` → `/start-wave` |

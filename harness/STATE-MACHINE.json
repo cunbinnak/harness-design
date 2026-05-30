@@ -1,152 +1,169 @@
 {
-  "version": 2,
+  "version": 4,
   "initial_state": "BOOTSTRAP",
   "states": {
     "BOOTSTRAP": {
-      "description": "Chưa bắt đầu wave/feature, khởi tạo",
-      "skill": null
+      "description": "Khởi tạo, chưa có wave nào. Target reset sau /done-wave.",
+      "allowed_commands": ["intake-requirement"],
+      "allowed_spawn": false,
+      "read_only_spawn_always": true
     },
-    "REQUIREMENT_INTAKE": {
-      "description": "Nhận và chuẩn hóa yêu cầu",
-      "skill": "requirement-analysis"
+    "INTAKE": {
+      "description": "Intake done. /review-document loop revise theo feedback. /approve-document mark approved. /start-wave (gate approved=true) chuyen WAVE_OPEN.",
+      "allowed_commands": ["intake-requirement", "review-document", "approve-document", "start-wave"],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true,
+      "agent_behavior": "flat_orchestration_by_main_agent"
     },
-    "BUSINESS_ANALYSIS": {
-      "description": "Phân tích nghiệp vụ, rule, edge case",
-      "skill": "business-analysis"
+    "WAVE_OPEN": {
+      "description": "Wave đã materialize agents + KG + MATRIX. Chờ start dev.",
+      "allowed_commands": ["start-dev"],
+      "allowed_spawn": false,
+      "read_only_spawn_always": true
     },
-    "TECHNICAL_DESIGN": {
-      "description": "Thiết kế kỹ thuật, API, data model, flow",
-      "skill": "technical-design"
+    "DEV": {
+      "description": "Sub-agent đang code 1 boundary trong polyrepo service folder.",
+      "allowed_commands": ["review-dev"],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
     },
-    "IMPLEMENTATION_PLAN": {
-      "description": "Chia kế hoạch implement",
-      "skill": "implementation-plan"
+    "REVIEW_DEV": {
+      "description": "Review agent self-review code. Internal loop: review → spawn fix sub-agent → re-review → pass.",
+      "allowed_commands": ["dev-handoff"],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true,
+      "agent_behavior": "internal_review_fix_loop"
     },
-    "IMPLEMENTATION": {
-      "description": "Code implementation (gồm unit test BE)",
-      "skill": "implementation",
-      "spawn_allowed": true
+    "DEV_HANDOFF": {
+      "description": "Verify docker-compose + infra ready cho test agent chạy local.",
+      "allowed_commands": ["test-plan"],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
     },
-    "SELF_REVIEW": {
-      "description": "Agent/dev tự review code và artifact",
-      "skill": "self-review"
+    "TEST_PLAN": {
+      "description": "Sinh test-case-registry.md cho wave.",
+      "allowed_commands": ["test-execute"],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
     },
-    "SPECIALIST_TESTING": {
-      "description": "Test agent/QC specialist phân tích và test",
-      "skill": "specialist-testing"
-    },
-    "BUG_LOGGING": {
-      "description": "Ghi nhận bug nếu test fail",
-      "skill": "bug-logging"
-    },
-    "FIX_MANUAL_BUGS": {
-      "description": "Fix bug từ test/QC/manual",
-      "skill": "implementation",
-      "spawn_allowed": true
-    },
-    "RELEASE_CANDIDATE": {
-      "description": "Ứng viên release",
-      "skill": "release-candidate"
-    },
-    "DONE": {
-      "description": "Hoàn tất wave/feature",
-      "skill": null
+    "TEST_EXECUTE": {
+      "description": "Build service local + run auto test. Internal loop: fail → spawn fix → retest → pass. Auto-transition MANUAL_TEST khi test_result=pass.",
+      "allowed_commands": [],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true,
+      "agent_behavior": "internal_test_fix_loop",
+      "auto_transition_on": {"test_result": "pass"}
     },
     "MANUAL_TEST": {
-      "description": "Wave shipped, manual UAT in progress (infra still up)",
-      "skill": "specialist-testing"
+      "description": "Wave shipped, UAT manual. Infra vẫn UP. /fix-bugs chain spawn fix+review sub-agent in-state.",
+      "allowed_commands": ["fix-bugs", "end-wave"],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true,
+      "agent_behavior": "fix_bugs_chain_review"
+    },
+    "DONE": {
+      "description": "Wave kết thúc, UAT signed. Chờ teardown hoặc CR amendment.",
+      "allowed_commands": ["done-wave", "apply-cr"],
+      "allowed_spawn": false,
+      "read_only_spawn_always": true
     }
   },
   "transitions": [
     {
       "from": "BOOTSTRAP",
-      "to": "REQUIREMENT_INTAKE",
-      "trigger": "start_wave"
+      "to": "INTAKE",
+      "trigger": "intake-requirement",
+      "evidence_required": {"step": 1}
     },
     {
-      "from": "REQUIREMENT_INTAKE",
-      "to": "BUSINESS_ANALYSIS",
-      "trigger": "advance"
+      "from": "INTAKE",
+      "to": "INTAKE",
+      "trigger": "intake-requirement",
+      "evidence_required": {"step": "2|3|4", "user_confirmed_prev": true}
     },
     {
-      "from": "BUSINESS_ANALYSIS",
-      "to": "TECHNICAL_DESIGN",
-      "trigger": "advance"
+      "from": "INTAKE",
+      "to": "INTAKE",
+      "trigger": "review-document",
+      "evidence_required": {"feedback_processed": true},
+      "note": "Revise loop. User cung cap feedback, agent revise doc. KHONG set approved."
     },
     {
-      "from": "TECHNICAL_DESIGN",
-      "to": "IMPLEMENTATION_PLAN",
-      "trigger": "advance"
+      "from": "INTAKE",
+      "to": "INTAKE",
+      "trigger": "approve-document",
+      "evidence_required": {"approved": true},
+      "note": "User mark docs OK. Set approved=true in STATE. KHONG transition state. /start-wave gate check approved."
     },
     {
-      "from": "IMPLEMENTATION_PLAN",
-      "to": "IMPLEMENTATION",
-      "trigger": "advance"
+      "from": "INTAKE",
+      "to": "WAVE_OPEN",
+      "trigger": "start-wave",
+      "evidence_required": {"approved": true, "wave_n": "any"}
     },
     {
-      "from": "IMPLEMENTATION",
-      "to": "SELF_REVIEW",
-      "trigger": "advance"
+      "from": "WAVE_OPEN",
+      "to": "DEV",
+      "trigger": "start-dev",
+      "evidence_required": {"boundary": "any"}
     },
     {
-      "from": "SELF_REVIEW",
-      "to": "SPECIALIST_TESTING",
-      "trigger": "advance"
+      "from": "DEV",
+      "to": "REVIEW_DEV",
+      "trigger": "review-dev",
+      "evidence_required": {}
     },
     {
-      "from": "SELF_REVIEW",
-      "to": "IMPLEMENTATION",
-      "trigger": "review_fail"
+      "from": "REVIEW_DEV",
+      "to": "DEV_HANDOFF",
+      "trigger": "dev-handoff",
+      "evidence_required": {"coverage_pct": {"min": 80}, "review_result": "pass"}
     },
     {
-      "from": "SPECIALIST_TESTING",
-      "to": "RELEASE_CANDIDATE",
-      "trigger": "tests_pass"
+      "from": "DEV_HANDOFF",
+      "to": "TEST_PLAN",
+      "trigger": "test-plan",
+      "evidence_required": {"docker_compose_ok": true}
     },
     {
-      "from": "SPECIALIST_TESTING",
-      "to": "BUG_LOGGING",
-      "trigger": "tests_fail"
+      "from": "TEST_PLAN",
+      "to": "TEST_EXECUTE",
+      "trigger": "test-execute",
+      "evidence_required": {"test_cases_count": {"min": 1}}
     },
     {
-      "from": "BUG_LOGGING",
-      "to": "FIX_MANUAL_BUGS",
-      "trigger": "advance"
+      "from": "TEST_EXECUTE",
+      "to": "MANUAL_TEST",
+      "trigger": "_auto",
+      "evidence_required": {"test_result": "pass"},
+      "auto": true,
+      "note": "Auto-transition khi test agent complete với test_result=pass, không command từ user"
     },
     {
-      "from": "FIX_MANUAL_BUGS",
-      "to": "SPECIALIST_TESTING",
-      "trigger": "retest"
+      "from": "MANUAL_TEST",
+      "to": "MANUAL_TEST",
+      "trigger": "fix-bugs",
+      "evidence_required": {"bug_id": "any"},
+      "note": "In-state loop, agent chain fix + review"
     },
     {
-      "from": "RELEASE_CANDIDATE",
+      "from": "MANUAL_TEST",
       "to": "DONE",
-      "trigger": "release_ok"
+      "trigger": "end-wave",
+      "evidence_required": {"uat_signed": true, "no_open_bugs": true}
     },
     {
       "from": "DONE",
       "to": "BOOTSTRAP",
-      "trigger": "reset_wave"
+      "trigger": "done-wave",
+      "evidence_required": {"teardown_ok": true}
     },
     {
       "from": "DONE",
-      "to": "MANUAL_TEST",
-      "trigger": "end_wave_ok"
-    },
-    {
-      "from": "MANUAL_TEST",
-      "to": "BUG_LOGGING",
-      "trigger": "bug_logged"
-    },
-    {
-      "from": "MANUAL_TEST",
-      "to": "BOOTSTRAP",
-      "trigger": "reset_wave"
-    },
-    {
-      "from": "FIX_MANUAL_BUGS",
-      "to": "MANUAL_TEST",
-      "trigger": "retest_manual"
+      "to": "INTAKE",
+      "trigger": "apply-cr",
+      "evidence_required": {"cr_id": "any"},
+      "note": "CR amendment chỉ từ DONE, không từ state khác"
     }
   ]
 }

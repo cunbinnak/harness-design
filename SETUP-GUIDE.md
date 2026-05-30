@@ -1,188 +1,256 @@
-﻿# Harness Setup Guide
+# Harness Setup Guide
+
+ADLC Design Harness v4 — bộ khung orchestrator cho workflow ADLC.
 
 ## Prerequisites
 
+- Python 3.14+
+- Docker (cho dev/test infra)
+- Git
+- IDE: VSCode (recommend) hoặc Cursor
+
 ```bash
 pip install -r requirements-harness.txt
-py scripts/harness.py state
+py scripts/harness.py state    # show current STATE (default: BOOTSTRAP)
 ```
 
-Mới fork repo: chạy `reset_for_new_project.py` để clear artifacts project cũ (xem [README.md](README.md)).
+## First-time setup (fork repo)
 
-Ở BOOTSTRAP, `workflow.allowed_next = ["intake-requirement"]`.
+Khi fork repo cho project mới:
 
----
+```bash
+# 1. Clone
+git clone <fork-url>
+cd <project>
 
-## How commands work
+# 2. (Optional) Reset state nếu có artifacts cũ
+py scripts/reset_for_new_project.py
+
+# 3. Verify state
+py scripts/harness.py state
+# stage: BOOTSTRAP
+# allowed_commands: [intake-requirement]
+```
+
+## Daily workflow
 
 Mỗi command có 2 lệnh:
 
 ```bash
-py scripts/build_command_prompt.py <command> [--step N] [--input "..."] [--boundary X]
-py scripts/harness.py <command> complete '<json evidence>'
+# 1. Build self-contained prompt cho sub-agent
+py scripts/build_prompt.py <command> [options]
+
+# 2. Apply gate + transition state (sau khi sub-agent done)
+py scripts/harness.py <command> complete '<json-evidence>'
 ```
 
-Check `allowed_next` trước: `py scripts/harness.py state`. **KHÔNG** sửa `STATE.json` tay — hook chặn.
+Check state trước mỗi command:
 
-Evidence schema: xem `harness/COMMAND-GATES.json` + `harness/HOOK-RULES.json`.
-
----
-
-## Workflow sequence
-
-```text
-intake-requirement (x4) -> review-document -> start-wave [-> register-boundary?]
-  -> start-dev -> review-dev -> dev-handoff
-  -> test-plan -> test-execute
-       |
-       +-- fail -> fix-bugs -> retest (smart: pass_auto -> SPECIALIST_TESTING)
-       |
-       +-- pass -> release -> end-wave [SOFT: stage = MANUAL_TEST, infra UP]
-                                 |
-                                 +-- bug manual -> fix-bugs -> retest (smart: pass_manual -> MANUAL_TEST)
-                                 |
-                                 +-- clean -> done-wave [HARD: teardown + reset -> BOOTSTRAP]
-
-apply-cr -> intake-requirement (amendment) -> review-document -> start-wave (next wave)
+```bash
+py scripts/harness.py state
+py scripts/harness.py can <command>    # YES/NO command có được allowed
 ```
 
----
+KHÔNG sửa `harness/STATE.json` tay — hook chặn.
+
+## Workflow sequence (13 commands)
+
+```
+BOOTSTRAP
+   ↓ /intake-requirement "<project description>"
+INTAKE
+   ↓ /review-document "<feedback>" (revision loop)
+   ↓ /approve-document (set approved=true)
+   ↓ /start-wave <N>
+WAVE_OPEN
+   ↓ /start-dev <boundary>
+DEV
+   ↓ /review-dev (internal fix loop)
+REVIEW_DEV
+   ↓ /dev-handoff (verify infra + coverage)
+DEV_HANDOFF
+   ↓ /test-plan
+TEST_PLAN
+   ↓ /test-execute (internal fix loop)
+TEST_EXECUTE
+   ↓ (auto) test_result=pass
+MANUAL_TEST
+   ↓ /fix-bugs <bug-id> (chain fix + review verify, loop)
+   ↓ /end-wave (UAT signed)
+DONE
+   ├ /done-wave → BOOTSTRAP (next wave)
+   └ /apply-cr <CR-ID> → INTAKE (amendment)
+```
 
 ## Intake (4-step pipeline)
 
-Phân tích **toàn bộ dự án** → multi-wave plan + materialize agents/KGs.
+`/intake-requirement` — Claude main spawn 4 specialists tuần tự (flat orchestration, no orchestrator agent):
 
-| Step | Agent | Role | Output |
-|------|-------|------|--------|
-| 1 | requirement-analyst | `intake:requirement-analyst` | PROJECT.md + FEAT/* draft + open questions |
-| 2 | business-analyst | `intake:business-analyst` | AC testable + BR + boundaries_suggested |
-| 3 | solution-architect | `intake:solution-architect` | ADR + HLD + API + data-model + UX + integrations |
-| 4 | program-planner | `intake:program-planner` | waves-roadmap, agent-roster, materialize (agents, KGs, matrix) |
+| Step | Specialist | Skill | Output |
+|------|-----------|-------|--------|
+| 1 | requirement-analyst | requirement-analysis | PROJECT.md + FEAT-*.md draft + service_prefix |
+| 2 | business-analyst | business-analysis | FEAT refined (AC + BR + boundaries_suggested) |
+| 3 | solution-architect | technical-design | ADR + HLD + API + data-model + UX + events + integrations + infra/docker-compose |
+| 4 | program-planner | implementation-plan | WAVE-SEQUENCE + wave-001 + MATRIX + materialize per-boundary agents/KG |
 
 ```bash
-py scripts/build_command_prompt.py intake-requirement --step 1 --input "<project description>"
-# ... step 2, 3, 4 ...
-py scripts/harness.py intake-requirement complete '{}'
+/intake-requirement "CRM cho công ty bán nhựa HDPE multi-tenant"
+# → Claude main runs 4 specialists sequentially, sub-agents produce docs
+# → User reviews docs
+/review-document "PROJECT.md thiếu NFR security"
+# → review-document-agent revises
+/approve-document
+# → sets approved=true
+/start-wave 1
+# → materialize per-boundary, transition WAVE_OPEN
 ```
 
-Sau intake: `/review-document` (gate) → `/start-wave`.
+## Dev cycle
 
-Amendment: re-intake với `{"intake_mode": "amendment", "cr_id": "CR-XXX"}` — gates nhẹ hơn (`gates_amendment`).
+```bash
+/start-dev order-mgmt
+# → spawn dev-{prefix}-order-mgmt-agent, scaffold services/, code
 
----
+/review-dev
+# → spawn review-backend-agent (kind detected from MATRIX)
+# → internal loop: review → spawn fix sub-agent → re-review → pass
 
-## After end-wave (wave kế tiếp)
-
-`end-wave` là **soft close** — stage chuyển `MANUAL_TEST`, infra vẫn UP. Hai đường:
-
-| Tình huống | Lệnh |
-|-----------|------|
-| UAT pass, clean | `/done-wave` -> BOOTSTRAP -> `/start-wave` wave kế tiếp |
-| Bug manual UAT | `/fix-bugs --boundary X` -> `/retest` -> (loop) -> `/done-wave` |
-| Wave kế tiếp đã plan, không đổi scope | sau `/done-wave`: `/start-wave` với `wave_id` mới |
-| Đổi scope (CR) | `/apply-cr` -> `/intake-requirement (amendment)` -> `/review-document` -> `/start-wave` |
-
----
-
-## Change requests (CR)
-
-File CR trong repo = đã duyệt. Flow:
-
-```text
-apply-cr -> intake-requirement (amendment + cr_id) -> review-document -> start-wave | start-dev
+/dev-handoff
+# → verify infra docker-compose + coverage + smoke functional
 ```
 
-1. Tạo `tracking/change-requests/CR-NNN-*.md` từ [TEMPLATE.cr.md](tracking/change-requests/TEMPLATE.cr.md)
-2. `py scripts/build_command_prompt.py apply-cr --cr CR-001` → agent điền § "Kế hoạch cập nhật"
-3. `py scripts/harness.py apply-cr complete '{"cr_id":"CR-001"}'`
-4. Intake 4 step với `intake_mode: amendment` + `cr_id`
+## Test cycle
 
-Chi tiết: [commands/apply-cr.md](commands/apply-cr.md).
+```bash
+/test-plan
+# → spawn test-plan-agent → write tracking/wave-{N}/test-case-registry.md
 
----
+/test-execute
+# → build local, run auto test với proof
+# → fail → log bug → spawn fix → re-test (internal loop)
+# → pass → auto-transition MANUAL_TEST
+```
+
+## UAT + Close
+
+```bash
+# Stakeholder UAT manually, log results vào tracking/wave-{N}/qc-signoff.md
+# Phát hiện bug?
+/fix-bugs BUG-001
+# → chain fix + review verify
+
+/end-wave
+# → mark UAT signed, transition DONE
+
+/done-wave
+# → teardown infra, archive, reset BOOTSTRAP
+```
+
+## Change Request flow
+
+```bash
+# 1. Tạo CR file
+cp tracking/_templates/TEMPLATE.cr.md tracking/wave-002/change-requests/CR-001-add-payment.md
+# Edit CR file: scope, rationale, ...
+
+# 2. State phải = DONE (sau done-wave hoặc end-wave)
+/apply-cr CR-001
+# → analyze impact, transition INTAKE (amendment mode)
+
+# 3. Re-run intake amendment
+/intake-requirement
+# → only updates affected files per CR
+/review-document "..."
+/approve-document
+/start-wave 2    # next wave với scope updated
+```
 
 ## Gate checklist (summary)
 
-| Command | Main artifacts / evidence |
-|---------|---------------------------|
-| `intake-requirement` | PROJECT, FEAT, ADR≥3, HLD/API/data-model/UX per boundary, plans, roster, agents, KGs, integrations matrix |
-| `review-document` | `approved: true` |
-| `start-wave` | `wave.md` §1 ready, matrix synced from roster |
-| `start-dev` | `wave.md` §2, `features_in_flight`, `boundaries_in_flight` |
-| `review-dev` | `wave_active`, `dev_boundary_resolved` |
-| `dev-handoff` | `coverage_pct >= 80`, `coverage_fe_pct >= 60`, `handoff_ready`, `docker-compose.yml` |
-| `test-plan` | `tracking/waves/*/test-cases.md` >= 1 |
-| `test-execute` | cases registry + `test_result` (auto only) |
-| `fix-bugs` | `tracking/waves/*/bugs/**` >= 1, boundary resolved |
-| `retest` | `test_result` (smart routing: pass_auto vs pass_manual) |
-| `release` | prior test pass (checkpoint) + `release_ok: true` + wave active |
-| `end-wave` | `end_wave_ok: true` + handoff doc exists |
-| `done-wave` | `done_wave_ok: true` + no bugs Open in `tracking/waves/{wave-id}/bugs/` |
-| `apply-cr` | CR file + § "Kế hoạch cập nhật" filled |
+| Command | Main evidence |
+|---------|--------------|
+| `intake-requirement` | `step >= 1` |
+| `review-document` | `feedback_processed: true` |
+| `approve-document` | `approved: true` |
+| `start-wave` | `approved: true` + `wave_n >= 1` |
+| `start-dev` | `boundary` ∈ wave_boundaries |
+| `dev-handoff` | `coverage_pct >= 80` + `review_result: pass` |
+| `test-plan` | `docker_compose_ok: true` |
+| `test-execute` | `test_cases_count >= 1` + `test_result: pass` (auto) |
+| `fix-bugs` | `bug_id` non-empty |
+| `end-wave` | `uat_signed: true` + `no_open_bugs` |
+| `done-wave` | `teardown_ok: true` |
+| `apply-cr` | `cr_id` non-empty (chỉ từ DONE state) |
 
----
-
-## Tracking (per-wave folder)
-
-```
-tracking/
-+-- change-requests/             # cross-wave
-|   +-- TEMPLATE.cr.md
-|   +-- CR-NNN-*.md
-+-- waves/{wave-id}/
-    +-- test-cases.md            # test-plan output
-    +-- test-results.md          # test-execute output (auto)
-    +-- manual-test-log.md       # MANUAL_TEST stage (stakeholder)
-    +-- release-notes.md         # release output
-    +-- bugs/
-        +-- BUG-{n}-*.md         # frontmatter: origin: auto | manual
-```
-
-Format bug ticket: xem [tracking/_templates/TEMPLATE.bug.md](tracking/_templates/TEMPLATE.bug.md). Field `origin` quyết định smart routing của `retest`.
-
----
+Chi tiết: xem [harness/PROTOCOL.md](harness/PROTOCOL.md).
 
 ## Hooks
 
-- Logic: `harness/HOOK-RULES.json` + `scripts/hooks/`
-- Cursor: `.cursor/hooks.json`
-- Claude Code: `.claude/settings.local.json`
+Hook config: `.claude/settings.json` (9 events, đã wire ở Step 9 rebuild).
 
-| Trigger | Khi nào |
-|---------|---------|
-| `session_start` | Mở session |
-| `pre_write_check` | Sửa file (kiểm tra owned_paths) |
-| `pre_state_transition` | `harness complete` (kiểm tra allowed_next + gate + KG blockers) |
-| `pre_task_check` | Spawn sub-agent (kiểm tra stage + spawn_allowed) |
-| `post_task_log` | Sub-agent kết thúc (kiểm tra RETURN + kg_appended) |
+| Event | Behavior |
+|-------|----------|
+| SessionStart | Brief STATE đầu session |
+| UserPromptSubmit | Inject `[HARNESS stage=X ...]` mỗi turn |
+| PreToolUse(Bash) | Check gate khi `harness <X> complete` |
+| PreToolUse(Write\|Edit) | Block protected files (STATE.json, STATE-MACHINE.json, settings.json) |
+| PreToolUse(Task) | KHÔNG block theo stage; inject boundary reminder |
+| PostToolUse(Bash) | Append checkpoint sau complete success |
+| SubagentStop | Validate RETURN SCHEMA JSON |
+| PreCompact | Pin STATE summary trước compact |
+| SessionEnd | Cleanup spawn.active stale |
 
-Vi phạm → "HARNESS — KHÔNG ĐƯỢC PHÉP." Không lách bằng sửa STATE.
-
----
-
-## Doc scope per agent (agent_roles registry)
-
-Mỗi agent có `role:` trong frontmatter -> `harness/AGENT-DISCIPLINE.json[agent_roles]` định nghĩa file/glob được đọc. `build_command_prompt.py` auto-inject section **DOCS IN SCOPE** vào prompt.
-
-Ví dụ:
-- `dev:backend` -> chỉ HLD/API/data-model của boundary mình + wave + KG
-- `dev:frontend` -> UX + API contracts (không HLD/data-model BE internals)
-- `test-execute` -> test-cases + handoff + infra (không source code)
-
-Chi tiết: [agents/README.md](agents/README.md).
-
----
+Vi phạm → hook print error rõ và refuse.
 
 ## Key paths
 
 | Path | Role |
 |------|------|
-| `harness/STATE.json` | Current stage + `workflow.allowed_next` |
-| `harness/STATE-MACHINE.json` | 13 states + transitions |
-| `harness/COMMAND-GATES.json` | Gate per command + branches |
-| `harness/AGENT-DISCIPLINE.json` | Rules + `agent_roles` registry |
-| `harness/SERVICE-BOUNDARY-MATRIX.json` | Boundaries, owned paths (auto-sync from roster) |
-| `commands/manifest.yaml` | Command registry |
+| `harness/STATE.json` | Current stage + workflow history |
+| `harness/STATE-MACHINE.json` | 10 states + 14 transitions |
+| `harness/SERVICE-BOUNDARY-MATRIX.json` | Boundary metadata + owned_paths |
+| `harness/PROTOCOL.md` | Orchestrator ↔ sub-agent protocol |
 | `scripts/harness.py` | CLI entry |
+| `scripts/state.py` | STATE manager |
+| `scripts/gates.py` | Pure gate functions |
+| `scripts/build_prompt.py` | Build self-contained spawn prompt |
+| `scripts/materialize.py` | Per-boundary artifact generator |
+| `scripts/hooks/dispatcher.py` | Hook event router |
+| `agents/` | Agent inventory (singleton + materialized) |
+| `commands/` | Slash command source (synced to `.claude/commands/`) |
+| `.claude/skills/` | On-demand skills (project-customizable) |
+| `docs/architecture/` | PROJECT + FEAT + ADR + HLD + API + data-model + UX + events + integrations |
+| `docs/plans/` | WAVE-SEQUENCE + wave-{N} |
+| `tracking/wave-{N}/` | Per-wave test/bugs/signoff + CR |
+| `knowledge-base/` | Per-boundary KG yaml |
 
-See: [README.md](README.md), [agents/README.md](agents/README.md), [commands/README.md](commands/README.md), [harness/PROTOCOL.md](harness/PROTOCOL.md).
+## Troubleshooting
+
+### `state.py validate` fail
+
+- Check `harness/STATE.json` schema matches `STATE-MACHINE.json[version]`.
+- Compare with `git show pre-rebuild-{date}:harness/STATE.json` để biết baseline.
+
+### Hook block command
+
+- Read error message — hook print lý do cụ thể.
+- KHÔNG bypass bằng sửa STATE.json — fix underlying issue (vd add evidence missing).
+
+### Sub-agent return không phải JSON
+
+- Check agent file RETURN SCHEMA section — sub-agent failed to follow.
+- Hook SubagentStop warn (không block) — user manually verify return text.
+
+### Skill không load
+
+- Verify path: `.claude/skills/<skill-name>/SKILL.md` (không root `skills/`).
+- Reload Claude Code session.
+- Check skill frontmatter `name:` match.
+
+## More
+
+- Router file (Claude Code): [CLAUDE.md](CLAUDE.md)
+- Cross-IDE entry: [AGENTS.md](AGENTS.md)
+- Protocol detail: [harness/PROTOCOL.md](harness/PROTOCOL.md)
+- Agent inventory: [agents/README.md](agents/README.md)
+- Commands flow: [commands/README.md](commands/README.md)

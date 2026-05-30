@@ -68,4 +68,4 @@
 - FEAT: [`feat/FEAT-*.md`](feat/)
 - ADR: [`adr/ADR-*.md`](adr/)
 - Plans: [`../plans/project/waves-roadmap.md`](../plans/project/waves-roadmap.md)
-- Shared KG: [`../../knowledge-base/shared.knowledge-graph.yaml`](../../knowledge-base/shared.knowledge-graph.yaml)
+- Shared KG: [`../../knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml`](../../knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml)

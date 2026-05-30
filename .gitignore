@@ -3,7 +3,37 @@
 # .cursor/commands/
 # .claude/commands/
 
+# Python
 __pycache__/
 *.py[cod]
 .venv/
 spawn-prompt.md
+
+# Java
+*.class
+target/
+.gradle/
+build/
+
+# Node / TS
+node_modules/
+dist/
+.next/
+
+# IDE / OS
+.idea/
+.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Harness runtime artifacts
+handoff/.session-*.md
+.claude/settings.local.json
+
+# Polyrepo services scaffolded by /start-dev (live in separate repos)
+services/*
+!services/README.md
+
+# Provider docs folders may contain secrets/credentials
+docs/architecture/integrations/INTEG-EXT-*/sandbox-credentials.md
+docs/architecture/integrations/INTEG-EXT-*/notes-internal.md

@@ -1,53 +1,24 @@
 ---
-description: "Harness command: dev-handoff"
-argument-hint: ""
+name: dev-handoff
+description: "Verify docker-compose + infra ready cho test agent chạy local."
+when_state: ['REVIEW_DEV']
+sets_stage: DEV_HANDOFF
+spawn:
+  agent: "dev-handoff-agent"
+  skills: [infra-local-dev]
+gates: [{type: coverage, field: coverage_pct, min: 80}, {type: flag, field: review_result, expected: pass}]
 ---
 
 # /dev-handoff
 
-Bàn giao dev → QA: build infra, verify coverage, điền handoff doc.
+## Mục đích
 
-**Agent:** [dev-handoff-agent.md](../agents/dev-handoff-agent.md)
+Chuẩn bị infra để test agent chạy được local. Update `docs/architecture/infra/docker-compose.yml` thêm service mới cho boundary. Verify build local OK.
 
-## Điều kiện
-
-- `review-dev complete` đã xong
-- Coverage BE ≥ 80%, FE ≥ 60% (gate kiểm tra)
-- `docker-compose up --build` chạy được
-
-## Luồng
-
-```
-1. Chạy pytest/jest --coverage  →  kiểm tra BE ≥ 80%, FE ≥ 60%
-2. docker-compose up --build -d
-3. Smoke test: GET /health → 200
-4. Điền handoff/{wave-id}.md đầy đủ (service inventory, endpoints, deploy steps)
-5. Ghi KG
-6. harness complete
-```
-
-## Handoff document
-
-Template: `handoff/TEMPLATE.wave.md`
-File thực: `handoff/{wave-id}.md` (tạo bởi start-wave, điền bởi dev-handoff-agent)
-
-**Phải điền đủ:**
-- Service inventory (port, health endpoint)
-- Lệnh khởi động local
-- Endpoints cần test
-- Coverage numbers
-- Vấn đề đã biết
-
-## Chạy
+## Build prompt + spawn
 
 ```bash
-py scripts/build_command_prompt.py dev-handoff
-
-py scripts/harness.py dev-handoff complete '{
-  "coverage_pct": 85,
-  "coverage_fe_pct": 65,
-  "handoff_ready": true
-}'
+py scripts/build_prompt.py dev-handoff --boundary order-management
+py scripts/harness.py dev-handoff complete '{"coverage_pct": 85, "review_result": "pass", "docker_compose_ok": true}'
 ```
 
-Gate: coverage_pct ≥ 80%, coverage_fe_pct ≥ 60%, handoff_ready: true, docker-compose ≥ 1 service.

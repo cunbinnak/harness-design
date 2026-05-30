@@ -1,1 +1,142 @@
-{}
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "ADLC Design Harness v4 — project-level settings. Hooks dispatch qua scripts/hooks/dispatcher.py. Personal permissions ở settings.local.json (gitignored).",
+  "permissions": {
+    "deny": [
+      "Read(**/target/**)",
+      "Read(**/build/**)",
+      "Read(**/dist/**)",
+      "Read(**/node_modules/**)",
+      "Read(**/__pycache__/**)",
+      "Read(**/.git/objects/**)",
+      "Read(**/.gradle/**)",
+      "Read(**/.next/**)",
+      "Read(**/*.class)",
+      "Read(**/*.pyc)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "SessionStart"]
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "UserPromptSubmit"]
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "Notification"]
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "PreCompact"]
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "PreToolUse"]
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "PreToolUse"]
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "PreToolUse"]
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "PostToolUse"]
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "SubagentStop"]
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "Stop"]
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": ["scripts/hooks/dispatcher.py", "--event", "SessionEnd"]
+          }
+        ]
+      }
+    ]
+  }
+}
