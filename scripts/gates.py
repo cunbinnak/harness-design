@@ -125,6 +125,32 @@ def check_file_exists(path: str, root: Path | None = None) -> tuple[bool, str]:
     return False, f"File '{path}' không tồn tại"
 
 
+def check_wave_in_matrix(evidence: dict, field: str = "wave_n", root: Path | None = None) -> tuple[bool, str]:
+    """Check wave_n maps to ≥1 boundary trong MATRIX (wave phải tồn tại để mở)."""
+    try:
+        wave_n = int(evidence.get(field))
+    except (TypeError, ValueError):
+        return False, f"evidence.{field}={evidence.get(field)!r} không phải int"
+    root = root or REPO_ROOT
+    matrix_file = root / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
+    if not matrix_file.is_file():
+        return False, "MATRIX không tồn tại"
+    try:
+        data = json.loads(matrix_file.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return False, "MATRIX parse lỗi"
+    boundaries = data.get("boundaries", []) if isinstance(data, dict) else data
+    waves: set[int] = set()
+    for b in boundaries:
+        if b.get("wave") is not None:
+            waves.add(b.get("wave"))
+        for w in (b.get("waves") or []):
+            waves.add(w)
+    if wave_n in waves:
+        return True, ""
+    return False, f"wave {wave_n} không có boundary nào trong MATRIX (waves có sẵn: {sorted(waves)})"
+
+
 def check_no_open_bugs(state: dict) -> tuple[bool, str]:
     """Parse tracking/wave-{N}/bugs.md, count bug có status != closed/fixed."""
     wave_id = (state.get("wave") or {}).get("id")
@@ -170,6 +196,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "flag", "field": "approved", "expected": True},
         {"kind": "int_min", "field": "wave_n", "min": 1},
         {"kind": "file_exists", "path": "harness/SERVICE-BOUNDARY-MATRIX.json"},
+        {"kind": "wave_in_matrix", "field": "wave_n"},
     ],
     "start-dev": [
         {"kind": "in_state_list", "field": "boundary", "state_field": "wave_boundaries"},
@@ -221,6 +248,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_in_state_list(evidence, rule["field"], state, rule["state_field"])
         if kind == "file_exists":
             return check_file_exists(rule["path"])
+        if kind == "wave_in_matrix":
+            return check_wave_in_matrix(evidence, rule.get("field", "wave_n"))
         if kind == "no_open_bugs":
             return check_no_open_bugs(state)
     except KeyError as e:
@@ -282,6 +311,11 @@ def _selftest() -> int:
     assert check_coverage_per_kind({"coverage_pct": 60, "kind": "mobile"}, {})[0] is True
     assert check_coverage_per_kind({"coverage_pct": 65, "kind": "backend"}, {})[0] is False
     assert check_coverage_per_kind({"coverage_pct": 79, "kind": None}, {})[0] is False  # default 80
+
+    # wave_in_matrix: seed MATRIX has wave 1, not wave 99
+    assert check_wave_in_matrix({"wave_n": 1})[0] is True
+    assert check_wave_in_matrix({"wave_n": 99})[0] is False
+    assert check_wave_in_matrix({"wave_n": "x"})[0] is False
 
     print("OK: gates.py selftest passed")
     return 0

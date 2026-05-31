@@ -24,8 +24,8 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG từ MATRIX. Pure orch
 1. Verify `docs/plans/wave-{N}.md` tồn tại + có boundaries + features.
 2. Verify `harness/SERVICE-BOUNDARY-MATRIX.json` có entries cho boundaries trong wave.
 3. Run `py scripts/materialize.py --wave {N}` để gen per-boundary artifacts.
-4. Verify materialize output: `agents/dev-{prefix}-*` + `fix-{prefix}-*` + `knowledge-base/{prefix}-*.kg.yaml` tồn tại cho mọi boundary.
-5. Update STATE qua complete evidence: `wave_id`, `wave_boundaries`.
+4. Verify materialize output: `agents/dev-{prefix}-*` + `fix-{prefix}-*` + `knowledge-base/{prefix}-*.knowledge-graph.yaml` tồn tại cho mọi boundary.
+5. Complete: `py scripts/harness.py start-wave complete '{"approved":true,"wave_n":N}'`. Harness tự set `wave={id,number}` + `wave_boundaries` (derive từ MATRIX field `wave`, không phụ thuộc evidence). RETURN SCHEMA vẫn báo `wave_boundaries` để audit.
 
 ## Workflow
 
@@ -71,6 +71,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG từ MATRIX. Pure orch
   "wave_id": "wave-001",
   "wave_n": 1,
   "wave_boundaries": ["order-mgmt", "customer-mgmt"],
+  "wave_features": ["FEAT-001", "FEAT-002"],
   "boundaries_materialized": 2,
   "approved": true
 }

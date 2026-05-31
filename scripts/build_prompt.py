@@ -122,7 +122,7 @@ REVIEW_SKILLS_PER_KIND = {
 }
 
 REF_SKILLS_PER_KIND = {
-    "backend": ["ref-backend-config", "ref-backend-pattern"],
+    "backend": ["ref-backend-config", "ref-backend-pattern", "ref-backend-redis", "ref-backend-kafka", "ref-backend-logging"],
     "bff": [],
     "web": ["ref-frontend-config", "ref-frontend-pattern"],
     "mobile": [],
@@ -237,7 +237,7 @@ def build_intake_requirement(state: dict, matrix: list[dict], opts: dict) -> str
             f"Invoke skill `{spec['skill']}` để load checklist + format.",
             f"Produce artifact: {spec['output']}",
             "Hỏi user: 'OK với output này chưa? Cần chỉnh gì?'",
-            "Iterate cho tới user confirm. Có thể chia nhỏ thành tối đa 3 vòng.",
+            "Iterate cho tới khi user confirm (không giới hạn số vòng).",
             "Sau user confirm: return RETURN SCHEMA với `user_confirmed: true`, `step: " + str(step) + "`",
         ]),
         RETURN_SCHEMA_TEMPLATE,
@@ -347,6 +347,7 @@ def build_boundary_command(
     kind = boundary.get("kind", "backend")
     prefix = boundary.get("prefix") or (state.get("project") or {}).get("service_prefix") or "<prefix>"
     service_folder = boundary.get("service_folder") or f"services/{prefix}-{boundary_id}"
+    wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
 
     if command == "start-dev":
         agent_name = f"dev-{prefix}-{boundary_id}-agent"
@@ -356,7 +357,7 @@ def build_boundary_command(
             f"Invoke primary skill `{PRIMARY_SKILLS_PER_KIND.get(kind, ['rules-?'])[0]}` để load convention.",
             "Read HLD + API + data-model + KG của boundary.",
             f"If `{service_folder}/` chưa có code: scaffold theo skill (pom.xml/package.json/pubspec.yaml + folder structure).",
-            "Implement AC trong FEAT list (đọc wave-{N}.md để biết FEAT trong scope).",
+            f"Đọc `docs/plans/{wave_id}.md` §'Features in scope' → lọc dòng có `Boundary == {boundary_id}` = tập FEAT của boundary này; đọc AC trong từng `FEAT-*.md` tương ứng rồi implement.",
             "Run scoped build/test (mvn -pl ./ test cho backend; npm test cho bff/web; flutter test cho mobile).",
             "Append KG: entities, business_rules, events_published khi code.",
             "Return RETURN SCHEMA.",
@@ -364,7 +365,7 @@ def build_boundary_command(
     elif command == "review-dev":
         agent_name = f"review-{kind}-agent (singleton)"
         skills = REVIEW_SKILLS_PER_KIND.get(kind, [])
-        ref_skills = REF_SKILLS_PER_KIND.get(kind, [])
+        ref_skills = PRIMARY_SKILLS_PER_KIND.get(kind, [])  # review: chỉ rules-{kind} (WHAT), KHÔNG nạp ref how-to
         task_list = [
             f"Invoke skill `{(REVIEW_SKILLS_PER_KIND.get(kind) or ['review-?'])[0]}`.",
             f"Review code trong `{service_folder}/` theo checklist skill.",
@@ -409,7 +410,7 @@ def build_boundary_command(
             ("Events", f"docs/architecture/events/{boundary_id}-events.md"),
             ("Integrations", f"docs/architecture/integrations/INTEG-*{boundary_id}*.md"),
             ("KG", f"knowledge-base/{prefix}-{boundary_id}.knowledge-graph.yaml"),
-            ("Wave plan", f"docs/plans/wave-{{wave_id}}.md"),
+            ("Wave plan", f"docs/plans/{wave_id}.md"),
             ("Features", "docs/architecture/feat/FEAT-*.md (filter theo wave)"),
         ]),
         tasks_block(task_list),
@@ -421,6 +422,7 @@ def build_boundary_command(
 
 def build_dev_handoff(state: dict, matrix: list[dict], opts: dict) -> str:
     boundary_id = opts.get("boundary") or state.get("active_boundary") or "<unknown>"
+    wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
         f"# SPAWN PROMPT — /dev-handoff",
         f"\nAgent: **dev-handoff-agent** · Verify infra + handoff ready.",
@@ -429,7 +431,7 @@ def build_dev_handoff(state: dict, matrix: list[dict], opts: dict) -> str:
         skills_block(["infra-local-dev"]),
         docs_to_read([
             ("docker-compose", "docs/architecture/infra/docker-compose.yml"),
-            ("Wave plan", "docs/plans/wave-{wave_id}.md"),
+            ("Wave plan", f"docs/plans/{wave_id}.md"),
         ]),
         tasks_block([
             "Invoke skill `infra-local-dev`.",
@@ -444,7 +446,7 @@ def build_dev_handoff(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_test_plan(state: dict, matrix: list[dict], opts: dict) -> str:
-    wave_id = (state.get("wave") or {}).get("id") or "wave-001"
+    wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
         "# SPAWN PROMPT — /test-plan",
         "\nAgent: **test-plan-agent** · Sinh test-case-registry cho wave.",
@@ -471,7 +473,7 @@ def build_test_plan(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
-    wave_id = (state.get("wave") or {}).get("id") or "wave-001"
+    wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
         "# SPAWN PROMPT — /test-execute",
         "\nAgent: **test-execute-agent** · Build local + run + internal fix loop.",
@@ -499,7 +501,7 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_end_wave(state: dict, matrix: list[dict], opts: dict) -> str:
-    wave_id = (state.get("wave") or {}).get("id") or "wave-001"
+    wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
         "# SPAWN PROMPT — /end-wave",
         "\nAgent: **end-wave-agent** · Soft close wave sau UAT signed.",
@@ -523,7 +525,7 @@ def build_end_wave(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_done_wave(state: dict, matrix: list[dict], opts: dict) -> str:
-    wave_id = (state.get("wave") or {}).get("id") or "wave-001"
+    wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
         "# SPAWN PROMPT — /done-wave",
         "\nAgent: **done-wave-agent** · Hard close, teardown infra.",

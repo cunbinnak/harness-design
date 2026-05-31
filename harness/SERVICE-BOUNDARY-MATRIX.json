@@ -1,7 +1,6 @@
 {
   "version": 1,
-  "revision": 1,
-  "_comment": "sample seed for materialize testing",
+  "revision": 2,
   "boundaries": [
     {
       "boundary_id": "order-management",
@@ -9,13 +8,16 @@
       "prefix": "demo",
       "purpose": "Sample boundary for materialize.py smoke test",
       "wave": 1,
+      "features": [],
       "tech": {
         "language": "Java 21",
         "framework": "Spring Boot 3.4",
         "data_store": "PostgreSQL 16"
       },
       "depends_on": [],
-      "consumed_by": []
+      "consumed_by": [],
+      "owned_paths": [],
+      "repo_url": ""
     }
   ]
 }

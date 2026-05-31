@@ -11,6 +11,7 @@ Python kernel cho ADLC Design Harness. ~10 file core.
 | `gates.py` | Pure gate functions per command (no side effect) | ~280 |
 | `build_prompt.py` | Build self-contained spawn prompt per command | ~430 |
 | `materialize.py` | Per-boundary artifact generator (dev/fix/KG từ MATRIX) | ~210 |
+| `materialize_matrix.py` | Ghi SERVICE-BOUNDARY-MATRIX.json (intake step 4, gate stage, validate) | ~190 |
 | `smoke_test.py` | E2E state machine walkthrough (18 cases) | ~190 |
 | `sync_commands.py` | Sync `commands/*.md` → `.claude/commands/` | ~60 |
 | `reset_for_new_project.py` | Clear v4 artifacts khi fork repo | ~200 |
@@ -30,7 +31,13 @@ py scripts/build_prompt.py <command> [options]       # stdout self-contained pro
 py scripts/build_prompt.py <command> --stats         # size breakdown
 py scripts/build_prompt.py <command> --save path     # write to file + stdout
 
-# Materialize (sau intake step 4)
+# Materialize MATRIX (intake step 4 — MATRIX bị hook chặn Write tay, dùng script này)
+py scripts/materialize_matrix.py <boundaries.json>   # gate stage ∈ {BOOTSTRAP,INTAKE}, validate, ghi MATRIX
+py scripts/materialize_matrix.py --json '[...]' --mode merge   # update theo boundary_id
+py scripts/materialize_matrix.py <f>.json --dry-run  # in ra, không ghi
+py scripts/materialize_matrix.py --selftest
+
+# Materialize per-boundary artifacts (sau khi có MATRIX)
 py scripts/materialize.py                            # all boundaries in MATRIX
 py scripts/materialize.py --wave 1                   # filter by wave
 py scripts/materialize.py --boundary X --force       # specific boundary, overwrite

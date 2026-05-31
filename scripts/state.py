@@ -163,6 +163,11 @@ def complete(command: str, evidence_str: str | dict) -> dict:
     if chain:
         transitions_msg += f" -> {chain}"
 
+    # 7. Project whitelisted evidence into top-level STATE runtime fields.
+    #    (stage move only updates `stage`; runtime fields like wave/wave_boundaries
+    #     /active_boundary/service_prefix are populated here.)
+    apply_effects(command, evidence, state)
+
     save_state(state, updated_by=f"complete:{command}")
     return _ok(transitions_msg)
 
@@ -204,6 +209,99 @@ def _evidence_matches(evidence: dict, required: dict) -> bool:
         elif evidence.get(k) != v:
             return False
     return True
+
+
+# ========================================================================
+# Effects — project evidence into top-level STATE runtime fields
+# ========================================================================
+
+def _load_matrix_boundaries() -> list[dict]:
+    """Read boundaries[] from SERVICE-BOUNDARY-MATRIX.json (list or {boundaries:[...]})."""
+    if not MATRIX_FILE.is_file():
+        return []
+    try:
+        data = json.loads(MATRIX_FILE.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return []
+    if isinstance(data, dict):
+        return data.get("boundaries", [])
+    if isinstance(data, list):
+        return data
+    return []
+
+
+def wave_boundaries_from_matrix(wave_n: int) -> list[str]:
+    """Boundaries assigned to wave `wave_n` — same predicate as materialize.py filter.
+
+    Single source of truth = MATRIX[boundaries].wave (or .waves list). Derived here
+    so STATE.wave_boundaries cannot drift from what materialize.py generates.
+    """
+    out: list[str] = []
+    for b in _load_matrix_boundaries():
+        bid = b.get("boundary_id") or b.get("id")
+        if not bid:
+            continue
+        if b.get("wave") == wave_n or wave_n in (b.get("waves") or []):
+            out.append(bid)
+    return out
+
+
+def wave_features_from_matrix(wave_n: int) -> list[str]:
+    """FEAT ids of every boundary in wave `wave_n` — deduped, stable (planner) order.
+
+    Single source of truth = MATRIX[boundaries].features. Mirrors
+    wave_boundaries_from_matrix so STATE.wave_features can't drift from the plan.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+    for b in _load_matrix_boundaries():
+        if b.get("wave") == wave_n or wave_n in (b.get("waves") or []):
+            for feat in (b.get("features") or []):
+                if feat not in seen:
+                    seen.add(feat)
+                    out.append(feat)
+    return out
+
+
+def apply_effects(command: str, evidence: dict, state: dict) -> None:
+    """Mutate `state` in place to reflect runtime fields a command establishes.
+
+    state.complete() only moves `stage`; without this, fields gating later commands
+    (e.g. wave_boundaries for /start-dev) stay at their init values and block the flow.
+    Keyed on the user command (not _auto). Side-effect free except a MATRIX read.
+    """
+    if command == "intake-requirement":
+        prefix = evidence.get("project_prefix")
+        if prefix:
+            state.setdefault("project", {})["service_prefix"] = prefix
+
+    elif command == "start-wave":
+        try:
+            wave_n = int(evidence.get("wave_n"))
+        except (TypeError, ValueError):
+            return
+        state["wave"] = {"id": f"wave-{wave_n:03d}", "number": wave_n}
+        derived = wave_boundaries_from_matrix(wave_n)
+        if not derived:
+            # MATRIX has no wave tagging → fall back to agent-provided list, if any.
+            ev_b = evidence.get("wave_boundaries")
+            if isinstance(ev_b, list):
+                derived = ev_b
+        state["wave_boundaries"] = derived
+        state["wave_features"] = wave_features_from_matrix(wave_n)
+        state["active_boundary"] = None
+
+    elif command == "start-dev":
+        boundary = evidence.get("boundary")
+        if boundary:
+            state["active_boundary"] = boundary
+
+    elif command == "done-wave":
+        # Hard close → BOOTSTRAP: clear per-wave runtime fields so STATE is a clean slate.
+        state["wave"] = {"id": None, "number": None}
+        state["wave_boundaries"] = []
+        state["wave_features"] = []
+        state["active_boundary"] = None
 
 
 # ========================================================================

@@ -41,7 +41,7 @@ Roadmap đủ wave + timeline. Mỗi wave plan chi tiết. MATRIX với boundary
 1. Read tất cả intake artifacts (PROJECT, FEAT, ADR, HLD/API/data-model/UX/events/integrations).
 2. Write docs/plans/WAVE-SEQUENCE.md: số wave (vd 3 waves), thời lượng dự án (vd 12 weeks), bảng từng wave (boundaries + features + effort estimate).
 3. Write docs/plans/wave-001.md chi tiết: boundaries tham gia, FEAT in scope, exit criteria.
-4. Write harness/SERVICE-BOUNDARY-MATRIX.json (qua Edit tool): array boundaries với fields boundary_id, kind, prefix, purpose, wave, tech {language, framework, data_store}, owned_paths (auto từ template), depends_on, consumed_by.
+4. Materialize harness/SERVICE-BOUNDARY-MATRIX.json qua `py scripts/materialize_matrix.py <boundaries.json>` (MATRIX là protected file — Edit/Write tool bị hook chặn): array boundaries với fields boundary_id, kind, prefix, purpose, wave, tech {language, framework, data_store}, owned_paths (auto từ template), depends_on, consumed_by.
 5. Run: py scripts/materialize.py - script đọc MATRIX → gen 3 file per boundary (dev-agent, fix-agent, KG yaml skeleton).
 6. Verify materialize output: ls agents/dev-* fix-* | wc -l == số boundary; ls knowledge-base/*.knowledge-graph.yaml == số boundary.
 7. Cuối: nhắc user 'Intake 4-step done. Review wave plan + MATRIX. Nếu cần chỉnh: /review-document. Nếu OK: /approve-document.'

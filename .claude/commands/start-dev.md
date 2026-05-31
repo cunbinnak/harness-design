@@ -37,12 +37,13 @@ py scripts/harness.py start-dev complete '{"boundary": "order-management"}'
 
 | kind | primary (invoke ngay) | review | ref on-demand | scaffold | data layer |
 |---|---|---|---|---|---|
-| `backend` | `rules-backend` | `review-backend` | `ref-backend-config`, `ref-backend-pattern` | `pom.xml` / `build.gradle` | expose REST/GraphQL contract |
+| `backend` | `rules-backend` | `review-backend` | `ref-backend-config`, `ref-backend-pattern`, `ref-backend-{redis,kafka,logging}` | `pom.xml` / `build.gradle` | expose REST/GraphQL contract |
 | `bff` | `rules-bff` | `review-bff` | — | `package.json` (Apollo) | GraphQL gateway → backend REST |
 | `web` | `rules-web` | `review-web` | `ref-frontend-config`, `ref-frontend-pattern` | `package.json` (Vite) | REST trực tiếp BE (default) \| BFF optional |
 | `mobile` | `rules-mobile` | `review-mobile` | — | `pubspec.yaml` (Flutter) | REST trực tiếp BE (default) \| BFF optional |
 
 - **Primary** = `rules-{kind}` (hub) → tự ref tới pattern/config khi cần.
 - `ref-{kind}-config` + `ref-{kind}-pattern` chỉ tồn tại cho `backend`/`web`; `bff`/`mobile` dùng convention trong `rules-{kind}`.
+- `backend` còn có `ref-backend-redis` / `ref-backend-kafka` / `ref-backend-logging` — load on-demand khi boundary dùng tới.
 - Skills wave-level (không theo kind): `test-plan`, `test-execute`, `specialist-testing`, `bug-logging`, `infra-local-dev`.
 

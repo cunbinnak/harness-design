@@ -4,7 +4,7 @@ role: "review:backend"
 command: review-dev
 kind_filter: backend
 primary_skill: review-backend
-secondary_skills: [rules-backend, ref-backend-config, ref-backend-pattern]
+secondary_skills: [rules-backend]
 chain_spawn:
   - "fix-{prefix}-{boundary}-agent (khi fail)"
 kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
@@ -50,9 +50,9 @@ kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
 
 - **Primary** (invoke ngay): `review-backend` — checklist process + thresholds
 - **Available on-demand** (chỉ invoke khi cần):
-  - `rules-backend` — convention bắt buộc (verify code khớp)
-  - `ref-backend-config` — config pattern (verify application.yml, env, secrets)
-  - `ref-backend-pattern` — kiến trúc + cấu trúc (verify layer, repository, service)
+  - `rules-backend` — convention/yêu cầu bắt buộc (verify code khớp; rule redis/kafka/logging nằm sẵn trong đây)
+
+> Review chỉ cần WHAT (`review-backend` checklist + `rules-backend` yêu cầu). Các `ref-backend-*` là HOW (dev-side), KHÔNG nạp ở review.
 
 > **Rules cụ thể nằm trong skill** — tune skill khi cần customize per-project, KHÔNG sửa agent này.
 
