@@ -14,6 +14,8 @@ Input boundary (mỗi entry):
   required: boundary_id (str, unique), kind (backend|bff|web|mobile), prefix (str)
   optional: tech{language,framework,data_store}, wave (int, default 1),
             features [] (list FEAT-id boundary đảm nhận — nguồn cho STATE.wave_features),
+            ref_skills [] (list tên skill ref situational boundary cần ngoài scaffold; intake step 3/4
+                           quyết từ design — kernel chỉ truyền qua, không biết tên skill cụ thể),
             depends_on [], consumed_by [], purpose (str), owned_paths [], repo_url (str)
 """
 
@@ -45,6 +47,7 @@ def normalize_boundary(b: dict) -> dict:
         "purpose": b.get("purpose", ""),
         "wave": int(b.get("wave", 1)),
         "features": list(b.get("features", [])),
+        "ref_skills": list(b.get("ref_skills", [])),
         "tech": b.get("tech", {}),
         "depends_on": list(b.get("depends_on", [])),
         "consumed_by": list(b.get("consumed_by", [])),
@@ -74,6 +77,9 @@ def validate_boundaries(boundaries: list[dict]) -> list[str]:
         feats = b.get("features", [])
         if not isinstance(feats, list) or any(not isinstance(f, str) for f in feats):
             errors.append(f"{where}: features phải là list[str]")
+        refs = b.get("ref_skills", [])
+        if not isinstance(refs, list) or any(not isinstance(r, str) for r in refs):
+            errors.append(f"{where}: ref_skills phải là list[str]")
         for dep in b.get("depends_on", []):
             if dep not in ids:
                 errors.append(f"{where}: depends_on={dep!r} không phải boundary nào trong list")
@@ -194,6 +200,12 @@ def _selftest() -> int:
     assert nb["features"] == ["FEAT-001"], nb
     assert any("features" in e for e in validate_boundaries([
         {"boundary_id": "a", "kind": "backend", "prefix": "x", "features": "nope"},
+    ]))
+    # ref_skills: whitelist survives + bad type rejected
+    nb2 = normalize_boundary({"boundary_id": "a", "kind": "backend", "prefix": "x", "ref_skills": ["ref-sample"]})
+    assert nb2["ref_skills"] == ["ref-sample"], nb2
+    assert any("ref_skills" in e for e in validate_boundaries([
+        {"boundary_id": "a", "kind": "backend", "prefix": "x", "ref_skills": "nope"},
     ]))
     print("OK: materialize_matrix.py selftest passed")
     return 0

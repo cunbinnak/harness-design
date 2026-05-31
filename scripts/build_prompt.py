@@ -121,10 +121,13 @@ REVIEW_SKILLS_PER_KIND = {
     "mobile": ["review-mobile"],
 }
 
-REF_SKILLS_PER_KIND = {
-    "backend": ["ref-backend-config", "ref-backend-pattern", "ref-backend-redis", "ref-backend-kafka", "ref-backend-logging"],
+# Ref structure/config/logging — universal theo kind, cần MỖI lần scaffold. Invoke BẮT BUỘC ở task_list.
+# Situational ref (tuỳ tech của boundary) KHÔNG liệt kê ở kernel: do intake quyết per-boundary và ghi field
+# `ref_skills` trong MATRIX (single source). build_prompt chỉ đọc boundary["ref_skills"] → truyền qua.
+SCAFFOLD_REF_SKILLS_PER_KIND = {
+    "backend": ["ref-backend-pattern", "ref-backend-config", "ref-backend-logging"],
     "bff": [],
-    "web": ["ref-frontend-config", "ref-frontend-pattern"],
+    "web": ["ref-frontend-pattern", "ref-frontend-config"],
     "mobile": [],
 }
 
@@ -171,7 +174,7 @@ def skills_block(skills: list[str], available: list[str] | None = None, note: st
         parts.append("**Primary:** (none — command này không cần skill primary)")
     if available:
         parts.append(
-            "\n**Available on-demand** (chỉ invoke khi gặp tình huống cụ thể):\n"
+            "\n**Available** (invoke NGAY khi điều kiện/ngữ cảnh đúng — không bỏ qua nếu cần):\n"
             + "\n".join(f"- `{s}`" for s in available)
         )
     return head + "\n" + "\n".join(parts)
@@ -352,11 +355,22 @@ def build_boundary_command(
     if command == "start-dev":
         agent_name = f"dev-{prefix}-{boundary_id}-agent"
         skills = PRIMARY_SKILLS_PER_KIND.get(kind, [])
-        ref_skills = REF_SKILLS_PER_KIND.get(kind, [])
+        scaffold_refs = SCAFFOLD_REF_SKILLS_PER_KIND.get(kind, [])
+        # Situational ref = do intake quyết per-boundary, lưu MATRIX field `ref_skills`. Kernel chỉ đọc + truyền qua.
+        ref_skills = list(boundary.get("ref_skills") or [])
+        scaffold_invoke = " + ".join(f"`{s}`" for s in scaffold_refs) if scaffold_refs else "(kind này không có ref structure riêng)"
         task_list = [
             f"Invoke primary skill `{PRIMARY_SKILLS_PER_KIND.get(kind, ['rules-?'])[0]}` để load convention.",
-            "Read HLD + API + data-model + KG của boundary.",
-            f"If `{service_folder}/` chưa có code: scaffold theo skill (pom.xml/package.json/pubspec.yaml + folder structure).",
+            "Read HLD + API + data-model + KG của boundary; lấy **kiến trúc + layer/package đã chốt ở HLD §4** làm chuẩn scaffold.",
+            f"**Scaffold (BẮT BUỘC invoke {scaffold_invoke} trước khi tạo file)** — nếu `{service_folder}/` chưa có code: tạo build file (pom.xml/package.json/pubspec.yaml) + folder layout đúng kiến trúc HLD §4.",
+        ]
+        if ref_skills:
+            task_list.append(
+                "Boundary này được intake gắn ref skill (MATRIX `ref_skills`): "
+                + ", ".join(f"`{s}`" for s in ref_skills)
+                + " — **invoke khi code phần tương ứng** (vd cache/event)."
+            )
+        task_list += [
             f"Đọc `docs/plans/{wave_id}.md` §'Features in scope' → lọc dòng có `Boundary == {boundary_id}` = tập FEAT của boundary này; đọc AC trong từng `FEAT-*.md` tương ứng rồi implement.",
             "Run scoped build/test (mvn -pl ./ test cho backend; npm test cho bff/web; flutter test cho mobile).",
             "Append KG: entities, business_rules, events_published khi code.",
@@ -378,7 +392,12 @@ def build_boundary_command(
         bug_id = opts.get("bug_id") or "<BUG-NNN>"
         agent_name = f"fix-{prefix}-{boundary_id}-agent (then chain review-{kind}-agent)"
         skills = PRIMARY_SKILLS_PER_KIND.get(kind, []) + ["bug-logging"]
-        ref_skills = REF_SKILLS_PER_KIND.get(kind, []) + REVIEW_SKILLS_PER_KIND.get(kind, [])
+        # Refs cho fix = scaffold (structure/config/logging) + ref_skills boundary (MATRIX) + review checklist. Không list tĩnh.
+        ref_skills = (
+            SCAFFOLD_REF_SKILLS_PER_KIND.get(kind, [])
+            + list(boundary.get("ref_skills") or [])
+            + REVIEW_SKILLS_PER_KIND.get(kind, [])
+        )
         task_list = [
             f"Read `tracking/wave-{{N}}/bugs.md` → tìm heading `## {bug_id}`.",
             "Đọc reproduction steps + expected vs actual.",
@@ -401,7 +420,7 @@ def build_boundary_command(
         state_bundle(state, {"command_boundary": boundary_id, "kind": kind}),
         NON_NEGOTIABLES,
         owned_paths_block(boundary),
-        skills_block(skills, available=ref_skills, note="Invoke primary trước khi code. Ref-* CHỈ khi gặp tình huống cụ thể (vd: setup security, config kafka)."),
+        skills_block(skills, available=ref_skills, note="Primary = invoke ngay. Ref structure/config = BẮT BUỘC khi scaffold (xem task_list). Ref situational dưới đây = invoke NGAY khi boundary có điều kiện tương ứng (cache/event/log) — không bỏ qua, không tùy hứng."),
         docs_to_read([
             ("HLD", f"docs/architecture/hld/hld-{boundary_id}.md"),
             ("API", f"docs/architecture/api/api-{boundary_id}.md"),

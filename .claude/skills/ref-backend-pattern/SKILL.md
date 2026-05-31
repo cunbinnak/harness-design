@@ -9,10 +9,10 @@ description: Cấu trúc backend boundary — Layered (classic Spring 3-tier) ho
 > **Audience:** `dev:backend`, `fix:backend`, `review:backend` — load on-demand từ `rules-backend`.
 > **Quan hệ:** `rules-backend` là convention bắt buộc và trỏ sang file này cho cấu trúc; file này KHÔNG lặp lại rule, chỉ mô tả nơi đặt từng artifact (thuật ngữ khớp `rules-backend §Layering`).
 > **Tách bạch:** cấu trúc = file này · config chi tiết (application.yml, security, kafka…) = `ref-backend-config`.
-> **Tuning:** chọn mô hình + đặt tên layer theo **ADR backend-architecture**. Cây thư mục dưới là khung tối thiểu — package tùy chọn (`event/`, `scheduler/`, `util/`…) chỉ thêm khi boundary cần.
+> **Tuning:** mô hình + layer/package của boundary **đã chốt ở HLD §4** (theo ADR backend-architecture). File này KHÔNG quyết lại — chỉ cung cấp layout chuẩn cho mô hình mà HLD đã chốt. Cây thư mục dưới là khung tối thiểu — package tùy chọn (`event/`, `scheduler/`, `util/`…) chỉ thêm khi boundary cần.
 > **Cache/Redis:** có ref skill riêng (pattern interface + impl adapter), KHÔNG mô tả ở file này.
 
-## 1. Chọn mô hình (ghi trong ADR backend-architecture)
+## 1. Chọn mô hình (chốt ở HLD §4, theo ADR backend-architecture)
 
 | Mô hình | Khi dùng | Luồng |
 |---|---|---|

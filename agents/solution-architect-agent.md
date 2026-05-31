@@ -42,7 +42,7 @@ Thiết kế kỹ thuật phủ TẤT CẢ boundary của dự án (không chỉ
 
 1. Read PROJECT.md + tất cả FEAT-*.md (refined ở bước 2) + boundaries_suggested.
 2. Viết 3-5 ADR ngắn: tech-stack chọn (BE/FE/DB/broker), backend architecture (Layered vs DDD - chọn 1), auth/security model, UI kit + i18n, integrations strategy.
-3. Cho MỖI boundary: HLD **theo `docs/architecture/hld/TEMPLATE.hld.md`** (design goals + responsibilities/non-responsibilities, data ownership, C4 context/container/component logic, key flows happy+error, auth & permission, consistency/failure khi áp dụng, deployment & scaling, observability, NFR refine — KHÔNG vẽ source-folder), API (REST/GraphQL contract), data-model (cho backend - tables/relationships).
+3. Cho MỖI boundary: HLD **theo `docs/architecture/hld/TEMPLATE.hld.md`** (design goals + responsibilities/non-responsibilities, data ownership, C4 context/container/component, **chốt kiến trúc Layered/Hexagonal + layer/package — HLD là source cho dev**, key flows happy+error, auth & permission, consistency/failure khi áp dụng, deployment & scaling, observability, NFR refine; chi tiết folder theo ref-pattern), API (REST/GraphQL contract), data-model (cho backend - tables/relationships).
 4. Cho MỖI FE boundary: UX spec (flows, screens, FEAT mapping).
 5. Cho MỖI event-producing boundary: events schema (topic, payload, consumers).
 6. Integrations: INTEG-EXT-{provider}.md cho external (Stripe, Twilio, ...). INTEG-INT-{caller}-to-{callee}.md cho cross-boundary internal sync.

@@ -53,10 +53,13 @@ matrix_revision: {{matrix_revision}}
 
 ## Skill
 
-- **Primary** (invoke ngay khi spawn): `rules-{{kind}}`
-- **Available on-demand** (invoke chỉ khi đụng tình huống cụ thể):
-  - `ref-{{kind}}-config` — Spring config / package.json / pubspec setup
-  - `ref-{{kind}}-pattern` — kiến trúc + cấu trúc thư mục (Layered/DDD)
+- **Primary** (invoke ngay khi spawn): `{{primary_skill}}`
+- **Scaffold** (invoke BẮT BUỘC khi tạo skeleton lần đầu — structure/config/logging; layout theo kiến trúc HLD §4):
+{{scaffold_refs_md}}
+- **Ref theo design boundary** (intake gắn ở MATRIX `ref_skills`; invoke khi code phần tương ứng, vd cache/event):
+{{ref_skills_md}}
+
+> Danh sách `ref_skills` do intake quyết per-boundary (single source = MATRIX). Thêm ref mới sau này = sửa MATRIX, không sửa template/kernel.
 
 ## Owned paths
 

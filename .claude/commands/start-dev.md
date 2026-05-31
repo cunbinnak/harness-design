@@ -33,17 +33,17 @@ py scripts/harness.py start-dev complete '{"boundary": "order-management"}'
 
 ## kind_matrix
 
-> Nguồn chuẩn (single source of truth): `scripts/build_prompt.py` — `PRIMARY_SKILLS_PER_KIND` / `REVIEW_SKILLS_PER_KIND` / `REF_SKILLS_PER_KIND`. Bảng này chỉ mirror để tra cứu; sửa code map khi đổi.
+> Nguồn chuẩn (single source): `scripts/build_prompt.py` — `PRIMARY_SKILLS_PER_KIND` / `REVIEW_SKILLS_PER_KIND` / `SCAFFOLD_REF_SKILLS_PER_KIND`. **Situational ref = per-boundary, lấy từ MATRIX field `ref_skills`** (không có map tĩnh ở kernel). Bảng dưới chỉ mirror.
 
-| kind | primary (invoke ngay) | review | ref on-demand | scaffold | data layer |
+| kind | primary (invoke ngay) | review | scaffold ref (bắt buộc khi scaffold) | situational ref | build file |
 |---|---|---|---|---|---|
-| `backend` | `rules-backend` | `review-backend` | `ref-backend-config`, `ref-backend-pattern`, `ref-backend-{redis,kafka,logging}` | `pom.xml` / `build.gradle` | expose REST/GraphQL contract |
-| `bff` | `rules-bff` | `review-bff` | — | `package.json` (Apollo) | GraphQL gateway → backend REST |
-| `web` | `rules-web` | `review-web` | `ref-frontend-config`, `ref-frontend-pattern` | `package.json` (Vite) | REST trực tiếp BE (default) \| BFF optional |
-| `mobile` | `rules-mobile` | `review-mobile` | — | `pubspec.yaml` (Flutter) | REST trực tiếp BE (default) \| BFF optional |
+| `backend` | `rules-backend` | `review-backend` | `ref-backend-pattern`, `ref-backend-config`, `ref-backend-logging` | từ MATRIX `ref_skills` | `pom.xml` / `build.gradle` |
+| `bff` | `rules-bff` | `review-bff` | — (convention trong `rules-bff`) | từ MATRIX `ref_skills` | `package.json` (Apollo) |
+| `web` | `rules-web` | `review-web` | `ref-frontend-pattern`, `ref-frontend-config` | từ MATRIX `ref_skills` | `package.json` (Vite) |
+| `mobile` | `rules-mobile` | `review-mobile` | — (convention trong `rules-mobile`) | từ MATRIX `ref_skills` | `pubspec.yaml` (Flutter) |
 
-- **Primary** = `rules-{kind}` (hub) → tự ref tới pattern/config khi cần.
-- `ref-{kind}-config` + `ref-{kind}-pattern` chỉ tồn tại cho `backend`/`web`; `bff`/`mobile` dùng convention trong `rules-{kind}`.
-- `backend` còn có `ref-backend-redis` / `ref-backend-kafka` / `ref-backend-logging` — load on-demand khi boundary dùng tới.
+- **Primary** = `rules-{kind}` (hub) → invoke ngay.
+- **Scaffold ref** = structure/config/logging, **invoke BẮT BUỘC khi scaffold** (folder layout theo kiến trúc HLD §4). Universal theo kind.
+- **Situational ref** (cache/event/extra…) = **KHÔNG hardcode ở kernel**. Intake (step 3/4) gắn per-boundary vào MATRIX `ref_skills` → materialize vào `dev-{boundary}-agent.md` + build_prompt truyền qua. **Thêm ref mới sau này = sửa MATRIX, không đụng kernel.**
 - Skills wave-level (không theo kind): `test-plan`, `test-execute`, `specialist-testing`, `bug-logging`, `infra-local-dev`.
 

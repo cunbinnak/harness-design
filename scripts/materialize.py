@@ -30,6 +30,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 
+sys.path.insert(0, str(HERE))
+from build_prompt import SCAFFOLD_REF_SKILLS_PER_KIND, PRIMARY_SKILLS_PER_KIND  # single source: scaffold + primary map
+
 MATRIX_FILE = REPO / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
 TEMPLATE_DEV = REPO / "agents" / "_template-dev-agent.md"
 TEMPLATE_FIX = REPO / "agents" / "_template-fix-agent.md"
@@ -82,12 +85,20 @@ def render(template_text: str, vars: dict[str, str]) -> str:
     return out
 
 
+def _skill_bullets(skills: list[str], empty: str) -> str:
+    if not skills:
+        return f"  - _{empty}_"
+    return "\n".join(f"  - `{s}`" for s in skills)
+
+
 def boundary_vars(b: dict, matrix_revision: int) -> dict[str, str]:
     boundary_id = b["boundary_id"]
     prefix = b["prefix"]
     kind = b["kind"]
     owned_paths = b.get("owned_paths") or _default_owned_paths(prefix, boundary_id)
     tech = b.get("tech") or {}
+    scaffold_refs = SCAFFOLD_REF_SKILLS_PER_KIND.get(kind, [])
+    ref_skills = list(b.get("ref_skills") or [])  # situational, do intake quyết per-boundary
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return {
         "boundary": boundary_id,
@@ -100,6 +111,9 @@ def boundary_vars(b: dict, matrix_revision: int) -> dict[str, str]:
         "tech_data_store": tech.get("data_store") or _default_data_store(kind),
         "owned_paths_yaml": "\n".join(f"  - {p}" for p in owned_paths),
         "owned_paths_md": "\n".join(f"- `{p}`" for p in owned_paths),
+        "primary_skill": (PRIMARY_SKILLS_PER_KIND.get(kind) or ["rules-?"])[0],
+        "scaffold_refs_md": _skill_bullets(scaffold_refs, f"kind {kind} dùng convention trong rules-{kind}, không có ref structure riêng"),
+        "ref_skills_md": _skill_bullets(ref_skills, "chưa gắn — boundary không dùng cache/event/extra (intake để trống)"),
         "created_at": now,
         "matrix_revision": str(matrix_revision),
     }

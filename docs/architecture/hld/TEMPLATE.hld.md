@@ -2,7 +2,7 @@
 
 > **Purpose:** Thiết kế **cấp cao** (HLD) của boundary `{boundary_id}` — view kiến trúc/logic + ranh giới trách nhiệm, KHÔNG phải code chi tiết.
 > **Owner:** `intake:solution-architect` (intake bước 3) · **Audience:** `dev:*` / `review:*` / `fix:*` / QA / stakeholder kỹ thuật.
-> **Out of scope (link chi tiết):** cấu trúc code/folder → `ref-{kind}-pattern` · endpoints → [`../api/`](../api/) · schema → [`../data-model/`](../data-model/) · UI → [`../ux/`](../ux/) · cross-boundary → [`../integrations/`](../integrations/) · NFR dự án → [`../PROJECT.md`](../PROJECT.md) · infra → [`../infra/`](../infra/).
+> **Out of scope (link chi tiết):** chi tiết layout file/folder → `ref-{kind}-pattern` (HLD §4 đã chốt kiến trúc + layer) · endpoints → [`../api/`](../api/) · schema → [`../data-model/`](../data-model/) · UI → [`../ux/`](../ux/) · cross-boundary → [`../integrations/`](../integrations/) · NFR dự án → [`../PROJECT.md`](../PROJECT.md) · infra → [`../infra/`](../infra/).
 > **Quy ước:** section gắn **(tùy chọn)** → bỏ nếu boundary không áp dụng (vd CRUD đơn giản, không outbound/event).
 
 ---
@@ -35,26 +35,33 @@
 Detail: [`integrations/INTEG-*.md`](../integrations/).
 
 ## 4. Architecture (C4 container + component)
-> Container = đơn vị runtime; Component = nhóm trách nhiệm **logic** (KHÔNG phải folder — code structure → `ref-{kind}-pattern`).
+> Container = đơn vị runtime. Component = phân rã nội bộ App service theo **kiến trúc CHỐT tại đây**.
 
 | Container (runtime) | Tech | Trách nhiệm |
 |---|---|---|
 | App service | {framework} | xử lý request/nghiệp vụ |
 | Datastore / Cache / Broker | {PostgreSQL / Redis / Kafka} | state / cache-lock / event (bỏ dòng không dùng) |
 
-| Component (logic) | Trách nhiệm |
-|---|---|
-| Inbound (API/controller) | validate, map error → response |
-| Use case / application | orchestrate nghiệp vụ, transaction boundary |
-| Domain | business rule + invariant |
-| Adapter (persistence/integration) | đọc-ghi DB / gọi external / event |
+**Kiến trúc boundary: `{Layered | Hexagonal}`** — chốt tại HLD (theo ADR `backend-architecture`). **HLD là source** cho dev; `ref-{kind}-pattern` = chi tiết cách đặt folder/file của kiến trúc này (không quyết lại).
+
+Layered (classic Spring) — điền `package` thật của boundary:
+
+| Layer | Package | Trách nhiệm |
+|---|---|---|
+| Controller | `controller` | nhận request, validate, map error → response |
+| Service | `service` | business logic + transaction boundary + orchestration |
+| Repository | `repository` | đọc-ghi DB (JPA) |
+| Client / Consumer | `client` / `consumer` | gọi external / phát-nhận event (nếu có) |
+| Mapper / DTO / Enum / Config | `mapper` `dto` `enums` `config` | convert / contract / hằng / bean |
+
+> Nếu boundary chọn **Hexagonal**: thay bảng trên bằng `domain` / `application` (port in-out) / `adapter.in.web` / `adapter.out.persistence|client` — chốt rõ ở đây.
 
 ## 5. Key flows (sequence)
-> Mỗi FEAT `Must` ≥ 1 flow: **happy + ≥ 1 nhánh lỗi quan trọng**. Ghi BR-x tại bước thực thi (detail → FEAT).
+> Mỗi FEAT `Must` ≥ 1 flow: **happy + ≥ 1 nhánh lỗi quan trọng**. Ghi BR-x tại bước thực thi (detail → FEAT). Lane đặt theo kiến trúc §4 (Layered: Controller/Service/Repository).
 ```
-Actor   Inbound    Use case   Domain   DB
- │─req──►│─validate►│─apply BR-1►│─persist►│
- │◄─2xx──│◄─────────│◄───────────│         │
+Client  Controller  Service   Repository  DB
+ │─req──►│─validate─►│─apply BR-1►│─────────►│
+ │◄─2xx──│◄──────────│◄───────────│◄─────────│
  │─(invalid)►│ 400 VALIDATION (error codes → api-*.md)
 ```
 **BR:** BR-1, BR-2 ([`FEAT-XXX`](../feat/)) · **Error paths:** [`api-{boundary_id}.md`](../api/)
