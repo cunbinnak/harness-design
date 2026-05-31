@@ -16,8 +16,11 @@ Error policy: fail-open. If hook code crashes, allow tool call through.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -288,18 +291,131 @@ def handle_subagent_stop(payload: dict) -> int:
     return allow_silent()
 
 
-# --------- Stop (STUB) ---------
+# --------- Stop (scoped build/test gate) ---------
+
+STOP_RUN_STAGES = {"DEV", "REVIEW_DEV", "TEST_EXECUTE"}
+STOP_CACHE_FILE = REPO_ROOT / "harness" / ".stop-cache.json"
+STOP_TIMEOUT_SEC = 600
+_HASH_SKIP_DIRS = {
+    ".git", "node_modules", "target", "build", ".gradle", "dist", "out",
+    ".venv", "venv", "__pycache__", ".dart_tool", ".idea", "coverage", ".next",
+}
+
+
+def _matrix_boundary(boundary_id: str) -> dict | None:
+    f = REPO_ROOT / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
+    try:
+        data = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    boundaries = data.get("boundaries", []) if isinstance(data, dict) else data
+    for b in boundaries:
+        if isinstance(b, dict) and b.get("boundary_id") == boundary_id:
+            return b
+    return None
+
+
+def _service_hash(folder: Path) -> str:
+    """Content hash của folder (bỏ build artifact) — đổi code thì hash đổi."""
+    h = hashlib.sha256()
+    for root, dirs, files in os.walk(folder):
+        dirs[:] = sorted(d for d in dirs if d not in _HASH_SKIP_DIRS)
+        for name in sorted(files):
+            p = Path(root) / name
+            try:
+                h.update(str(p.relative_to(folder)).encode("utf-8"))
+                h.update(p.read_bytes())
+            except OSError:
+                continue
+    return h.hexdigest()
+
+
+def _build_test_cmd(kind: str, folder: Path) -> list[str] | None:
+    """Lệnh build+test theo kind, detect build tool. None = không nhận diện được."""
+    if kind == "backend":
+        if (folder / "pom.xml").is_file():
+            return ["mvn", "-q", "-B", "test"]
+        if (folder / "build.gradle").is_file() or (folder / "build.gradle.kts").is_file():
+            return ["./gradlew", "test"]
+    elif kind in ("bff", "web"):
+        if (folder / "package.json").is_file():
+            return ["npm", "test", "--silent"]
+    elif kind == "mobile":
+        if (folder / "pubspec.yaml").is_file():
+            return ["flutter", "test"]
+    return None
+
+
+def _read_stop_cache() -> dict:
+    try:
+        return json.loads(STOP_CACHE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _write_stop_cache(cache: dict, boundary: str, entry: dict) -> None:
+    cache[boundary] = entry
+    try:
+        STOP_CACHE_FILE.write_text(
+            json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except OSError:
+        pass
+
 
 def handle_stop(payload: dict) -> int:
     """
-    STUB: return allow always.
-    TODO: implement build/lint/test runner per kind when service code exists.
-    Spec:
-      - If stage in [DEV, TEST_EXECUTE] AND turn changed files in services/{prefix-boundary}/,
-        run scoped build/lint/test for that kind.
-      - On fail: stop_block("<last 40 lines>").
-      - On pass: cache git hash to skip on next clean turn.
+    Quality gate cuối turn: stage ∈ {DEV, REVIEW_DEV, TEST_EXECUTE} + active_boundary đã có code
+    → chạy build/test scoped theo kind. Fail → block kèm 40 dòng cuối. Cache content-hash để
+    skip turn sạch. Fail-open mọi lỗi hạ tầng (thiếu tool / timeout / không có boundary).
     """
+    try:
+        state = state_mod.load_state()
+    except Exception:
+        return allow_silent()
+
+    if state.get("stage") not in STOP_RUN_STAGES:
+        return allow_silent()
+    boundary = state.get("active_boundary")
+    if not boundary:
+        return allow_silent()
+
+    b = _matrix_boundary(boundary)
+    if not b:
+        return allow_silent()
+    prefix = b.get("prefix") or (state.get("project") or {}).get("service_prefix") or ""
+    kind = b.get("kind", "backend")
+    folder = REPO_ROOT / "services" / f"{prefix}-{boundary}"
+    if not folder.is_dir():
+        return allow_silent()  # code chưa scaffold → không gate
+
+    cmd = _build_test_cmd(kind, folder)
+    if not cmd:
+        return allow_silent()  # không nhận diện build tool
+
+    cur_hash = _service_hash(folder)
+    cache = _read_stop_cache()
+    cached = cache.get(boundary, {})
+    if cached.get("hash") == cur_hash:
+        if cached.get("result") == "pass":
+            return allow_silent()  # code không đổi + lần trước xanh → skip rerun
+        return stop_block(cached.get("output") or f"build/test FAIL (cached) — boundary {boundary}")
+
+    try:
+        proc = subprocess.run(
+            cmd, cwd=str(folder), capture_output=True, text=True, timeout=STOP_TIMEOUT_SEC
+        )
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as e:
+        sys.stderr.write(f"Stop hook: không chạy được {cmd} ({e}) — fail-open\n")
+        return allow_silent()  # thiếu tool / timeout → không chặn dev
+
+    if proc.returncode != 0:
+        tail = "\n".join((proc.stdout + proc.stderr).strip().splitlines()[-40:])
+        msg = f"`{' '.join(cmd)}` FAIL (kind={kind}, boundary={boundary}). 40 dòng cuối:\n{tail}"
+        _write_stop_cache(cache, boundary, {"hash": cur_hash, "result": "fail", "output": msg})
+        return stop_block(msg)
+
+    _write_stop_cache(cache, boundary, {"hash": cur_hash, "result": "pass"})
     return allow_silent()
 
 

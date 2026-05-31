@@ -49,6 +49,7 @@ Nếu user gọi `/intake-requirement` không argument:
 4. Verify: `docs/architecture/PROJECT.md` tồn tại, có scope + NFR + glossary.
 5. Verify: `docs/architecture/feat/FEAT-*.md` ≥ 1 file.
 6. Sub-agent return có lỗi → **STOP**, báo user, KHÔNG tiếp tục bước 2.
+7. Verify pass + sub-agent return `user_confirmed:true` → `py scripts/harness.py intake-requirement complete '{"step":1,"user_confirmed":true}'` → **stage BOOTSTRAP→INTAKE** (checkpoint ngay sau step 1).
 
 ## Bước 2: Business analysis
 
@@ -58,6 +59,7 @@ Chỉ thực hiện sau khi Bước 1 PASS verify.
 2. Spawn sub-agent.
 3. Verify: FEAT-*.md có AC testable, có BR-*, có `boundaries_suggested`.
 4. Lỗi → STOP.
+5. Confirm → `py scripts/harness.py intake-requirement complete '{"step":2,"user_confirmed":true}'` (INTAKE→INTAKE, ghi checkpoint).
 
 ## Bước 3: Technical design
 
@@ -74,6 +76,7 @@ Chỉ thực hiện sau Bước 2.
    - `docs/architecture/events/*-events.md` per event-producing boundary
    - `docs/architecture/integrations/INTEG-*.md` ≥ 1
 4. Lỗi → STOP.
+5. Confirm → `py scripts/harness.py intake-requirement complete '{"step":3,"user_confirmed":true}'`.
 
 ## Bước 4: Implementation plan
 
@@ -83,9 +86,10 @@ Chỉ thực hiện sau Bước 3.
 2. Spawn sub-agent.
 3. Verify:
    - `docs/plans/WAVE-SEQUENCE.md` tồn tại
-   - `docs/plans/wave-001.md` tồn tại
+   - `docs/plans/wave-001.md` … `wave-00N.md` tồn tại cho **mọi wave** trong WAVE-SEQUENCE (full plan)
    - `harness/SERVICE-BOUNDARY-MATRIX.json` có boundaries ≥ 1
 4. Lỗi → STOP.
+5. Confirm → `py scripts/harness.py intake-requirement complete '{"step":4,"all_steps_done":true}'`.
 
 ## Sau khi cả 4 bước done
 
@@ -98,7 +102,7 @@ Chỉ thực hiện sau Bước 3.
    - FEAT-*.md (N files)
    - ADR-*.md (N files)
    - HLD/API/data-model/UX/events/integrations per boundary
-   - WAVE-SEQUENCE.md + wave-001.md
+   - WAVE-SEQUENCE.md + wave-{N}.md (mọi wave)
    - SERVICE-BOUNDARY-MATRIX.json
    
    Next steps:
@@ -106,7 +110,7 @@ Chỉ thực hiện sau Bước 3.
    - Nếu OK luôn: /approve-document
    ```
 
-2. Auto run: `py scripts/harness.py intake-requirement complete '{"step":4, "all_steps_done":true}'`
+2. `complete` đã gọi **per-step** (step 1→4) ở từng Bước → state đã ở `INTAKE` (từ Bước 1), không cần gọi lại ở đây.
 
 ## Crash / resume
 

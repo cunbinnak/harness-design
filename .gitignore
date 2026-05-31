@@ -37,3 +37,4 @@ services/*
 # Provider docs folders may contain secrets/credentials
 docs/architecture/integrations/INTEG-EXT-*/sandbox-credentials.md
 docs/architecture/integrations/INTEG-EXT-*/notes-internal.md
+harness/.stop-cache.json

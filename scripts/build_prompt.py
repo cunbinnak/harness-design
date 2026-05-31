@@ -217,7 +217,7 @@ def build_intake_requirement(state: dict, matrix: list[dict], opts: dict) -> str
         4: {
             "agent": "program-planner-agent",
             "skill": "implementation-plan",
-            "output": "docs/plans/WAVE-SEQUENCE.md + wave-001.md + harness/SERVICE-BOUNDARY-MATRIX.json + KG skeleton per boundary",
+            "output": "docs/plans/WAVE-SEQUENCE.md + wave-{N}.md cho MỌI wave + harness/SERVICE-BOUNDARY-MATRIX.json + KG skeleton per boundary",
         },
     }
     spec = step_specs.get(step, step_specs[1])
