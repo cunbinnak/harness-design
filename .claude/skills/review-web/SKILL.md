@@ -1,6 +1,6 @@
 ---
 name: review-web
-description: Self-review web frontend — a11y, no biz logic, data layer khớp design, coverage, owned_paths.
+description: Self-review web frontend — a11y, no biz logic, data layer khớp design, security (XSS/token/secret), coverage, owned_paths.
 ---
 
 # Review Web Skill
@@ -25,13 +25,21 @@ git diff --name-only main...HEAD
 4. **No business logic** trong FE: price/score/eligibility lấy từ BE/BFF, không tự tính.
 5. **State handling**: mọi async có loading / error / success (không UI treo khi fail).
 6. **Design fidelity**: page khớp `ux-{boundary}.md` (SCR-XXX).
-7. **Owned paths** ⊆ boundary.
+7. **Security (FE)**:
+   - **XSS**: không `dangerouslySetInnerHTML` với data chưa sanitize; không render HTML thô từ input/API.
+   - **Token**: không lưu access/refresh token vào `localStorage` (XSS-exfil) — ưu tiên httpOnly cookie / in-memory; không log token.
+   - **Auth UI ≠ enforcement**: ẩn/disable theo role chỉ là UX; BE vẫn enforce (không tin client).
+   - **No secret in bundle**: không nhúng API secret/private key vào env public/bundle.
+   - **Open redirect / link**: URL redirect từ input validate; external link `rel="noopener"`.
+   - Dependency không có CVE nghiêm trọng đã biết.
+8. **Owned paths** ⊆ boundary.
 
 ## Anti-patterns cần flag
 - `components/` gọi API trực tiếp (phải qua `hooks/` → `api/`).
 - Tính tiền/giảm giá ở FE.
 - Hardcode role string thay vì đọc `roles[]` từ JWT.
 - Bỏ trạng thái error (chỉ render khi success).
+- `dangerouslySetInnerHTML` / render HTML từ API chưa sanitize; token trong `localStorage`.
 
 ## Output
 RETURN SCHEMA: `review_result`, `coverage_pct`, `checklist_summary`, `needs_review[]`, `fix_loops_triggered`.

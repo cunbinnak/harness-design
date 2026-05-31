@@ -1,6 +1,6 @@
 ---
 name: review-mobile
-description: Self-review mobile — analyze, data layer khớp design, offline idempotency, no hardcoded keys, coverage.
+description: Self-review mobile — analyze, data layer khớp design, offline idempotency, security (secure storage/transport/deeplink), no hardcoded keys, coverage.
 ---
 
 # Review Mobile Skill
@@ -23,12 +23,19 @@ git diff --name-only main...HEAD
 4. **No business logic** — validate ở BE/BFF.
 5. **No hardcoded secrets**: FCM key, biometric data không persist/hardcode.
 6. **State**: provider scope đúng (Riverpod), không global state rò rỉ giữa screen.
-7. **Owned paths** ⊆ boundary.
+7. **Security (mobile)**:
+   - **Token storage**: access/refresh token + dữ liệu nhạy cảm vào secure storage (Keychain/Keystore), KHÔNG `SharedPreferences` plain.
+   - **Transport**: chỉ HTTPS; cert pinning cho API nhạy cảm (nếu yêu cầu).
+   - **Deeplink / WebView**: validate input từ deeplink/intent; WebView không load URL không tin, tắt JS nếu không cần.
+   - **No secret in bundle**: không hardcode API key/secret trong code/asset; bật obfuscation nếu yêu cầu.
+   - **Logging**: không in token/PII ra log.
+8. **Owned paths** ⊆ boundary.
 
 ## Anti-patterns cần flag
 - Mutation offline retry không idempotent → tạo bản ghi trùng.
 - Lưu token/biometric vào SharedPreferences plain (phải secure storage).
 - Widget gọi API trực tiếp thay vì qua repository/provider.
+- WebView load URL không tin / nhận deeplink không validate; hardcode API key trong asset.
 
 ## Output
 RETURN SCHEMA: `review_result`, `coverage_pct`, `checklist_summary`, `needs_review[]`, `fix_loops_triggered`.
