@@ -47,14 +47,9 @@ def state_header_line(state: dict, allowed_cmds: list[str]) -> str:
     return f"[HARNESS stage={stage} wave={wave} boundary={boundary} allowed={','.join(allowed_cmds)}]"
 
 
-def memory_marker(state: dict, allowed_cmds: list[str], history_tail: list[dict]) -> str:
-    """Pinned summary for PreCompact — keeps state context after compaction."""
-    brief = format_state_brief(state, allowed_cmds)
-    recent = "\n".join(
-        f"  - {h.get('command')}: {h.get('from_stage')} -> {h.get('to_stage')}"
-        for h in (history_tail or [])[-3:]
-    )
-    return f"{brief}\n\nRecent transitions:\n{recent or '  (none)'}"
+def memory_marker(state: dict, allowed_cmds: list[str]) -> str:
+    """Pinned summary for PreCompact — giữ TRẠNG THÁI HIỆN TẠI sau compaction (không có history)."""
+    return format_state_brief(state, allowed_cmds)
 
 
 # ========================================================================

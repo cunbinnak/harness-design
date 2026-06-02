@@ -30,8 +30,9 @@ def reset_state(extra: dict | None = None) -> None:
     s["active_boundary"] = None
     s["wave_boundaries"] = []
     s["wave_features"] = []
+    s["review_results"] = []
     s["spawn"] = {"active": None}
-    s["workflow"] = {"last_completed": None, "history": []}
+    s["workflow"] = {"last_completed": None}
     s["meta"]["revision"] = 1
     s["meta"]["updated_by"] = "smoke_test_reset"
     if extra:
@@ -79,11 +80,13 @@ def main() -> int:
     failed = []
 
     try:
-        # Hermetic MATRIX fixture: 1 boundary, wave 1, 2 features.
-        seed_matrix([{
-            "boundary_id": "order-management", "kind": "backend", "prefix": "demo",
-            "wave": 1, "features": ["FEAT-001", "FEAT-002"],
-        }])
+        # Hermetic MATRIX fixture: 2 boundary (backend + web), wave 1 — test multi-boundary.
+        seed_matrix([
+            {"boundary_id": "order-management", "kind": "backend", "prefix": "demo",
+             "wave": 1, "features": ["FEAT-001", "FEAT-002"]},
+            {"boundary_id": "storefront", "kind": "web", "prefix": "demo",
+             "wave": 1, "features": ["FEAT-003"]},
+        ])
 
         # ============================================================
         # Happy path: BOOTSTRAP -> ... -> DONE -> BOOTSTRAP
@@ -122,34 +125,40 @@ def main() -> int:
         st = state_mod.load_state()
         wb = st.get("wave_boundaries")
         wf = st.get("wave_features")
-        wave_ok = st.get("wave", {}).get("id") == "wave-001" and wb == ["order-management"]
+        wave_ok = st.get("wave", {}).get("id") == "wave-001" and wb == ["order-management", "storefront"]
         print(f"  [{'OK  ' if wave_ok else 'FAIL'}] start-wave derives wave_boundaries (MATRIX)  -> {wb}")
         passed.append(wave_ok) if wave_ok else failed.append("start-wave boundaries")
-        feat_ok = wf == ["FEAT-001", "FEAT-002"]
+        feat_ok = wf == ["FEAT-001", "FEAT-002", "FEAT-003"]
         print(f"  [{'OK  ' if feat_ok else 'FAIL'}] start-wave derives wave_features (MATRIX)    -> {wf}")
         passed.append(feat_ok) if feat_ok else failed.append("start-wave features")
 
-        # WAVE_OPEN -> DEV (start-dev) — gate reads derived wave_boundaries, no patch needed
-        ok = step("WAVE_OPEN -> DEV", "start-dev", {"boundary": "order-management"}, "DEV")
-        passed.append(ok) if ok else failed.append("start-dev")
+        # WAVE_OPEN -> DEV (start-dev boundary 1) — gate reads derived wave_boundaries
+        ok = step("WAVE_OPEN -> DEV (start-dev order)", "start-dev", {"boundary": "order-management"}, "DEV")
+        passed.append(ok) if ok else failed.append("start-dev order")
 
-        # apply_effects must set active_boundary from the start-dev evidence.
         st = state_mod.load_state()
         ab_ok = st.get("active_boundary") == "order-management"
         print(f"  [{'OK  ' if ab_ok else 'FAIL'}] start-dev sets active_boundary              -> {st.get('active_boundary')}")
         passed.append(ab_ok) if ab_ok else failed.append("start-dev effects")
 
-        # DEV -> REVIEW_DEV
-        ok = step("DEV -> REVIEW_DEV", "review-dev", {}, "REVIEW_DEV")
-        passed.append(ok) if ok else failed.append("review-dev")
+        # DEV -> DEV (start-dev boundary 2: multi-boundary trong cùng wave)
+        ok = step("DEV -> DEV (start-dev storefront)", "start-dev", {"boundary": "storefront"}, "DEV")
+        passed.append(ok) if ok else failed.append("start-dev storefront (multi-boundary)")
 
-        # REVIEW_DEV -> DEV_HANDOFF (coverage + review_result)
+        # DEV -> REVIEW_DEV (wave-scoped: review_results cho CẢ 2 boundary, mỗi cái theo kind)
         ok = step(
-            "REVIEW_DEV -> DEV_HANDOFF",
-            "dev-handoff",
-            {"coverage_pct": 85, "review_result": "pass"},
-            "DEV_HANDOFF",
+            "DEV -> REVIEW_DEV (wave review)",
+            "review-dev",
+            {"review_results": [
+                {"boundary": "order-management", "kind": "backend", "review_result": "pass", "coverage_pct": 85},
+                {"boundary": "storefront", "kind": "web", "review_result": "pass", "coverage_pct": 62},
+            ]},
+            "REVIEW_DEV",
         )
+        passed.append(ok) if ok else failed.append("review-dev wave")
+
+        # REVIEW_DEV -> DEV_HANDOFF (gate all_boundaries_reviewed: cả 2 pass + coverage theo kind BE80/web60)
+        ok = step("REVIEW_DEV -> DEV_HANDOFF", "dev-handoff", {}, "DEV_HANDOFF")
         passed.append(ok) if ok else failed.append("dev-handoff")
 
         # DEV_HANDOFF -> TEST_PLAN
@@ -213,24 +222,26 @@ def main() -> int:
         print(f"  [{'OK  ' if ok else 'FAIL'}] BOOTSTRAP rejects start-dev    {result.get('error', '')[:60]}")
         passed.append(ok) if ok else failed.append("reject wrong cmd")
 
-        # Gate fail: dev-handoff without coverage
-        # First get to REVIEW_DEV
+        # Gate fail: dev-handoff khi coverage dưới ngưỡng kind (gate wave-scoped đọc STATE.review_results)
         state_mod.complete("intake-requirement", {"step": 1})
         state_mod.complete("start-wave", {"approved": True, "wave_n": 1})
         patch_state({"wave_boundaries": ["x"], "wave": {"id": "wave-001", "number": 1}})
         state_mod.complete("start-dev", {"boundary": "x"})
-        state_mod.complete("review-dev", {})
+        state_mod.complete("review-dev", {"review_results": [
+            {"boundary": "x", "kind": "backend", "review_result": "pass", "coverage_pct": 50}]})
 
-        result = state_mod.complete("dev-handoff", {"coverage_pct": 50, "review_result": "pass"})
+        result = state_mod.complete("dev-handoff", {})
         ok = not result["ok"] and "coverage" in result.get("error", "").lower()
         print(f"  [{'OK  ' if ok else 'FAIL'}] reject low coverage          {result.get('error', '')[:60]}")
         passed.append(ok) if ok else failed.append("reject low coverage")
 
-        # Gate fail: dev-handoff without review_result=pass
-        result = state_mod.complete("dev-handoff", {"coverage_pct": 90})
-        ok = not result["ok"]
-        print(f"  [{'OK  ' if ok else 'FAIL'}] reject missing review_result {result.get('error', '')[:60]}")
-        passed.append(ok) if ok else failed.append("reject missing review_result")
+        # Gate fail: dev-handoff khi còn boundary chưa review (missing trong review_results)
+        patch_state({"wave_boundaries": ["x", "y"], "review_results": [
+            {"boundary": "x", "kind": "backend", "review_result": "pass", "coverage_pct": 85}]})
+        result = state_mod.complete("dev-handoff", {})
+        ok = not result["ok"] and "review" in result.get("error", "").lower()
+        print(f"  [{'OK  ' if ok else 'FAIL'}] reject boundary chưa review  {result.get('error', '')[:60]}")
+        passed.append(ok) if ok else failed.append("reject boundary chưa review")
 
         # Gate fail: start-wave with a wave that maps to no boundary in MATRIX
         reset_state()

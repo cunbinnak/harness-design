@@ -51,7 +51,7 @@ Không argument.
 
 - State KHÔNG đổi (INTAKE → INTAKE).
 - Set `approved=true` trong STATE qua complete evidence.
-- `/start-wave` gate sẽ check `approved=true` trong workflow.history → pass.
+- `/start-wave` gate check `approved=true` → pass.
 
 ## Forbidden
 

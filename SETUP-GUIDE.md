@@ -195,7 +195,7 @@ Hook config: `.claude/settings.json` (9 events, đã wire ở Step 9 rebuild).
 | PreToolUse(Bash) | Check gate khi `harness <X> complete` |
 | PreToolUse(Write\|Edit) | Block protected files (STATE.json, STATE-MACHINE.json, settings.json) |
 | PreToolUse(Task) | KHÔNG block theo stage; inject boundary reminder |
-| PostToolUse(Bash) | Append checkpoint sau complete success |
+| PostToolUse(Bash) | no-op (STATE chỉ giữ trạng thái hiện tại) |
 | SubagentStop | Validate RETURN SCHEMA JSON |
 | PreCompact | Pin STATE summary trước compact |
 | SessionEnd | Cleanup spawn.active stale |
@@ -206,7 +206,7 @@ Vi phạm → hook print error rõ và refuse.
 
 | Path | Role |
 |------|------|
-| `harness/STATE.json` | Current stage + workflow history |
+| `harness/STATE.json` | Current stage (chỉ trạng thái hiện tại, no history) |
 | `harness/STATE-MACHINE.json` | 10 states + 14 transitions |
 | `harness/SERVICE-BOUNDARY-MATRIX.json` | Boundary metadata + owned_paths |
 | `harness/PROTOCOL.md` | Orchestrator ↔ sub-agent protocol |

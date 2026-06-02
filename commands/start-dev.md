@@ -1,7 +1,7 @@
 ---
 name: start-dev
-description: "Vào DEV mode cho 1 boundary. Spawn dev sub-agent (kind tự detect từ MATRIX). Lần đầu tự tạo services/{prefix-boundary}/ scaffold."
-when_state: ['WAVE_OPEN']
+description: "Vào DEV cho 1 boundary. Spawn dev sub-agent (kind tự detect từ MATRIX). Gọi lặp được cho từng boundary trong wave. Lần đầu tự tạo services/{prefix-boundary}/ scaffold."
+when_state: ['WAVE_OPEN', 'DEV']
 sets_stage: DEV
 spawn:
   agent: "dev-{prefix-boundary}-agent (materialized)"

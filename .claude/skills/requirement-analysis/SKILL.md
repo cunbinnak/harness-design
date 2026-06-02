@@ -18,7 +18,7 @@ Input: **mô tả project** user truyền (`$ARGUMENTS`); amendment → đọc C
    - **Integration (cấp dự án)**: hệ thống ngoài phải tích hợp (payment gateway, SMS, email…) — *liệt kê; INTEG chi tiết để step 3.*
    - **Success metrics / KPI** đo được (vd: 90% đơn xử lý < 5s; churn < X%).
    - Ràng buộc (tech stack bắt buộc, timeline/team) + **Open questions**.
-2. **`docs/architecture/feat/FEAT-*.md` draft** (≥ 1) — mỗi capability 1 file: tiêu đề, mục tiêu, scope (in/out), ưu tiên (Must/Should/Could), **user story + AC sơ bộ Gherkin** (Given/When/Then). *(AC testable + BR + boundaries_suggested để step 2 — business-analysis refine.)*
+2. **`docs/architecture/feat/FEAT-*.md` draft** (≥ 1) — **theo `TEMPLATE.feat.md`**, mỗi capability 1 file: tiêu đề, mục tiêu, scope (in/out), ưu tiên (Must/Should/Could), **user story + AC sơ bộ Gherkin** (Given/When/Then). *(AC testable + BR + boundaries_suggested để step 2 — business-analysis refine.)*
 3. **Chốt `project.service_prefix`** — prefix ngắn kebab cho repo polyrepo (vd `crm-hdpe`) → `services/{prefix}-{boundary}/`.
 
 > Đây là output `build_prompt.py` step 1. Đừng làm thay step 2 (đừng cố hoàn chỉnh AC testable / BR / boundaries).

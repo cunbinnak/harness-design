@@ -21,11 +21,11 @@ Tất cả route qua `dispatcher.py --event <name>`. Config trong `.claude/setti
 | SessionStart | startup\|resume | Inject brief STATE đầu session |
 | UserPromptSubmit | * | Inject `[HARNESS stage=X ...]` header mỗi turn |
 | Notification | * | Inject state header |
-| PreCompact | * | Pin STATE summary + 3 recent transitions trước compaction |
+| PreCompact | * | Pin STATE summary hiện tại trước compaction |
 | PreToolUse | Bash | Check `harness <X> complete` gate; deny nếu sai |
 | PreToolUse | Write\|Edit\|MultiEdit | Block protected files (STATE.json, STATE-MACHINE.json, settings.json) |
 | PreToolUse | Task | KHÔNG block theo stage; inject boundary reminder cho dev-spawn |
-| PostToolUse | Bash | Append checkpoint sau `harness complete` success |
+| PostToolUse | Bash | no-op (STATE.json chỉ giữ trạng thái hiện tại) |
 | SubagentStop | * | Parse RETURN SCHEMA JSON, validate fields |
 | Stop | * | (stub — sẽ implement build/lint/test runner per kind sau) |
 | SessionEnd | * | Cleanup `spawn.active` nếu stale |

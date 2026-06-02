@@ -597,13 +597,58 @@ def build_apply_cr(state: dict, matrix: list[dict], opts: dict) -> str:
 # Dispatch
 # ========================================================================
 
+def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
+    """Wave-scoped /review-dev (không --boundary): orchestrator cho main loop review TUẦN TỰ mọi boundary trong wave."""
+    wave_boundaries = state.get("wave_boundaries") or []
+    wave_id = (state.get("wave") or {}).get("id") or "<wave>"
+    rows = []
+    for bid in wave_boundaries:
+        b = find_boundary(matrix, bid) or {}
+        k = b.get("kind", "?")
+        rows.append((bid, k))
+    if rows:
+        table = "| boundary | kind | review agent |\n|---|---|---|\n" + "\n".join(
+            f"| `{bid}` | `{k}` | `review-{k}-agent` (skill `{(REVIEW_SKILLS_PER_KIND.get(k) or ['review-?'])[0]}`) |"
+            for bid, k in rows
+        )
+        steps = "\n".join(f"py scripts/build_prompt.py review-dev --boundary {bid}   # → spawn review-{k}-agent" for bid, k in rows)
+    else:
+        table = "_(wave_boundaries rỗng — chạy /start-wave trước)_"
+        steps = "# (không có boundary)"
+
+    parts = [
+        f"# SPAWN PROMPT — /review-dev (WAVE-SCOPED: {wave_id})",
+        state_bundle(state, {"mode": "wave-review"}),
+        NON_NEGOTIABLES,
+        "## MỤC TIÊU\n"
+        "Review **TOÀN BỘ** boundary trong wave này, mỗi boundary theo **kind** của nó. "
+        "Pass chỉ khi **MỌI** boundary pass (review_result + coverage theo kind).",
+        "## BOUNDARIES TRONG WAVE\n\n" + table,
+        "## CÁCH CHẠY — TUẦN TỰ (không song song)\n"
+        "Với MỖI boundary theo thứ tự:\n"
+        "1. Lấy prompt review 1 boundary (kind tự suy từ MATRIX):\n```\n" + steps + "\n```\n"
+        "2. Spawn `review-{kind}-agent` với prompt đó. Agent tự loop review→fix→re-review tới pass (coverage enforced theo kind).\n"
+        "3. Ghi lại `{boundary, kind, review_result, coverage_pct}` từ RETURN SCHEMA của agent.\n"
+        "4. Xong boundary này MỚI sang boundary kế.",
+        "## KẾT THÚC\n"
+        "- Khi TẤT CẢ boundary `review_result=pass`:\n"
+        "```\npy scripts/harness.py review-dev complete '{\"review_results\":[{\"boundary\":\"<b>\",\"kind\":\"<k>\",\"review_result\":\"pass\",\"coverage_pct\":NN}]}'\n```\n"
+        "- Boundary nào không pass được → **STOP**, báo user, KHÔNG complete.\n"
+        "- Gate `/dev-handoff` verify lại: mọi `wave_boundaries` có trong `review_results` với pass + coverage đạt ngưỡng kind.",
+    ]
+    return "\n\n".join(parts)
+
+
 BUILDERS = {
     "intake-requirement": build_intake_requirement,
     "review-document": build_review_document,
     "approve-document": build_approve_document,
     "start-wave": build_start_wave,
     "start-dev": lambda s, m, o: build_boundary_command(s, m, o, "start-dev"),
-    "review-dev": lambda s, m, o: build_boundary_command(s, m, o, "review-dev"),
+    "review-dev": lambda s, m, o: (
+        build_boundary_command(s, m, o, "review-dev") if o.get("boundary")
+        else build_review_dev_wave(s, m, o)
+    ),
     "dev-handoff": build_dev_handoff,
     "test-plan": build_test_plan,
     "test-execute": build_test_execute,

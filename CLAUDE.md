@@ -96,10 +96,10 @@ Mỗi command tự document trong `.claude/commands/<name>.md` (sync từ `comma
 - `PreToolUse(Bash)` hook check `harness <X> complete`: allowed_commands (theo STATE-MACHINE) + gate (gates.py).
 - `PreToolUse(Write|Edit)` hook block edit `harness/STATE.json`, `harness/STATE-MACHINE.json`, `.claude/settings.json`.
 - `PreToolUse(Task)` hook KHÔNG block theo stage. Explore agent free. Chỉ inject reminder boundary cho dev-spawn.
-- `PostToolUse(Bash)` hook append checkpoint vào `STATE.workflow.history`.
+- `PostToolUse(Bash)` hook no-op (STATE.json chỉ giữ trạng thái hiện tại — KHÔNG ghi history/checkpoint).
 - `SubagentStop` hook validate RETURN SCHEMA + kg_appended.
 - `Stop` hook chạy build/lint/test scoped theo `kind` của `active_boundary` khi `stage` ∈ [DEV, TEST] VÀ turn có sửa file trong `services/{prefix-boundary}/`. Đỏ → block stop kèm 40 dòng output cuối; xanh → allow. Cache theo git hash, không rerun nếu code không đổi.
-- `PreCompact` hook pin STATE + active wave + 3 quyết định gần nhất vào summary.
+- `PreCompact` hook pin STATE hiện tại (stage + active wave + boundary) vào summary.
 
 > Hook config: `.claude/settings.json`. Scripts: `scripts/hooks/`.
 

@@ -39,6 +39,8 @@ docs/architecture/
 
 ## Templates
 
+> **Template là để TUÂN THEO.** Mọi artifact PHẢI theo đúng cấu trúc template tương ứng — KHÔNG tự do format, KHÔNG mỗi boundary 1 kiểu. Generator (intake skill/agent) trỏ "theo `TEMPLATE.X`"; reviewer check artifact khớp template. Sửa convention → sửa template (1 nơi), không sửa lẻ từng file.
+
 | File | Template |
 |------|----------|
 | PROJECT.md | [TEMPLATE.project.md](TEMPLATE.project.md) |

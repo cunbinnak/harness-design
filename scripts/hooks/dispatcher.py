@@ -159,8 +159,7 @@ def handle_notification(payload: dict) -> int:
 def handle_pre_compact(payload: dict) -> int:
     state = state_mod.load_state()
     allowed = state_mod.allowed_commands(state)
-    history_tail = state.get("workflow", {}).get("history", [])
-    return inject_context(policies.memory_marker(state, allowed, history_tail))
+    return inject_context(policies.memory_marker(state, allowed))
 
 
 def handle_session_end(payload: dict) -> int:
@@ -254,16 +253,7 @@ def _pre_task(payload: dict) -> int:
 # --------- PostToolUse (Bash) ---------
 
 def handle_post_tool_use(payload: dict) -> int:
-    """After a successful harness complete bash, append checkpoint summary."""
-    tool = _tool_name(payload)
-    if tool != "Bash":
-        return allow_silent()
-    cmd = _bash_command(payload)
-    parsed = policies.parse_harness_complete(cmd)
-    if parsed is None:
-        return allow_silent()
-    # state.complete() already appends history; nothing more to do here
-    # Could log to file for redundancy if needed
+    """PostToolUse(Bash) — no-op. STATE.json chỉ giữ trạng thái hiện tại (không ghi history/checkpoint)."""
     return allow_silent()
 
 

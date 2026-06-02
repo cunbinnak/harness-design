@@ -18,8 +18,7 @@
     "active": null
   },
   "workflow": {
-    "last_completed": null,
-    "history": []
+    "last_completed": null
   },
   "handoff": {
     "file": null

@@ -7,7 +7,7 @@ Python kernel cho ADLC Design Harness. ~10 file core.
 | Script | Mục đích | LOC |
 |--------|----------|-----|
 | `harness.py` | CLI thin wrapper (gọi state.py) | ~60 |
-| `state.py` | STATE manager: load/save/validate/transition + history | ~280 |
+| `state.py` | STATE manager: load/save/validate/transition (no history) | ~280 |
 | `gates.py` | Pure gate functions per command (no side effect) | ~280 |
 | `build_prompt.py` | Build self-contained spawn prompt per command | ~430 |
 | `materialize.py` | Per-boundary artifact generator (dev/fix/KG từ MATRIX) | ~210 |

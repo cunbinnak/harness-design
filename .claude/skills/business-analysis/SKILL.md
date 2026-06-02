@@ -10,7 +10,7 @@ description: Intake step 2 (business-analyst) — refine FEAT thành AC testable
 Input: `docs/architecture/PROJECT.md` + `docs/architecture/feat/FEAT-*.md` (draft từ step 1).
 
 ## Deliverable của step 2 (đúng cái command verify)
-**Refine mỗi `docs/architecture/feat/FEAT-*.md`** đạt 3 thứ:
+**Refine mỗi `docs/architecture/feat/FEAT-*.md`** (giữ cấu trúc `TEMPLATE.feat.md`) đạt 3 thứ:
 1. **AC testable** — Given/When/Then hoặc condition đo được; mỗi user story ≥ 1 AC; cover cả non-happy-path.
 2. **Business rules `BR-*`** — table: rule + nơi áp dụng (endpoint/domain service/UI) + nguồn (policy/regulation/stakeholder).
 3. **`boundaries_suggested`** — bounded context → boundary nào đảm nhận (gợi ý; solution-architect chốt ở step 3).

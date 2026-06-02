@@ -22,7 +22,9 @@
 | **Content-Type** | `application/json` |
 | **OpenAPI spec** | (nếu có: `services/{prefix}-{boundary_id}/openapi.yaml`) |
 
-## Common error format
+## Common error format (CHUẨN CHUNG — giống nhau mọi boundary)
+
+> Envelope + generic codes dưới đây là **chuẩn toàn dự án** (quyết 1 lần ở ADR `api-error-convention` / `backend-architecture`). **Copy y nguyên, KHÔNG sửa hay đổi format per boundary.** Dev map qua `ErrorResponse` chung (xem `rules-backend`).
 
 ```json
 {
@@ -32,16 +34,28 @@
 }
 ```
 
-## Common error codes
+## Common error codes (generic — dùng chung mọi boundary)
 
 | Code | HTTP | Khi nào |
 |------|------|---------|
 | `VALIDATION_ERROR` | 400 | DTO không hợp lệ |
 | `UNAUTHORIZED` | 401 | Thiếu/sai token |
 | `FORBIDDEN` | 403 | Không có quyền |
-| `NOT_FOUND` | 404 | Resource không tồn tại |
-| `CONFLICT` | 409 | Trùng dữ liệu / state conflict |
+| `NOT_FOUND` | 404 | Resource không tồn tại (generic) |
+| `CONFLICT` | 409 | Trùng dữ liệu / state conflict (generic) |
+| `RATE_LIMITED` | 429 | Vượt rate limit |
 | `INTERNAL_ERROR` | 500 | Lỗi server |
+
+## Domain error codes (catalog → `{Domain}ErrorEnum`)
+
+> **Riêng từng boundary** — nhưng **CẤU TRÚC bảng này giống nhau mọi boundary** (theo template). Đây là nguồn DUY NHẤT cho enum mã lỗi nghiệp vụ: dev implement thành `{Domain}ErrorEnum` + `BusinessException` (xem `rules-backend`). Mỗi BR vi phạm / invalid state transition (data-model) → đúng 1 code.
+> **Per-endpoint Errors chỉ REF code ở đây hoặc Common — KHÔNG tự đẻ code mới trong bảng endpoint.**
+
+| Code | HTTP | Message (mặc định) | Gắn BR / business case |
+|------|------|--------------------|------------------------|
+| `{DOMAIN}_NOT_FOUND` | 404 | {Resource} không tồn tại | lookup/update id không có |
+| `{DOMAIN}_INVALID_STATE` | 409 | Trạng thái không cho phép action | state machine (data-model) |
+| `{DOMAIN}_{RULE}` | 4xx | (message rõ ràng) | BR-x cụ thể |
 
 ---
 
@@ -59,6 +73,8 @@
 | DELETE | `/v1/{resource}/{id}` | Xóa | Bearer | FEAT-XXX:AC-5 |
 
 ### Endpoint detail
+
+> Cột `Code` ở mỗi bảng **Errors** dưới đây PHẢI là code đã khai trong **Common** hoặc **Domain catalog** ở trên — KHÔNG tạo code mới tại endpoint.
 
 #### `POST /v1/{resource}` — Tạo mới
 

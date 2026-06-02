@@ -17,7 +17,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG từ MATRIX. Pure orch
 |---|---|
 | Command | `/start-wave <N>` |
 | Stage trigger | INTAKE -> WAVE_OPEN |
-| Pre-condition | `approved=true` trong workflow.history (qua `/approve-document`) |
+| Pre-condition | `approved=true` trong STATE (qua `/approve-document`) |
 
 ## Trách nhiệm
 

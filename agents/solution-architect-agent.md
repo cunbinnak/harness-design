@@ -29,7 +29,7 @@ Thiết kế kỹ thuật phủ TẤT CẢ boundary của dự án (không chỉ
 
 ## Trách nhiệm — produce artifacts
 
-- docs/architecture/adr/ADR-NNN-*.md (3-5 file: tech-stack, backend-architecture, auth-security, ui-kit, integrations)
+- docs/architecture/adr/ADR-NNN-*.md (3-5 file: tech-stack, backend-architecture, auth-security, api-error-convention [envelope + generic codes chung], ui-kit, integrations)
 - docs/architecture/hld/hld-{boundary}.md per boundary
 - docs/architecture/api/api-{boundary}.md per boundary
 - docs/architecture/data-model/data-model-{boundary}.md per backend boundary
@@ -41,11 +41,11 @@ Thiết kế kỹ thuật phủ TẤT CẢ boundary của dự án (không chỉ
 ## Workflow
 
 1. Read PROJECT.md + tất cả FEAT-*.md (refined ở bước 2) + boundaries_suggested.
-2. Viết 3-5 ADR ngắn: tech-stack chọn (BE/FE/DB/broker), backend architecture (Layered vs DDD - chọn 1), auth/security model, UI kit + i18n, integrations strategy.
-3. Cho MỖI boundary: HLD **theo `docs/architecture/hld/TEMPLATE.hld.md`** (design goals + responsibilities/non-responsibilities, data ownership, C4 context/container/component, **chốt kiến trúc Layered/Hexagonal + layer/package — HLD là source cho dev**, key flows happy+error, auth & permission, consistency/failure khi áp dụng, deployment & scaling, observability, NFR refine; chi tiết folder theo ref-pattern), API (REST/GraphQL contract), data-model (cho backend - tables/relationships).
+2. Viết 3-5 ADR ngắn: tech-stack chọn (BE/FE/DB/broker), backend architecture (Layered vs DDD - chọn 1), auth/security model, api-error-convention (envelope + generic codes chung mọi boundary), UI kit + i18n, integrations strategy.
+3. Cho MỖI boundary: HLD **theo `docs/architecture/hld/TEMPLATE.hld.md`** (design goals + responsibilities/non-responsibilities, data ownership, C4 context/container/component, **chốt kiến trúc Layered/Hexagonal + layer/package — HLD là source cho dev**, key flows happy+error, auth & permission, consistency/failure khi áp dụng, deployment & scaling, observability, NFR refine; chi tiết folder theo ref-pattern), API **theo `TEMPLATE.api.md`** (contract + **Domain error catalog** → `{Domain}ErrorEnum`; envelope + generic codes chuẩn chung mọi boundary; per-endpoint chỉ ref code), data-model (cho backend, **theo `TEMPLATE.data-model.md`**: mục đích từng bảng + schema no-FK liên kết qua id + state machine).
 4. Cho MỖI FE boundary: UX spec (flows, screens, FEAT mapping).
-5. Cho MỖI event-producing boundary: events schema (topic, payload, consumers).
-6. Integrations: INTEG-EXT-{provider}.md cho external (Stripe, Twilio, ...). INTEG-INT-{caller}-to-{callee}.md cho cross-boundary internal sync.
+5. Cho MỖI event-producing boundary: events schema **theo `TEMPLATE.events.md`** (topic, payload, consumers, idempotency key).
+6. Integrations **theo `TEMPLATE.integration-external.md` / `TEMPLATE.integration-internal.md`**: INTEG-EXT-{provider}.md cho external (Stripe, Twilio, ...). INTEG-INT-{caller}-to-{callee}.md cho cross-boundary internal sync.
 7. docker-compose.yml: 1 entry per boundary trong scope (kể cả wave 2+), DB/Redis/broker services, healthcheck. KHÔNG để skeleton trống.
 8. Traceability: trong HLD hoặc integrations: bảng FEAT -> boundary mapping. Mọi FEAT 'Must' phải map ≥ 1 boundary.
 9. Cuối: nhắc user review architecture docs. Nếu OK chạy /intake-requirement step 4.

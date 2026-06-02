@@ -47,7 +47,7 @@ Chi tiết transitions + evidence required: xem `harness/STATE-MACHINE.json`.
 8. Hook SubagentStop validate RETURN SCHEMA
 9. Main run: py scripts/harness.py <cmd> complete '<evidence>'
 10. Hook PreToolUse(Bash) check gate (gates.py)
-11. Pass → state.py apply transition, append history
+11. Pass → state.py apply transition (cập nhật stage + last_completed; KHÔNG ghi history)
 12. Auto-transition nếu state có auto_transition_on match (vd test pass → MANUAL_TEST)
 ```
 
@@ -87,7 +87,7 @@ Sub-agent return JSON → user/orchestrator chạy:
 py scripts/harness.py <command> complete '<evidence-json>'
 ```
 
-Evidence là input cho gates.py check tại moment complete. Pass → state transition + ghi history.
+Evidence là input cho gates.py check tại moment complete. Pass → state transition (cập nhật stage + last_completed).
 
 | Command | Gate chính (gates.py) |
 |---------|----------------------|
@@ -125,11 +125,11 @@ Tất cả route qua `scripts/hooks/dispatcher.py --event <name>`:
 | SessionStart | startup\|resume | Inject brief STATE |
 | UserPromptSubmit | * | Inject `[HARNESS stage=X ...]` header mỗi turn |
 | Notification | * | Inject state header |
-| PreCompact | * | Pin STATE summary + 3 recent transitions |
+| PreCompact | * | Pin STATE summary hiện tại (stage + wave + boundary) |
 | PreToolUse | Bash | Check `harness <X> complete` gate; deny nếu sai |
 | PreToolUse | Write\|Edit | Block protected files (STATE/STATE-MACHINE/settings.json) |
 | PreToolUse | Task | KHÔNG block theo stage (Explore agent free); inject boundary reminder |
-| PostToolUse | Bash | Append checkpoint sau harness complete success |
+| PostToolUse | Bash | no-op (STATE.json chỉ giữ trạng thái hiện tại) |
 | SubagentStop | * | Parse RETURN SCHEMA, validate fields |
 | Stop | * | (stub — sẽ implement build/lint/test runner per kind sau) |
 | SessionEnd | * | Cleanup spawn.active nếu stale |
@@ -141,7 +141,7 @@ Hook policies pure functions in `scripts/hooks/policies.py`. Dispatcher routes e
 | Loại | Nơi |
 |------|-----|
 | Per-wave handoff doc | `handoff/wave-{N}.md` (dev-handoff + end-wave + done-wave append) |
-| Audit trail | `STATE.workflow.history[]` (mỗi command complete entry) |
+| Audit trail | `git log` (commit per change) — STATE.json KHÔNG lưu history |
 | Per-boundary memory | `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` |
 | Per-wave artifacts | `tracking/wave-{N}/` (test cases, report, bugs, signoff) |
 | Per-wave CRs | `tracking/wave-{N}/change-requests/` |
@@ -155,6 +155,6 @@ Hook policies pure functions in `scripts/hooks/policies.py`. Dispatcher routes e
 | FM-003 | Gate fail (vd coverage < 80) | Reject `harness complete`, user fix |
 | FM-004 | Spawn double sub-agent | Hook check `spawn.active != null` deny |
 | FM-005 | State.json corrupt | `state.py validate` detect; manual fix |
-| FM-006 | Sub-agent crash giữa wave | Re-run command, state.history detect resume point |
+| FM-006 | Sub-agent crash giữa wave | Re-run command; resume theo artifact đã tạo (PROJECT.md/MATRIX/code tồn tại) + `last_completed` |
 | FM-016 | FE/Mobile thiếu INTEG mapping | Spawn pre-check warn, agent return early needs_review |
 | FM-017 | Non-additive edit không user confirm | Pre-edit checklist in agent prompt, return needs_review |

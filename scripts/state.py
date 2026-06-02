@@ -2,7 +2,7 @@
 STATE manager for ADLC Design Harness.
 
 Reads/writes harness/STATE.json, validates against harness/STATE-MACHINE.json,
-applies transitions, and appends audit history.
+applies transitions. STATE.json chỉ giữ TRẠNG THÁI HIỆN TẠI (không lưu audit history).
 
 This module CONTAINS side effects (file I/O). Pure gate logic lives in gates.py.
 
@@ -145,17 +145,8 @@ def complete(command: str, evidence_str: str | dict) -> dict:
     state["previous_stage"] = old_stage
     state["stage"] = new_stage
 
-    # 5. Append history
-    state.setdefault("workflow", {}).setdefault("history", []).append(
-        {
-            "command": command,
-            "at": datetime.now(timezone.utc).isoformat(),
-            "from_stage": old_stage,
-            "to_stage": new_stage,
-            "evidence": evidence,
-        }
-    )
-    state["workflow"]["last_completed"] = command
+    # 5. Ghi last_completed (KHÔNG lưu history array — STATE.json gọn, không phình)
+    state.setdefault("workflow", {})["last_completed"] = command
 
     # 6. Chain auto-transitions (e.g., TEST_EXECUTE -> MANUAL_TEST when test_result=pass)
     chain = _try_auto_transition(state, machine, evidence)
@@ -187,15 +178,7 @@ def _try_auto_transition(state: dict, machine: dict, evidence: dict) -> str | No
             old = state["stage"]
             state["previous_stage"] = old
             state["stage"] = t["to"]
-            state.setdefault("workflow", {}).setdefault("history", []).append(
-                {
-                    "command": "_auto",
-                    "at": datetime.now(timezone.utc).isoformat(),
-                    "from_stage": old,
-                    "to_stage": t["to"],
-                    "evidence": evidence,
-                }
-            )
+            state.setdefault("workflow", {})["last_completed"] = "_auto"
             return t["to"]
     return None
 
@@ -296,12 +279,19 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
         if boundary:
             state["active_boundary"] = boundary
 
+    elif command == "review-dev":
+        # Wave-scoped review: lưu kết quả per-boundary để gate /dev-handoff verify cả wave.
+        rr = evidence.get("review_results")
+        if isinstance(rr, list):
+            state["review_results"] = rr
+
     elif command == "done-wave":
         # Hard close → BOOTSTRAP: clear per-wave runtime fields so STATE is a clean slate.
         state["wave"] = {"id": None, "number": None}
         state["wave_boundaries"] = []
         state["wave_features"] = []
         state["active_boundary"] = None
+        state["review_results"] = []
 
 
 # ========================================================================
@@ -328,7 +318,6 @@ def summary(state: dict | None = None, machine: dict | None = None) -> dict:
         "allowed_commands": allowed_commands(state, machine),
         "spawn_active": state.get("spawn", {}).get("active"),
         "last_completed": state.get("workflow", {}).get("last_completed"),
-        "history_count": len(state.get("workflow", {}).get("history", [])),
         "revision": state.get("meta", {}).get("revision"),
     }
 

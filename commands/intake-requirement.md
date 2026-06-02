@@ -49,7 +49,7 @@ Nếu user gọi `/intake-requirement` không argument:
 4. Verify: `docs/architecture/PROJECT.md` tồn tại, có scope + NFR + glossary.
 5. Verify: `docs/architecture/feat/FEAT-*.md` ≥ 1 file.
 6. Sub-agent return có lỗi → **STOP**, báo user, KHÔNG tiếp tục bước 2.
-7. Verify pass + sub-agent return `user_confirmed:true` → `py scripts/harness.py intake-requirement complete '{"step":1,"user_confirmed":true}'` → **stage BOOTSTRAP→INTAKE** (checkpoint ngay sau step 1).
+7. Verify pass + sub-agent return `user_confirmed:true` → `py scripts/harness.py intake-requirement complete '{"step":1,"user_confirmed":true}'` → **stage BOOTSTRAP→INTAKE** (transition ngay sau step 1).
 
 ## Bước 2: Business analysis
 
@@ -59,7 +59,7 @@ Chỉ thực hiện sau khi Bước 1 PASS verify.
 2. Spawn sub-agent.
 3. Verify: FEAT-*.md có AC testable, có BR-*, có `boundaries_suggested`.
 4. Lỗi → STOP.
-5. Confirm → `py scripts/harness.py intake-requirement complete '{"step":2,"user_confirmed":true}'` (INTAKE→INTAKE, ghi checkpoint).
+5. Confirm → `py scripts/harness.py intake-requirement complete '{"step":2,"user_confirmed":true}'` (INTAKE→INTAKE, giữ stage).
 
 ## Bước 3: Technical design
 
@@ -116,8 +116,8 @@ Chỉ thực hiện sau Bước 3.
 
 Nếu Claude main crash giữa chừng (vd sau bước 2):
 - Re-run `/intake-requirement`
-- Mode detect = full, đọc workflow.history
-- Skip các bước đã có evidence trong history
+- Mode detect = full
+- Skip các bước đã có artifact (PROJECT.md / FEAT / ADR / MATRIX tồn tại)
 - Tiếp tục từ bước chưa xong
 
 ## Amendment mode

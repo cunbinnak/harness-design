@@ -47,10 +47,9 @@ COVERAGE_THRESHOLD_PER_KIND = {
 DEFAULT_COVERAGE_MIN = 80  # fallback khi không xác định được kind (strictest)
 
 
-def _active_boundary_kind(state: dict, root: Path | None = None) -> str | None:
-    """Tra kind của active_boundary từ harness/SERVICE-BOUNDARY-MATRIX.json."""
-    boundary = state.get("active_boundary")
-    if not boundary:
+def _kind_of(boundary_id: str | None, root: Path | None = None) -> str | None:
+    """Tra kind của 1 boundary từ harness/SERVICE-BOUNDARY-MATRIX.json."""
+    if not boundary_id:
         return None
     root = root or REPO_ROOT
     matrix_file = root / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
@@ -60,10 +59,55 @@ def _active_boundary_kind(state: dict, root: Path | None = None) -> str | None:
         data = json.loads(matrix_file.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return None
-    for b in data.get("boundaries", []):
-        if b.get("boundary_id") == boundary:
+    boundaries = data.get("boundaries", []) if isinstance(data, dict) else data
+    for b in boundaries:
+        if b.get("boundary_id") == boundary_id:
             return b.get("kind")
     return None
+
+
+def _active_boundary_kind(state: dict, root: Path | None = None) -> str | None:
+    """Tra kind của active_boundary từ MATRIX."""
+    return _kind_of(state.get("active_boundary"), root)
+
+
+def check_all_boundaries_reviewed(state: dict, root: Path | None = None) -> tuple[bool, str]:
+    """Mọi boundary trong wave_boundaries phải có review_result=pass + coverage đạt ngưỡng theo kind.
+
+    Nguồn: STATE.review_results (lưu bởi apply_effects khi /review-dev complete) — wave-scoped.
+    """
+    wave_boundaries = state.get("wave_boundaries") or []
+    if not wave_boundaries:
+        return False, "wave_boundaries rỗng — chưa /start-wave?"
+    results = {
+        r.get("boundary"): r
+        for r in (state.get("review_results") or [])
+        if isinstance(r, dict)
+    }
+    missing, failed, low_cov = [], [], []
+    for bid in wave_boundaries:
+        r = results.get(bid)
+        if not r:
+            missing.append(bid)
+            continue
+        if r.get("review_result") != "pass":
+            failed.append(bid)
+            continue
+        kind = _kind_of(bid, root) or r.get("kind")
+        min_pct = COVERAGE_THRESHOLD_PER_KIND.get(kind, DEFAULT_COVERAGE_MIN)
+        cov = r.get("coverage_pct", 0)
+        if not (isinstance(cov, (int, float)) and cov >= min_pct):
+            low_cov.append(f"{bid}({kind}):{cov}<{min_pct}")
+    problems = []
+    if missing:
+        problems.append(f"chưa review: {missing}")
+    if failed:
+        problems.append(f"review fail: {failed}")
+    if low_cov:
+        problems.append(f"coverage thiếu: {low_cov}")
+    if problems:
+        return False, "; ".join(problems)
+    return True, ""
 
 
 def check_coverage_per_kind(
@@ -203,8 +247,7 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "review-dev": [],  # entry only, no evidence required
     "dev-handoff": [
-        {"kind": "coverage_per_kind", "field": "coverage_pct"},
-        {"kind": "flag", "field": "review_result", "expected": "pass"},
+        {"kind": "all_boundaries_reviewed"},
     ],
     "test-plan": [
         {"kind": "flag", "field": "docker_compose_ok", "expected": True},
@@ -238,6 +281,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_coverage(evidence, rule["min"], rule.get("field", "coverage_pct"))
         if kind == "coverage_per_kind":
             return check_coverage_per_kind(evidence, state, rule.get("field", "coverage_pct"))
+        if kind == "all_boundaries_reviewed":
+            return check_all_boundaries_reviewed(state)
         if kind == "int_min":
             return check_int_min(evidence, rule["field"], rule["min"])
         if kind == "non_empty":
@@ -290,20 +335,28 @@ def _selftest() -> int:
     assert check_in_state_list({"b": "x"}, "b", {"L": ["x", "y"]}, "L") == (True, "")
     assert check_in_state_list({"b": "z"}, "b", {"L": ["x", "y"]}, "L")[0] is False
 
-    # check_for_command
-    ok, errs = check_for_command(
-        "dev-handoff",
-        state={},
-        evidence={"coverage_pct": 85, "review_result": "pass"},
-    )
-    assert ok, f"dev-handoff pass case fail: {errs}"
+    # dev-handoff: wave-scoped — mọi wave_boundary phải pass + coverage theo kind
+    st_pass = {
+        "wave_boundaries": ["order", "web1"],
+        "review_results": [
+            {"boundary": "order", "kind": "backend", "review_result": "pass", "coverage_pct": 85},
+            {"boundary": "web1", "kind": "web", "review_result": "pass", "coverage_pct": 62},
+        ],
+    }
+    ok, errs = check_for_command("dev-handoff", state=st_pass, evidence={})
+    assert ok, f"dev-handoff wave pass fail: {errs}"
 
-    ok, errs = check_for_command(
-        "dev-handoff",
-        state={},
-        evidence={"coverage_pct": 75, "review_result": "pass"},
-    )
-    assert not ok and "coverage_pct=75" in errs[0]
+    # thiếu 1 boundary chưa review
+    st_missing = {"wave_boundaries": ["order", "web1"],
+                  "review_results": [{"boundary": "order", "kind": "backend", "review_result": "pass", "coverage_pct": 85}]}
+    ok, errs = check_for_command("dev-handoff", state=st_missing, evidence={})
+    assert not ok and "chưa review" in errs[0], errs
+
+    # coverage dưới ngưỡng kind (backend cần 80)
+    st_low = {"wave_boundaries": ["order"],
+              "review_results": [{"boundary": "order", "kind": "backend", "review_result": "pass", "coverage_pct": 75}]}
+    ok, errs = check_for_command("dev-handoff", state=st_low, evidence={})
+    assert not ok and "coverage" in errs[0], errs
 
     # per-kind coverage thresholds (BE80 / BFF70 / web60 / mobile60)
     assert check_coverage_per_kind({"coverage_pct": 65, "kind": "web"}, {})[0] is True

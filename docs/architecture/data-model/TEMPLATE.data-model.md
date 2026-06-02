@@ -24,14 +24,18 @@ erDiagram
   Entity_B }o--|| Entity_C : references
 ```
 
-| Entity | Mô tả ngắn | Primary key |
+| Entity (bảng) | Mục đích — bảng lưu gì / phục vụ FEAT nào | Primary key |
 |--------|------------|-------------|
-| Entity_A | (1 dòng) | id (uuid) |
+| Entity_A | (1 dòng: bảng tồn tại để làm gì, phục vụ FEAT-xxx) | id (uuid) |
 | Entity_B | | id (uuid) |
+
+> Quan hệ ở erDiagram là **logic**. DB **KHÔNG tạo FK** — liên kết qua id column (referential integrity ở app-layer, xem `rules-backend`).
 
 ## Schema chi tiết
 
 ### Entity_A
+
+**Mục đích:** (bảng này lưu gì + phục vụ nghiệp vụ/FEAT nào — 1–2 dòng)
 
 | Field | Kiểu | Constraint | Mô tả |
 |-------|------|-----------|-------|
@@ -41,7 +45,8 @@ erDiagram
 | status | enum | NOT NULL, default 'PENDING' | (xem state machine bên dưới) |
 | created_at | timestamptz | NOT NULL, default now() | |
 | updated_at | timestamptz | NOT NULL, default now() | |
-| created_by | uuid | FK → user.id | |
+| created_by | uuid | NOT NULL | id user tạo — **no FK** (liên kết app-layer, xem `rules-backend`) |
+| {entity_b}_id | uuid | NULL | id trỏ Entity_B — **no FK**, KHÔNG dùng FK constraint |
 
 **Indexes:**
 - `idx_entity_a_name` ON `(name)` — UNIQUE

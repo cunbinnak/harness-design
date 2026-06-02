@@ -56,7 +56,7 @@ KHÔNG sửa `harness/STATE.json` thủ công — hook chặn.
 │   ├── commands/                  13 slash commands (synced from commands/)
 │   └── skills/                    On-demand skills (project-customizable)
 ├── harness/
-│   ├── STATE.json                 Current stage + workflow history
+│   ├── STATE.json                 Current stage (chỉ trạng thái hiện tại, no history)
 │   ├── STATE-MACHINE.json         10 states + 14 transitions
 │   ├── SERVICE-BOUNDARY-MATRIX.json  Boundary metadata + owned_paths
 │   └── PROTOCOL.md                Orchestrator ↔ sub-agent protocol

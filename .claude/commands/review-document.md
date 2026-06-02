@@ -62,7 +62,7 @@ User truyền feedback sau slash command:
 ## State semantics
 
 - State KHÔNG đổi (INTAKE → INTAKE).
-- Mỗi call ghi 1 entry vào `workflow.history` với feedback summary.
+- Mỗi call xử lý feedback rồi revise doc (STATE.json chỉ giữ trạng thái hiện tại — không log feedback).
 - User có thể chạy `/review-document` không giới hạn lần.
 
 ## Forbidden
