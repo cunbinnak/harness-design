@@ -27,7 +27,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 2. Verify coverage per boundary đạt threshold (BE >= 80, FE >= 60).
 3. Verify `docs/architecture/infra/docker-compose.yml` SINGLE location (không có file compose nào khác).
 4. Build infra: `docker-compose up --build -d`, wait healthcheck max 120s.
-5. Smoke functional test: health all ports + auth login + create entity + FE accessible.
+5. Smoke functional test: health all ports + auth login + create entity + FE accessible + **kết nối liên service (cross-boundary): mỗi `INTEG-INT-*` / `depends_on` → caller gọi được callee qua service name**.
 6. Capture proof artifacts trong `tracking/wave-{N}/`: docker-build.log, docker-ps.json, docker-ps.txt.
 7. Update `handoff/wave-{N}.md` với UAT instructions skeleton.
 8. (Nếu phát sinh) append KG kinh nghiệm/decisions per boundary — KHÔNG tái tạo entities (đã seed ở start-wave).
@@ -59,7 +59,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 
 ## Forbidden
 
-- Skip smoke functional — chỉ check `/health` không đủ (phải có auth + create + FE).
+- Skip smoke functional — chỉ check `/health` không đủ (phải có auth + create + FE + kết nối liên service cross-boundary).
 - Skip `docker-compose ps` verify all healthy.
 - Complete khi coverage < threshold.
 - Sửa source code trong `services/`.
@@ -88,7 +88,8 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
     "smoke_health": "pass",
     "smoke_login": "pass",
     "smoke_create": "pass",
-    "smoke_fe": "pass"
+    "smoke_fe": "pass",
+    "smoke_cross_boundary": "pass"
   }
 }
 ```
