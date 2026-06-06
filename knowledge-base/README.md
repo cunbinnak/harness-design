@@ -14,34 +14,40 @@ knowledge-base/
 
 Mỗi boundary có 1 file KG riêng. File name: `{prefix}-{boundary}.knowledge-graph.yaml` (vd `crm-hdpe-order-mgmt.knowledge-graph.yaml`).
 
-## Schema
+## Schema — 2 nhóm, vòng đời khác nhau
 
-Mỗi KG có sections:
+**Nhóm DESIGN (phái sinh từ docs)** — nguồn sự thật ở docs; KG là view cô đọng. **Seed 1 lần ở `/start-wave`** từ docs đã chốt (sau approve); re-sync khi docs đổi qua `/apply-cr`. Dev chỉ update nếu implement khác design (kèm sửa doc). KHÔNG gõ tay rải rác.
 
-| Section | Nội dung | Ai ghi |
+| Section | Nội dung | Seed từ (ở `/start-wave`) |
 |---------|---------|--------|
-| `metadata` | tech stack, purpose, integration refs | solution-architect (intake step 3) |
-| `entities[]` | aggregate roots, entities, value objects | dev agent khi code |
-| `business_rules[]` | BR-NNN với cornerstone flag | business-analyst (step 2) + dev |
-| `events_published[]` | events boundary phát ra | solution-architect + dev |
-| `events_consumed[]` | events boundary nhận về | solution-architect + dev |
-| `dependencies` | outbound + inbound API calls | solution-architect + review |
-| `integrations[]` | external systems (DB, cache, broker) | solution-architect |
-| `permissions` | RBAC + multi-tenancy | solution-architect |
-| `workflows[]` | long-running orchestration (Temporal/saga) | solution-architect |
-| `learnings` | gotchas + patterns phát hiện | review agent |
-| `failure_modes[]` | FM-NNN với detection + mitigation | fix agent, test agent |
-| `execution_history[]` | wave participation status | program-planner + end-wave |
+| `metadata` | tech stack, purpose | MATRIX (materialize) |
+| `entities[]` | aggregate roots, entities | `data-model-{boundary}.md` |
+| `business_rules[]` | BR-NNN + cornerstone | `FEAT-*` của boundary |
+| `events_published[]` / `events_consumed[]` | events phát/nhận | `events/{boundary}-events.md` |
+| `dependencies` | outbound + inbound | `integrations/INTEG-*` |
+| `integrations[]` | external systems | `integrations/INTEG-EXT-*` |
+| `permissions` | RBAC + tenant | `hld-{boundary}.md` §7 |
+| `workflows[]` | saga/temporal | `hld-{boundary}.md` §8 |
 
-## Khi nào ghi
+**Nhóm KINH NGHIỆM (sinh lúc làm)** — KG là nguồn sự thật duy nhất; **append/update khi phát sinh**.
 
-Append vào KG **sau khi sub-agent xong work**:
+| Section | Nội dung | Ai ghi (khi nào) |
+|---------|---------|--------|
+| `learnings` | gotchas + patterns | dev/review/test — **khi phát hiện** anti-pattern/bài học mới |
+| `decisions[]` | quyết định kỹ thuật cục bộ | dev/fix — **khi quyết** (không lên ADR) |
+| `discipline` | blockers + do_not_repeat | agent set khi gặp blocker / clear khi xong |
+| `failure_modes[]` | FM-NNN + detection/mitigation | fix/test — **khi discover FM mới** |
+| `execution_history[]` | wave participation status | end-wave update |
 
-- Dev sub-agent → append entities, BR, events_published khi implement code.
-- Review sub-agent → append learnings (gotchas) khi phát hiện anti-pattern.
-- Fix sub-agent → append failure_modes khi fix bug discovered new FM.
-- Test execute → append learnings, failure_modes khi test discover behavior.
-- End-wave → append execution_history entry: status=COMPLETED + deliverables.
+## Khi nào ghi / update
+
+- **`/start-wave`** → seed nhóm DESIGN từ docs cuối (start-wave-agent). Nhóm kinh nghiệm để rỗng.
+- **`/review-document`** (intake) → **KHÔNG đụng KG**, chỉ sửa doc; design seed sau ở start-wave từ docs cuối.
+- **Dev** → append nhóm kinh nghiệm khi phát sinh; update design CHỈ khi implement lệch (kèm sửa data-model).
+- **Review** → append `learnings` **chỉ khi** phát hiện cái mới; review sạch thì KHÔNG ghi.
+- **Fix** → append `failure_modes` khi discover FM mới.
+- **End-wave** → update `execution_history` (status=COMPLETED + deliverables).
+- **`/apply-cr`** (sau DONE) → docs đổi → re-sync nhóm DESIGN.
 
 ## RETURN SCHEMA requires `kg_appended[]`
 

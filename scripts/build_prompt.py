@@ -320,7 +320,7 @@ def build_start_wave(state: dict, matrix: list[dict], opts: dict) -> str:
     wave_n = int(opts.get("wave") or 1)
     parts = [
         f"# SPAWN PROMPT — /start-wave {wave_n}",
-        f"\nAgent: **start-wave-agent** · Materialize per-boundary agents + KG + scaffold cho wave-{wave_n:03d}.",
+        f"\nAgent: **start-wave-agent** · Materialize per-boundary agents + KG skeleton, rồi seed phần design vào KG từ docs đã chốt — wave-{wave_n:03d}.",
         state_bundle(state, {"wave_n": wave_n}),
         NON_NEGOTIABLES,
         skills_block([]),
@@ -332,8 +332,9 @@ def build_start_wave(state: dict, matrix: list[dict], opts: dict) -> str:
         tasks_block([
             f"Read wave-{wave_n:03d}.md để biết boundaries + features tham gia wave.",
             "Read MATRIX để có metadata (kind, prefix, tech, owned_paths) per boundary.",
-            f"Run `py scripts/materialize.py --wave {wave_n}` (materialize sẽ gen agents/{{prefix-boundary}}-agent.md + knowledge-base/{{prefix-boundary}}.kg.yaml per boundary).",
+            f"Run `py scripts/materialize.py --wave {wave_n}` (gen agents/{{prefix-boundary}}-agent.md + knowledge-base/{{prefix-boundary}}.kg.yaml skeleton per boundary).",
             "Verify file đã tồn tại sau materialize.",
+            "Seed phần DESIGN vào KG cho MỖI boundary (docs đã chốt sau approve): đọc data-model→`entities`, FEAT→`business_rules`, events doc→`events_*`, HLD §7→`permissions`, INTEG→`dependencies`/`integrations` → Edit vào KG. GIỮ RỖNG `learnings`/`decisions`/`discipline`/`failure_modes`/`execution_history`. Chỉ seed cái docs CÓ, KHÔNG bịa.",
             f"Return RETURN SCHEMA với `approved: true`, `wave_n: {wave_n}`.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
@@ -373,7 +374,7 @@ def build_boundary_command(
         task_list += [
             f"Đọc `docs/plans/{wave_id}.md` §'Features in scope' → lọc dòng có `Boundary == {boundary_id}` = tập FEAT của boundary này; đọc AC trong từng `FEAT-*.md` tương ứng rồi implement.",
             "Run scoped build/test (mvn -pl ./ test cho backend; npm test cho bff/web; flutter test cho mobile).",
-            "Append KG: entities, business_rules, events_published khi code.",
+            "KG: phần design (entities/business_rules/events/permissions) đã seed ở /start-wave — chỉ UPDATE nếu implement khác design (kèm sửa data-model); APPEND phần kinh nghiệm (learnings/gotchas/failure_modes/decisions) khi phát sinh.",
             "Return RETURN SCHEMA.",
         ]
     elif command == "review-dev":

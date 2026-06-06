@@ -35,7 +35,7 @@ matrix_revision: {{matrix_revision}}
 2. Code trong `services/{{prefix}}-{{boundary}}/` (gitignored ở design repo, push lên `{{repo_url}}`).
 3. Tuân `rules-{{kind}}` (primary skill — invoke khi start).
 4. Run scoped build/test cho boundary (lệnh chi tiết trong skill).
-5. Append KG sau khi xong: entities, business_rules, events_published.
+5. KG: design (entities/business_rules/events/permissions) đã seed ở `/start-wave` — update nếu implement khác design (kèm data-model); append phần kinh nghiệm (learnings/gotchas/decisions/failure_modes) khi phát sinh.
 
 ## Workflow khi spawn
 

@@ -15,6 +15,8 @@ gates: [{type: flag, field: approved, expected: true}, {type: int_min, field: wa
 
 Mở wave N. Đọc MATRIX, sinh `agents/dev-{prefix-boundary}-agent.md`, `agents/fix-{prefix-boundary}-agent.md`, `knowledge-base/{prefix-boundary}.knowledge-graph.yaml` cho mỗi boundary trong wave.
 
+**Sau materialize, agent seed phần DESIGN vào KG** (entities ← data-model, business_rules ← FEAT, events ← events doc, permissions ← HLD auth) — docs đã đóng băng sau `/approve-document` nên đây là điểm derive. Phần kinh nghiệm (learnings/failure_modes/decisions) để rỗng, dev/fix/review append sau.
+
 ## Build prompt + spawn
 
 ```bash

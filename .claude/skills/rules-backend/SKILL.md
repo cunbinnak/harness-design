@@ -22,7 +22,7 @@ Sub-agent `kind=backend` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
 6. **Cross-boundary**: KHÔNG import code từ `services/{prefix}-{other}/`; gọi qua HTTP/event theo `docs/architecture/integrations/INTEG-*.md`.
 7. **Config**: secrets qua env; không hardcode (chi tiết `ref-backend-config`).
 8. **Test**: unit (domain/application) + integration (api + DB testcontainer); coverage ≥ **80%**.
-9. **KG**: append entity/event/decision vào `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` sau khi xong.
+9. **KG** (`knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml`): phần design (entities/business_rules/events/permissions) **đã seed ở `/start-wave`** từ docs — chỉ **update khi implement KHÁC design** (kèm sửa data-model cho khớp); **append phần kinh nghiệm** (learnings/gotchas/decisions/failure_modes) khi phát sinh. KHÔNG tái tạo lại design từ đầu.
 
 ## Entity (JPA — Java/Spring)
 1. **KHÔNG dùng `@Data` / `@EqualsAndHashCode` / `@ToString` (all-field) trên `@Entity`.** Lý do:

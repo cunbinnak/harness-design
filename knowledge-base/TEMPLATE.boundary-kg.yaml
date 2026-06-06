@@ -118,6 +118,22 @@ learnings:
   patterns: []
 
 # ────────────────────────────────────────────────
+# DECISIONS — quyết định kỹ thuật CỤC BỘ (không lên ADR). Dev/fix append khi phát sinh.
+# ────────────────────────────────────────────────
+decisions: []
+# - id: DEC-{{prefix}}-001
+#   summary: "..."
+#   rationale: "..."
+#   supersedes: null
+
+# ────────────────────────────────────────────────
+# DISCIPLINE — blockers + do-not-repeat (blocker thực sự chặn `complete`)
+# ────────────────────────────────────────────────
+discipline:
+  do_not_repeat: []
+  blockers: []
+
+# ────────────────────────────────────────────────
 # FAILURE MODES — discovered during dev/test/fix
 # ────────────────────────────────────────────────
 failure_modes: []

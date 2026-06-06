@@ -93,6 +93,7 @@ Read-only — KHÔNG edit.
 - Spawn sub-sub-agent.
 - Skip verify sau Edit (mode revision).
 - Tự thêm rule không có trong feedback (mode revision).
+- Đụng KG (`knowledge-base/*.yaml`) — chỉ sửa doc nguồn. KG design được derive ở `/start-wave` từ docs CUỐI, nên revise doc bao nhiêu vòng cũng KHÔNG cần update KG ở đây.
 
 ## RETURN SCHEMA
 

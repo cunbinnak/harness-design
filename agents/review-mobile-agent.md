@@ -32,7 +32,7 @@ kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
 4. Phát hiện issue → spawn `fix-{prefix}-{active_boundary}-agent`.
 5. Re-review sau fix.
 6. Loop tới pass tất cả check.
-7. Append learnings/gotchas vào KG.
+7. (CHỈ khi phát hiện anti-pattern/gotcha/learning MỚI) append vào KG `learnings`. Review sạch / không có gì mới → KHÔNG ghi KG (tránh phình). KHÔNG đụng phần design (đã seed ở start-wave).
 
 ## Workflow
 
@@ -43,7 +43,7 @@ kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
 4. Walk checklist từ skill
 5. Có fail -> spawn fix sub-agent
 6. Loop tới pass
-7. Append KG, return RETURN SCHEMA
+7. (Nếu có learning mới) append KG; return RETURN SCHEMA
 ```
 
 ## Skills

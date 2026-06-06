@@ -11,7 +11,7 @@ stage_transition: "INTAKE -> WAVE_OPEN"
 
 ## Identity
 
-Mở wave N. Materialize per-boundary dev/fix agents + KG từ MATRIX. Pure orchestration command — không có skill chuyên môn.
+Mở wave N. Materialize per-boundary dev/fix agents + KG skeleton từ MATRIX, rồi **seed phần DESIGN vào KG từ docs đã chốt** — `entities` (từ data-model), `business_rules` (từ FEAT), `events` (từ events doc), `permissions` (từ HLD auth). Docs đóng băng sau `/approve-document` nên đây là điểm derive các phần này. Phần KINH NGHIỆM (`learnings`/`failure_modes`/`decisions`/`execution_history`) để RỖNG — dev/fix/review append khi làm.
 
 | | |
 |---|---|
@@ -23,18 +23,27 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG từ MATRIX. Pure orch
 
 1. Verify `docs/plans/wave-{N}.md` tồn tại + có boundaries + features.
 2. Verify `harness/SERVICE-BOUNDARY-MATRIX.json` có entries cho boundaries trong wave.
-3. Run `py scripts/materialize.py --wave {N}` để gen per-boundary artifacts.
+3. Run `py scripts/materialize.py --wave {N}` → gen per-boundary dev/fix agent + KG skeleton.
 4. Verify materialize output: `agents/dev-{prefix}-*` + `fix-{prefix}-*` + `knowledge-base/{prefix}-*.knowledge-graph.yaml` tồn tại cho mọi boundary.
-5. Complete: `py scripts/harness.py start-wave complete '{"approved":true,"wave_n":N}'`. Harness tự set `wave={id,number}` + `wave_boundaries` (derive từ MATRIX field `wave`, không phụ thuộc evidence). RETURN SCHEMA vẫn báo `wave_boundaries` để audit.
+5. **Seed phần design vào KG cho MỖI boundary trong wave** (đọc docs đã chốt → Edit KG):
+   - `entities` ← `data-model-{boundary}.md` (entity + attributes + invariants)
+   - `business_rules` ← các `FEAT-*` của boundary (BR-* + enforcement_point)
+   - `events_published` / `events_consumed` ← `events/{boundary}-events.md`
+   - `permissions` ← `hld-{boundary}.md` §7 (roles + tenant)
+   - `dependencies` / `integrations` ← `integrations/INTEG-*` liên quan boundary
+   - **GIỮ RỖNG** `learnings` / `failure_modes` / `decisions` / `execution_history` — dev/fix/review append khi làm.
+   > Chỉ seed cái docs đã có; KHÔNG bịa. Đây là **derive** từ docs cuối, không phải sáng tác mới.
+6. Complete: `py scripts/harness.py start-wave complete '{"approved":true,"wave_n":N}'`. Harness tự set `wave={id,number}` + `wave_boundaries` (derive từ MATRIX field `wave`, không phụ thuộc evidence). RETURN SCHEMA vẫn báo `wave_boundaries` để audit.
 
 ## Workflow
 
 ```
 1. Read docs/plans/wave-{N}.md → identify boundaries + features in wave
 2. Read MATRIX → cross-ref boundaries metadata
-3. Run materialize.py với --wave N
+3. Run materialize.py với --wave N (gen agent + KG skeleton)
 4. Verify gen output qua Glob/ls
-5. Return RETURN SCHEMA với wave_id + wave_boundaries
+5. Per boundary: đọc data-model/FEAT/events/HLD → Edit KG ghi entities/business_rules/events/permissions (phần kinh nghiệm để rỗng)
+6. Return RETURN SCHEMA với wave_id + wave_boundaries + kg seeded
 ```
 
 ## Skills
@@ -64,7 +73,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG từ MATRIX. Pure orch
   "deferred": [],
   "needs_review": [],
   "files_changed": ["agents/dev-*", "agents/fix-*", "knowledge-base/*.yaml"],
-  "kg_appended": [],
+  "kg_appended": ["entity:Order", "br:BR-ORDER-001", "event:OrderConfirmed", "perm:manager"],
   "build": "pass",
   "lint": "pass",
   "test": "pass",

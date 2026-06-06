@@ -30,7 +30,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 5. Smoke functional test: health all ports + auth login + create entity + FE accessible.
 6. Capture proof artifacts trong `tracking/wave-{N}/`: docker-build.log, docker-ps.json, docker-ps.txt.
 7. Update `handoff/wave-{N}.md` với UAT instructions skeleton.
-8. Append KG per boundary (entities, integrations, decisions).
+8. (Nếu phát sinh) append KG kinh nghiệm/decisions per boundary — KHÔNG tái tạo entities (đã seed ở start-wave).
 
 ## Workflow
 

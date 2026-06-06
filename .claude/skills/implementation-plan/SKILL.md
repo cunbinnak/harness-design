@@ -21,7 +21,7 @@ Input: `PROJECT.md` + `FEAT-*.md` (AC/BR/boundaries) + design step 3 (ADR/HLD/AP
 3. **`harness/SERVICE-BOUNDARY-MATRIX.json`** — materialize từ decomposition: **≥ 1 boundary**, mỗi boundary `{boundary_id, kind, prefix, tech{language,framework,data_store}, wave, features[], ref_skills[], depends_on, consumed_by}` (+ `owned_paths`/`repo_url` nếu có).
    - `features[]` = FEAT-id boundary đảm nhận → nguồn cho `STATE.wave_features` khi `/start-wave` (mỗi FEAT gắn đúng boundary + wave).
    - `ref_skills[]` = **situational ref skill** boundary cần (ngoài scaffold pattern/config/logging tự động) — suy từ design step 3: boundary **phát/nhận event** (có `events/{boundary}-events.md`) → thêm ref event; **dùng cache/lock** → ref cache; nhu cầu khác (search, grpc…) → ref tương ứng. Tra tên skill có sẵn ở `.claude/skills/ref-{kind}-*`. Để rỗng `[]` nếu chỉ CRUD thuần. *(Đây là nơi DUY NHẤT quyết ref per-boundary → materialize vào dev agent + build_prompt.)*
-4. **KG skeleton per boundary** — `knowledge-base/{boundary}.knowledge-graph.yaml` (entities/business_rules/events placeholder để dev append sau).
+4. **KG skeleton per boundary** — `knowledge-base/{boundary}.knowledge-graph.yaml` (chỉ `metadata`; các section còn RỖNG). **KHÔNG điền entities/business_rules/events ở đây** — docs còn sửa qua `/review-document`. Phần design được **seed ở `/start-wave`** từ docs cuối (sau approve); phần kinh nghiệm do dev/fix/review append.
 
 > **MATRIX là kernel file** (PreToolUse chặn Write/Edit tay) — KHÔNG ghi bằng Write tool. Materialize qua script:
 > ```bash
