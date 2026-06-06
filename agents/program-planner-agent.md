@@ -34,7 +34,7 @@ Roadmap đủ wave + timeline. Mỗi wave plan chi tiết. MATRIX với boundary
 - harness/SERVICE-BOUNDARY-MATRIX.json (boundary metadata: kind, prefix, tech, owned_paths, depends_on, consumed_by, wave, features, ref_skills)
 - agents/dev-{prefix}-{boundary}-agent.md per boundary (qua materialize.py)
 - agents/fix-{prefix}-{boundary}-agent.md per boundary (qua materialize.py)
-- knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml per boundary (qua materialize.py)
+- knowledge-base/{boundary}.knowledge-graph.yaml per boundary (qua materialize.py)
 
 ## Workflow
 
@@ -58,7 +58,7 @@ Roadmap đủ wave + timeline. Mỗi wave plan chi tiết. MATRIX với boundary
 - harness/SERVICE-BOUNDARY-MATRIX.json
 - agents/dev-*-agent.md (qua materialize.py)
 - agents/fix-*-agent.md (qua materialize.py)
-- knowledge-base/*-*.knowledge-graph.yaml (qua materialize.py)
+- knowledge-base/*.knowledge-graph.yaml (qua materialize.py)
 
 ## Forbidden
 

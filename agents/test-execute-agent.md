@@ -64,7 +64,7 @@ Build service local + run auto test với PROOF cho mỗi TC. Internal loop fix 
 - `tracking/wave-{N}/test-logs/TC-*.log` (Write proof per TC)
 - `tracking/wave-{N}/test-logs/screenshots/TC-*.png` (Write UI screenshots)
 - `tracking/wave-{N}/bugs.md` (append BUG-NNN entries với origin=auto)
-- `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` (append failure_modes, learnings)
+- `knowledge-base/{boundary}.knowledge-graph.yaml` (append failure_modes, learnings)
 
 ## Forbidden
 

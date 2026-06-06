@@ -25,7 +25,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG skeleton từ MATRIX, 
 2. Verify `harness/SERVICE-BOUNDARY-MATRIX.json` có entries cho boundaries trong wave.
 3. Run `py scripts/materialize.py --wave {N}` → gen per-boundary dev/fix agent + KG skeleton.
 4. Verify materialize output: `agents/dev-{prefix}-*` + `fix-{prefix}-*` + `knowledge-base/{prefix}-*.knowledge-graph.yaml` tồn tại cho mọi boundary.
-5. **Seed phần design vào KG cho MỖI boundary trong wave** (đọc docs đã chốt → Edit KG):
+5. **Seed phần design vào KG cho MỖI boundary trong wave** — **Edit ĐÚNG file vừa materialize `knowledge-base/{boundary}.knowledge-graph.yaml`** (template duy nhất = `TEMPLATE.knowledge-graph.yaml`; KHÔNG tạo file mới / đổi tên). Đọc docs đã chốt → ghi vào file đó:
    - `entities` ← `data-model-{boundary}.md` (entity + attributes + invariants)
    - `business_rules` ← các `FEAT-*` của boundary (BR-* + enforcement_point)
    - `events_published` / `events_consumed` ← `events/{boundary}-events.md`
@@ -56,7 +56,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG skeleton từ MATRIX, 
 - `harness/STATE.json` (qua harness CLI complete)
 - `agents/dev-*-agent.md` (qua materialize.py)
 - `agents/fix-*-agent.md` (qua materialize.py)
-- `knowledge-base/*-*.knowledge-graph.yaml` (qua materialize.py)
+- `knowledge-base/*.knowledge-graph.yaml` (qua materialize.py)
 
 ## Forbidden
 

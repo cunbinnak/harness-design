@@ -239,7 +239,9 @@ logging:
 - KHÔNG set production defaults without env var override path
 - KHÔNG ignore profile activation logic
 
-## 11. Gradle Setup
+## 11. Build tool setup (Gradle = default)
+
+> **Build tool do ADR `tech-stack` CHỐT** (Maven hoặc Gradle). Mẫu dưới là **Gradle (default harness)**. Nếu ADR chọn **Maven** → dùng `pom.xml` với cùng plugin/dependency tương đương (spring-boot-starter-*, jacoco, test scope…); KHÔNG dùng `build.gradle`. Dev theo đúng build tool ADR chốt, không tự đổi.
 
 ```groovy
 // build.gradle — Groovy DSL (KHÔNG build.gradle.kts)

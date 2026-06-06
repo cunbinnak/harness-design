@@ -70,7 +70,8 @@ NON_NEGOTIABLES = """## NON-NEGOTIABLES
 3. Stage transition CHỈ qua slash command, KHÔNG sửa `stage` trong STATE.json bằng tay.
 4. Quyết định non-trivial → artifact ngay (ADR / FEAT / CR / KG).
 5. Cross-boundary change → `/apply-cr` + `/review-document` (chỉ từ DONE state).
-6. Không bypass test (`--no-verify`, skip), không hardcode secrets."""
+6. Không bypass test (`--no-verify`, skip), không hardcode secrets.
+7. **TUÂN THỦ skill được giao**: convention `rules-{kind}` + cấu trúc/layout `ref-{kind}-pattern` (đúng kiến trúc HLD §4) + template tương ứng. KHÔNG tự bịa cấu trúc/đặt tên/đổi build tool ngoài skill+ADR. Review/gate sẽ reject nếu lệch."""
 
 
 RETURN_SCHEMA_TEMPLATE = """## RETURN SCHEMA
@@ -162,8 +163,8 @@ def owned_paths_block(boundary_info: dict | None) -> str:
     return "\n".join(lines)
 
 
-def skills_block(skills: list[str], available: list[str] | None = None, note: str = "") -> str:
-    """Primary skills = load ngay khi start. Available = on-demand qua Skill tool khi cần."""
+def skills_block(skills: list[str], available: list[str] | None = None, note: str = "", scaffold: list[str] | None = None) -> str:
+    """Primary skills = load ngay khi start. Scaffold = BẮT BUỘC khi tạo skeleton. Available = on-demand khi cần."""
     head = "## SKILLS\n"
     if note:
         head += f"\n_{note}_\n"
@@ -172,6 +173,11 @@ def skills_block(skills: list[str], available: list[str] | None = None, note: st
         parts.append("**Primary (invoke ngay):**\n" + "\n".join(f"- `{s}`" for s in skills))
     else:
         parts.append("**Primary:** (none — command này không cần skill primary)")
+    if scaffold:
+        parts.append(
+            "\n**Scaffold (invoke BẮT BUỘC khi tạo skeleton — cây thư mục + config + logging):**\n"
+            + "\n".join(f"- `{s}`" for s in scaffold)
+        )
     if available:
         parts.append(
             "\n**Available** (invoke NGAY khi điều kiện/ngữ cảnh đúng — không bỏ qua nếu cần):\n"
@@ -332,9 +338,9 @@ def build_start_wave(state: dict, matrix: list[dict], opts: dict) -> str:
         tasks_block([
             f"Read wave-{wave_n:03d}.md để biết boundaries + features tham gia wave.",
             "Read MATRIX để có metadata (kind, prefix, tech, owned_paths) per boundary.",
-            f"Run `py scripts/materialize.py --wave {wave_n}` (gen agents/{{prefix-boundary}}-agent.md + knowledge-base/{{prefix-boundary}}.kg.yaml skeleton per boundary).",
+            f"Run `py scripts/materialize.py --wave {wave_n}` (gen agents/dev-{{prefix}}-{{boundary}}-agent.md + knowledge-base/{{prefix}}-{{boundary}}.knowledge-graph.yaml skeleton per boundary).",
             "Verify file đã tồn tại sau materialize.",
-            "Seed phần DESIGN vào KG cho MỖI boundary (docs đã chốt sau approve): đọc data-model→`entities`, FEAT→`business_rules`, events doc→`events_*`, HLD §7→`permissions`, INTEG→`dependencies`/`integrations` → Edit vào KG. GIỮ RỖNG `learnings`/`decisions`/`discipline`/`failure_modes`/`execution_history`. Chỉ seed cái docs CÓ, KHÔNG bịa.",
+            "Seed phần DESIGN vào KG cho MỖI boundary (docs đã chốt sau approve): đọc data-model→`entities`, FEAT→`business_rules`, events doc→`events_*`, HLD §7→`permissions`, INTEG→`dependencies`/`integrations`. **Edit ĐÚNG file vừa materialize `knowledge-base/{{prefix}}-{{boundary}}.knowledge-graph.yaml` — TUYỆT ĐỐI KHÔNG tạo file KG mới / đổi tên.** GIỮ RỖNG `learnings`/`decisions`/`discipline`/`failure_modes`/`execution_history`. Chỉ seed cái docs CÓ, KHÔNG bịa.",
             f"Return RETURN SCHEMA với `approved: true`, `wave_n: {wave_n}`.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
@@ -352,18 +358,22 @@ def build_boundary_command(
     prefix = boundary.get("prefix") or (state.get("project") or {}).get("service_prefix") or "<prefix>"
     service_folder = boundary.get("service_folder") or f"services/{prefix}-{boundary_id}"
     wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
+    scaffold_block: list[str] = []  # scaffold refs hiển thị riêng ở SKILLS block (start-dev)
 
     if command == "start-dev":
         agent_name = f"dev-{prefix}-{boundary_id}-agent"
         skills = PRIMARY_SKILLS_PER_KIND.get(kind, [])
         scaffold_refs = SCAFFOLD_REF_SKILLS_PER_KIND.get(kind, [])
+        scaffold_block = scaffold_refs
         # Situational ref = do intake quyết per-boundary, lưu MATRIX field `ref_skills`. Kernel chỉ đọc + truyền qua.
         ref_skills = list(boundary.get("ref_skills") or [])
         scaffold_invoke = " + ".join(f"`{s}`" for s in scaffold_refs) if scaffold_refs else "(kind này không có ref structure riêng)"
+        # Skill mô tả cây thư mục chuẩn: ref-{kind}-pattern nếu có, else rules-{kind}.
+        pattern_ref = next((s for s in scaffold_refs if s.endswith("-pattern")), PRIMARY_SKILLS_PER_KIND.get(kind, ['rules-?'])[0])
         task_list = [
             f"Invoke primary skill `{PRIMARY_SKILLS_PER_KIND.get(kind, ['rules-?'])[0]}` để load convention.",
-            "Read HLD + API + data-model + KG của boundary; lấy **kiến trúc + layer/package đã chốt ở HLD §4** làm chuẩn scaffold.",
-            f"**Scaffold (BẮT BUỘC invoke {scaffold_invoke} trước khi tạo file)** — nếu `{service_folder}/` chưa có code: tạo build file (pom.xml/package.json/pubspec.yaml) + folder layout đúng kiến trúc HLD §4.",
+            "Read HLD + API + data-model + KG của boundary; lấy **kiến trúc (Layered/Hexagonal) đã CHỐT ở HLD §4** (HLD §4 chỉ CHỌN kiến trúc — KHÔNG phải nguồn cây thư mục).",
+            f"**Scaffold (BẮT BUỘC invoke {scaffold_invoke} trước khi tạo file)** — nếu `{service_folder}/` chưa có code: tạo build file (**theo ADR tech-stack** — backend: Gradle `build.gradle` default / Maven `pom.xml`; bff/web: `package.json`; mobile: `pubspec.yaml`) + **folder/file layout BÁM ĐÚNG cây thư mục trong `{pattern_ref}`** — **chọn đúng layout Layered HAY Hexagonal/DDD theo kiến trúc chốt ở HLD §4, KHÔNG mặc định Layered**. KHÔNG tự bịa cấu trúc; KHÔNG dùng bảng layer HLD làm cây thư mục; KHÔNG tự đổi build tool khác ADR.",
         ]
         if ref_skills:
             task_list.append(
@@ -383,7 +393,7 @@ def build_boundary_command(
         ref_skills = PRIMARY_SKILLS_PER_KIND.get(kind, [])  # review: chỉ rules-{kind} (WHAT), KHÔNG nạp ref how-to
         task_list = [
             f"Invoke skill `{(REVIEW_SKILLS_PER_KIND.get(kind) or ['review-?'])[0]}`.",
-            f"Review code trong `{service_folder}/` theo checklist skill.",
+            f"Read `FEAT-*` boundary đảm nhận → review code trong `{service_folder}/` theo checklist skill (gồm **AC/BR compliance**: mọi AC implement + BR enforce).",
             "Phát hiện issue (coverage<80, lint, convention) → spawn fix sub-agent.",
             "Loop review + fix tới pass.",
             "Append learnings.gotchas vào KG nếu phát hiện pattern xấu.",
@@ -421,7 +431,7 @@ def build_boundary_command(
         state_bundle(state, {"command_boundary": boundary_id, "kind": kind}),
         NON_NEGOTIABLES,
         owned_paths_block(boundary),
-        skills_block(skills, available=ref_skills, note="Primary = invoke ngay. Ref structure/config = BẮT BUỘC khi scaffold (xem task_list). Ref situational dưới đây = invoke NGAY khi boundary có điều kiện tương ứng (cache/event/log) — không bỏ qua, không tùy hứng."),
+        skills_block(skills, available=ref_skills, scaffold=scaffold_block, note="Primary = invoke ngay. Scaffold = BẮT BUỘC khi tạo skeleton (cây thư mục theo ref-pattern). Ref situational = invoke NGAY khi boundary có điều kiện tương ứng (cache/event/log)."),
         docs_to_read([
             ("HLD", f"docs/architecture/hld/hld-{boundary_id}.md"),
             ("API", f"docs/architecture/api/api-{boundary_id}.md"),
@@ -429,7 +439,7 @@ def build_boundary_command(
             ("UX", f"docs/architecture/ux/ux-{boundary_id}.md"),
             ("Events", f"docs/architecture/events/{boundary_id}-events.md"),
             ("Integrations", f"docs/architecture/integrations/INTEG-*{boundary_id}*.md"),
-            ("KG", f"knowledge-base/{prefix}-{boundary_id}.knowledge-graph.yaml"),
+            ("KG", f"knowledge-base/{boundary_id}.knowledge-graph.yaml"),
             ("Wave plan", f"docs/plans/{wave_id}.md"),
             ("Features", "docs/architecture/feat/FEAT-*.md (filter theo wave)"),
         ]),

@@ -4,12 +4,12 @@ Materialize per-boundary artifacts from harness/SERVICE-BOUNDARY-MATRIX.json.
 For each boundary in MATRIX, generate:
   agents/dev-{prefix}-{boundary}-agent.md
   agents/fix-{prefix}-{boundary}-agent.md
-  knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml
+  knowledge-base/{boundary}.knowledge-graph.yaml
 
 Templates:
   agents/_template-dev-agent.md
   agents/_template-fix-agent.md
-  knowledge-base/TEMPLATE.boundary-kg.yaml
+  knowledge-base/TEMPLATE.knowledge-graph.yaml
 
 Usage:
   py scripts/materialize.py                  # materialize ALL boundaries
@@ -36,7 +36,7 @@ from build_prompt import SCAFFOLD_REF_SKILLS_PER_KIND, PRIMARY_SKILLS_PER_KIND  
 MATRIX_FILE = REPO / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
 TEMPLATE_DEV = REPO / "agents" / "_template-dev-agent.md"
 TEMPLATE_FIX = REPO / "agents" / "_template-fix-agent.md"
-TEMPLATE_KG = REPO / "knowledge-base" / "TEMPLATE.boundary-kg.yaml"
+TEMPLATE_KG = REPO / "knowledge-base" / "TEMPLATE.knowledge-graph.yaml"
 
 AGENTS_DIR = REPO / "agents"
 KB_DIR = REPO / "knowledge-base"
@@ -127,7 +127,7 @@ def _default_owned_paths(prefix: str, boundary: str) -> list[str]:
         f"docs/architecture/data-model/data-model-{boundary}.md",
         f"docs/architecture/events/{boundary}-events.md",
         f"docs/architecture/ux/ux-{boundary}.md",
-        f"knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml",
+        f"knowledge-base/{boundary}.knowledge-graph.yaml",
     ]
 
 
@@ -164,7 +164,7 @@ def target_paths(b: dict) -> dict[str, Path]:
     return {
         "dev_agent": AGENTS_DIR / f"dev-{prefix}-{boundary}-agent.md",
         "fix_agent": AGENTS_DIR / f"fix-{prefix}-{boundary}-agent.md",
-        "kg":        KB_DIR / f"{prefix}-{boundary}.knowledge-graph.yaml",
+        "kg":        KB_DIR / f"{boundary}.knowledge-graph.yaml",
     }
 
 

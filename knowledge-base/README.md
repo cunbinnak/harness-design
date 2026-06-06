@@ -7,12 +7,12 @@ KG (Knowledge Graph) per boundary. Agent đọc trước khi work, ghi sau khi x
 ```
 knowledge-base/
 ├── README.md
-├── TEMPLATE.boundary-kg.yaml         (skeleton — materialize fill)
-├── {prefix}-{boundary}.knowledge-graph.yaml    (1 file per boundary)
+├── TEMPLATE.knowledge-graph.yaml     (template DUY NHẤT — materialize fill skeleton)
+├── {boundary}.knowledge-graph.yaml    (1 file per boundary)
 └── ...
 ```
 
-Mỗi boundary có 1 file KG riêng. File name: `{prefix}-{boundary}.knowledge-graph.yaml` (vd `crm-hdpe-order-mgmt.knowledge-graph.yaml`).
+Mỗi boundary có 1 file KG riêng. File name: `{boundary}.knowledge-graph.yaml` (vd `order-mgmt.knowledge-graph.yaml`).
 
 ## Schema — 2 nhóm, vòng đời khác nhau
 
@@ -66,10 +66,10 @@ Agent dùng Edit tool trực tiếp trên YAML:
 
 ```python
 # Pseudo-code agent flow:
-kg = read("knowledge-base/crm-hdpe-order-mgmt.knowledge-graph.yaml")
+kg = read("knowledge-base/order-mgmt.knowledge-graph.yaml")
 kg["entities"].append({"name": "OrderAggregate", "type": "aggregate_root", ...})
 kg["business_rules"].append({"id": "BR-ORDER-001", ...})
-write("knowledge-base/crm-hdpe-order-mgmt.knowledge-graph.yaml", kg)
+write("knowledge-base/order-mgmt.knowledge-graph.yaml", kg)
 ```
 
 (Không có script `knowledge_writer.py` riêng — direct edit qua Edit tool đủ.)
@@ -80,7 +80,7 @@ KG schema version: `version: 1` (current). Bump khi schema breaking change.
 
 ## Liên quan
 
-- [TEMPLATE.boundary-kg.yaml](TEMPLATE.boundary-kg.yaml) — skeleton structure
+- [TEMPLATE.knowledge-graph.yaml](TEMPLATE.knowledge-graph.yaml) — skeleton structure (template KG duy nhất)
 - [agents/](../agents/) — agent files reference `kg_target` field
 - [harness/PROTOCOL.md](../harness/PROTOCOL.md) — RETURN SCHEMA + kg_appended requirement
 - [scripts/materialize.py](../scripts/materialize.py) — gen KG skeleton per boundary lúc start-wave

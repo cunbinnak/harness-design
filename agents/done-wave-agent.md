@@ -60,7 +60,7 @@ Hard close wave: teardown infra docker-compose, archive wave artifacts vào hand
 ## Owned paths
 
 - `handoff/wave-{N}.md` (Edit append final)
-- `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` (append final wave learnings)
+- `knowledge-base/{boundary}.knowledge-graph.yaml` (append final wave learnings)
 
 ## Forbidden
 
@@ -90,7 +90,7 @@ Allowed next:
   "needs_review": [],
   "files_changed": [
     "handoff/wave-{N}.md",
-    "knowledge-base/*-*.knowledge-graph.yaml"
+    "knowledge-base/*.knowledge-graph.yaml"
   ],
   "kg_appended": ["cross-wave-learning:..."],
   "build": "pass",

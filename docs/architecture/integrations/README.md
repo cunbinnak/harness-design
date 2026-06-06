@@ -60,7 +60,7 @@ Intake step 3 (solution-architect) tạo file integrations cho mọi sync depend
 - Intake step 3: solution-architect viết integration spec.
 - Dev: dev-agent implement client theo spec.
 - Review: review agent verify code khớp spec.
-- KG: integrations append vào `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` section `integrations[]` + `dependencies.outbound[]` + `dependencies.inbound[]`.
+- KG: integrations append vào `knowledge-base/{boundary}.knowledge-graph.yaml` section `integrations[]` + `dependencies.outbound[]` + `dependencies.inbound[]`.
 
 ## Naming
 
@@ -77,4 +77,4 @@ Internal: theo version contract (vd v1, v2 trong path /api/v1/...).
 - [api-{boundary}.md](../api/) — API spec của từng boundary (callee side)
 - [events/](../events/) — async event contracts (khác sync)
 - [hld-{boundary}.md](../hld/) — high-level design (nơi integration role)
-- [knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml](../../../knowledge-base/) — integrations, dependencies sections
+- [knowledge-base/{boundary}.knowledge-graph.yaml](../../../knowledge-base/) — integrations, dependencies sections

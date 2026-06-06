@@ -55,7 +55,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 - `tracking/wave-{N}/docker-ps.json` (Write proof)
 - `tracking/wave-{N}/docker-ps.txt` (Write proof)
 - `handoff/wave-{N}.md` (Edit append UAT instructions)
-- `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` (append per boundary)
+- `knowledge-base/{boundary}.knowledge-graph.yaml` (append per boundary)
 
 ## Forbidden
 
@@ -74,7 +74,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
   "deferred": [],
   "needs_review": [],
   "files_changed": ["handoff/wave-{N}.md", "tracking/wave-{N}/docker-*.{log,json,txt}"],
-  "kg_appended": ["entity:Order","integ:depends-auth","decision:..."],
+  "kg_appended": ["integ:depends-auth","decision:..."],
   "build": "pass",
   "lint": "pass",
   "test": "pass",

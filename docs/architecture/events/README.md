@@ -36,7 +36,7 @@ Theo [TEMPLATE.events.md](TEMPLATE.events.md). Mỗi event có:
 - Intake step 3: solution-architect viết events spec per boundary.
 - Dev: dev-agent implement publisher/consumer theo spec.
 - Review: review agent verify code khớp spec.
-- KG: events publish/consume append vào `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` sections `events_published[]` + `events_consumed[]`.
+- KG: events publish/consume append vào `knowledge-base/{boundary}.knowledge-graph.yaml` sections `events_published[]` + `events_consumed[]`.
 
 ## Versioning
 
@@ -48,4 +48,4 @@ Theo [TEMPLATE.events.md](TEMPLATE.events.md). Mỗi event có:
 
 - [agents/solution-architect-agent.md](../../../agents/solution-architect-agent.md)
 - [docs/architecture/integrations/](../integrations/) (cross-boundary contracts)
-- [knowledge-base/TEMPLATE.boundary-kg.yaml](../../../knowledge-base/TEMPLATE.boundary-kg.yaml) sections `events_published`, `events_consumed`
+- [knowledge-base/TEMPLATE.knowledge-graph.yaml](../../../knowledge-base/TEMPLATE.knowledge-graph.yaml) sections `events_published`, `events_consumed`

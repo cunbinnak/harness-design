@@ -14,10 +14,10 @@ owned_paths:
   - docs/architecture/data-model/data-model-order-management.md
   - docs/architecture/events/order-management-events.md
   - docs/architecture/ux/ux-order-management.md
-  - knowledge-base/demo-order-management.knowledge-graph.yaml
+  - knowledge-base/order-management.knowledge-graph.yaml
 created_by: materialize.py
-created_at: 2026-05-29T10:10:13Z
-matrix_revision: 1
+created_at: 2026-06-06T11:16:46Z
+matrix_revision: 2
 ---
 
 # DEV — demo-order-management
@@ -41,7 +41,7 @@ matrix_revision: 1
 2. Code trong `services/demo-order-management/` (gitignored ở design repo, push lên `<set later: git@gitlab.com:org/demo-order-management.git>`).
 3. Tuân `rules-backend` (primary skill — invoke khi start).
 4. Run scoped build/test cho boundary (lệnh chi tiết trong skill).
-5. Append KG sau khi xong: entities, business_rules, events_published.
+5. KG: design (entities/business_rules/events/permissions) đã seed ở `/start-wave` — update nếu implement khác design (kèm data-model); append phần kinh nghiệm (learnings/gotchas/decisions/failure_modes) khi phát sinh.
 
 ## Workflow khi spawn
 
@@ -60,9 +60,14 @@ matrix_revision: 1
 ## Skill
 
 - **Primary** (invoke ngay khi spawn): `rules-backend`
-- **Available on-demand** (invoke chỉ khi đụng tình huống cụ thể):
-  - `ref-backend-config` — Spring config / package.json / pubspec setup
-  - `ref-backend-pattern` — kiến trúc + cấu trúc thư mục (Layered/DDD)
+- **Scaffold** (invoke BẮT BUỘC khi tạo skeleton lần đầu — structure/config/logging; layout theo kiến trúc HLD §4):
+  - `ref-backend-pattern`
+  - `ref-backend-config`
+  - `ref-backend-logging`
+- **Ref theo design boundary** (intake gắn ở MATRIX `ref_skills`; invoke khi code phần tương ứng, vd cache/event):
+  - _chưa gắn — boundary không dùng cache/event/extra (intake để trống)_
+
+> Danh sách `ref_skills` do intake quyết per-boundary (single source = MATRIX). Thêm ref mới sau này = sửa MATRIX, không sửa template/kernel.
 
 ## Owned paths
 
@@ -74,7 +79,7 @@ Edit CHỈ trong các pattern này (hook PreToolUse block ngoài):
 - `docs/architecture/data-model/data-model-order-management.md`
 - `docs/architecture/events/order-management-events.md`
 - `docs/architecture/ux/ux-order-management.md`
-- `knowledge-base/demo-order-management.knowledge-graph.yaml`
+- `knowledge-base/order-management.knowledge-graph.yaml`
 
 ## Hook protection — non-negotiables
 

@@ -55,7 +55,7 @@ Sau intake step 4 + `/start-wave`, `materialize.py` gen per boundary:
 |------|------|----------|
 | Dev | `agents/dev-{prefix}-{boundary}-agent.md` | [_template-dev-agent.md](_template-dev-agent.md) |
 | Fix | `agents/fix-{prefix}-{boundary}-agent.md` | [_template-fix-agent.md](_template-fix-agent.md) |
-| KG | `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` | [TEMPLATE.boundary-kg.yaml](../knowledge-base/TEMPLATE.boundary-kg.yaml) |
+| KG | `knowledge-base/{boundary}.knowledge-graph.yaml` | [TEMPLATE.knowledge-graph.yaml](../knowledge-base/TEMPLATE.knowledge-graph.yaml) |
 
 Sample materialized (test fixture):
 - [dev-demo-order-management-agent.md](dev-demo-order-management-agent.md)

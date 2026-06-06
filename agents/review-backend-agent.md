@@ -7,7 +7,7 @@ primary_skill: review-backend
 secondary_skills: [rules-backend]
 chain_spawn:
   - "fix-{prefix}-{boundary}-agent (khi fail)"
-kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
+kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 ---
 
 # Review Backend Agent
@@ -27,7 +27,7 @@ kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
 ## Trách nhiệm
 
 1. Invoke skill `review-backend` để load checklist.
-2. Verify code trong `services/{prefix}-{active_boundary}/` theo checklist.
+2. **Read `FEAT-*` boundary đảm nhận** (+ HLD/API/data-model) → verify code trong `services/{prefix}-{active_boundary}/` theo checklist, gồm **§A: MỌI AC implement + MỌI BR enforce** (thiếu AC = BLOCKER).
 3. Run scoped commands (Java/Spring): `mvn test`, `mvn checkstyleMain`, `mvn jacoco:report`.
 4. Phát hiện issue → spawn `fix-{prefix}-{active_boundary}-agent`.
 5. Re-review sau fix.
@@ -40,7 +40,7 @@ kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
 1. Invoke skill `review-backend` -> load checklist
 2. (On-demand) Invoke rules-backend khi cần verify convention chi tiết
 3. Run scoped build/lint/test
-4. Walk checklist từ skill
+4. Walk checklist từ skill (đối chiếu code vs FEAT AC/BR — §A)
 5. Có fail -> spawn fix sub-agent với chi tiết issue
 6. Loop step 3-5 tới pass
 7. (Nếu có learning mới) append KG; return RETURN SCHEMA review_result=pass
@@ -64,7 +64,7 @@ Read-only access tới code + docs. Edit chính code → qua spawn fix sub-agent
 - `docs/architecture/hld/hld-{active_boundary}.md` (Read)
 - `docs/architecture/api/api-{active_boundary}.md` (Read)
 - `docs/architecture/data-model/data-model-{active_boundary}.md` (Read)
-- `knowledge-base/{prefix}-{active_boundary}.knowledge-graph.yaml` (Edit — append learnings only)
+- `knowledge-base/{active_boundary}.knowledge-graph.yaml` (Edit — append learnings only)
 
 ## Forbidden
 

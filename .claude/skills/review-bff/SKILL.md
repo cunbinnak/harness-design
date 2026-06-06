@@ -16,6 +16,7 @@ git diff --name-only main...HEAD
 ```
 
 ## Checklist (PASS/FAIL/NA)
+- **FEAT/AC (BLOCKER nếu thiếu)**: đọc `FEAT-*` boundary đảm nhận → MỌI AC cần data đều có resolver/field phục vụ đúng.
 1. **Build + typecheck** xanh; test ≥ **70%**.
 2. **Schema additive**: diff SDL vs `main` chỉ thêm field/type hoặc `@deprecated`; KHÔNG remove/rename breaking.
 3. **DataLoader**: mọi resolver có quan hệ → field dùng loader batch; KHÔNG gọi backend trong vòng lặp (kiểm N+1 qua log/trace test).

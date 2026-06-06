@@ -15,10 +15,10 @@ owned_paths:
   - docs/architecture/data-model/data-model-order-management.md
   - docs/architecture/events/order-management-events.md
   - docs/architecture/ux/ux-order-management.md
-  - knowledge-base/demo-order-management.knowledge-graph.yaml
+  - knowledge-base/order-management.knowledge-graph.yaml
 created_by: materialize.py
-created_at: 2026-05-29T10:10:13Z
-matrix_revision: 1
+created_at: 2026-06-06T11:16:46Z
+matrix_revision: 2
 ---
 
 # FIX — demo-order-management
@@ -78,7 +78,7 @@ matrix_revision: 1
 - `docs/architecture/data-model/data-model-order-management.md`
 - `docs/architecture/events/order-management-events.md`
 - `docs/architecture/ux/ux-order-management.md`
-- `knowledge-base/demo-order-management.knowledge-graph.yaml`
+- `knowledge-base/order-management.knowledge-graph.yaml`
 
 ## Hook protection — non-negotiables
 

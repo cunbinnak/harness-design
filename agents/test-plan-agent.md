@@ -57,7 +57,7 @@ Sinh test-case-registry.md cho wave. Bao gồm smoke + integration + E2E + manua
 ## Owned paths
 
 - `tracking/wave-{N}/test-case-registry.md` (Write)
-- `knowledge-base/*-*.knowledge-graph.yaml` (append test references)
+- `knowledge-base/*.knowledge-graph.yaml` (append test references)
 
 ## Forbidden
 

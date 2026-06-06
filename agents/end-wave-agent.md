@@ -50,7 +50,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, transi
 
 - `tracking/wave-{N}/qc-signoff.md` (Edit)
 - `handoff/wave-{N}.md` (Edit append)
-- `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` (append execution_history)
+- `knowledge-base/{boundary}.knowledge-graph.yaml` (append execution_history)
 
 ## Forbidden
 
@@ -69,7 +69,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, transi
   "files_changed": [
     "tracking/wave-{N}/qc-signoff.md",
     "handoff/wave-{N}.md",
-    "knowledge-base/*-*.knowledge-graph.yaml"
+    "knowledge-base/*.knowledge-graph.yaml"
   ],
   "kg_appended": ["execution_history:wave-{N}:COMPLETED"],
   "build": "pass",

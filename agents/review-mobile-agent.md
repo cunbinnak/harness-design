@@ -7,7 +7,7 @@ primary_skill: review-mobile
 secondary_skills: [rules-mobile]
 chain_spawn:
   - "fix-{prefix}-{boundary}-agent (khi fail)"
-kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
+kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 ---
 
 # Review Mobile Agent
@@ -62,7 +62,7 @@ Read-only access tới code + docs.
 - `services/{prefix}-{active_boundary}/**` (Read)
 - `docs/architecture/ux/ux-{active_boundary}.md` (Read)
 - `docs/architecture/integrations/INTEG-MOB-*.md` (Read — BFF contract)
-- `knowledge-base/{prefix}-{active_boundary}.knowledge-graph.yaml` (Edit — append learnings only)
+- `knowledge-base/{active_boundary}.knowledge-graph.yaml` (Edit — append learnings only)
 
 ## Forbidden
 

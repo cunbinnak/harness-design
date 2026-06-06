@@ -121,4 +121,4 @@ Liệt kê endpoint chính boundary sẽ gọi. Chi tiết payload, response, er
 - **Use case detail**: [FEAT-*.md](../feat/)
 - **HLD role**: [hld-{boundary}.md](../hld/) 
 - **API wrap internal**: [api-{boundary}.md](../api/) (boundary expose facade)
-- **KG**: `integrations[]` trong `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml`
+- **KG**: `integrations[]` trong `knowledge-base/{boundary}.knowledge-graph.yaml`

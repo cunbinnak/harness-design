@@ -15,13 +15,16 @@ gates: [{type: in_state_list, field: boundary, state_field: wave_boundaries}]
 
 Bắt đầu code 1 boundary trong wave. Build self-contained prompt cho dev sub-agent (kind-aware: backend/bff/web/mobile). Lần đầu cho boundary: agent scaffold service folder + push lên repo riêng (polyrepo).
 
-## Build prompt + spawn
+## Flow (thứ tự QUAN TRỌNG)
+
+> **`complete` chạy TRƯỚC khi spawn** — để vào DEV + set `active_boundary` NGAY. Nhờ đó **Stop hook gate build/test trong lúc** dev scaffold/code, và **reminder boundary lúc spawn trỏ đúng** `active_boundary` (Stop hook chỉ chạy khi stage ∈ {DEV, REVIEW_DEV, TEST_EXECUTE} VÀ `active_boundary` có code — xem `dispatcher.handle_stop`). Nếu complete SAU spawn: dev code khi stage còn WAVE_OPEN + `active_boundary`=None → Stop hook **bỏ qua** (không gate), reminder rỗng.
 
 ```bash
-py scripts/build_prompt.py start-dev --boundary order-management
-# stdout self-contained prompt: STATE bundle + skill rules-backend + HLD + API + data-model + KG + FEAT
-# (spawn via Agent tool with output)
+# 1. Vào DEV + set active_boundary (gate: boundary ∈ wave_boundaries)
 py scripts/harness.py start-dev complete '{"boundary": "order-management"}'
+# 2. Build self-contained prompt (STATE giờ = DEV, active_boundary đã set)
+py scripts/build_prompt.py start-dev --boundary order-management
+# 3. Spawn dev sub-agent với prompt (Agent tool) — agent scaffold + code TRONG stage DEV
 ```
 
 ## Agent behavior

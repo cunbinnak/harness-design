@@ -10,7 +10,7 @@ KEEP (v4 structure, never touched):
   - harness/{STATE-MACHINE.json, PROTOCOL.md}
   - .claude/settings.json, .gitignore, README.md, SETUP-GUIDE.md, AGENTS.md, CLAUDE.md
   - agents/{_template-*.md, README.md, ALL singleton command agents (16 files)}
-  - knowledge-base/TEMPLATE.boundary-kg.yaml
+  - knowledge-base/TEMPLATE.knowledge-graph.yaml
   - docs/architecture/{TEMPLATE.*.md, README.md} + folder structure
   - docs/plans/{TEMPLATE.*.md, README.md}
   - tracking/{_templates/*, README.md}
@@ -157,9 +157,7 @@ def collect_targets() -> dict[str, list[Path]]:
                 f = root / "agents" / name
                 if f.is_file() and name not in CORE_AGENTS:
                     targets["remove"].append(f)
-            kg = root / "knowledge-base" / f"{bid}.knowledge-graph.yaml"
-            if kg.is_file():
-                targets["remove"].append(kg)
+            # KG per-boundary dọn ở vòng glob bên dưới (mọi *.knowledge-graph.yaml trừ TEMPLATE)
     except Exception:
         pass
 
@@ -172,11 +170,11 @@ def collect_targets() -> dict[str, list[Path]]:
             if f not in targets["remove"]:
                 targets["remove"].append(f)
 
-    # Also: any knowledge-base/*.yaml that's not shared or TEMPLATE
+    # Also: any knowledge-base/*.knowledge-graph.yaml that's not the TEMPLATE
     kg_dir = root / "knowledge-base"
     if kg_dir.is_dir():
         for f in kg_dir.glob("*.knowledge-graph.yaml"):
-            if f.name in ("shared.knowledge-graph.yaml", "TEMPLATE.knowledge-graph.yaml"):
+            if f.name == "TEMPLATE.knowledge-graph.yaml":
                 continue
             if f not in targets["remove"]:
                 targets["remove"].append(f)
@@ -193,8 +191,6 @@ def collect_targets() -> dict[str, list[Path]]:
     # Files to reset
     targets["reset"].append(root / "harness/STATE.json")
     targets["reset"].append(root / "harness/SERVICE-BOUNDARY-MATRIX.json")
-    if (root / "knowledge-base/shared.knowledge-graph.yaml").is_file():
-        targets["reset"].append(root / "knowledge-base/shared.knowledge-graph.yaml")
 
     return targets
 
@@ -228,7 +224,7 @@ def reset_state(project_id: str | None, display_name: str | None) -> None:
             "docs": [],
             "skills": [],
             "agents": [],
-            "knowledge_graphs": ["knowledge-base/shared.knowledge-graph.yaml"],
+            "knowledge_graphs": [],
             "kg_discipline": {
                 "in_progress": [], "do_not_repeat": [], "blockers": [], "active_decisions": []
             },
@@ -262,34 +258,6 @@ def reset_matrix() -> None:
     p = root / "harness/SERVICE-BOUNDARY-MATRIX.json"
     save_json(p, {"version": 1, "boundaries": []})
     print(f"RESET {p.relative_to(root)}")
-
-
-def reset_shared_kg() -> None:
-    root = repo_root()
-    p = root / "knowledge-base/shared.knowledge-graph.yaml"
-    tpl = root / "knowledge-base/TEMPLATE.knowledge-graph.yaml"
-    if not p.is_file():
-        return
-    if tpl.is_file():
-        try:
-            data = load_yaml(tpl)
-            data.setdefault("meta", {})["updated_at"] = utc_now_iso()
-            save_yaml(p, data)
-            print(f"RESET {p.relative_to(root)} (from TEMPLATE)")
-            return
-        except Exception:
-            pass
-    # Fallback: minimal skeleton
-    skeleton = {
-        "meta": {"updated_at": utc_now_iso(), "scope": "shared"},
-        "domain": {"entities": []},
-        "decisions": [],
-        "implementation": {"in_progress": [], "completed": []},
-        "discipline": {"do_not_repeat": [], "blockers": []},
-        "learnings": {"gotchas": []}
-    }
-    save_yaml(p, skeleton)
-    print(f"RESET {p.relative_to(root)} (skeleton)")
 
 
 def main() -> int:
@@ -338,7 +306,6 @@ def main() -> int:
 
     reset_state(args.project_id, args.display_name)
     reset_matrix()
-    reset_shared_kg()
 
     print()
     print("=== DONE ===")

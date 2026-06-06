@@ -41,5 +41,5 @@ Mỗi AC phải **testable** (Given/When/Then hoặc condition đo được). te
 
 ## Liên kết
 
-- Wave: `../../plans/waves/{wave-id}/wave.md` §2 (assignment)
-- KG backlog: `../../../knowledge-base/{boundary}.knowledge-graph.yaml` (`implementation.backlog`)
+- Wave: `../../plans/wave-{N}.md` (FEAT này thuộc wave nào)
+- KG: BR của FEAT → seed vào `business_rules` của `knowledge-base/{boundary}.knowledge-graph.yaml` (boundary đảm nhận) ở `/start-wave`

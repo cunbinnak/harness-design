@@ -97,5 +97,5 @@ Alert thresholds:
 - **Caller HLD** → [hld-{caller}.md](../hld/) (caller uses callee)
 - **Callee API** → [api-{callee}.md](../api/) (endpoint spec)
 - **KG**:
-  - Caller side: `dependencies.outbound[]` trong `knowledge-base/{prefix}-{caller}.knowledge-graph.yaml`
-  - Callee side: `dependencies.inbound[]` trong `knowledge-base/{prefix}-{callee}.knowledge-graph.yaml`
+  - Caller side: `dependencies.outbound[]` trong `knowledge-base/{caller}.knowledge-graph.yaml`
+  - Callee side: `dependencies.inbound[]` trong `knowledge-base/{callee}.knowledge-graph.yaml`

@@ -60,7 +60,7 @@ Phân tích Change Request và chuẩn bị **intake amendment**. CR file = đã
 ## Owned paths
 
 - `tracking/change-requests/{cr_id}-*.md` (Edit section "Kế hoạch cập nhật")
-- `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` cho boundary affected đầu tiên (append decision:DEC-CR-NNN)
+- `knowledge-base/{boundary}.knowledge-graph.yaml` cho boundary affected đầu tiên (append decision:DEC-CR-NNN)
 
 ## Forbidden
 

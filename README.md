@@ -83,8 +83,8 @@ KHÔNG sửa `harness/STATE.json` thủ công — hook chặn.
 │   ├── _templates/                5 templates (test/bugs/signoff/cr)
 │   └── wave-{N}/                  Per-wave: test cases + report + bugs + signoff + CR
 ├── knowledge-base/
-│   ├── TEMPLATE.boundary-kg.yaml
-│   └── {prefix}-{boundary}.knowledge-graph.yaml  (per boundary)
+│   ├── TEMPLATE.knowledge-graph.yaml
+│   └── {boundary}.knowledge-graph.yaml  (per boundary)
 ├── handoff/                        Per-wave handoff docs
 └── services/                       Polyrepo working dir (gitignored)
 ```

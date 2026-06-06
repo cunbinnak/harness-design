@@ -15,6 +15,7 @@ git diff --name-only main...HEAD
 ```
 
 ## Checklist (PASS/FAIL/NA)
+- **FEAT/AC (BLOCKER nếu thiếu)**: đọc `FEAT-*` boundary đảm nhận → MỌI AC có màn hình/luồng implement đúng.
 1. **Build + analyze** xanh (`flutter analyze` 0 error); test ≥ **60%**.
 2. **Data layer khớp design**:
    - REST (default): client (Dio/http) gọi đúng `api-{backend}.md`; interceptor auth.

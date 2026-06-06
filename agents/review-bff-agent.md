@@ -7,7 +7,7 @@ primary_skill: review-bff
 secondary_skills: [rules-bff]
 chain_spawn:
   - "fix-{prefix}-{boundary}-agent (khi fail)"
-kg_target: "knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml"
+kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 ---
 
 # Review BFF Agent
@@ -62,7 +62,7 @@ Read-only access tới code + docs.
 - `services/{prefix}-{active_boundary}/**` (Read)
 - `docs/architecture/api/api-{active_boundary}.md` (Read — GraphQL schema)
 - `docs/architecture/integrations/INTEG-INT-{active_boundary}-to-*.md` (Read — backend contracts)
-- `knowledge-base/{prefix}-{active_boundary}.knowledge-graph.yaml` (Edit — append learnings only)
+- `knowledge-base/{active_boundary}.knowledge-graph.yaml` (Edit — append learnings only)
 
 ## Forbidden
 

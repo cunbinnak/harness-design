@@ -21,7 +21,7 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 Đóng vai **senior backend reviewer**. Tập trung rủi ro gây: sai business behavior; vi phạm security/tenant; data inconsistency; breaking change API/event/DB contract; performance production; xử lý trùng; thiếu validation; thiếu test; maintainability. KHÔNG chỉ comment code style.
 
 ## Thứ tự ưu tiên
-1. Business correctness · 2. Security & authorization (access control + **vulnerabilities OWASP**) · 3. Tenant boundary & ownership · 4. Transaction & data consistency · 5. API/event/DB contract compatibility · 6. Idempotency (webhook/job/consumer/retry) · 7. Persistence/query performance · 8. Config/secrets/env safety · 9. Test coverage · 10. Readability & maintainability.
+1. Business correctness (**khớp FEAT: AC + BR**) · 2. Security & authorization (access control + **vulnerabilities OWASP**) · 3. Tenant boundary & ownership · 4. Transaction & data consistency · 5. API/event/DB contract compatibility · 6. Idempotency (webhook/job/consumer/retry) · 7. Persistence/query performance · 8. Config/secrets/env safety · 9. Test coverage · 10. Readability & maintainability.
 
 ## Severity Levels
 - **BLOCKER** — phải fix trước merge: sai business behavior · security bypass · tenant data leakage · **lỗ hổng injection/SSRF/insecure-deserialization/mass-assignment** · nguy cơ data corruption · hỏng transaction boundary · breaking contract không có yêu cầu rõ · thiếu idempotency (payment callback/webhook/consumer/job) · hardcode secret · sửa migration đã apply · unbounded query.
@@ -36,6 +36,7 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 > Tick từng mục. Bất kỳ mục nào fail → gắn severity tương ứng (mục có "(BLOCKER)" mặc định là blocker).
 
 ### A. Business correctness
+- [ ] **Khớp FEAT (BLOCKER nếu thiếu/sai): đọc `FEAT-*` boundary đảm nhận → MỌI AC được implement đúng (gồm non-happy-path) + MỌI `BR-*` enforce đúng nơi (service/domain). AC không có code / không có test = thiếu.**
 - [ ] Khớp business behavior được yêu cầu; không chỉ happy-path.
 - [ ] Xử lý: entity không tồn tại / inactive / status đã final / request lặp / user không sở hữu / tenant khác.
 - [ ] State transition hợp lệ; không side effect ngoài ý; default value đúng.
@@ -100,10 +101,11 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 - [ ] Summary log (start/end/duration/processed/success/failure); config externalize.
 
 ### L. Architecture / layer & validation
-- [ ] Code đúng layer: controller (map+validate+gọi service), service (business+transaction), repository (query), mapper (convert), config (bean).
+- [ ] **Cấu trúc code KHỚP kiến trúc đã chốt (HLD §4) + layout `ref-backend-pattern`**: Layered (`controller/service/repository/mapper/...`) HOẶC Hexagonal (`domain/ · application[port.in,out]+service/ · adapter[in.web,in.messaging,out.persistence,out.client,...]`). KHÔNG trộn 2 kiểu; KHÔNG tự đặt package ngoài pattern (BLOCKER nếu lệch kiến trúc).
+- [ ] Code đúng trách nhiệm layer: inbound (map+validate+gọi service/use-case), business+transaction ở service/application, query ở repository/persistence-adapter, convert ở mapper.
 - [ ] Không business logic trong controller/repository/mapper/config/migration.
 - [ ] Bean Validation cho input; business validation ở service; status-transition validation.
-- [ ] Theo convention package/class sẵn có (không tự thêm pattern mới).
+- [ ] Theo convention package/class của `rules-backend` (không tự thêm pattern mới).
 
 ### M. Observability
 - [ ] Structured log + correlation id (traceId/eventId); error log đủ context; không log nhạy cảm; job có summary log.

@@ -12,7 +12,7 @@ Giao thức orchestrator (Harness v4) ↔ sub-agent. Harness = lớp ngoài mode
 | Gate logic (per command) | `scripts/gates.py` (inline, không separate file) |
 | Hook policies (9 events) | `scripts/hooks/policies.py` + `dispatcher.py` |
 | Hook config (Claude Code) | `.claude/settings.json` |
-| Per-boundary memory | `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` |
+| Per-boundary memory | `knowledge-base/{boundary}.knowledge-graph.yaml` |
 | Spec sản phẩm | `docs/architecture/`, `docs/plans/` |
 | Tracking artifacts per wave | `tracking/wave-{N}/` |
 
@@ -142,7 +142,7 @@ Hook policies pure functions in `scripts/hooks/policies.py`. Dispatcher routes e
 |------|-----|
 | Per-wave handoff doc | `handoff/wave-{N}.md` (dev-handoff + end-wave + done-wave append) |
 | Audit trail | `git log` (commit per change) — STATE.json KHÔNG lưu history |
-| Per-boundary memory | `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml` |
+| Per-boundary memory | `knowledge-base/{boundary}.knowledge-graph.yaml` |
 | Per-wave artifacts | `tracking/wave-{N}/` (test cases, report, bugs, signoff) |
 | Per-wave CRs | `tracking/wave-{N}/change-requests/` |
 

@@ -17,6 +17,7 @@ git diff --name-only main...HEAD
 ```
 
 ## Checklist (PASS/FAIL/NA)
+- **FEAT/AC (BLOCKER nếu thiếu)**: đọc `FEAT-*` boundary đảm nhận → MỌI AC có màn hình/luồng implement đúng (đối chiếu AC, không chỉ design fidelity).
 1. **Build + typecheck + lint** xanh; test ≥ **60%**.
 2. **a11y**: axe-core 0 critical (contrast, label, role, focus order).
 3. **Data layer khớp design**:

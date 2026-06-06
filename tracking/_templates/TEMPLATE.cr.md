@@ -39,4 +39,4 @@ _(apply-cr agent điền — orchestrator chạy intake amendment sau `apply-cr 
 ## Quyết định
 
 - **Approved by:**
-- **Ghi vào KG:** `decision:CR-NNN` trong `knowledge-base/{prefix}-{boundary}.knowledge-graph.yaml`
+- **Ghi vào KG:** `decision:CR-NNN` trong `knowledge-base/{boundary}.knowledge-graph.yaml`
