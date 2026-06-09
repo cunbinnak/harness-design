@@ -28,10 +28,7 @@ Sinh test-case-registry.md cho wave. Bao gồm smoke + integration + E2E + manua
 2. Read FEAT-*.md trong scope wave (từ `docs/plans/wave-{N}.md`).
 3. Read API contracts (`api-{boundary}.md`) cho mọi boundary trong wave.
 4. Read UX flows (`ux-{boundary}.md`) cho FE boundaries.
-5. Write `tracking/wave-{N}/test-case-registry.md` theo template skill:
-   - Heading per TC-ID
-   - Frontmatter mỗi TC: type, boundary, feature, ac, priority
-   - Sections: pre-condition, steps, expected, data setup, cleanup
+5. Write `tracking/wave-{N}/test-case-registry.md` theo template skill (**format BẢNG — mỗi TC = 1 HÀNG**): cột `TC | group | type | boundary | feature | AC | pri | pre-condition | steps | expected | note` + bảng **Coverage matrix** (AC → TC).
 6. Mỗi AC trong FEAT phải trace tới >= 1 TC (no orphan AC).
 7. Smoke test cross-boundary cho mọi integration điểm.
 

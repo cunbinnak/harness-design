@@ -1,6 +1,6 @@
 # Agents
 
-Source of truth: 20 file trong `agents/` (16 singleton command + 2 templates + 2 sample materialized + README).
+Source of truth: 19 file trong `agents/` (16 singleton command + 2 templates + README). Per-boundary dev/fix agent **materialize từ MATRIX** ở `/start-wave` (không commit sample).
 
 State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 states, 13 commands).
 
@@ -57,9 +57,7 @@ Sau intake step 4 + `/start-wave`, `materialize.py` gen per boundary:
 | Fix | `agents/fix-{prefix}-{boundary}-agent.md` | [_template-fix-agent.md](_template-fix-agent.md) |
 | KG | `knowledge-base/{boundary}.knowledge-graph.yaml` | [TEMPLATE.knowledge-graph.yaml](../knowledge-base/TEMPLATE.knowledge-graph.yaml) |
 
-Sample materialized (test fixture):
-- [dev-demo-order-management-agent.md](dev-demo-order-management-agent.md)
-- [fix-demo-order-management-agent.md](fix-demo-order-management-agent.md)
+> Các file này **không commit sẵn** — sinh khi `/start-wave` materialize từ MATRIX. Repo ship "sạch" (MATRIX rỗng cho tới khi intake).
 
 ## v4 agent file structure
 

@@ -6,7 +6,7 @@
 
 ## NON-NEGOTIABLES
 
-1. **Đọc `harness/STATE.json` trước mọi tool call** (hoặc xem header `[STATE: ...]` đã được hook `UserPromptSubmit` inject).
+1. **Đọc `harness/STATE.json` trước mọi tool call** (hoặc xem header `[HARNESS ...]` đã được hook `UserPromptSubmit` inject).
 2. **Edit chỉ trong `owned_paths`** của `active_boundary`. PreToolUse hook block; đừng cố lách.
 3. **Stage transition CHỈ qua slash command** (`/start-wave`, `/dev-handoff`, `/end-wave`, …). KHÔNG sửa `stage` trong STATE.json bằng tay.
 4. **Quyết định non-trivial → artifact ngay** (ADR / FEAT / CR / KG). Không để chỉ tồn tại trong chat.
@@ -92,7 +92,7 @@ Mỗi command tự document trong `.claude/commands/<name>.md` (sync từ `comma
 ## RUNTIME GUARANTEES (do hooks cung cấp)
 
 - `SessionStart` hook in STATE summary + non-negotiables.
-- `UserPromptSubmit` hook inject `[STATE: stage={stage} wave={wave} boundary={b} allowed={cmds}]` mỗi turn.
+- `UserPromptSubmit` hook inject `[HARNESS stage={stage} wave={wave} boundary={b} allowed={cmds}]` mỗi turn.
 - `PreToolUse(Bash)` hook check `harness <X> complete`: allowed_commands (theo STATE-MACHINE) + gate (gates.py).
 - `PreToolUse(Write|Edit)` hook block edit `harness/STATE.json`, `harness/STATE-MACHINE.json`, `.claude/settings.json`.
 - `PreToolUse(Task)` hook KHÔNG block theo stage. Explore agent free. Chỉ inject reminder boundary cho dev-spawn.

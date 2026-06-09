@@ -28,7 +28,7 @@ Build service local + run auto test với PROOF cho mỗi TC. Internal loop fix 
 2. (On-demand) Invoke `infra-local-dev` để bring up docker-compose nếu chưa UP.
 3. Read `tracking/wave-{N}/test-case-registry.md`, parse TC type=auto.
 4. Foreach TC: run với proof — log file per TC trong `test-logs/`, screenshot UI nếu E2E.
-5. Fail: invoke `bug-logging` → log bug ticket origin=auto → spawn fix sub-agent → re-test.
+5. Fail: invoke `bug-logging` → **append row** bảng bugs.md (origin=auto, đủ `TC`/`AC`/`error log` từ `test-logs/{TC}.log`) → spawn fix-agent (Mode A bug-id) → re-test.
 6. Loop tới all P0 pass (hoặc max iterations).
 7. Aggregate vào `tracking/wave-{N}/test-report.md` (chỉ summarize từ logs).
 8. Teardown infra sau khi xong.

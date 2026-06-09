@@ -195,8 +195,42 @@ def check_wave_in_matrix(evidence: dict, field: str = "wave_n", root: Path | Non
     return False, f"wave {wave_n} không có boundary nào trong MATRIX (waves có sẵn: {sorted(waves)})"
 
 
+_CLOSED_STATUSES = ("closed", "fixed")
+
+
+def _bugs_open_from_table(text: str) -> list[str] | None:
+    """Format BẢNG: header có cột 'bug' (hoặc 'id') + 'status'; mỗi bug = 1 row.
+    Trả list bug-id có status ∉ closed/fixed; None nếu KHÔNG tìm thấy bảng hợp lệ."""
+    bug_idx = status_idx = None
+    open_bugs: list[str] = []
+    for line in text.splitlines():
+        s = line.strip()
+        if not s.startswith("|"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        low = [c.lower() for c in cells]
+        if status_idx is None:  # tìm header row
+            if "status" in low and ("bug" in low or "id" in low):
+                status_idx = low.index("status")
+                bug_idx = low.index("bug") if "bug" in low else low.index("id")
+            continue
+        if all(set(c) <= set("-: ") for c in cells if c):  # separator |---|
+            continue
+        if len(cells) > max(bug_idx, status_idx):
+            bug, st = cells[bug_idx], cells[status_idx].lower()
+            if re.fullmatch(r"bug-\d+", bug, re.IGNORECASE) and st not in _CLOSED_STATUSES:
+                open_bugs.append(bug)
+    return open_bugs if status_idx is not None else None
+
+
+def _bugs_open_from_headings(text: str) -> list[str]:
+    """Format cũ: '## BUG-NNN' + dòng 'status: ...' (fallback tương thích ngược)."""
+    pattern = re.compile(r"^##\s+(BUG-\d+)[^\n]*\n(?:.*\n)*?status:\s*(\w+)", re.MULTILINE)
+    return [m.group(1) for m in pattern.finditer(text) if m.group(2).lower() not in _CLOSED_STATUSES]
+
+
 def check_no_open_bugs(state: dict) -> tuple[bool, str]:
-    """Parse tracking/wave-{N}/bugs.md, count bug có status != closed/fixed."""
+    """Parse tracking/wave-{N}/bugs.md (format bảng, fallback heading cũ), count bug status ∉ closed/fixed."""
     wave_id = (state.get("wave") or {}).get("id")
     if not wave_id:
         return True, ""  # no wave → no bugs
@@ -204,16 +238,9 @@ def check_no_open_bugs(state: dict) -> tuple[bool, str]:
     if not bugs_file.exists():
         return True, ""  # no bugs.md → no open bugs
     text = bugs_file.read_text(encoding="utf-8")
-    # Heading "## BUG-NNN ..." with frontmatter line "status: open|fixed|closed"
-    pattern = re.compile(
-        r"^##\s+(BUG-\d+)[^\n]*\n(?:.*\n)*?status:\s*(\w+)",
-        re.MULTILINE,
-    )
-    open_bugs = []
-    for match in pattern.finditer(text):
-        bug_id, status = match.group(1), match.group(2).lower()
-        if status not in ("closed", "fixed"):
-            open_bugs.append(bug_id)
+    open_bugs = _bugs_open_from_table(text)
+    if open_bugs is None:  # không phải bảng → thử format heading cũ
+        open_bugs = _bugs_open_from_headings(text)
     if open_bugs:
         return False, f"còn {len(open_bugs)} bug open: {open_bugs}"
     return True, ""
@@ -365,10 +392,38 @@ def _selftest() -> int:
     assert check_coverage_per_kind({"coverage_pct": 65, "kind": "backend"}, {})[0] is False
     assert check_coverage_per_kind({"coverage_pct": 79, "kind": None}, {})[0] is False  # default 80
 
-    # wave_in_matrix: seed MATRIX has wave 1, not wave 99
-    assert check_wave_in_matrix({"wave_n": 1})[0] is True
-    assert check_wave_in_matrix({"wave_n": 99})[0] is False
-    assert check_wave_in_matrix({"wave_n": "x"})[0] is False
+    # wave_in_matrix: hermetic — seed MATRIX tạm (wave 1), restore (KHÔNG phụ thuộc file committed)
+    import json as _json
+    _mf = REPO_ROOT / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
+    _orig = _mf.read_text(encoding="utf-8") if _mf.exists() else None
+    try:
+        _mf.write_text(_json.dumps({"version": 1, "boundaries": [
+            {"boundary_id": "x", "kind": "backend", "prefix": "d", "wave": 1}]}), encoding="utf-8")
+        assert check_wave_in_matrix({"wave_n": 1})[0] is True
+        assert check_wave_in_matrix({"wave_n": 99})[0] is False
+        assert check_wave_in_matrix({"wave_n": "x"})[0] is False
+    finally:
+        if _orig is not None:
+            _mf.write_text(_orig, encoding="utf-8")
+
+    # no_open_bugs: parse bảng (bug=row) — đếm status ∉ closed/fixed
+    tbl = (
+        "# Bugs\n\n"
+        "| BUG | title | status | origin | boundary |\n"
+        "|-----|-------|--------|--------|----------|\n"
+        "| BUG-001 | a | closed | auto | order |\n"
+        "| BUG-002 | b | open | manual | order |\n"
+        "| BUG-003 | c | fixed | auto | web |\n"
+    )
+    assert _bugs_open_from_table(tbl) == ["BUG-002"], _bugs_open_from_table(tbl)
+    # cột đảo thứ tự vẫn parse đúng (theo header)
+    tbl2 = "| status | bug |\n|--|--|\n| open | BUG-009 |\n| closed | BUG-010 |\n"
+    assert _bugs_open_from_table(tbl2) == ["BUG-009"], _bugs_open_from_table(tbl2)
+    # không có bảng → None (để fallback)
+    assert _bugs_open_from_table("no table here") is None
+    # fallback heading cũ vẫn hoạt động
+    old = "## BUG-007 — x\nstatus: open\n\n## BUG-008 — y\nstatus: closed\n"
+    assert _bugs_open_from_headings(old) == ["BUG-007"], _bugs_open_from_headings(old)
 
     print("OK: gates.py selftest passed")
     return 0

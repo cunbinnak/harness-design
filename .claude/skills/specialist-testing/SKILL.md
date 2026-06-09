@@ -9,7 +9,7 @@ description: Test chuyên sâu — contract (consumer-driven/Pact + backward-com
 Bổ trợ `test-plan-agent` / `test-execute-agent` khi wave cần loại test khó vượt mức CRUD.
 
 ## Hoạt động
-Bổ sung TC chuyên sâu vào `tracking/wave-{N}/test-case-registry.md` (cùng format heading + frontmatter `type/boundary/feature/ac/priority`), mỗi TC trace ≥ 1 `FEAT-N:AC-M`:
+Bổ sung TC chuyên sâu = **thêm row** vào bảng `tracking/wave-{N}/test-case-registry.md` (cùng cột `TC|group|type|boundary|feature|AC|pri|pre-condition|steps|expected|note`), mỗi TC trace ≥ 1 `FEAT-N:AC-M`:
 
 - **contract**: verify API/event contract khớp `api-{boundary}.md` / `{boundary}-events.md`.
   - Consumer-driven (Pact hoặc tương đương): consumer định nghĩa expectation → provider verification chạy ở CI provider.

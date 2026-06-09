@@ -27,36 +27,34 @@ matrix_revision: {{matrix_revision}}
 | Boundary | `{{boundary}}` |
 | Kind | `{{kind}}` |
 | Service folder | `services/{{prefix}}-{{boundary}}/` |
-| Bug source | `tracking/wave-{N}/bugs.md` (heading `## BUG-NNN`) |
+| Input (2 mode) | **A bug-id**: `/fix-bugs` + test-chain → `bugs.md`. **B review-chain**: findings + FEAT/AC trong spawn prompt |
+
+## Input theo mode (KHÔNG tự đoán sửa gì)
+- **Mode A — bug-id** (spawn từ `/fix-bugs` hoặc **test-execute-chain**): spawn prompt đưa `bug_id` → đọc **row `BUG-NNN`** trong bảng `tracking/wave-{N}/bugs.md` (cột reproduce / expected / actual / `TC` / `AC` / **error log**).
+- **Mode B — review-chain** (spawn từ `review-{{kind}}-agent`): spawn prompt đưa **findings + FEAT/AC** — mỗi finding có `severity + file + rule/BR/AC vi phạm + suggested fix`. KHÔNG đọc bugs.md.
 
 ## Trách nhiệm
 
-1. Read bug entry từ `tracking/wave-{N}/bugs.md` (chỉ ra bug-id).
-2. Reproduce bug (run test case / scenario).
-3. Fix code trong `services/{{prefix}}-{{boundary}}/` tuân `rules-{{kind}}`.
-4. Verify fix qua test pass.
-5. **Auto chain**: spawn `review-{{kind}}-agent` để verify regression.
-6. Review pass → mark `## BUG-NNN` `status: closed` trong bugs.md.
-7. Review fail → loop fix.
-8. Append FM (failure mode) vào KG.
+1. Xác định việc cần sửa **theo mode** (xem trên).
+2. **Mode A**: reproduce **đúng TC fail** (xác nhận thấy bug) TRƯỚC khi sửa. **Mode B**: đối chiếu findings với code.
+3. Fix code trong `services/{{prefix}}-{{boundary}}/` tuân `rules-{{kind}}` — **tối thiểu, đúng root cause / đúng từng finding**, giữ business intent của FEAT; KHÔNG sửa lan ra ngoài bug/finding.
+4. Verify: **Mode A** re-run CHÍNH TC đó → expected pass; **Mode B** run scoped test pass.
+5. **Auto chain**: spawn `review-{{kind}}-agent` verify regression.
+6. Review pass → **Mode A**: set ô `status` của **row `BUG-NNN`** trong bảng = `closed` + thêm regression `TC-R*`; **Mode B**: return findings đã sửa cho review agent. Review fail → loop fix.
+7. Append FM (failure mode) vào KG nếu phát hiện mới.
 
-## Workflow khi spawn
+## Workflow khi spawn (theo mode)
 
-`/fix-bugs --bug-id BUG-NNN` (chỉ allow ở MANUAL_TEST) triggers:
+**Mode A — bug-id** (`/fix-bugs` ở MANUAL_TEST qua `build_prompt`, hoặc **test-execute-chain** với bug-id):
+1. Invoke `rules-{{kind}}` + `bug-logging`. Read **row `BUG-NNN`** trong bảng (cột reproduce/expected/actual/TC/AC/error log).
+2. **Reproduce đúng TC fail** → fix tối thiểu root cause → **re-run CHÍNH TC đó** pass.
+3. Chain spawn `review-{{kind}}-agent` verify regression.
+4. Pass → set ô `status` của **row `BUG-NNN`** trong bảng = `closed` + regression `TC-R*` + append KG → return (`bug_id`, `fix_verified`). Fail → loop.
 
-1. `build_prompt.py` render runtime prompt.
-2. Spawn fix sub-agent.
-3. Fix agent:
-   - Invoke `rules-{{kind}}` + `bug-logging`.
-   - Read bug entry, reproduce, fix.
-   - Run scoped test → pass.
-   - Chain spawn `review-{{kind}}-agent` (singleton).
-4. Review agent verify:
-   - Skill `review-{{kind}}`.
-   - Check regression, coverage, convention.
-   - Return `review_result: pass|fail`.
-5. Pass → mark bug closed, append KG, return.
-6. Fail → fix agent loop.
+**Mode B — review-chain** (spawn từ `review-{{kind}}-agent`, prompt mang findings + FEAT):
+1. Invoke `rules-{{kind}}`. Đọc **findings + FEAT/AC** từ spawn prompt.
+2. Fix đúng từng finding (tuân `rules-{{kind}}`, giữ FEAT intent) → run scoped test pass.
+3. Return findings đã sửa cho `review-{{kind}}-agent` gọi tới (review re-review). Fail → loop.
 
 ## Skill
 

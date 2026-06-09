@@ -105,6 +105,7 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 - [ ] Code đúng trách nhiệm layer: inbound (map+validate+gọi service/use-case), business+transaction ở service/application, query ở repository/persistence-adapter, convert ở mapper.
 - [ ] Không business logic trong controller/repository/mapper/config/migration.
 - [ ] Bean Validation cho input; business validation ở service; status-transition validation.
+- [ ] **Null-safety & exception (BLOCKER nếu lọt 500)**: KHÔNG `Optional.get()` trần → dùng `orElseThrow(...)`; mọi lỗi map qua `GlobalExceptionHandler` → typed error code (KHÔNG để exception lọt ra HTTP **500**); KHÔNG nuốt exception (catch phải log + rethrow/map). Input null/rỗng/payload thiếu → **400 typed**, KHÔNG NPE/500.
 - [ ] Theo convention package/class của `rules-backend` (không tự thêm pattern mới).
 
 ### M. Observability

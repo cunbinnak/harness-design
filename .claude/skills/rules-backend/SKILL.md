@@ -55,6 +55,7 @@ class OrderBad {
 ## Naming & package
 - **File**: theo stack — `PascalCase.java` (Java) / `kebab-case.ts` (Node) / `snake_case.py` (Python).
 - **Class**: `PascalCase` (`OrderService`). **Method**: `camelCase`/`snake_case` theo stack. **Constant**: `UPPER_SNAKE_CASE`.
+- **1 class = 1 file (top-level)** — KHÔNG nested/inner class cho entity / DTO / service / repository / mapper / controller (tách file riêng). **Ngoại lệ duy nhất**: nested `static` class cho nhóm config `@ConfigurationProperties` (vd `ClientConfig` trong `IntegrationClientProperties`) — KHÔNG chứa business logic.
 - **Package/module**: theo mô hình đã chốt — Layered (`controller`/`service`/`repository`/…) hoặc Hexagonal (`domain`/`application`/`adapter`). Cấu trúc đầy đủ + nơi đặt từng artifact xem `ref-backend-pattern`.
 - **Test**: `{Unit}Test` / `test_{module}` theo runner.
 

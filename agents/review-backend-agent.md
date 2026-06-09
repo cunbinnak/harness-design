@@ -29,9 +29,9 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 1. Invoke skill `review-backend` để load checklist.
 2. **Read `FEAT-*` boundary đảm nhận** (+ HLD/API/data-model) → verify code trong `services/{prefix}-{active_boundary}/` theo checklist, gồm **§A: MỌI AC implement + MỌI BR enforce** (thiếu AC = BLOCKER).
 3. Run scoped commands (Java/Spring): `mvn test`, `mvn checkstyleMain`, `mvn jacoco:report`.
-4. Phát hiện issue → spawn `fix-{prefix}-{active_boundary}-agent`.
-5. Re-review sau fix.
-6. Loop tới pass tất cả check.
+4. Phát hiện issue → **spawn `fix-{prefix}-{active_boundary}-agent` (Mode B — review-chain)**: review TỰ compose spawn prompt gồm (a) **FEAT/AC boundary đang làm** + (b) **findings[]** (mỗi finding: `severity · file · rule/BR/AC vi phạm · suggested fix` — theo Output Format của skill). Spawn qua Agent tool. KHÔNG dùng `build_prompt`, KHÔNG ghi `bugs.md` (findings review là ephemeral).
+5. Re-review sau khi fix return.
+6. Loop tới pass tất cả check (0 BLOCKER + gate pass).
 7. (CHỈ khi phát hiện anti-pattern/gotcha/learning MỚI) append vào KG `learnings`. Review sạch / không có gì mới → KHÔNG ghi KG (tránh phình). KHÔNG đụng phần design (entities/BR/events — đã seed ở start-wave).
 
 ## Workflow
@@ -41,7 +41,7 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 2. (On-demand) Invoke rules-backend khi cần verify convention chi tiết
 3. Run scoped build/lint/test
 4. Walk checklist từ skill (đối chiếu code vs FEAT AC/BR — §A)
-5. Có fail -> spawn fix sub-agent với chi tiết issue
+5. Có fail -> spawn fix (Mode B): prompt = FEAT/AC + findings[] (severity/file/rule-BR-AC/suggested fix)
 6. Loop step 3-5 tới pass
 7. (Nếu có learning mới) append KG; return RETURN SCHEMA review_result=pass
 ```

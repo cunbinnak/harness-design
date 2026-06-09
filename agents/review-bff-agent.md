@@ -29,8 +29,8 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 1. Invoke skill `review-bff` để load checklist.
 2. Verify code trong `services/{prefix}-{active_boundary}/` theo checklist.
 3. Run scoped commands (Node/Apollo): `npm run typecheck`, `npm test`, `npm run lint`.
-4. Phát hiện issue → spawn `fix-{prefix}-{active_boundary}-agent`.
-5. Re-review sau fix.
+4. Phát hiện issue → **spawn `fix-{prefix}-{active_boundary}-agent` (Mode B — review-chain)**: review TỰ compose spawn prompt gồm **FEAT/AC** + **findings[]** (`severity · file · rule/AC vi phạm · suggested fix`). Spawn qua Agent tool. KHÔNG `build_prompt`, KHÔNG `bugs.md`.
+5. Re-review sau khi fix return.
 6. Loop tới pass tất cả check.
 7. (CHỈ khi phát hiện anti-pattern/gotcha/learning MỚI) append vào KG `learnings`. Review sạch / không có gì mới → KHÔNG ghi KG (tránh phình). KHÔNG đụng phần design (đã seed ở start-wave).
 
@@ -41,7 +41,7 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 2. (On-demand) Invoke rules-bff khi cần verify convention chi tiết
 3. Run scoped typecheck/lint/test + coverage
 4. Walk checklist từ skill
-5. Có fail -> spawn fix sub-agent
+5. Có fail -> spawn fix (Mode B): prompt = FEAT/AC + findings[] (severity/file/rule-AC/suggested fix)
 6. Loop tới pass
 7. (Nếu có learning mới) append KG; return RETURN SCHEMA
 ```

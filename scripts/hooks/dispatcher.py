@@ -224,14 +224,14 @@ def _pre_write_edit(payload: dict) -> int:
 
 
 def _pre_task(payload: dict) -> int:
-    """Inject reminder for dev-spawn; never block."""
+    """Inject reminder for dev-spawn; KHÔNG block.
+
+    KHÔNG chặn theo `spawn.active`: model harness cho phép NESTED spawn
+    (review-{kind}-agent → fix → re-review). Chặn double-spawn ở đây sẽ
+    phá chính luồng review→fix→test→fix. Concurrency-control nếu cần làm
+    ở orchestrator, không ở hook này.
+    """
     state = state_mod.load_state()
-    spawn = state.get("spawn") or {}
-    if spawn.get("active"):
-        return pre_tool_deny(
-            f"spawn.active != null (currently: {spawn['active'].get('command') if isinstance(spawn['active'], dict) else spawn['active']}). "
-            "Wait for current sub-agent to finish, hoặc clear bằng `state.py reset-spawn`."
-        )
     # Inject reminder via additionalContext (non-blocking)
     prompt = _task_prompt(payload)
     matched = policies.detect_dev_spawn(prompt)

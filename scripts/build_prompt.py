@@ -394,8 +394,8 @@ def build_boundary_command(
         task_list = [
             f"Invoke skill `{(REVIEW_SKILLS_PER_KIND.get(kind) or ['review-?'])[0]}`.",
             f"Read `FEAT-*` boundary đảm nhận → review code trong `{service_folder}/` theo checklist skill (gồm **AC/BR compliance**: mọi AC implement + BR enforce).",
-            "Phát hiện issue (coverage<80, lint, convention) → spawn fix sub-agent.",
-            "Loop review + fix tới pass.",
+            f"Phát hiện issue → spawn `fix-{prefix}-{boundary_id}-agent` kèm: (1) **FEAT/AC boundary đang làm** (để fix hiểu business intent); (2) **DANH SÁCH FINDINGS cụ thể** (mỗi finding: severity + file + rule/BR/AC vi phạm + suggested fix, theo Output Format của review skill). Fix agent KHÔNG tự đoán — sửa đúng findings được giao trong phạm vi FEAT.",
+            "Loop review + fix tới pass (re-review sau mỗi đợt fix).",
             "Append learnings.gotchas vào KG nếu phát hiện pattern xấu.",
             "Return RETURN SCHEMA với `review_result: pass|fail` + `coverage_pct`.",
         ]
@@ -410,12 +410,12 @@ def build_boundary_command(
             + REVIEW_SKILLS_PER_KIND.get(kind, [])
         )
         task_list = [
-            f"Read `tracking/wave-{{N}}/bugs.md` → tìm heading `## {bug_id}`.",
-            "Đọc reproduction steps + expected vs actual.",
+            f"Read `tracking/wave-{{N}}/bugs.md` (bảng) → tìm **row `{bug_id}`**.",
+            "Đọc cột reproduce + expected + actual + error log + TC + AC.",
             f"Fix code trong `{service_folder}/` theo rules-{kind}.",
             "Verify fix: run scoped test pass.",
             f"Auto chain: spawn `review-{kind}-agent` verify regression.",
-            f"If review pass: mark `## {bug_id}` `status: closed` in bugs.md.",
+            f"If review pass: set ô `status` của row `{bug_id}` = `closed` trong bảng bugs.md.",
             "Append FM (failure mode) vào KG.",
             "Return RETURN SCHEMA với `bug_id`, `fix_verified: true`.",
         ]
@@ -518,9 +518,9 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
         ]),
         tasks_block([
             "docker-compose up -d, đợi healthy.",
-            "Foreach TC in registry (P0 trước): run theo type (api/e2e/ui/...).",
+            "Foreach TC `type=auto` trong bảng registry (P0 trước): run theo `group` (smoke/integration/e2e).",
             f"Append result vào `tracking/{wave_id}/test-report.md`.",
-            f"Fail → log bug vào `tracking/{wave_id}/bugs.md` (origin: auto) + spawn fix sub-agent → re-test.",
+            f"Fail → append row vào bảng `tracking/{wave_id}/bugs.md` (origin: auto, đủ TC/AC/error-log) + spawn fix-agent (Mode A bug-id) → re-test.",
             "Loop tới all P0 pass.",
             "Return RETURN SCHEMA với `test_result: pass`, `test_cases_count`, `bugs_logged: [...]`.",
             "Harness auto-transition TEST_EXECUTE → MANUAL_TEST khi test_result=pass.",

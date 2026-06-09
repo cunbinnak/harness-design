@@ -62,13 +62,11 @@ Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
 2. Test credentials: (lấy từ `.env` dev account)
 3. Manual test cases: `tracking/wave-{N}/test-case-registry.md` — filter `type: manual`
 4. Ghi kết quả manual vào `tracking/wave-{N}/test-report.md` (§Manual Tests)
-5. Nếu phát hiện bug → thêm section vào `tracking/wave-{N}/bugs.md`:
+5. Nếu phát hiện bug → thêm **1 ROW** vào bảng `tracking/wave-{N}/bugs.md`:
    ```markdown
-   ## BUG-NNN — {title}
-   status: open
-   origin: manual
-   severity: medium
-   boundary: {prefix}-{boundary}
+   | BUG | title | status | origin | sev | boundary | AC | reproduce | expected | actual |
+   |-----|-------|--------|--------|-----|----------|----|-----------|----------|--------|
+   | BUG-NNN | {title} | open | manual | medium | {prefix}-{boundary} | FEAT-N:AC-M | {steps} | {kỳ vọng} | {thực tế} |
    ```
    Báo dev → `/fix-bugs <BUG-NNN>` (chain fix + review, in-state MANUAL_TEST).
 6. Clean → `/end-wave` (UAT signed → DONE) → `/done-wave` (teardown + reset).

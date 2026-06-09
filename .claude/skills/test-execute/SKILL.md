@@ -15,7 +15,7 @@ description: Build + run auto test theo registry per stack (mvn/gradle/pytest/je
    - Run cmd theo `type` (xem bảng framework dưới).
    - Append kết quả vào `tracking/wave-{N}/test-report.md`: `TC-ID: pass|fail|skip` + timestamp + duration + log tail.
    - Ghi log chi tiết vào `tracking/wave-{N}/test-logs/{TC-ID}.log`.
-4. Foreach fail → log bug `tracking/wave-{N}/bugs.md` (`origin: auto`, skill `bug-logging`; **dedup theo TC-ID — re-run cùng TC fail lại thì UPDATE bug cũ, KHÔNG tạo bug mới**) → spawn `fix-{prefix}-{boundary}-agent` → quay lại bước 3 re-run TC đó. Internal loop tới khi pass.
+4. Foreach fail → **append 1 row** vào bảng `tracking/wave-{N}/bugs.md` (skill `bug-logging`; `origin: auto` + đủ cột `TC` + `AC` (từ `TC.ac` registry) + `error log` (excerpt `test-logs/{TC}.log`); **dedup theo TC — re-run cùng TC fail lại thì UPDATE row cũ, KHÔNG tạo row mới**) → spawn `fix-{prefix}-{boundary}-agent` (Mode A, bug-id) → quay lại bước 3 re-run TC đó. Internal loop tới khi pass.
 
 ## Framework + lệnh chạy theo stack
 | Kind / Stack | Unit + Coverage | Integration | E2E / khác |

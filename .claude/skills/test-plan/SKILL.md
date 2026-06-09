@@ -10,10 +10,10 @@ description: Sinh test-case-registry.md cho wave — TC per AC + enterprise cove
 
 > **Vai trò: THIẾT KẾ test case** (viết spec vào registry) — KHÔNG viết code test, KHÔNG chạy. Code test do **dev** viết khi code (mỗi AC có test, `rules §N`); `/test-execute` chạy + bổ sung test còn thiếu so với registry.
 
-## Output: `tracking/wave-{N}/test-case-registry.md`
-- Heading per TC: `## TC-{N}-{slug}`
-- Frontmatter: `type: [api|e2e|ui|isolation|perf|security|contract], boundary: X, feature: FEAT-N, ac: FEAT-N:AC-M, priority: P0|P1|P2`
-- Section: Pre-conditions · Steps · Expected · Data setup · Cleanup.
+## Output: `tracking/wave-{N}/test-case-registry.md` (format BẢNG — mỗi TC = 1 HÀNG)
+Theo `TEMPLATE.test-case-registry.md`. Cột: `TC | group | type | boundary | feature | AC | pri | pre-condition | steps | expected | note` + bảng **Coverage matrix** (AC → TC).
+- `type`: `auto` (test-execute chạy) | `manual` (UAT/QA). `group`: smoke/integration/e2e/uat/regression. `AC`: `FEAT-N:AC-M` (mọi TC trace ≥ 1 AC, trừ smoke infra). `pri`: P0|P1|P2. `note`: framework (playwright) / verifier / `ref_bug`.
+- Steps/Expected giữ ngắn 1 cell; chi tiết dài → UAT script riêng.
 
 ## Test pyramid (phân bổ)
 - **unit/isolation** (nhiều): domain/service thuần, mock infra.

@@ -35,37 +35,23 @@ tracking/
 | `test-report.md` | `/test-execute` (test-execute-agent) | Initial only | Aggregate test results với per-TC log refs |
 | `test-logs/TC-*.log` | `/test-execute` | Per-TC append | Proof per TC: cmd, response, result |
 | `test-logs/screenshots/*.png` | `/test-execute` | UI tests | UI test evidence (Playwright/Cypress) |
-| `bugs.md` | `/test-execute` + `/fix-bugs` | Append per bug | Bug tickets với heading + frontmatter |
+| `bugs.md` | `/test-execute` + `/fix-bugs` | Append per bug (row) | Bug tickets dạng **bảng** (1 row/bug) |
 | `qc-signoff.md` | `/end-wave` (end-wave-agent) | Final signoff | UAT result + stakeholder approval |
 | `change-requests/CR-*.md` | User manual | `/apply-cr` agent fill plan | CR affecting this wave's scope |
 
 ## Bugs.md format
 
-Mỗi bug = heading `## BUG-NNN — title` + YAML frontmatter:
+**Format BẢNG — mỗi bug = 1 HÀNG** (theo `_templates/TEMPLATE.bugs.md`):
 
 ```markdown
-## BUG-001 — Validation 500 instead of 400
-
-```yaml
-status: open | in_progress | fixed | closed | wontfix
-origin: auto | manual | framework
-severity: critical | high | medium | low
-boundary: order-mgmt
-detected_by: test-execute-agent
-detected_at: "2026-05-29T..."
+| BUG | title | status | origin | sev | boundary | TC | AC | reproduce | expected | actual | error log | root cause | fix |
+|-----|-------|--------|--------|-----|----------|----|----|-----------|----------|--------|-----------|------------|-----|
+| BUG-001 | empty payload → 500 | closed | auto | high | order-mgmt | TC-I02 | FEAT-001:AC-2 | `POST /orders -d '{}'` | 400 | 500 | `got 500` | thiếu @Valid | +@Valid |
 ```
 
-### Reproduce
-...
-### Expected
-...
-### Actual
-...
-### Fix
-...
-```
+- Auto-bug (test-execute) bắt buộc đủ `TC` + `AC` + `error log` (excerpt `test-logs/{TC}.log`).
 
-**Gate `no_open_bugs`** parse heading + status frontmatter → reject `/end-wave` nếu còn bug `status: open`.
+**Gate `no_open_bugs`** parse cột `status` của bảng → reject `/end-wave` nếu còn bug `status ∈ {open, in_progress}`.
 
 ## CR per-wave
 
