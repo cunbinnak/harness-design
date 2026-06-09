@@ -150,6 +150,30 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 }
 ```
 
+### Mapper (MapStruct)
+- Mapper là **interface** + `@Mapper` — MapStruct generate impl, KHÔNG viết impl tay.
+- Config chuẩn: `componentModel = "spring"` (inject qua constructor) · `nullValuePropertyMappingStrategy = IGNORE` cho update (partial — không ghi đè null) · `unmappedTargetPolicy = IGNORE` (không fail khi field chưa map) · custom type converter gom `MapperComponent` (`@Named`), reuse mọi mapper qua `uses =`.
+
+```java
+@Mapper(componentModel = "spring",
+        uses = MapperComponent.class,
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,  // update partial
+        unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface OrderMapper {
+    OrderResponse toResponse(OrderEntity entity);
+    OrderEntity toEntity(CreateOrderRequest request);
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    void updateEntity(UpdateOrderRequest request, @MappingTarget OrderEntity entity);
+}
+
+// Custom type conversion (Instant↔String, enum↔code…) reuse mọi mapper qua uses=
+@Component
+public class MapperComponent {
+    @Named("instant2StringTz") public String i2s(Instant v) { return v != null ? v.toString() : null; }
+    @Named("stringTz2Instant") public Instant s2i(String v) { return v != null ? Instant.parse(v) : null; }
+}
+```
+
 ## 6. Response & error shape (common)
 Envelope response nhất quán toàn boundary — contract cụ thể chốt ở `api-{boundary}.md` (§Common error format), pattern này mô tả khung chung.
 
