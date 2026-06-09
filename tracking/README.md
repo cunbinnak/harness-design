@@ -95,9 +95,9 @@ Change Request lưu trong **wave folder bị ảnh hưởng**, không cross-wave
   → transition MANUAL_TEST (pass HAY fail); bug auto fix qua /fix-bugs
 
 (auto-transition) MANUAL_TEST
-  → stakeholder UAT
-  → user chạy /fix-bugs nếu phát hiện (origin: manual)
-  → write qc-signoff.md với UAT results + sign
+  → /fix-bugs <BUG> clear bug auto (test-execute) + manual (UAT) — fix re-run TC verify
+  → /test-execute re-run full auto suite (regression/bug mới → fix tiếp; loop tới sạch)
+  → stakeholder UAT → write qc-signoff.md với UAT results + sign
 
 /end-wave
   → verify no_open_bugs + qc-signoff signed

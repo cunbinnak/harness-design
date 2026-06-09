@@ -1,7 +1,7 @@
 ---
 name: test-execute
-description: "Build service local + run auto test + log bug (origin=auto). KHÔNG fix (fix qua /fix-bugs). Auto-transition MANUAL_TEST sau khi chạy."
-when_state: ['TEST_PLAN']
+description: "Build service local + run auto test + log bug (origin=auto). KHÔNG fix (fix qua /fix-bugs). Auto-transition MANUAL_TEST sau khi chạy. Re-run được từ MANUAL_TEST sau fix."
+when_state: ['TEST_PLAN', 'MANUAL_TEST']
 sets_stage: TEST_EXECUTE
 spawn:
   agent: "test-execute-agent"
@@ -33,5 +33,20 @@ py scripts/harness.py test-execute complete '{"test_cases_count": 15, "test_resu
 5. return {test_result: pass|fail, test_cases_count, bugs_logged: [...]}
 6. Harness auto-transition TEST_EXECUTE -> MANUAL_TEST (pass HAY fail)
 7. Bug auto + UAT manual đều fix qua /fix-bugs ở MANUAL_TEST; gate no_open_bugs (end-wave) chặn ship
+```
+
+## Vòng loop re-run (MANUAL_TEST)
+
+`/test-execute` chạy được **lại từ MANUAL_TEST** (sau khi /fix-bugs) để chạy **full auto suite**, bắt regression cross-boundary/E2E mà scoped test per-bug không thấy:
+
+```
+MANUAL_TEST
+  /fix-bugs <BUG-NNN>     → fix từng bug (re-run TC đó + scoped test)
+  /test-execute           → chạy LẠI full suite → TEST_EXECUTE → _auto → MANUAL_TEST
+     · TC fail lại        → UPDATE row cũ = status open (reopen regression)
+     · TC pass            → row giữ closed (không log lại)
+     · regression mới     → log BUG mới (open)
+  (lặp fix ↔ re-run tới khi re-run sạch)
+  /end-wave               → gate no_open_bugs: còn bug open thì chặn
 ```
 

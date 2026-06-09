@@ -75,9 +75,10 @@
       }
     },
     "MANUAL_TEST": {
-      "description": "UAT manual + clear bug. Infra vẫn UP. /fix-bugs (Mode A) fix bug auto (từ test-execute) + manual (UAT); fix re-run TC verify, KHÔNG gọi review-agent.",
+      "description": "UAT manual + clear bug + RE-RUN test. Infra UP. /fix-bugs (Mode A) fix bug auto+manual (re-run TC verify, KHÔNG gọi review). /test-execute chạy LẠI full auto suite sau fix → bug mới/regression log lại → fix tiếp. Sạch (no_open_bugs) mới /end-wave.",
       "allowed_commands": [
         "fix-bugs",
+        "test-execute",
         "end-wave"
       ],
       "allowed_spawn": true,
@@ -209,6 +210,17 @@
         "bug_id": "any"
       },
       "note": "In-state loop, agent chain fix + review"
+    },
+    {
+      "from": "MANUAL_TEST",
+      "to": "TEST_EXECUTE",
+      "trigger": "test-execute",
+      "evidence_required": {
+        "test_cases_count": {
+          "min": 1
+        }
+      },
+      "note": "Re-run full auto suite từ MANUAL_TEST sau /fix-bugs. Chạy xong _auto về MANUAL_TEST; còn bug → fix tiếp; sạch → end-wave."
     },
     {
       "from": "MANUAL_TEST",

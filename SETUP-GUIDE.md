@@ -75,8 +75,9 @@ TEST_PLAN
 TEST_EXECUTE
    ↓ (auto) sau khi chạy (pass HAY fail)
 MANUAL_TEST
-   ↓ /fix-bugs <bug-id> (fix → re-run test verify, loop)
-   ↓ /end-wave (UAT signed)
+   ↓ /fix-bugs <bug-id> (fix bug auto+manual → re-run TC verify)
+   ↺ /test-execute (re-run full auto suite sau fix → bug mới/regression → fix tiếp)
+   ↓ /end-wave (UAT signed + no_open_bugs)
 DONE
    ├ /done-wave → BOOTSTRAP (next wave)
    └ /apply-cr <CR-ID> → INTAKE (amendment)

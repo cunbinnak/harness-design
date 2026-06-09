@@ -43,5 +43,6 @@ description: Build + run auto test theo registry per stack (mvn/gradle/pytest/je
 - Chạy xong (pass HAY fail) → return `{test_result: "pass"|"fail", test_cases_count: N, coverage_pct, bugs_logged: [...]}` → harness auto-transition `TEST_EXECUTE → MANUAL_TEST` (kể cả còn bug auto).
 - Fail → bug đã log (origin=auto) trong bugs.md → fix qua `/fix-bugs` ở MANUAL_TEST. Gate `no_open_bugs` (end-wave) đảm bảo đóng hết mới ship.
 - **KHÔNG teardown infra** — giữ UP cho MANUAL_TEST (UAT + `/fix-bugs` re-run TC); teardown ở `/done-wave`.
+- **Re-run từ MANUAL_TEST** (sau `/fix-bugs`): `/test-execute` chạy được lại để verify full suite. Dedup theo TC — TC fail lại → **reopen** (UPDATE row cũ = `status open`); TC pass → giữ `closed`; regression mới → log BUG mới. Lặp fix ↔ re-run tới khi sạch mới `/end-wave`.
 
 > Format report: `tracking/_templates/TEMPLATE.test-report.md`. Bug model 1-file: `tracking/_templates/TEMPLATE.bugs.md`. Test chuyên sâu (contract/perf/security) → skill `specialist-testing`.
