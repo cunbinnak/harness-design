@@ -68,7 +68,7 @@ Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
    |-----|-------|--------|--------|-----|----------|----|-----------|----------|--------|
    | BUG-NNN | {title} | open | manual | medium | {prefix}-{boundary} | FEAT-N:AC-M | {steps} | {kỳ vọng} | {thực tế} |
    ```
-   Báo dev → `/fix-bugs <BUG-NNN>` (chain fix + review, in-state MANUAL_TEST).
+   Báo dev → `/fix-bugs <BUG-NNN>` (fix → re-run test verify, in-state MANUAL_TEST).
 6. Clean → `/end-wave` (UAT signed → DONE) → `/done-wave` (teardown + reset).
 
 ## 6. Known issues & deferred

@@ -16,7 +16,7 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 s
 | 6 | [dev-handoff](dev-handoff.md) | REVIEW_DEV | DEV_HANDOFF | Gate: coverage>=80, infra ready |
 | 7 | [test-plan](test-plan.md) | DEV_HANDOFF | TEST_PLAN | Sinh test-case-registry |
 | 8 | [test-execute](test-execute.md) | TEST_PLAN | TEST_EXECUTE | Build local + run + fix loop. Pass -> auto MANUAL_TEST |
-| 9 | [fix-bugs](fix-bugs.md) | MANUAL_TEST | MANUAL_TEST | Chain fix+review sub-agent |
+| 9 | [fix-bugs](fix-bugs.md) | MANUAL_TEST | MANUAL_TEST | MAIN spawn fix (Mode A) → re-run test verify → close bug |
 | 10 | [end-wave](end-wave.md) | MANUAL_TEST | DONE | Gate: uat_signed + no_open_bugs |
 | 11 | [done-wave](done-wave.md) | DONE | BOOTSTRAP | Teardown infra, reset |
 | 12 | [apply-cr](apply-cr.md) | DONE | INTAKE | CR amendment |

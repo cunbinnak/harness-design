@@ -75,7 +75,7 @@ TEST_PLAN
 TEST_EXECUTE
    ↓ (auto) test_result=pass
 MANUAL_TEST
-   ↓ /fix-bugs <bug-id> (chain fix + review verify, loop)
+   ↓ /fix-bugs <bug-id> (fix → re-run test verify, loop)
    ↓ /end-wave (UAT signed)
 DONE
    ├ /done-wave → BOOTSTRAP (next wave)
@@ -137,7 +137,7 @@ DONE
 # Stakeholder UAT manually, log results vào tracking/wave-{N}/qc-signoff.md
 # Phát hiện bug?
 /fix-bugs BUG-001
-# → chain fix + review verify
+# → MAIN spawn fix → fix re-run TC + scoped test verify → close bug (KHÔNG gọi review-agent)
 
 /end-wave
 # → mark UAT signed, transition DONE

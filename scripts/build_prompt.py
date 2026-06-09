@@ -450,21 +450,20 @@ def build_boundary_command(
         ]
     elif command == "fix-bugs":
         bug_id = opts.get("bug_id") or "<BUG-NNN>"
-        agent_name = f"fix-{prefix}-{boundary_id}-agent (then chain review-{kind}-agent)"
+        agent_name = f"fix-{prefix}-{boundary_id}-agent (Mode A — bug-id)"
         skills = PRIMARY_SKILLS_PER_KIND.get(kind, []) + ["bug-logging"]
-        # Refs cho fix = scaffold (structure/config/logging) + ref_skills boundary (MATRIX) + review checklist. Không list tĩnh.
+        # Refs cho fix = scaffold (structure/config/logging) + ref_skills boundary (MATRIX). KHÔNG review (fix không gọi review-agent).
         ref_skills = (
             SCAFFOLD_REF_SKILLS_PER_KIND.get(kind, [])
             + list(boundary.get("ref_skills") or [])
-            + REVIEW_SKILLS_PER_KIND.get(kind, [])
         )
         task_list = [
             f"Read `tracking/wave-{{N}}/bugs.md` (bảng) → tìm **row `{bug_id}`**.",
             "Đọc cột reproduce + expected + actual + error log + TC + AC.",
-            f"Fix code trong `{service_folder}/` theo rules-{kind}.",
-            "Verify fix: run scoped test pass.",
-            f"Auto chain: spawn `review-{kind}-agent` verify regression.",
-            f"If review pass: set ô `status` của row `{bug_id}` = `closed` trong bảng bugs.md.",
+            "**Reproduce đúng TC fail** (xác nhận thấy bug) TRƯỚC khi sửa.",
+            f"Fix code trong `{service_folder}/` theo rules-{kind} — tối thiểu, đúng root cause.",
+            "Verify: **re-run CHÍNH TC fail** → pass + scoped test pass (regression). **KHÔNG gọi review-agent** (sub-agent không spawn được sub-agent; review-agent là của REVIEW_DEV).",
+            f"Test pass → set ô `status` của row `{bug_id}` = `closed` + thêm regression `TC-R*` trong bảng bugs.md.",
             "Append FM (failure mode) vào KG.",
             "Return RETURN SCHEMA với `bug_id`, `fix_verified: true`.",
         ]

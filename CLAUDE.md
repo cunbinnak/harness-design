@@ -79,7 +79,7 @@
 /done-wave                                Hard close, teardown → BOOTSTRAP
 
 # Branch (1)
-/fix-bugs <bug-id>                        Fix manual UAT bug. Chain spawn fix + review sub-agent
+/fix-bugs <bug-id>                        Fix manual UAT bug (Mode A). MAIN spawn fix → re-run test verify → close bug
 
 # Side (1)
 /apply-cr <CR-ID>                         Change request → intake amendment (chỉ từ DONE state)
