@@ -11,12 +11,12 @@ stage_transition: "TEST_PLAN -> TEST_EXECUTE -> (auto) MANUAL_TEST"
 
 ## Identity
 
-Build service local + run auto test với PROOF cho mỗi TC. Internal loop fix on fail. Pass → auto-transition MANUAL_TEST.
+Build service local + run auto test với PROOF cho mỗi TC. Log bug (origin=auto) khi fail. Transition MANUAL_TEST sau khi chạy — **KHÔNG fix ở đây** (fix qua `/fix-bugs`).
 
 | | |
 |---|---|
 | Command | `/test-execute` |
-| Stage trigger | TEST_PLAN -> TEST_EXECUTE -> auto MANUAL_TEST khi `test_result=pass` |
+| Stage trigger | TEST_PLAN -> TEST_EXECUTE -> auto MANUAL_TEST sau khi chạy (pass HAY fail) |
 | Pre-condition | `tracking/wave-{N}/test-case-registry.md` >= 1 TC |
 | Output BẮT BUỘC | `test-report.md` + per-TC log + bugs |
 
@@ -28,10 +28,9 @@ Build service local + run auto test với PROOF cho mỗi TC. Internal loop fix 
 2. (On-demand) Invoke `infra-local-dev` để bring up docker-compose nếu chưa UP.
 3. Read `tracking/wave-{N}/test-case-registry.md`, parse TC type=auto.
 4. Foreach TC: run với proof — log file per TC trong `test-logs/`, screenshot UI nếu E2E.
-5. Fail: invoke `bug-logging` → **append row** bảng bugs.md (origin=auto, đủ `TC`/`AC`/`error log` từ `test-logs/{TC}.log`) → spawn fix-agent (Mode A bug-id) → re-test.
-6. Loop tới all P0 pass (hoặc max iterations).
-7. Aggregate vào `tracking/wave-{N}/test-report.md` (chỉ summarize từ logs).
-8. Teardown infra sau khi xong.
+5. Fail: invoke `bug-logging` → **append row** bảng bugs.md (origin=auto, đủ `TC`/`AC`/`error log` từ `test-logs/{TC}.log`). **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/fix-bugs` ở MANUAL_TEST.
+6. Aggregate vào `tracking/wave-{N}/test-report.md` (chỉ summarize từ logs).
+7. **KHÔNG teardown infra** — giữ UP cho MANUAL_TEST (UAT + `/fix-bugs` re-run TC). Teardown ở `/done-wave`.
 
 ## Workflow
 
@@ -41,11 +40,10 @@ Build service local + run auto test với PROOF cho mỗi TC. Internal loop fix 
 3. Walk auto TC list:
    - Setup directories (test-logs/, screenshots/)
    - Foreach TC: run cmd → capture proof (log + screenshot) → update result
-   - Fail: invoke `bug-logging`, spawn fix-{prefix}-{boundary}-agent, re-test
+   - Fail: invoke `bug-logging` → append row bugs.md (origin=auto). KHÔNG spawn fix.
 4. Verify proof: log count == auto TC count (else REFUSE complete)
 5. Aggregate test-report.md từ logs
-6. Teardown
-7. Return RETURN SCHEMA với test_result + breakdown
+6. Return RETURN SCHEMA với test_result (pass/fail) + breakdown + bugs_logged (KHÔNG teardown — infra giữ UP)
 ```
 
 > **Strict execution rules + bash per TC + bug ticket format nằm trong skill `test-execute`** — tune skill khi customize.
@@ -73,9 +71,9 @@ Build service local + run auto test với PROOF cho mỗi TC. Internal loop fix 
 - Skip E2E UI khi FE có framework setup (Playwright/Cypress).
 - Aggregate `test-report.md` không có per-TC log support.
 - Skip screenshot UI khi framework installed.
-- Skip teardown sau khi xong.
+- Teardown infra — KHÔNG (giữ UP cho MANUAL_TEST; teardown ở `/done-wave`).
 - Quên field `origin: auto` trong bug ticket.
-- Sửa source code trực tiếp — qua spawn fix sub-agent.
+- Sửa source code / spawn fix — KHÔNG phải việc test-execute. Bug fix qua `/fix-bugs` ở MANUAL_TEST.
 
 ## RETURN SCHEMA
 
@@ -93,8 +91,8 @@ Build service local + run auto test với PROOF cho mỗi TC. Internal loop fix 
   "kg_appended": ["test-execute-{wave-id}","fm:FM-NNN","learning:..."],
   "build": "pass",
   "lint": "pass",
-  "test": "pass",
-  "test_result": "pass",
+  "test": "fail",
+  "test_result": "fail",
   "test_cases_count": 25,
   "test_breakdown": {
     "auto_tcs": 25,
@@ -104,7 +102,6 @@ Build service local + run auto test với PROOF cho mỗi TC. Internal loop fix 
     "screenshots": 5,
     "e2e_framework": "playwright"
   },
-  "bugs_logged": ["BUG-001","BUG-002"],
-  "fix_loops_triggered": 2
+  "bugs_logged": ["BUG-001","BUG-002"]
 }
 ```

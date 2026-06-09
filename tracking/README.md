@@ -91,8 +91,8 @@ Change Request lưu trong **wave folder bị ảnh hưởng**, không cross-wave
 /test-execute
   → run TCs với proof
   → write tracking/wave-{N}/test-report.md
-  → append bugs.md nếu fail (origin: auto)
-  → internal fix loop → re-test
+  → append bugs.md nếu fail (origin: auto). KHÔNG fix ở đây
+  → transition MANUAL_TEST (pass HAY fail); bug auto fix qua /fix-bugs
 
 (auto-transition) MANUAL_TEST
   → stakeholder UAT

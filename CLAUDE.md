@@ -74,7 +74,7 @@
 /review-dev                               Review cả wave. Review ghi findings; MAIN spawn fix Mode B → re-review tới open_findings==0
 /dev-handoff                              Verify gates (coverage≥80, infra) → TEST
 /test-plan                                Sinh test-case-registry.md
-/test-execute                             Build local + run auto test. Internal fix loop. Pass → auto-transition MANUAL_TEST
+/test-execute                             Build local + run auto test + log bug (origin=auto). KHÔNG fix. Auto-transition MANUAL_TEST (pass/fail); bug fix qua /fix-bugs
 /end-wave                                 Soft close, infra UP → DONE (UAT signed)
 /done-wave                                Hard close, teardown → BOOTSTRAP
 

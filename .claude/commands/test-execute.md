@@ -1,6 +1,6 @@
 ---
 name: test-execute
-description: "Build service local + run auto test. Internal loop: fail -> spawn fix -> retest -> pass. Auto-transition MANUAL_TEST khi pass."
+description: "Build service local + run auto test + log bug (origin=auto). KHÔNG fix (fix qua /fix-bugs). Auto-transition MANUAL_TEST sau khi chạy."
 when_state: ['TEST_PLAN']
 sets_stage: TEST_EXECUTE
 spawn:
@@ -13,7 +13,7 @@ gates: [{type: int_min, field: test_cases_count, min: 1}]
 
 ## Mục đích
 
-Build & run service local theo docker-compose. Execute test cases theo registry. Fail -> log bug + spawn fix sub-agent -> retest. Loop tới pass.
+Build & run service local theo docker-compose. Execute test cases theo registry. Fail -> log bug (origin=auto) vào bugs.md. **KHÔNG fix ở đây** — fix qua `/fix-bugs` ở MANUAL_TEST. Auto-transition MANUAL_TEST sau khi chạy (pass HAY fail).
 
 ## Build prompt + spawn
 
@@ -23,15 +23,15 @@ py scripts/harness.py test-execute complete '{"test_cases_count": 15, "test_resu
 # auto-transition: STATE.stage -> MANUAL_TEST
 ```
 
-## Agent internal loop
+## Flow (test-only, KHÔNG fix)
 
 ```
 1. docker-compose up -d
-2. Run test cases (Postman/Playwright/...) per skill test-execute
-3. Fail -> log BUG-NNN vào tracking/wave-N/bugs.md (origin: auto)
-        -> spawn fix-{prefix-boundary}-agent fix
-        -> back to step 2
-4. All pass -> return {test_result: pass, ...}
-5. Harness auto-transition TEST_EXECUTE -> MANUAL_TEST
+2. Run test cases (Postman/Playwright/...) per skill test-execute, capture proof per TC
+3. Fail -> log BUG-NNN vào tracking/wave-N/bugs.md (origin: auto). KHÔNG spawn fix, KHÔNG loop.
+4. Aggregate test-report.md. KHÔNG teardown (infra giữ UP cho MANUAL_TEST)
+5. return {test_result: pass|fail, test_cases_count, bugs_logged: [...]}
+6. Harness auto-transition TEST_EXECUTE -> MANUAL_TEST (pass HAY fail)
+7. Bug auto + UAT manual đều fix qua /fix-bugs ở MANUAL_TEST; gate no_open_bugs (end-wave) chặn ship
 ```
 

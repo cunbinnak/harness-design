@@ -547,7 +547,7 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
     wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
         "# SPAWN PROMPT — /test-execute",
-        "\nAgent: **test-execute-agent** · Build local + run + internal fix loop.",
+        "\nAgent: **test-execute-agent** · Build local + run auto test + log bug (origin=auto). KHÔNG fix (fix qua /fix-bugs).",
         state_bundle(state),
         NON_NEGOTIABLES,
         skills_block(["test-execute", "specialist-testing", "bug-logging", "infra-local-dev"]),
@@ -561,10 +561,10 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
             "docker-compose up -d, đợi healthy.",
             "Foreach TC `type=auto` trong bảng registry (P0 trước): run theo `group` (smoke/integration/e2e).",
             f"Append result vào `tracking/{wave_id}/test-report.md`.",
-            f"Fail → append row vào bảng `tracking/{wave_id}/bugs.md` (origin: auto, đủ TC/AC/error-log) + spawn fix-agent (Mode A bug-id) → re-test.",
-            "Loop tới all P0 pass.",
-            "Return RETURN SCHEMA với `test_result: pass`, `test_cases_count`, `bugs_logged: [...]`.",
-            "Harness auto-transition TEST_EXECUTE → MANUAL_TEST khi test_result=pass.",
+            f"Fail → append row vào bảng `tracking/{wave_id}/bugs.md` (origin: auto, đủ TC/AC/error-log). **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/fix-bugs` ở MANUAL_TEST.",
+            "**KHÔNG teardown infra** — giữ UP cho MANUAL_TEST; teardown ở `/done-wave`.",
+            "Return RETURN SCHEMA với `test_result: pass|fail`, `test_cases_count`, `bugs_logged: [...]`.",
+            "Harness auto-transition TEST_EXECUTE → MANUAL_TEST sau khi chạy (pass HAY fail).",
         ]),
         RETURN_SCHEMA_TEMPLATE,
     ]

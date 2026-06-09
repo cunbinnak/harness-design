@@ -1,6 +1,6 @@
 ---
 name: test-execute
-description: Build + run auto test theo registry per stack (mvn/gradle/pytest/jest/vitest/playwright/k6), ghi test-report.md, log bug (origin auto), loop fix tới pass.
+description: Build + run auto test theo registry per stack (mvn/gradle/pytest/jest/vitest/playwright/k6), ghi test-report.md, log bug (origin auto). KHÔNG fix — fix qua /fix-bugs ở MANUAL_TEST.
 ---
 
 # Test Execute Skill
@@ -15,7 +15,7 @@ description: Build + run auto test theo registry per stack (mvn/gradle/pytest/je
    - Run cmd theo `type` (xem bảng framework dưới).
    - Append kết quả vào `tracking/wave-{N}/test-report.md`: `TC-ID: pass|fail|skip` + timestamp + duration + log tail.
    - Ghi log chi tiết vào `tracking/wave-{N}/test-logs/{TC-ID}.log`.
-4. Foreach fail → **append 1 row** vào bảng `tracking/wave-{N}/bugs.md` (skill `bug-logging`; `origin: auto` + đủ cột `TC` + `AC` (từ `TC.ac` registry) + `error log` (excerpt `test-logs/{TC}.log`); **dedup theo TC — re-run cùng TC fail lại thì UPDATE row cũ, KHÔNG tạo row mới**) → spawn `fix-{prefix}-{boundary}-agent` (Mode A, bug-id) → quay lại bước 3 re-run TC đó. Internal loop tới khi pass.
+4. Foreach fail → **append 1 row** vào bảng `tracking/wave-{N}/bugs.md` (skill `bug-logging`; `origin: auto` + đủ cột `TC` + `AC` (từ `TC.ac` registry) + `error log` (excerpt `test-logs/{TC}.log`); **dedup theo TC — re-run cùng TC fail lại thì UPDATE row cũ, KHÔNG tạo row mới**). **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/fix-bugs` ở MANUAL_TEST.
 
 ## Framework + lệnh chạy theo stack
 | Kind / Stack | Unit + Coverage | Integration | E2E / khác |
@@ -29,7 +29,7 @@ description: Build + run auto test theo registry per stack (mvn/gradle/pytest/je
 
 ## Coverage gate (per-kind)
 - Đọc coverage report (JaCoCo/coverage.xml/lcov) → so ngưỡng kind: **backend 80 / bff 70 / web·mobile 60**.
-- Dưới ngưỡng = fail → loop fix (hoặc báo blocker).
+- Dưới ngưỡng = fail (ngưỡng coverage chính enforce ở `/dev-handoff`; ở đây report lại trong test_result).
 
 ## Chất lượng test (gate — không chỉ "pass")
 - **Phủ registry**: mỗi **auto-TC trong registry phải có test code** trước khi chạy; thiếu → viết bổ sung (theo `type`/AC) rồi chạy. KHÔNG để TC registry không có code = sót AC.
@@ -40,7 +40,8 @@ description: Build + run auto test theo registry per stack (mvn/gradle/pytest/je
 - **Artifacts**: fail → lưu log tail + (e2e) screenshot/video vào `test-logs/`.
 
 ## Exit (auto-transition — KHÔNG cần command từ user)
-- Tất cả P0 pass + coverage đạt → return `{test_result: "pass", test_cases_count: N, coverage_pct: ...}` → harness auto-transition `TEST_EXECUTE → MANUAL_TEST`.
-- P0 còn fail sau loop → return `{test_result: "fail", ...}` → KHÔNG transition; báo blocker.
+- Chạy xong (pass HAY fail) → return `{test_result: "pass"|"fail", test_cases_count: N, coverage_pct, bugs_logged: [...]}` → harness auto-transition `TEST_EXECUTE → MANUAL_TEST` (kể cả còn bug auto).
+- Fail → bug đã log (origin=auto) trong bugs.md → fix qua `/fix-bugs` ở MANUAL_TEST. Gate `no_open_bugs` (end-wave) đảm bảo đóng hết mới ship.
+- **KHÔNG teardown infra** — giữ UP cho MANUAL_TEST (UAT + `/fix-bugs` re-run TC); teardown ở `/done-wave`.
 
 > Format report: `tracking/_templates/TEMPLATE.test-report.md`. Bug model 1-file: `tracking/_templates/TEMPLATE.bugs.md`. Test chuyên sâu (contract/perf/security) → skill `specialist-testing`.

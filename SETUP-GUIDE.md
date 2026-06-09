@@ -65,15 +65,15 @@ INTAKE
 WAVE_OPEN
    ↓ /start-dev <boundary>
 DEV
-   ↓ /review-dev (internal fix loop)
+   ↓ /review-dev (review ghi findings → MAIN spawn fix → re-review)
 REVIEW_DEV
    ↓ /dev-handoff (verify infra + coverage)
 DEV_HANDOFF
    ↓ /test-plan
 TEST_PLAN
-   ↓ /test-execute (internal fix loop)
+   ↓ /test-execute (run + log bug auto, KHÔNG fix)
 TEST_EXECUTE
-   ↓ (auto) test_result=pass
+   ↓ (auto) sau khi chạy (pass HAY fail)
 MANUAL_TEST
    ↓ /fix-bugs <bug-id> (fix → re-run test verify, loop)
    ↓ /end-wave (UAT signed)
@@ -127,8 +127,8 @@ DONE
 
 /test-execute
 # → build local, run auto test với proof
-# → fail → log bug → spawn fix → re-test (internal loop)
-# → pass → auto-transition MANUAL_TEST
+# → fail → log bug (origin=auto) vào bugs.md. KHÔNG fix ở đây
+# → auto-transition MANUAL_TEST (pass HAY fail); bug auto fix qua /fix-bugs
 ```
 
 ## UAT + Close

@@ -113,7 +113,7 @@ Một số state có internal agent behavior, không cần command từ user:
 | State | Internal behavior |
 |-------|-------------------|
 | REVIEW_DEV | review-{kind}-agent ghi review-findings.md + trả open_findings; MAIN (orchestrator) đọc → spawn fix Mode B → re-review tới open_findings==0 (gate no_open_findings chặn complete) |
-| TEST_EXECUTE | test-execute-agent run + fail → log bug → spawn fix sub-agent → re-test loop |
+| TEST_EXECUTE | test-execute-agent run + log bug (origin=auto) vào bugs.md. KHÔNG fix → transition MANUAL_TEST (pass HAY fail); bug auto fix qua /fix-bugs |
 | MANUAL_TEST | /fix-bugs: MAIN spawn fix-{boundary}-agent (Mode A) → fix re-run TC + scoped test verify → close bug. KHÔNG gọi review-agent (sub-agent không nest spawn) |
 
 ## Hooks (9 events)

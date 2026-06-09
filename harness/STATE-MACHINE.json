@@ -40,7 +40,7 @@
       "read_only_spawn_always": true
     },
     "REVIEW_DEV": {
-      "description": "Review agent self-review code. Internal loop: review → spawn fix sub-agent → re-review → pass.",
+      "description": "Review agent ghi review-findings.md + trả open_findings (KHÔNG tự spawn). MAIN đọc → spawn fix Mode B → re-review tới open_findings==0. Gate no_open_findings chặn complete.",
       "allowed_commands": [
         "dev-handoff"
       ],
@@ -65,24 +65,24 @@
       "read_only_spawn_always": true
     },
     "TEST_EXECUTE": {
-      "description": "Build service local + run auto test. Internal loop: fail → spawn fix → retest → pass. Auto-transition MANUAL_TEST khi test_result=pass.",
+      "description": "Build service local + run auto test, log bug (origin=auto) vào bugs.md. KHÔNG fix ở đây. Transition MANUAL_TEST sau khi chạy (pass HAY fail).",
       "allowed_commands": [],
       "allowed_spawn": true,
       "read_only_spawn_always": true,
-      "agent_behavior": "internal_test_fix_loop",
+      "agent_behavior": "test_execute_only",
       "auto_transition_on": {
-        "test_result": "pass"
+        "test_result": "any"
       }
     },
     "MANUAL_TEST": {
-      "description": "Wave shipped, UAT manual. Infra vẫn UP. /fix-bugs chain spawn fix+review sub-agent in-state.",
+      "description": "UAT manual + clear bug. Infra vẫn UP. /fix-bugs (Mode A) fix bug auto (từ test-execute) + manual (UAT); fix re-run TC verify, KHÔNG gọi review-agent.",
       "allowed_commands": [
         "fix-bugs",
         "end-wave"
       ],
       "allowed_spawn": true,
       "read_only_spawn_always": true,
-      "agent_behavior": "fix_bugs_chain_review"
+      "agent_behavior": "fix_bugs_mode_a"
     },
     "DONE": {
       "description": "Wave kết thúc, UAT signed. Chờ teardown hoặc CR amendment.",
@@ -196,10 +196,10 @@
       "to": "MANUAL_TEST",
       "trigger": "_auto",
       "evidence_required": {
-        "test_result": "pass"
+        "test_result": "any"
       },
       "auto": true,
-      "note": "Auto-transition khi test agent complete với test_result=pass, không command từ user"
+      "note": "Auto-transition khi test-execute complete (có test_result, pass HAY fail). Bug auto fix qua /fix-bugs ở MANUAL_TEST."
     },
     {
       "from": "MANUAL_TEST",

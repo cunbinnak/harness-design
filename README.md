@@ -27,8 +27,8 @@ WAVE_OPEN → /start-dev <boundary>
 DEV       → /review-dev
 REVIEW_DEV → /dev-handoff (coverage>=80, infra ok)
 DEV_HANDOFF → /test-plan
-TEST_PLAN → /test-execute (auto, internal fix loop)
-TEST_EXECUTE → (auto) MANUAL_TEST
+TEST_PLAN → /test-execute (run + log bug auto, KHÔNG fix)
+TEST_EXECUTE → (auto) MANUAL_TEST (pass HAY fail)
 MANUAL_TEST → /fix-bugs <bug-id> (loop)
               /end-wave (UAT signed)
 DONE      → /done-wave → BOOTSTRAP (next wave)
