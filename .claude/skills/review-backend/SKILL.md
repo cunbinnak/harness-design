@@ -102,7 +102,9 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 
 ### L. Architecture / layer & validation
 - [ ] **Cấu trúc code KHỚP kiến trúc đã chốt (HLD §4) + layout `ref-backend-pattern`**: Layered (`controller/service/repository/mapper/...`) HOẶC Hexagonal (`domain/ · application[port.in,out]+service/ · adapter[in.web,in.messaging,out.persistence,out.client,...]`). KHÔNG trộn 2 kiểu; KHÔNG tự đặt package ngoài pattern (BLOCKER nếu lệch kiến trúc).
-- [ ] Code đúng trách nhiệm layer: inbound (map+validate+gọi service/use-case), business+transaction ở service/application, query ở repository/persistence-adapter, convert ở mapper.
+- [ ] **Package đúng vị trí (mỗi class nằm đúng package theo role của layout đã chốt)**: KHÔNG class lạc chỗ (vd repository nằm trong package service, DTO nằm trong package controller, entity nằm ngoài package domain/model). Tên package đúng convention `rules-backend`.
+- [ ] **Không thừa package (đã dọn)**: KHÔNG còn package rỗng; KHÔNG còn class/package scaffold mẫu chưa dùng (`Example*`, `Demo*`, `Sample*`, `HelloController`, file generator để lại); KHÔNG package tạo "phòng khi cần" mà không có class thật. Thừa/rỗng/dead-package → MAJOR (yêu cầu xóa); để scaffold mẫu lẫn business code → BLOCKER.
+- [ ] Code đúng trách nhiệm layer theo layout đã chốt: inbound (map+validate+gọi business), business+transaction ở tầng service/application, query ở repository/persistence, convert ở mapper.
 - [ ] Không business logic trong controller/repository/mapper/config/migration.
 - [ ] Bean Validation cho input; business validation ở service; status-transition validation.
 - [ ] **Null-safety & exception (BLOCKER nếu lọt 500)**: KHÔNG `Optional.get()` trần → dùng `orElseThrow(...)`; mọi lỗi map qua `GlobalExceptionHandler` → typed error code (KHÔNG để exception lọt ra HTTP **500**); KHÔNG nuốt exception (catch phải log + rethrow/map). Input null/rỗng/payload thiếu → **400 typed**, KHÔNG NPE/500.

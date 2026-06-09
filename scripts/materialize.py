@@ -31,7 +31,11 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 
 sys.path.insert(0, str(HERE))
-from build_prompt import SCAFFOLD_REF_SKILLS_PER_KIND, PRIMARY_SKILLS_PER_KIND  # single source: scaffold + primary map
+from build_prompt import (  # single source: scaffold + primary map + doc refs
+    SCAFFOLD_REF_SKILLS_PER_KIND,
+    PRIMARY_SKILLS_PER_KIND,
+    boundary_doc_refs,
+)
 
 MATRIX_FILE = REPO / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
 TEMPLATE_DEV = REPO / "agents" / "_template-dev-agent.md"
@@ -95,10 +99,11 @@ def boundary_vars(b: dict, matrix_revision: int) -> dict[str, str]:
     boundary_id = b["boundary_id"]
     prefix = b["prefix"]
     kind = b["kind"]
-    owned_paths = b.get("owned_paths") or _default_owned_paths(prefix, boundary_id)
+    owned_paths = b.get("owned_paths") or _default_owned_paths(prefix, boundary_id, kind)
     tech = b.get("tech") or {}
     scaffold_refs = SCAFFOLD_REF_SKILLS_PER_KIND.get(kind, [])
     ref_skills = list(b.get("ref_skills") or [])  # situational, do intake quyết per-boundary
+    doc_refs = boundary_doc_refs(boundary_id, kind, b.get("features"))  # GẮN CỨNG docs theo boundary
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return {
         "boundary": boundary_id,
@@ -114,21 +119,29 @@ def boundary_vars(b: dict, matrix_revision: int) -> dict[str, str]:
         "primary_skill": (PRIMARY_SKILLS_PER_KIND.get(kind) or ["rules-?"])[0],
         "scaffold_refs_md": _skill_bullets(scaffold_refs, f"kind {kind} dùng convention trong rules-{kind}, không có ref structure riêng"),
         "ref_skills_md": _skill_bullets(ref_skills, "chưa gắn — boundary không dùng cache/event/extra (intake để trống)"),
+        "required_docs_md": "\n".join(f"- **{label}**: `{path}`" for label, path in doc_refs),
         "created_at": now,
         "matrix_revision": str(matrix_revision),
     }
 
 
-def _default_owned_paths(prefix: str, boundary: str) -> list[str]:
-    return [
+def _default_owned_paths(prefix: str, boundary: str, kind: str) -> list[str]:
+    # Grounded theo technical-design: HLD+API mọi boundary; data-model chỉ backend;
+    # UX chỉ FE; events cho kind phát/nhận event (backend/bff). KG luôn có.
+    paths = [
         f"services/{prefix}-{boundary}/**",
         f"docs/architecture/hld/hld-{boundary}.md",
         f"docs/architecture/api/api-{boundary}.md",
-        f"docs/architecture/data-model/data-model-{boundary}.md",
-        f"docs/architecture/events/{boundary}-events.md",
-        f"docs/architecture/ux/ux-{boundary}.md",
-        f"knowledge-base/{boundary}.knowledge-graph.yaml",
     ]
+    if kind == "backend":
+        paths.append(f"docs/architecture/data-model/data-model-{boundary}.md")
+        paths.append(f"docs/architecture/events/{boundary}-events.md")
+    elif kind == "bff":
+        paths.append(f"docs/architecture/events/{boundary}-events.md")
+    elif kind in ("web", "mobile"):
+        paths.append(f"docs/architecture/ux/ux-{boundary}.md")
+    paths.append(f"knowledge-base/{boundary}.knowledge-graph.yaml")
+    return paths
 
 
 def _default_lang(kind: str) -> str:

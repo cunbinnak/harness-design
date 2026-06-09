@@ -195,6 +195,43 @@ def docs_to_read(items: list[tuple[str, str]]) -> str:
     return head + "\n" + body
 
 
+def boundary_doc_refs(boundary_id: str, kind: str, features: list[str] | None) -> list[tuple[str, str]]:
+    """Tài liệu BẮT BUỘC đọc cho 1 boundary — GẮN CỨNG deterministic theo boundary_id + kind.
+
+    Single source dùng chung bởi build_prompt (spawn-time) + materialize.py (bake vào agent .md),
+    nên cả hai KHÔNG bao giờ lệch. FEAT lấy explicit từ MATRIX `features` — KHÔNG bắt agent tự
+    discovery từ wave plan (nguồn miss). MATRIX.features rỗng → fallback wave-plan filter.
+    """
+    b = boundary_id
+    # LUÔN có (technical-design: HLD + API mọi boundary; KG materialize mọi boundary).
+    refs: list[tuple[str, str]] = [
+        ("Project overview / NFR / glossary", "docs/architecture/PROJECT.md"),
+        ("HLD (kiến trúc — §4 chốt Layered/Hexagonal)", f"docs/architecture/hld/hld-{b}.md"),
+        ("API contract", f"docs/architecture/api/api-{b}.md"),
+    ]
+    # data-model: technical-design "Backend boundary có data-model" → chỉ backend.
+    if kind == "backend":
+        refs.append(("Data model", f"docs/architecture/data-model/data-model-{b}.md"))
+    # UX: technical-design "FE boundary có UX" → chỉ web/mobile.
+    if kind in ("web", "mobile"):
+        refs.append(("UX / wireframe", f"docs/architecture/ux/ux-{b}.md"))
+    refs.append(("Knowledge graph (domain/BR/events/permissions)", f"knowledge-base/{b}.knowledge-graph.yaml"))
+    # CÓ ĐIỀU KIỆN — chỉ tồn tại nếu boundary thực sự có (technical-design dòng 55 + integrations).
+    # Đọc NẾU file tồn tại; KHÔNG giả định mọi boundary đều có.
+    refs.append(("Events phát/nhận (CHỈ nếu boundary phát/nhận event)", f"docs/architecture/events/{b}-events.md"))
+    refs.append(("Integrations (CHỈ nếu boundary tham gia tích hợp)", f"docs/architecture/integrations/INTEG-*{b}*.md"))
+    feats = list(features or [])
+    if feats:
+        for fid in feats:
+            refs.append((f"FEAT {fid} — AC + BR PHẢI implement", f"docs/architecture/feat/{fid}-*.md"))
+    else:
+        refs.append((
+            "FEAT (MATRIX.features RỖNG — fallback: lọc wave plan §Features in scope theo Boundary)",
+            "docs/architecture/feat/FEAT-*.md",
+        ))
+    return refs
+
+
 def tasks_block(items: list[str]) -> str:
     head = "## TASKS\n"
     body = "\n".join(f"{i+1}. {t}" for i, t in enumerate(items))
@@ -381,8 +418,20 @@ def build_boundary_command(
                 + ", ".join(f"`{s}`" for s in ref_skills)
                 + " — **invoke khi code phần tương ứng** (vd cache/event)."
             )
+        _feats = list(boundary.get("features") or [])
+        if _feats:
+            _feat_task = (
+                "Đọc AC + BR trong các FEAT đã GẮN CỨNG cho boundary này (MATRIX `features`): "
+                + ", ".join(f"`{f}`" for f in _feats)
+                + " (path ở §DOCS TO READ) → implement MỌI AC, enforce MỌI BR. KHÔNG tự suy FEAT từ wave plan."
+            )
+        else:
+            _feat_task = (
+                f"(MATRIX `features` RỖNG — intake chưa gắn) Fallback: đọc `docs/plans/{wave_id}.md` "
+                f"§'Features in scope' → lọc dòng `Boundary == {boundary_id}` = tập FEAT; đọc AC từng `FEAT-*.md` rồi implement."
+            )
         task_list += [
-            f"Đọc `docs/plans/{wave_id}.md` §'Features in scope' → lọc dòng có `Boundary == {boundary_id}` = tập FEAT của boundary này; đọc AC trong từng `FEAT-*.md` tương ứng rồi implement.",
+            _feat_task,
             "Run scoped build/test (mvn -pl ./ test cho backend; npm test cho bff/web; flutter test cho mobile).",
             "KG: phần design (entities/business_rules/events/permissions) đã seed ở /start-wave — chỉ UPDATE nếu implement khác design (kèm sửa data-model); APPEND phần kinh nghiệm (learnings/gotchas/failure_modes/decisions) khi phát sinh.",
             "Return RETURN SCHEMA.",
@@ -432,17 +481,10 @@ def build_boundary_command(
         NON_NEGOTIABLES,
         owned_paths_block(boundary),
         skills_block(skills, available=ref_skills, scaffold=scaffold_block, note="Primary = invoke ngay. Scaffold = BẮT BUỘC khi tạo skeleton (cây thư mục theo ref-pattern). Ref situational = invoke NGAY khi boundary có điều kiện tương ứng (cache/event/log)."),
-        docs_to_read([
-            ("HLD", f"docs/architecture/hld/hld-{boundary_id}.md"),
-            ("API", f"docs/architecture/api/api-{boundary_id}.md"),
-            ("Data model", f"docs/architecture/data-model/data-model-{boundary_id}.md"),
-            ("UX", f"docs/architecture/ux/ux-{boundary_id}.md"),
-            ("Events", f"docs/architecture/events/{boundary_id}-events.md"),
-            ("Integrations", f"docs/architecture/integrations/INTEG-*{boundary_id}*.md"),
-            ("KG", f"knowledge-base/{boundary_id}.knowledge-graph.yaml"),
-            ("Wave plan", f"docs/plans/{wave_id}.md"),
-            ("Features", "docs/architecture/feat/FEAT-*.md (filter theo wave)"),
-        ]),
+        docs_to_read(
+            boundary_doc_refs(boundary_id, kind, boundary.get("features"))
+            + [("Wave plan (scope wave hiện tại)", f"docs/plans/{wave_id}.md")]
+        ),
         tasks_block(task_list),
         PRE_EDIT_CHECKLIST,
         RETURN_SCHEMA_TEMPLATE,

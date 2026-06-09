@@ -29,9 +29,15 @@ matrix_revision: {{matrix_revision}}
 | Service folder (polyrepo working dir) | `services/{{prefix}}-{{boundary}}/` |
 | Service repo (separate) | `{{repo_url}}` |
 
+## Tài liệu BẮT BUỘC đọc trước khi code
+
+> Đọc HẾT các file dưới (Read tool) TRƯỚC khi implement. Danh sách GẮN CỨNG theo boundary lúc materialize — KHÔNG tự đoán, KHÔNG bỏ sót. FEAT lấy explicit từ MATRIX `features` (nếu rỗng = intake chưa gắn → fallback wave plan).
+
+{{required_docs_md}}
+
 ## Trách nhiệm
 
-1. Implement AC trong FEAT-* theo `docs/plans/wave-{N}.md` hiện tại.
+1. Implement AC trong các FEAT đã liệt kê ở §Tài liệu BẮT BUỘC đọc (theo `docs/plans/wave-{N}.md` hiện tại).
 2. Code trong `services/{{prefix}}-{{boundary}}/` (gitignored ở design repo, push lên `{{repo_url}}`).
 3. Tuân `rules-{{kind}}` (primary skill — invoke khi start).
 4. Run scoped build/test cho boundary (lệnh chi tiết trong skill).
@@ -45,7 +51,7 @@ matrix_revision: {{matrix_revision}}
 2. Orchestrator spawn sub-agent qua Agent/Task tool với prompt + agent file ref.
 3. Sub-agent:
    - Invoke skill `rules-{{kind}}` ngay (load convention checklist).
-   - Read HLD/API/data-model/KG qua Read tool khi cần.
+   - Read HẾT tài liệu ở §Tài liệu BẮT BUỘC đọc (đã liệt kê cụ thể theo boundary) trước khi code.
    - Lần đầu cho boundary: scaffold `services/{{prefix}}-{{boundary}}/` (pom.xml/package.json/pubspec.yaml).
    - Implement AC, run test, ensure coverage ≥ 80.
    - Append KG.

@@ -29,6 +29,12 @@ matrix_revision: {{matrix_revision}}
 | Service folder | `services/{{prefix}}-{{boundary}}/` |
 | Input (2 mode) | **A bug-id**: `/fix-bugs` + test-chain → `bugs.md`. **B review-chain**: findings + FEAT/AC trong spawn prompt |
 
+## Tài liệu BẮT BUỘC đọc (context FEAT/design của boundary)
+
+> Đọc khi cần hiểu business intent / design lúc fix (Read tool). GẮN CỨNG theo boundary lúc materialize. FEAT lấy từ MATRIX `features`. Mode B đã có findings + FEAT/AC trong spawn prompt — vẫn tham chiếu danh sách này khi cần đọc rộng hơn.
+
+{{required_docs_md}}
+
 ## Input theo mode (KHÔNG tự đoán sửa gì)
 - **Mode A — bug-id** (spawn từ `/fix-bugs` hoặc **test-execute-chain**): spawn prompt đưa `bug_id` → đọc **row `BUG-NNN`** trong bảng `tracking/wave-{N}/bugs.md` (cột reproduce / expected / actual / `TC` / `AC` / **error log**).
 - **Mode B — review-chain** (spawn từ `review-{{kind}}-agent`): spawn prompt đưa **findings + FEAT/AC** — mỗi finding có `severity + file + rule/BR/AC vi phạm + suggested fix`. KHÔNG đọc bugs.md.
