@@ -246,12 +246,63 @@ def check_no_open_bugs(state: dict) -> tuple[bool, str]:
     return True, ""
 
 
+_FINDING_CLOSED_STATUSES = ("resolved", "accepted", "wontfix", "closed", "fixed")
+_FINDING_BLOCKING_SEV = ("blocker", "major")
+
+
+def _findings_open_from_table(text: str) -> list[str] | None:
+    """Format BẢNG review-findings: header có cột 'finding'(/'id') + 'status' + 'severity'.
+    Trả list finding-id `severity ∈ {blocker, major}` và `status` chưa đóng; None nếu không thấy bảng."""
+    fid_idx = status_idx = sev_idx = None
+    open_findings: list[str] = []
+    for line in text.splitlines():
+        s = line.strip()
+        if not s.startswith("|"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        low = [c.lower() for c in cells]
+        if status_idx is None:  # header row
+            if "status" in low and "severity" in low and ("finding" in low or "id" in low):
+                status_idx = low.index("status")
+                sev_idx = low.index("severity")
+                fid_idx = low.index("finding") if "finding" in low else low.index("id")
+            continue
+        if all(set(c) <= set("-: ") for c in cells if c):  # separator |---|
+            continue
+        if len(cells) > max(fid_idx, status_idx, sev_idx):
+            fid, st, sev = cells[fid_idx], cells[status_idx].lower(), cells[sev_idx].lower()
+            if (
+                re.fullmatch(r"rf-\d+", fid, re.IGNORECASE)
+                and sev in _FINDING_BLOCKING_SEV
+                and st not in _FINDING_CLOSED_STATUSES
+            ):
+                open_findings.append(fid)
+    return open_findings if status_idx is not None else None
+
+
+def check_no_open_findings(state: dict) -> tuple[bool, str]:
+    """Parse tracking/wave-{N}/review-findings.md → reject nếu còn finding BLOCKER/MAJOR status=open.
+
+    Lưới an toàn ép MAIN spawn fix tới sạch trước khi /review-dev complete (rời REVIEW_DEV)."""
+    wave_id = (state.get("wave") or {}).get("id")
+    if not wave_id:
+        return True, ""
+    findings_file = REPO_ROOT / "tracking" / wave_id / "review-findings.md"
+    if not findings_file.exists():
+        return True, ""  # chưa có file → review chưa phát hiện gì (hoặc chưa chạy)
+    open_findings = _findings_open_from_table(findings_file.read_text(encoding="utf-8"))
+    if open_findings:
+        return False, f"còn {len(open_findings)} finding BLOCKER/MAJOR chưa fix: {open_findings} — MAIN spawn fix Mode B tới resolved"
+    return True, ""
+
+
 # ========================================================================
 # Rule dispatch
 # ========================================================================
 
 # Per-command gate rules. Each rule = {kind, ...params}.
-# kind ∈ {flag, coverage, int_min, non_empty, artifact_glob, in_state_list, file_exists, no_open_bugs}.
+# kind ∈ {flag, coverage, coverage_per_kind, all_boundaries_reviewed, int_min, non_empty,
+#         artifact_glob, in_state_list, file_exists, wave_in_matrix, no_open_bugs, no_open_findings}.
 
 GATE_RULES: dict[str, list[dict]] = {
     "intake-requirement": [
@@ -272,7 +323,9 @@ GATE_RULES: dict[str, list[dict]] = {
     "start-dev": [
         {"kind": "in_state_list", "field": "boundary", "state_field": "wave_boundaries"},
     ],
-    "review-dev": [],  # entry only, no evidence required
+    "review-dev": [
+        {"kind": "no_open_findings"},  # complete bị chặn tới khi findings BLOCKER/MAJOR fix sạch
+    ],
     "dev-handoff": [
         {"kind": "all_boundaries_reviewed"},
     ],
@@ -324,6 +377,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_wave_in_matrix(evidence, rule.get("field", "wave_n"))
         if kind == "no_open_bugs":
             return check_no_open_bugs(state)
+        if kind == "no_open_findings":
+            return check_no_open_findings(state)
     except KeyError as e:
         return False, f"Rule {kind} missing field: {e}"
     return False, f"Unknown gate kind: {kind!r}"
@@ -424,6 +479,23 @@ def _selftest() -> int:
     # fallback heading cũ vẫn hoạt động
     old = "## BUG-007 — x\nstatus: open\n\n## BUG-008 — y\nstatus: closed\n"
     assert _bugs_open_from_headings(old) == ["BUG-007"], _bugs_open_from_headings(old)
+
+    # no_open_findings: chỉ BLOCKER/MAJOR status=open mới chặn; MINOR/accepted/resolved bỏ qua
+    ftbl = (
+        "# Review Findings\n\n"
+        "| FINDING | severity | status | boundary | file |\n"
+        "|---------|----------|--------|----------|------|\n"
+        "| RF-001 | BLOCKER | resolved | order | A.java |\n"
+        "| RF-002 | MAJOR | open | order | B.java |\n"
+        "| RF-003 | MINOR | open | order | C.java |\n"
+        "| RF-004 | BLOCKER | open | web | D.tsx |\n"
+        "| RF-005 | MAJOR | accepted | web | E.tsx |\n"
+    )
+    assert _findings_open_from_table(ftbl) == ["RF-002", "RF-004"], _findings_open_from_table(ftbl)
+    assert _findings_open_from_table("no table") is None
+    # cột đảo thứ tự vẫn đúng theo header
+    ftbl2 = "| status | severity | finding |\n|--|--|--|\n| open | blocker | RF-009 |\n| open | nit | RF-010 |\n"
+    assert _findings_open_from_table(ftbl2) == ["RF-009"], _findings_open_from_table(ftbl2)
 
     print("OK: gates.py selftest passed")
     return 0

@@ -14,8 +14,8 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 - Invoke bởi `review-backend-agent` ở `/review-dev` (state REVIEW_DEV). Đây là **source of truth**.
 - Quy trình: chạy build/test scoped (`mvn -q test`, `jacoco:report`, `checkstyle/spotbugs`, `git diff --name-only main...HEAD`) → đi qua **Review Checklist** bên dưới → phân loại severity.
 - **Coverage** theo kind (backend ≥ 80%) — dưới ngưỡng = BLOCKER.
-- Có **BLOCKER** hoặc build/test/coverage fail → spawn `fix-{prefix}-{boundary}-agent` → re-review → loop tới khi sạch BLOCKER + gate pass.
-- Kết thúc: `review_result = pass` chỉ khi không còn BLOCKER, gate (coverage/build/test) pass, và verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}. (Field JSON trả về theo `RETURN_SCHEMA_TEMPLATE` ở `build_prompt.py` + task_list `/review-dev` — skill KHÔNG định nghĩa schema.)
+- Có **BLOCKER/MAJOR** hoặc build/test/coverage fail → **GHI row vào `tracking/{wave}/review-findings.md`** (KHÔNG tự spawn fix). **MAIN** đọc findings → spawn `fix-{prefix}-{boundary}-agent` (Mode B) → re-review. Review chỉ đánh giá + ghi findings + trả `open_findings`.
+- Kết thúc: `review_result = pass` chỉ khi `open_findings == 0` (không còn BLOCKER/MAJOR), gate (coverage/build/test) pass, và verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}. (Field JSON trả về theo `RETURN_SCHEMA_TEMPLATE` ở `build_prompt.py` + task_list `/review-dev` — skill KHÔNG định nghĩa schema.)
 
 ## Vai trò reviewer
 Đóng vai **senior backend reviewer**. Tập trung rủi ro gây: sai business behavior; vi phạm security/tenant; data inconsistency; breaking change API/event/DB contract; performance production; xử lý trùng; thiếu validation; thiếu test; maintainability. KHÔNG chỉ comment code style.
@@ -202,6 +202,6 @@ Một trong: APPROVE | APPROVE WITH MINOR COMMENTS | REQUEST CHANGES | NEEDS CLA
 - Chỉ review formatting; rewrite cả solution khi không được yêu cầu; đánh preference là BLOCKER; bỏ qua convention sẵn có; đề xuất dependency mới không lý do; comment mơ hồ ("refactor this"); approve happy-path-only cho flow critical; bỏ qua test/tenant/security/transaction risk.
 
 ## Loop & kết luận
-- Còn **BLOCKER** hoặc gate (build/lint/test/coverage) fail → agent spawn `fix-{prefix}-{boundary}-agent` → re-review → loop tới sạch. Đây là **hành vi agent** (theo task_list `/review-dev`), KHÔNG do hook ép.
+- Còn **BLOCKER/MAJOR** hoặc gate (build/lint/test/coverage) fail → review GHI findings vào `review-findings.md` (KHÔNG tự spawn). **MAIN** đọc findings → spawn `fix-{prefix}-{boundary}-agent` (Mode B) → re-spawn review → loop tới sạch. Gate `no_open_findings` chặn `/review-dev complete` tới khi findings BLOCKER/MAJOR đóng hết (lưới an toàn).
 - Verdict → kết quả: `review_result = pass` chỉ khi `blocker == 0` + gate pass + verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}; `review_result` là evidence cho gate `/dev-handoff`.
 - **Schema JSON trả về KHÔNG định nghĩa ở skill** — dùng `RETURN_SCHEMA_TEMPLATE` (`build_prompt.py`, chèn vào mọi spawn) + field command-specific (`review_result`) do task_list thêm.

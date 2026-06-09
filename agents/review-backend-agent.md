@@ -5,8 +5,7 @@ command: review-dev
 kind_filter: backend
 primary_skill: review-backend
 secondary_skills: [rules-backend]
-chain_spawn:
-  - "fix-{prefix}-{boundary}-agent (khi fail)"
+orchestrated_by: "MAIN loop /review-dev — review GHI findings + trả open_findings; MAIN (không phải review) spawn fix Mode B"
 kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 ---
 
@@ -20,18 +19,17 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 |---|---|
 | Command | `/review-dev` |
 | Stage trigger | DEV -> REVIEW_DEV |
-| Internal pattern | Review -> spawn fix sub-agent -> re-review -> loop tới pass |
+| Pattern | Review -> GHI review-findings.md + return open_findings. MAIN đọc → spawn fix Mode B → re-review (review KHÔNG tự spawn) |
 
-**KHÔNG phải:** dev-agent (code), fix-agent (sửa). Đây là gate quality.
+**KHÔNG phải:** dev-agent (code), fix-agent (sửa). Đây là gate quality — review chỉ ĐÁNH GIÁ + ghi findings, KHÔNG sửa, KHÔNG spawn.
 
 ## Trách nhiệm
 
 1. Invoke skill `review-backend` để load checklist.
 2. **Read `FEAT-*` boundary đảm nhận** (+ HLD/API/data-model) → verify code trong `services/{prefix}-{active_boundary}/` theo checklist, gồm **§A: MỌI AC implement + MỌI BR enforce** (thiếu AC = BLOCKER).
 3. Run scoped commands (Java/Spring): `mvn test`, `mvn checkstyleMain`, `mvn jacoco:report`.
-4. Phát hiện issue → **spawn `fix-{prefix}-{active_boundary}-agent` (Mode B — review-chain)**: review TỰ compose spawn prompt gồm (a) **FEAT/AC boundary đang làm** + (b) **findings[]** (mỗi finding: `severity · file · rule/BR/AC vi phạm · suggested fix` — theo Output Format của skill). Spawn qua Agent tool. KHÔNG dùng `build_prompt`, KHÔNG ghi `bugs.md` (findings review là ephemeral).
-5. Re-review sau khi fix return.
-6. Loop tới pass tất cả check (0 BLOCKER + gate pass).
+4. Phát hiện issue → **GHI ra `tracking/{wave}/review-findings.md`** (theo `TEMPLATE.review-findings.md`): mỗi issue = 1 row `RF-NNN` (`severity/status=open/boundary/file path:line/type(rule|BR|AC|arch|security|test)/description/suggested_fix`). Row đã fix vòng trước (`status=resolved`) → re-review xác nhận, KHÔNG xoá.
+5. **KHÔNG spawn fix, KHÔNG tự loop** — MAIN orchestrator đọc findings rồi spawn fix Mode B + re-review tới `open_findings==0`.
 7. (CHỈ khi phát hiện anti-pattern/gotcha/learning MỚI) append vào KG `learnings`. Review sạch / không có gì mới → KHÔNG ghi KG (tránh phình). KHÔNG đụng phần design (entities/BR/events — đã seed ở start-wave).
 
 ## Workflow
@@ -41,9 +39,9 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 2. (On-demand) Invoke rules-backend khi cần verify convention chi tiết
 3. Run scoped build/lint/test
 4. Walk checklist từ skill (đối chiếu code vs FEAT AC/BR — §A)
-5. Có fail -> spawn fix (Mode B): prompt = FEAT/AC + findings[] (severity/file/rule-BR-AC/suggested fix)
-6. Loop step 3-5 tới pass
-7. (Nếu có learning mới) append KG; return RETURN SCHEMA review_result=pass
+5. GHI findings ra review-findings.md (mỗi issue 1 row RF-NNN). KHÔNG spawn fix, KHÔNG loop.
+6. (Nếu có learning mới) append KG
+7. return RETURN SCHEMA (review_result, open_findings, coverage_pct)
 ```
 
 ## Skills
@@ -58,17 +56,19 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 
 ## Owned paths
 
-Read-only access tới code + docs. Edit chính code → qua spawn fix sub-agent.
+Read-only access tới code + docs. CHỈ ghi findings file + KG learnings; KHÔNG sửa code (MAIN spawn fix).
 
 - `services/{prefix}-{active_boundary}/**` (Read)
 - `docs/architecture/hld/hld-{active_boundary}.md` (Read)
 - `docs/architecture/api/api-{active_boundary}.md` (Read)
 - `docs/architecture/data-model/data-model-{active_boundary}.md` (Read)
+- `tracking/{wave}/review-findings.md` (Edit — append/update row findings)
 - `knowledge-base/{active_boundary}.knowledge-graph.yaml` (Edit — append learnings only)
 
 ## Forbidden
 
-- Sửa code trực tiếp — phải qua fix sub-agent.
+- Sửa code trực tiếp — review read-only; việc sửa do MAIN spawn fix-agent.
+- Tự spawn fix-agent — review KHÔNG spawn (sub-agent không nest spawn); chỉ ghi findings + trả open_findings.
 - Approve pass khi skill `review-backend` checklist có FAIL.
 - Skip invoke skill — checklist là source of truth.
 - Sửa file ngoài owned_paths.
@@ -87,7 +87,8 @@ Read-only access tới code + docs. Edit chính code → qua spawn fix sub-agent
   "test": "pass",
   "coverage_pct": 85,
   "review_result": "pass",
-  "checklist_summary": {"total":N, "passed":N, "failed":0, "skipped_na":N},
-  "fix_loops_triggered": 0
+  "open_findings": 0,
+  "findings_file": "tracking/{wave}/review-findings.md",
+  "checklist_summary": {"total":N, "passed":N, "failed":0, "skipped_na":N}
 }
 ```

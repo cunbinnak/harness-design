@@ -5,7 +5,7 @@ description: Self-review BFF — schema additive, DataLoader (no N+1), cache key
 
 # Review BFF Skill
 
-> Checklist source-of-truth cho `review-bff-agent` ở `/review-dev`. Fail → spawn fix → re-review → loop tới pass.
+> Checklist source-of-truth cho `review-bff-agent` ở `/review-dev`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
 
 ## Lệnh chạy
 ```bash
@@ -37,4 +37,4 @@ git diff --name-only main...HEAD
 - Tin `userId`/`tenantId` từ GraphQL args thay vì context; introspection bật ở prod; không depth/complexity limit.
 
 ## Output
-RETURN SCHEMA: `review_result`, `coverage_pct`, `checklist_summary`, `needs_review[]`, `fix_loops_triggered`.
+RETURN SCHEMA: `review_result`, `open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.

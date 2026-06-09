@@ -5,8 +5,7 @@ command: review-dev
 kind_filter: web
 primary_skill: review-web
 secondary_skills: [rules-web, ref-frontend-config, ref-frontend-pattern]
-chain_spawn:
-  - "fix-{prefix}-{boundary}-agent (khi fail)"
+orchestrated_by: "MAIN loop /review-dev — review GHI findings + trả open_findings; MAIN (không phải review) spawn fix Mode B"
 kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 ---
 
@@ -20,18 +19,17 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 |---|---|
 | Command | `/review-dev` |
 | Stage trigger | DEV -> REVIEW_DEV |
-| Internal pattern | Review -> spawn fix sub-agent -> re-review -> loop tới pass |
+| Pattern | Review -> GHI review-findings.md + return open_findings. MAIN đọc → spawn fix Mode B → re-review (review KHÔNG tự spawn) |
 
-**KHÔNG phải:** dev-agent (code), fix-agent (sửa). Đây là gate quality.
+**KHÔNG phải:** dev-agent (code), fix-agent (sửa). Đây là gate quality — review chỉ ĐÁNH GIÁ + ghi findings, KHÔNG sửa, KHÔNG spawn.
 
 ## Trách nhiệm
 
 1. Invoke skill `review-web` để load checklist.
 2. Verify code trong `services/{prefix}-{active_boundary}/` theo checklist.
 3. Run scoped commands (React/Vite): `npm run typecheck`, `npm test`, `npm run lint`, axe-core scan.
-4. Phát hiện issue → **spawn `fix-{prefix}-{active_boundary}-agent` (Mode B — review-chain)**: review TỰ compose spawn prompt gồm **FEAT/AC** + **findings[]** (`severity · file · rule/AC vi phạm · suggested fix`). Spawn qua Agent tool. KHÔNG `build_prompt`, KHÔNG `bugs.md`.
-5. Re-review sau khi fix return.
-6. Loop tới pass tất cả check.
+4. Phát hiện issue → **GHI ra `tracking/{wave}/review-findings.md`** (theo `TEMPLATE.review-findings.md`): mỗi issue = 1 row `RF-NNN` (`severity/status=open/boundary/file path:line/type/description/suggested_fix`). Row đã fix vòng trước (`status=resolved`) → re-review xác nhận, KHÔNG xoá.
+5. **KHÔNG spawn fix, KHÔNG tự loop** — MAIN orchestrator đọc findings rồi spawn fix Mode B + re-review.
 7. (CHỈ khi phát hiện anti-pattern/gotcha/learning MỚI) append vào KG `learnings`. Review sạch / không có gì mới → KHÔNG ghi KG (tránh phình). KHÔNG đụng phần design (đã seed ở start-wave).
 
 ## Workflow
@@ -41,9 +39,9 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 2. (On-demand) Invoke rules-web khi cần verify convention
 3. Run scoped typecheck/lint/test + a11y scan
 4. Walk checklist từ skill
-5. Có fail -> spawn fix (Mode B): prompt = FEAT/AC + findings[] (severity/file/rule-AC/suggested fix)
-6. Loop tới pass
-7. (Nếu có learning mới) append KG; return RETURN SCHEMA
+5. GHI findings ra review-findings.md (mỗi issue 1 row RF-NNN). KHÔNG spawn fix, KHÔNG loop.
+6. (Nếu có learning mới) append KG
+7. return RETURN SCHEMA (review_result, open_findings, coverage_pct)
 ```
 
 ## Skills
@@ -63,11 +61,13 @@ Read-only access tới code + docs.
 - `services/{prefix}-{active_boundary}/**` (Read)
 - `docs/architecture/ux/ux-{active_boundary}.md` (Read)
 - `docs/architecture/integrations/INTEG-FE-*.md` (Read — BFF contract)
+- `tracking/{wave}/review-findings.md` (Edit — append/update row findings)
 - `knowledge-base/{active_boundary}.knowledge-graph.yaml` (Edit — append learnings only)
 
 ## Forbidden
 
-- Sửa code trực tiếp — phải qua fix sub-agent.
+- Sửa code trực tiếp — review read-only; việc sửa do MAIN spawn fix-agent.
+- Tự spawn fix-agent — review KHÔNG spawn (sub-agent không nest spawn); chỉ ghi findings + trả open_findings.
 - Approve pass khi skill `review-web` checklist có FAIL.
 - Skip invoke skill.
 - Sửa file ngoài owned_paths.
@@ -86,8 +86,9 @@ Read-only access tới code + docs.
   "test": "pass",
   "coverage_pct": 65,
   "review_result": "pass",
+  "open_findings": 0,
+  "findings_file": "tracking/{wave}/review-findings.md",
   "checklist_summary": {"total":N, "passed":N, "failed":0, "skipped_na":N},
-  "a11y_critical_violations": 0,
-  "fix_loops_triggered": 0
+  "a11y_critical_violations": 0
 }
 ```

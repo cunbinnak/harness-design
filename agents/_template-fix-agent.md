@@ -27,7 +27,7 @@ matrix_revision: {{matrix_revision}}
 | Boundary | `{{boundary}}` |
 | Kind | `{{kind}}` |
 | Service folder | `services/{{prefix}}-{{boundary}}/` |
-| Input (2 mode) | **A bug-id**: `/fix-bugs` + test-chain → `bugs.md`. **B review-chain**: findings + FEAT/AC trong spawn prompt |
+| Input (2 mode) | **A bug-id**: `/fix-bugs` + test-chain → `bugs.md`. **B review-chain**: spawn bởi **MAIN** (orchestrator `/review-dev`) — findings (từ `review-findings.md`) + FEAT/AC trong spawn prompt |
 
 ## Tài liệu BẮT BUỘC đọc (context FEAT/design của boundary)
 
@@ -37,7 +37,7 @@ matrix_revision: {{matrix_revision}}
 
 ## Input theo mode (KHÔNG tự đoán sửa gì)
 - **Mode A — bug-id** (spawn từ `/fix-bugs` hoặc **test-execute-chain**): spawn prompt đưa `bug_id` → đọc **row `BUG-NNN`** trong bảng `tracking/wave-{N}/bugs.md` (cột reproduce / expected / actual / `TC` / `AC` / **error log**).
-- **Mode B — review-chain** (spawn từ `review-{{kind}}-agent`): spawn prompt đưa **findings + FEAT/AC** — mỗi finding có `severity + file + rule/BR/AC vi phạm + suggested fix`. KHÔNG đọc bugs.md.
+- **Mode B — review-chain** (spawn bởi **MAIN** sau khi review-agent ghi `review-findings.md`): spawn prompt đưa **findings + FEAT/AC** — mỗi finding có `RF-NNN + severity + file(path:line) + type(rule/BR/AC/arch/security/test) + suggested fix` (MAIN trích từ row `status=open` của `tracking/{wave}/review-findings.md`). KHÔNG đọc bugs.md.
 
 ## Trách nhiệm
 
@@ -45,8 +45,8 @@ matrix_revision: {{matrix_revision}}
 2. **Mode A**: reproduce **đúng TC fail** (xác nhận thấy bug) TRƯỚC khi sửa. **Mode B**: đối chiếu findings với code.
 3. Fix code trong `services/{{prefix}}-{{boundary}}/` tuân `rules-{{kind}}` — **tối thiểu, đúng root cause / đúng từng finding**, giữ business intent của FEAT; KHÔNG sửa lan ra ngoài bug/finding.
 4. Verify: **Mode A** re-run CHÍNH TC đó → expected pass; **Mode B** run scoped test pass.
-5. **Auto chain**: spawn `review-{{kind}}-agent` verify regression.
-6. Review pass → **Mode A**: set ô `status` của **row `BUG-NNN`** trong bảng = `closed` + thêm regression `TC-R*`; **Mode B**: return findings đã sửa cho review agent. Review fail → loop fix.
+5. Verify regression: **Mode A** auto chain spawn `review-{{kind}}-agent`; **Mode B** KHÔNG tự spawn review — set row resolved rồi trả về **MAIN** (MAIN re-spawn review).
+6. Đóng việc → **Mode A**: set ô `status` của **row `BUG-NNN`** trong bảng = `closed` + thêm regression `TC-R*`; **Mode B**: set row `RF-NNN` = `resolved` + return cho MAIN. Còn fail → **Mode A** loop fix; **Mode B** MAIN loop.
 7. Append FM (failure mode) vào KG nếu phát hiện mới.
 
 ## Workflow khi spawn (theo mode)
@@ -57,10 +57,10 @@ matrix_revision: {{matrix_revision}}
 3. Chain spawn `review-{{kind}}-agent` verify regression.
 4. Pass → set ô `status` của **row `BUG-NNN`** trong bảng = `closed` + regression `TC-R*` + append KG → return (`bug_id`, `fix_verified`). Fail → loop.
 
-**Mode B — review-chain** (spawn từ `review-{{kind}}-agent`, prompt mang findings + FEAT):
-1. Invoke `rules-{{kind}}`. Đọc **findings + FEAT/AC** từ spawn prompt.
+**Mode B — review-chain** (spawn bởi **MAIN**, prompt mang findings từ `review-findings.md` + FEAT):
+1. Invoke `rules-{{kind}}`. Đọc **findings (RF-NNN) + FEAT/AC** từ spawn prompt.
 2. Fix đúng từng finding (tuân `rules-{{kind}}`, giữ FEAT intent) → run scoped test pass.
-3. Return findings đã sửa cho `review-{{kind}}-agent` gọi tới (review re-review). Fail → loop.
+3. **Set ô `status` của từng row `RF-NNN` đã sửa = `resolved`** trong `tracking/{wave}/review-findings.md` → return cho MAIN (MAIN re-spawn review verify). Fail → MAIN loop.
 
 ## Skill
 
@@ -75,7 +75,7 @@ matrix_revision: {{matrix_revision}}
 ## Hook protection — non-negotiables
 
 - KHÔNG edit ngoài `owned_paths`.
-- KHÔNG modify file ngoài `services/{{prefix}}-{{boundary}}/` + `tracking/wave-{N}/bugs.md`.
+- KHÔNG modify file ngoài `services/{{prefix}}-{{boundary}}/` + `tracking/wave-{N}/bugs.md` (Mode A) + `tracking/wave-{N}/review-findings.md` (Mode B — set status=resolved).
 - KHÔNG bypass test verify.
 - KG `kg_appended: ["fm:FM-NNN"]` BẮT BUỘC nếu fix discovered new failure mode.
 

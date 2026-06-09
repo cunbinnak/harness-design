@@ -71,7 +71,7 @@
 /approve-document                         User mark doc OK (approved=true). KHÔNG đổi state. Cho phép /start-wave
 /start-wave <N>                           Mở wave, materialize boundaries + agents + KG (gate: approved=true)
 /start-dev <boundary>                     Vào DEV, spawn dev sub-agent boundary (auto detect kind)
-/review-dev                               Self-review code + coverage. Internal loop fix+review
+/review-dev                               Review cả wave. Review ghi findings; MAIN spawn fix Mode B → re-review tới open_findings==0
 /dev-handoff                              Verify gates (coverage≥80, infra) → TEST
 /test-plan                                Sinh test-case-registry.md
 /test-execute                             Build local + run auto test. Internal fix loop. Pass → auto-transition MANUAL_TEST

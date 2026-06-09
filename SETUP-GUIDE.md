@@ -113,7 +113,7 @@ DONE
 
 /review-dev
 # → spawn review-backend-agent (kind detected from MATRIX)
-# → internal loop: review → spawn fix sub-agent → re-review → pass
+# → review ghi review-findings.md + trả open_findings; MAIN spawn fix Mode B → re-review tới open_findings==0
 
 /dev-handoff
 # → verify infra docker-compose + coverage + smoke functional

@@ -22,7 +22,7 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 s
 | Agent | Command | Skill primary | Mode |
 |-------|---------|---------------|------|
 | [review-document-agent](review-document-agent.md) | `/review-document` | `business-analysis` | revision (feedback) + sanity-check (no arg) |
-| [review-backend-agent](review-backend-agent.md) | `/review-dev` (kind=backend) | `review-backend` | Internal loop: review → spawn fix → re-review |
+| [review-backend-agent](review-backend-agent.md) | `/review-dev` (kind=backend) | `review-backend` | Review ghi findings + trả open_findings; MAIN spawn fix → re-review |
 | [review-bff-agent](review-bff-agent.md) | `/review-dev` (kind=bff) | `review-bff` | Same |
 | [review-web-agent](review-web-agent.md) | `/review-dev` (kind=web) | `review-web` | Same |
 | [review-mobile-agent](review-mobile-agent.md) | `/review-dev` (kind=mobile) | `review-mobile` | Same |

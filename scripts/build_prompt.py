@@ -443,10 +443,10 @@ def build_boundary_command(
         task_list = [
             f"Invoke skill `{(REVIEW_SKILLS_PER_KIND.get(kind) or ['review-?'])[0]}`.",
             f"Read `FEAT-*` boundary đảm nhận → review code trong `{service_folder}/` theo checklist skill (gồm **AC/BR compliance**: mọi AC implement + BR enforce).",
-            f"Phát hiện issue → spawn `fix-{prefix}-{boundary_id}-agent` kèm: (1) **FEAT/AC boundary đang làm** (để fix hiểu business intent); (2) **DANH SÁCH FINDINGS cụ thể** (mỗi finding: severity + file + rule/BR/AC vi phạm + suggested fix, theo Output Format của review skill). Fix agent KHÔNG tự đoán — sửa đúng findings được giao trong phạm vi FEAT.",
-            "Loop review + fix tới pass (re-review sau mỗi đợt fix).",
-            "Append learnings.gotchas vào KG nếu phát hiện pattern xấu.",
-            "Return RETURN SCHEMA với `review_result: pass|fail` + `coverage_pct`.",
+            f"**GHI findings ra `tracking/{wave_id}/review-findings.md`** (theo `tracking/_templates/TEMPLATE.review-findings.md`): mỗi issue = 1 row `RF-NNN` với `severity/status=open/boundary={boundary_id}/file(path:line)/type/description/suggested_fix`. Row đã fix ở vòng trước (status=resolved) → re-review xác nhận, KHÔNG xoá.",
+            "**KHÔNG spawn fix, KHÔNG tự loop** — đó là việc của MAIN orchestrator. Review chỉ đánh giá + ghi findings + trả số liệu.",
+            "Append learnings.gotchas vào KG nếu phát hiện pattern xấu (KHÔNG đụng phần design).",
+            "Return RETURN SCHEMA với `review_result: pass|fail`, **`open_findings: <số row BLOCKER/MAJOR status=open>`**, `coverage_pct`.",
         ]
     elif command == "fix-bugs":
         bug_id = opts.get("bug_id") or "<BUG-NNN>"
@@ -677,17 +677,27 @@ def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
         "Review **TOÀN BỘ** boundary trong wave này, mỗi boundary theo **kind** của nó. "
         "Pass chỉ khi **MỌI** boundary pass (review_result + coverage theo kind).",
         "## BOUNDARIES TRONG WAVE\n\n" + table,
-        "## CÁCH CHẠY — TUẦN TỰ (không song song)\n"
-        "Với MỖI boundary theo thứ tự:\n"
-        "1. Lấy prompt review 1 boundary (kind tự suy từ MATRIX):\n```\n" + steps + "\n```\n"
-        "2. Spawn `review-{kind}-agent` với prompt đó. Agent tự loop review→fix→re-review tới pass (coverage enforced theo kind).\n"
-        "3. Ghi lại `{boundary, kind, review_result, coverage_pct}` từ RETURN SCHEMA của agent.\n"
-        "4. Xong boundary này MỚI sang boundary kế.",
+        "## CÁCH CHẠY — BẠN (MAIN) ORCHESTRATE VÒNG REVIEW→FIX\n"
+        "> review-agent là sub-agent **KHÔNG tự spawn fix được** (không nest spawn). Vì vậy **BẠN — MAIN loop — điều phối**: "
+        "review trả findings → BẠN đọc → BẠN spawn fix → BẠN re-review. Không có 'agent tự loop'.\n\n"
+        "Lệnh lấy prompt review từng boundary:\n```\n" + steps + "\n```\n\n"
+        "Với MỖI boundary theo thứ tự (TUẦN TỰ, không song song), lặp tới sạch:\n"
+        "1. **Spawn `review-{kind}-agent`** với prompt trên. Review-agent: kiểm theo checklist → "
+        f"GHI/cập nhật `tracking/{wave_id}/review-findings.md` (mỗi finding 1 row: severity/status/boundary/file/type/suggested_fix) → "
+        "return RETURN SCHEMA `{review_result, open_findings, coverage_pct}`. Review **KHÔNG** spawn fix.\n"
+        "2. Đọc `open_findings` trong return:\n"
+        "   - `== 0` → boundary sạch, sang bước 4.\n"
+        f"   - `> 0` → đọc các row `status=open` của boundary trong `tracking/{wave_id}/review-findings.md` → "
+        "**BẠN spawn `fix-{prefix}-{boundary}-agent` (Mode B)**, compose prompt = FEAT/AC boundary + danh sách finding (file/type/suggested_fix). "
+        "Fix sửa code → set row `status=resolved` → return.\n"
+        "3. **Quay lại bước 1** (re-review) — review xác nhận row resolved, phát hiện thêm nếu có. Lặp tới `open_findings==0` (cap ~5 vòng; quá → STOP báo user).\n"
+        "4. Ghi `{boundary, kind, review_result:pass, coverage_pct}`. Sang boundary kế.",
         "## KẾT THÚC\n"
-        "- Khi TẤT CẢ boundary `review_result=pass`:\n"
+        "- Khi MỌI boundary `open_findings==0` + `review_result=pass`:\n"
         "```\npy scripts/harness.py review-dev complete '{\"review_results\":[{\"boundary\":\"<b>\",\"kind\":\"<k>\",\"review_result\":\"pass\",\"coverage_pct\":NN}]}'\n```\n"
-        "- Boundary nào không pass được → **STOP**, báo user, KHÔNG complete.\n"
-        "- Gate `/dev-handoff` verify lại: mọi `wave_boundaries` có trong `review_results` với pass + coverage đạt ngưỡng kind.",
+        f"- **Gate `no_open_findings` chặn complete** nếu `tracking/{wave_id}/review-findings.md` còn row BLOCKER/MAJOR `status=open` → buộc fix sạch trước, không lách được.\n"
+        "- Boundary nào fix mãi không sạch → **STOP**, báo user, KHÔNG complete.\n"
+        "- Gate `/dev-handoff` verify thêm: mọi `wave_boundaries` có trong `review_results` pass + coverage đạt ngưỡng kind.",
     ]
     return "\n\n".join(parts)
 

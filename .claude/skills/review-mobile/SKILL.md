@@ -5,7 +5,7 @@ description: Self-review mobile — analyze, data layer khớp design, offline i
 
 # Review Mobile Skill
 
-> Checklist source-of-truth cho `review-mobile-agent` ở `/review-dev`. Fail → spawn fix → re-review → loop tới pass.
+> Checklist source-of-truth cho `review-mobile-agent` ở `/review-dev`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
 
 ## Lệnh chạy
 ```bash
@@ -39,4 +39,4 @@ git diff --name-only main...HEAD
 - WebView load URL không tin / nhận deeplink không validate; hardcode API key trong asset.
 
 ## Output
-RETURN SCHEMA: `review_result`, `coverage_pct`, `checklist_summary`, `needs_review[]`, `fix_loops_triggered`.
+RETURN SCHEMA: `review_result`, `open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.

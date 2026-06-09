@@ -5,7 +5,7 @@ description: Self-review web frontend — a11y, no biz logic, data layer khớp 
 
 # Review Web Skill
 
-> Checklist source-of-truth cho `review-web-agent` ở `/review-dev`. Fail → spawn fix → re-review → loop tới pass.
+> Checklist source-of-truth cho `review-web-agent` ở `/review-dev`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
 
 ## Lệnh chạy
 ```bash
@@ -43,4 +43,4 @@ git diff --name-only main...HEAD
 - `dangerouslySetInnerHTML` / render HTML từ API chưa sanitize; token trong `localStorage`.
 
 ## Output
-RETURN SCHEMA: `review_result`, `coverage_pct`, `checklist_summary`, `needs_review[]`, `fix_loops_triggered`.
+RETURN SCHEMA: `review_result`, `open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.

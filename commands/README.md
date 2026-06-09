@@ -12,7 +12,7 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 s
 | 2 | [review-document](review-document.md) | INTAKE | INTAKE | Gate: approved=true |
 | 3 | [start-wave](start-wave.md) | INTAKE | WAVE_OPEN | Materialize agents+KG per boundary |
 | 4 | [start-dev](start-dev.md) | WAVE_OPEN | DEV | Spawn dev sub-agent (kind-aware) |
-| 5 | [review-dev](review-dev.md) | DEV | REVIEW_DEV | Internal loop fix+review till pass |
+| 5 | [review-dev](review-dev.md) | DEV | REVIEW_DEV | Review ghi findings; MAIN spawn fix → re-review till open_findings==0 |
 | 6 | [dev-handoff](dev-handoff.md) | REVIEW_DEV | DEV_HANDOFF | Gate: coverage>=80, infra ready |
 | 7 | [test-plan](test-plan.md) | DEV_HANDOFF | TEST_PLAN | Sinh test-case-registry |
 | 8 | [test-execute](test-execute.md) | TEST_PLAN | TEST_EXECUTE | Build local + run + fix loop. Pass -> auto MANUAL_TEST |

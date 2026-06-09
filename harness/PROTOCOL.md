@@ -112,7 +112,7 @@ Một số state có internal agent behavior, không cần command từ user:
 
 | State | Internal behavior |
 |-------|-------------------|
-| REVIEW_DEV | review-{kind}-agent spawn fix sub-agent loop tới pass |
+| REVIEW_DEV | review-{kind}-agent ghi review-findings.md + trả open_findings; MAIN (orchestrator) đọc → spawn fix Mode B → re-review tới open_findings==0 (gate no_open_findings chặn complete) |
 | TEST_EXECUTE | test-execute-agent run + fail → log bug → spawn fix sub-agent → re-test loop |
 | MANUAL_TEST | /fix-bugs chain spawn fix-{boundary}-agent + review-{kind}-agent verify |
 
