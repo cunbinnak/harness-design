@@ -5,7 +5,7 @@
 
 ## Project
 
-Orchestrator framework triển khai ADLC (Architecture-Driven Lifecycle): từ "nhận yêu cầu" → "phân tích thiết kế" → "code" → "test" → "release", combine AI agents + người theo state machine 10 states + 13 slash commands.
+Orchestrator framework triển khai ADLC (Architecture-Driven Lifecycle): từ "nhận yêu cầu" → "phân tích thiết kế" → "code" → "test" → "release", combine AI agents + người theo state machine 10 states + 14 slash commands.
 
 Tech: Python 3.14 (kernel), Java/Spring Boot (services generated per boundary, target stack tùy intake).
 
@@ -19,7 +19,7 @@ py scripts/state.py validate         # validate config
 
 ## Commands
 
-13 slash commands theo state machine. Xem [commands/README.md](commands/README.md) để biết flow.
+14 slash commands theo state machine. Xem [commands/README.md](commands/README.md) để biết flow.
 
 Mỗi command có 2 lệnh:
 ```bash
@@ -65,7 +65,7 @@ py scripts/smoke_test.py             # E2E state machine 18 cases
 │   ├── SERVICE-BOUNDARY-MATRIX.json
 │   └── PROTOCOL.md
 ├── agents/                         16 singleton + 2 template + N materialized
-├── commands/                       13 command source (synced to .claude/commands/)
+├── commands/                       14 command source (synced to .claude/commands/)
 ├── scripts/                        Python kernel + hooks
 ├── docs/architecture/              PROJECT + FEAT + ADR + HLD + API + data-model + UX + events + integrations + infra
 ├── docs/plans/                     WAVE-SEQUENCE + wave-{N}

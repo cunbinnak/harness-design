@@ -701,6 +701,61 @@ def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
     return "\n\n".join(parts)
 
 
+def build_fix_bugs_sweep(state: dict, matrix: list[dict], opts: dict) -> str:
+    """/fix-bugs KHÔNG có --bug-id: sweep MỌI bug open. MAIN đọc bugs.md → loop spawn fix per bug."""
+    wave_id = (state.get("wave") or {}).get("id") or "<wave>"
+    parts = [
+        f"# SPAWN PROMPT — /fix-bugs (SWEEP — mọi bug open trong {wave_id})",
+        state_bundle(state, {"mode": "fix-sweep"}),
+        NON_NEGOTIABLES,
+        "## MỤC TIÊU\n"
+        "Fix **MỌI bug đang mở** trong `bugs.md` (`status ∈ {open, in_progress}`). Tự động — KHÔNG cần user báo từng ID.",
+        docs_to_read([("Bugs", f"tracking/{wave_id}/bugs.md")]),
+        "## CÁCH CHẠY — BẠN (MAIN) ĐIỀU PHỐI (fix-agent làm việc nặng)\n"
+        f"1. Đọc `tracking/{wave_id}/bugs.md` → lấy MỌI row `status ∈ {{open, in_progress}}` (cột `BUG` + `boundary`).\n"
+        "2. Với MỖI bug (tuần tự):\n"
+        "```\npy scripts/build_prompt.py fix-bugs --bug-id <BUG-NNN> --boundary <boundary trong row>\n```\n"
+        "   → spawn `fix-{prefix}-{boundary}-agent` (Mode A) với prompt đó → fix re-run TC verify → set row `status=closed`.\n"
+        "3. Xong bug này mới sang bug kế. Hết bug open → done.\n"
+        "4. MAIN CHỈ điều phối (đọc bugs.md + spawn tuần tự); KHÔNG tự fix code.",
+        "## KẾT THÚC\n"
+        "- Mọi bug open → closed: báo user.\n"
+        "- Bug nào fix mãi không được → STOP, báo user (KHÔNG để loop vô hạn).",
+    ]
+    return "\n\n".join(parts)
+
+
+def build_log_bug(state: dict, matrix: list[dict], opts: dict) -> str:
+    """/log-bug "<mô tả>": spawn log-bug-agent ghi 1 bug manual vào bugs.md (UAT)."""
+    wave_id = (state.get("wave") or {}).get("id") or "<wave>"
+    desc = opts.get("description") or opts.get("input") or "<mô tả bug — user truyền qua /log-bug>"
+    parts = [
+        "# SPAWN PROMPT — /log-bug",
+        "\nAgent: **log-bug-agent** · Ghi 1 bug `manual` vào bugs.md từ mô tả UAT (KHÔNG fix).",
+        state_bundle(state, {"mode": "log-bug"}),
+        NON_NEGOTIABLES,
+        f"## MÔ TẢ BUG (từ user)\n\n> {desc}",
+        skills_block(["bug-logging"]),
+        docs_to_read([
+            ("Bugs (lấy BUG-NNN kế tiếp)", f"tracking/{wave_id}/bugs.md"),
+            ("FEAT (suy AC + boundary)", "docs/architecture/feat/FEAT-*.md"),
+            ("UX (suy màn → boundary FE)", "docs/architecture/ux/ux-*.md"),
+            ("MATRIX (danh sách boundary)", "harness/SERVICE-BOUNDARY-MATRIX.json"),
+        ]),
+        tasks_block([
+            "Invoke skill `bug-logging` (format bảng + ID increment).",
+            f"Đọc `tracking/{wave_id}/bugs.md` → `BUG-NNN` kế tiếp (max id + 1).",
+            "Parse mô tả → `title` / `reproduce` / `expected` / `actual`. `sev=medium` nếu mô tả không nêu.",
+            "**Suy `boundary`** từ nội dung + màn/context trong mô tả (đối chiếu FEAT/UX/MATRIX). KHÔNG rõ → hỏi user đúng 1 câu 'bug thuộc boundary nào'.",
+            "Map `AC` (`FEAT-N:AC-M`) nếu xác định được FEAT liên quan; else để rỗng.",
+            f"**Append 1 row** vào bảng `tracking/{wave_id}/bugs.md`: `origin=manual`, `status=open`, đủ title/boundary/reproduce/expected/actual/sev.",
+            "Return RETURN SCHEMA với `bug_id: BUG-NNN`.",
+        ]),
+        RETURN_SCHEMA_TEMPLATE,
+    ]
+    return "\n\n".join(parts)
+
+
 BUILDERS = {
     "intake-requirement": build_intake_requirement,
     "review-document": build_review_document,
@@ -714,7 +769,11 @@ BUILDERS = {
     "dev-handoff": build_dev_handoff,
     "test-plan": build_test_plan,
     "test-execute": build_test_execute,
-    "fix-bugs": lambda s, m, o: build_boundary_command(s, m, o, "fix-bugs"),
+    "fix-bugs": lambda s, m, o: (
+        build_boundary_command(s, m, o, "fix-bugs") if o.get("bug_id")
+        else build_fix_bugs_sweep(s, m, o)
+    ),
+    "log-bug": build_log_bug,
     "end-wave": build_end_wave,
     "done-wave": build_done_wave,
     "apply-cr": build_apply_cr,
@@ -765,6 +824,7 @@ def main() -> int:
     ap.add_argument("--cr-id", dest="cr_id")
     ap.add_argument("--input")
     ap.add_argument("--feedback", help="for /review-document revision mode")
+    ap.add_argument("--description", dest="description", help="for /log-bug — mô tả bug manual")
     ap.add_argument("--target-file", dest="target_file", help="for /review-document --file")
     ap.add_argument("--stats", action="store_true")
     ap.add_argument("--save")
@@ -778,6 +838,7 @@ def main() -> int:
         "cr_id": args.cr_id,
         "input": args.input,
         "feedback": args.feedback,
+        "description": args.description,
         "target_file": args.target_file,
     }
 

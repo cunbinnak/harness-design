@@ -26,7 +26,7 @@
 | Strategy | **Polyrepo** — mỗi boundary scaffolded ở `/start-dev` là 1 repo riêng (`{prefix}-{boundary}`). Service repos sống ngoài, link qua `SERVICE-BOUNDARY-MATRIX.json` field `repo_url`. |
 | Kernel stack | Python 3.14 (state engine + hooks + materialize + build_prompt) |
 | Service stack | Per-boundary, set trong intake step 3 (technical-design). Vd: Java 21 + Spring Boot 3.4, Node.js 22 + Apollo, React 19 + Vite, Flutter 3, … |
-| Scale | 10 states · 13 commands · N waves · M boundaries (set dynamic từ intake step 4) |
+| Scale | 10 states · 14 commands · N waves · M boundaries (set dynamic từ intake step 4) |
 | `services/` trong repo này | **gitignored** — chỉ working dir tạm khi sub-agent scaffold (push lên repo riêng, không track ở đây) |
 
 > Khi fork harness này cho project mới: `/intake-requirement` sẽ rewrite IDENTITY (project name, prefix, scale) qua artifacts ở `docs/architecture/PROJECT.md`.
@@ -78,8 +78,9 @@
 /end-wave                                 Soft close, infra UP → DONE (UAT signed)
 /done-wave                                Hard close, teardown → BOOTSTRAP
 
-# Branch (1)
-/fix-bugs <bug-id>                        Fix manual UAT bug (Mode A). MAIN spawn fix → re-run test verify → close bug
+# Branch (2)
+/log-bug "<mô tả>"                        Ghi 1 bug manual (UAT) vào bugs.md (spawn log-bug-agent, origin=manual). Chỉ ghi, không fix
+/fix-bugs [<bug-id>]                       Fix bug (Mode A). Không arg = sweep mọi bug open; có bug-id = fix 1 cái. MAIN spawn fix → re-run TC verify → close
 
 # Side (1)
 /apply-cr <CR-ID>                         Change request → intake amendment (chỉ từ DONE state)

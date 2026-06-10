@@ -2,7 +2,7 @@
 
 Source of truth: 19 file trong `agents/` (16 singleton command + 2 templates + README). Per-boundary dev/fix agent **materialize từ MATRIX** ở `/start-wave` (không commit sample).
 
-State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 states, 13 commands).
+State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 states, 14 commands).
 
 ## Agent inventory
 
@@ -38,6 +38,7 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 s
 | [dev-handoff-agent](dev-handoff-agent.md) | `/dev-handoff` | `infra-local-dev` | REVIEW_DEV → DEV_HANDOFF |
 | [test-plan-agent](test-plan-agent.md) | `/test-plan` | `test-plan` | DEV_HANDOFF → TEST_PLAN |
 | [test-execute-agent](test-execute-agent.md) | `/test-execute` | `test-execute` | TEST_PLAN → TEST_EXECUTE → (auto) MANUAL_TEST |
+| [log-bug-agent](log-bug-agent.md) | `/log-bug` | `bug-logging` | MANUAL_TEST (self) — ghi bug manual vào bugs.md |
 | [end-wave-agent](end-wave-agent.md) | `/end-wave` | (none) | MANUAL_TEST → DONE |
 | [done-wave-agent](done-wave-agent.md) | `/done-wave` | `infra-local-dev` | DONE → BOOTSTRAP |
 

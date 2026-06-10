@@ -16,7 +16,7 @@ py scripts/reset_for_new_project.py    # clear artifacts cũ
 py scripts/harness.py state            # verify stage=BOOTSTRAP
 ```
 
-## Workflow (13 commands, 10 states)
+## Workflow (14 commands, 10 states)
 
 ```
 BOOTSTRAP → /intake-requirement "<project description>"
@@ -53,7 +53,7 @@ KHÔNG sửa `harness/STATE.json` thủ công — hook chặn.
 ├── SETUP-GUIDE.md                  Setup + workflow detail
 ├── .claude/
 │   ├── settings.json              9 hooks + permissions deny
-│   ├── commands/                  13 slash commands (synced from commands/)
+│   ├── commands/                  14 slash commands (synced from commands/)
 │   └── skills/                    On-demand skills (project-customizable)
 ├── harness/
 │   ├── STATE.json                 Current stage (chỉ trạng thái hiện tại, no history)
@@ -64,7 +64,7 @@ KHÔNG sửa `harness/STATE.json` thủ công — hook chặn.
 │   ├── _template-{dev,fix}-agent.md   Materialize templates
 │   ├── {intake,review,ops,side}-agents (16 singletons)
 │   └── dev-{prefix}-{boundary}-agent  (materialized per boundary)
-├── commands/                       13 slash command sources
+├── commands/                       14 slash command sources
 ├── scripts/
 │   ├── harness.py                 CLI thin wrapper
 │   ├── state.py                   STATE manager

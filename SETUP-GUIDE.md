@@ -53,7 +53,7 @@ py scripts/harness.py can <command>    # YES/NO command có được allowed
 
 KHÔNG sửa `harness/STATE.json` tay — hook chặn.
 
-## Workflow sequence (13 commands)
+## Workflow sequence (14 commands)
 
 ```
 BOOTSTRAP
@@ -75,7 +75,8 @@ TEST_PLAN
 TEST_EXECUTE
    ↓ (auto) sau khi chạy (pass HAY fail)
 MANUAL_TEST
-   ↓ /fix-bugs <bug-id> (fix bug auto+manual → re-run TC verify)
+   ↺ /log-bug "<mô tả>" (UAT phát hiện bug → log-bug-agent ghi row origin=manual)
+   ↺ /fix-bugs (sweep mọi bug open: auto+manual) hoặc /fix-bugs <bug-id>
    ↺ /test-execute (re-run full auto suite sau fix → bug mới/regression → fix tiếp)
    ↓ /end-wave (UAT signed + no_open_bugs)
 DONE
@@ -136,9 +137,13 @@ DONE
 
 ```bash
 # Stakeholder UAT manually, log results vào tracking/wave-{N}/qc-signoff.md
-# Phát hiện bug?
-/fix-bugs BUG-001
-# → MAIN spawn fix → fix re-run TC + scoped test verify → close bug (KHÔNG gọi review-agent)
+# Phát hiện bug? → ghi vào bugs.md
+/log-bug "lỗi validate SĐT khách hàng chưa đúng định dạng VN 10 số"
+# → log-bug-agent suy boundary + append row (origin=manual, status=open) → BUG-NNN
+
+/fix-bugs
+# → sweep: MAIN đọc bugs.md → fix MỌI bug open (auto+manual) → re-run TC verify → close
+# (hoặc /fix-bugs BUG-001 cho 1 cái)
 
 /end-wave
 # → mark UAT signed, transition DONE

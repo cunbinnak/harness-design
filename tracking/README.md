@@ -38,7 +38,7 @@ tracking/
 | `test-logs/TC-*.log` | `/test-execute` | Per-TC append | Proof per TC: cmd, response, result |
 | `test-logs/screenshots/*.png` | `/test-execute` | UI tests | UI test evidence (Playwright/Cypress) |
 | `review-findings.md` | `/review-dev` (review-{kind}-agent ghi) | review append/update row + fix set `resolved` | Findings review pre-handoff dạng **bảng** (1 row/finding); gate `no_open_findings` |
-| `bugs.md` | `/test-execute` + `/fix-bugs` | Append per bug (row) | Bug tickets dạng **bảng** (1 row/bug) |
+| `bugs.md` | `/test-execute` (auto) + `/log-bug` (manual) + `/fix-bugs` (close) | Append per bug (row) | Bug tickets dạng **bảng** (1 row/bug) |
 | `qc-signoff.md` | `/end-wave` (end-wave-agent) | Final signoff | UAT result + stakeholder approval |
 | `change-requests/CR-*.md` | User manual | `/apply-cr` agent fill plan | CR affecting this wave's scope |
 
@@ -95,9 +95,10 @@ Change Request lưu trong **wave folder bị ảnh hưởng**, không cross-wave
   → transition MANUAL_TEST (pass HAY fail); bug auto fix qua /fix-bugs
 
 (auto-transition) MANUAL_TEST
-  → /fix-bugs <BUG> clear bug auto (test-execute) + manual (UAT) — fix re-run TC verify
+  → stakeholder UAT phát hiện bug → /log-bug "<mô tả>" (origin=manual, log-bug-agent ghi row)
+  → /fix-bugs (sweep mọi bug open: auto + manual) hoặc /fix-bugs <BUG> — fix re-run TC verify
   → /test-execute re-run full auto suite (regression/bug mới → fix tiếp; loop tới sạch)
-  → stakeholder UAT → write qc-signoff.md với UAT results + sign
+  → write qc-signoff.md với UAT results + sign
 
 /end-wave
   → verify no_open_bugs + qc-signoff signed

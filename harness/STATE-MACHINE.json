@@ -78,6 +78,7 @@
       "description": "UAT manual + clear bug + RE-RUN test. Infra UP. /fix-bugs (Mode A) fix bug auto+manual (re-run TC verify, KHÔNG gọi review). /test-execute chạy LẠI full auto suite sau fix → bug mới/regression log lại → fix tiếp. Sạch (no_open_bugs) mới /end-wave.",
       "allowed_commands": [
         "fix-bugs",
+        "log-bug",
         "test-execute",
         "end-wave"
       ],
@@ -201,6 +202,15 @@
       },
       "auto": true,
       "note": "Auto-transition khi test-execute complete (có test_result, pass HAY fail). Bug auto fix qua /fix-bugs ở MANUAL_TEST."
+    },
+    {
+      "from": "MANUAL_TEST",
+      "to": "MANUAL_TEST",
+      "trigger": "log-bug",
+      "evidence_required": {
+        "bug_id": "any"
+      },
+      "note": "Log 1 bug manual (UAT) qua log-bug-agent → append row bugs.md (origin=manual). Ở lại MANUAL_TEST."
     },
     {
       "from": "MANUAL_TEST",

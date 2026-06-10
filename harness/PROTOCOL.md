@@ -100,8 +100,9 @@ Evidence là input cho gates.py check tại moment complete. Pass → state tran
 | `dev-handoff` | `coverage_pct >= 80` + `review_result: pass` |
 | `test-plan` | `docker_compose_ok: true` |
 | `test-execute` | `test_cases_count >= 1` |
-| `_auto` (TEST_EXECUTE → MANUAL_TEST) | `test_result: pass` |
-| `fix-bugs` | `bug_id` non-empty |
+| `_auto` (TEST_EXECUTE → MANUAL_TEST) | `test_result` (any — pass HAY fail) |
+| `log-bug` | `bug_id` non-empty (log-bug-agent trả về sau khi append row) |
+| `fix-bugs` | `bug_id` non-empty (đơn lẻ); sweep no-arg = MAIN orchestrate, complete per-bug |
 | `end-wave` | `uat_signed: true` + `no_open_bugs` (parse `tracking/wave-{N}/bugs.md`) |
 | `done-wave` | `teardown_ok: true` |
 | `apply-cr` | `cr_id` non-empty |
@@ -114,7 +115,7 @@ Một số state có internal agent behavior, không cần command từ user:
 |-------|-------------------|
 | REVIEW_DEV | review-{kind}-agent ghi review-findings.md + trả open_findings; MAIN (orchestrator) đọc → spawn fix Mode B → re-review tới open_findings==0 (gate no_open_findings chặn complete) |
 | TEST_EXECUTE | test-execute-agent run + log bug (origin=auto) vào bugs.md. KHÔNG fix → transition MANUAL_TEST (pass HAY fail); bug auto fix qua /fix-bugs |
-| MANUAL_TEST | /fix-bugs: MAIN spawn fix-{boundary}-agent (Mode A) → fix re-run TC + scoped test verify → close bug (KHÔNG gọi review-agent). **/test-execute re-run được** từ đây → chạy lại full auto suite (TEST_EXECUTE → _auto → MANUAL_TEST); TC fail lại = reopen bug, regression mới = bug mới. Lặp fix ↔ re-run tới sạch → /end-wave (no_open_bugs) |
+| MANUAL_TEST | **/log-bug "<mô tả>"**: spawn log-bug-agent → append row `origin=manual` vào bugs.md (suy boundary từ FEAT/UX/màn). **/fix-bugs** (sweep no-arg = fix mọi bug open; hoặc <bug-id>): MAIN spawn fix-{boundary}-agent (Mode A) → re-run TC + scoped test verify → close (KHÔNG gọi review-agent). **/test-execute re-run được** từ đây → chạy lại full auto suite; TC fail lại = reopen bug, regression mới = bug mới. Lặp tới sạch → /end-wave (no_open_bugs) |
 
 ## Hooks (9 events)
 

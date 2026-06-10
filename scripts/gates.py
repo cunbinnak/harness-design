@@ -338,6 +338,9 @@ GATE_RULES: dict[str, list[dict]] = {
     "fix-bugs": [
         {"kind": "non_empty", "field": "bug_id"},
     ],
+    "log-bug": [
+        {"kind": "non_empty", "field": "bug_id"},  # log-bug-agent ghi row → trả bug_id
+    ],
     "end-wave": [
         {"kind": "flag", "field": "uat_signed", "expected": True},
         {"kind": "no_open_bugs"},
