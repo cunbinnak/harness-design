@@ -285,6 +285,15 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
         if isinstance(rr, list):
             state["review_results"] = rr
 
+    elif command == "test-execute":
+        # Lưu kết quả lần test-execute cuối → gate /end-wave (test_passed) ép re-run xanh sau fix.
+        tr = evidence.get("test_result")
+        if tr:
+            state["test_result"] = tr
+        tc = evidence.get("test_cases_count")
+        if isinstance(tc, int):
+            state["test_cases_count"] = tc
+
     elif command == "done-wave":
         # Hard close → BOOTSTRAP: clear per-wave runtime fields so STATE is a clean slate.
         state["wave"] = {"id": None, "number": None}
@@ -292,6 +301,8 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
         state["wave_features"] = []
         state["active_boundary"] = None
         state["review_results"] = []
+        state["test_result"] = None
+        state["test_cases_count"] = 0
 
 
 # ========================================================================

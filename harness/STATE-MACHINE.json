@@ -238,8 +238,10 @@
       "trigger": "end-wave",
       "evidence_required": {
         "uat_signed": true,
-        "no_open_bugs": true
-      }
+        "no_open_bugs": true,
+        "test_result": "pass"
+      },
+      "note": "uat_signed + test_result=pass (lần test-execute cuối xanh, ép re-run sau fix) + no_open_bugs"
     },
     {
       "from": "DONE",

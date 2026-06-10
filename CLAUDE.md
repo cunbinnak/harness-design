@@ -75,7 +75,7 @@
 /dev-handoff                              Verify gates (coverage≥80, infra) → TEST
 /test-plan                                Sinh test-case-registry.md
 /test-execute                             Build local + run auto test + log bug (origin=auto). KHÔNG fix. Auto-transition MANUAL_TEST (pass/fail); bug fix qua /fix-bugs
-/end-wave                                 Soft close, infra UP → DONE (UAT signed)
+/end-wave                                 Soft close, infra UP → DONE (gate: UAT signed + test_result=pass + no_open_bugs)
 /done-wave                                Hard close, teardown → BOOTSTRAP
 
 # Branch (2)

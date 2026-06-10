@@ -280,6 +280,20 @@ def _findings_open_from_table(text: str) -> list[str] | None:
     return open_findings if status_idx is not None else None
 
 
+def check_test_passed(state: dict) -> tuple[bool, str]:
+    """end-wave: lần /test-execute cuối phải `pass` (đọc `STATE.test_result`).
+
+    Sau /fix-bugs, field này GIỮ NGUYÊN `fail` của lần test trước (fix không đụng) → buộc
+    re-run /test-execute cho xanh mới end-wave được. Ép vòng fix ↔ re-run tới khi suite xanh hẳn."""
+    tr = state.get("test_result")
+    if tr == "pass":
+        return True, ""
+    return False, (
+        f"test_result hiện = {tr!r} (cần 'pass'). Re-run /test-execute cho full suite xanh "
+        "trước khi /end-wave (sau fix phải test lại)."
+    )
+
+
 def check_no_open_findings(state: dict) -> tuple[bool, str]:
     """Parse tracking/wave-{N}/review-findings.md → reject nếu còn finding BLOCKER/MAJOR status=open.
 
@@ -343,6 +357,7 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "end-wave": [
         {"kind": "flag", "field": "uat_signed", "expected": True},
+        {"kind": "test_passed"},  # lần test-execute cuối phải pass (STATE) → ép re-run sau fix
         {"kind": "no_open_bugs"},
     ],
     "done-wave": [
@@ -382,6 +397,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_no_open_bugs(state)
         if kind == "no_open_findings":
             return check_no_open_findings(state)
+        if kind == "test_passed":
+            return check_test_passed(state)
     except KeyError as e:
         return False, f"Rule {kind} missing field: {e}"
     return False, f"Unknown gate kind: {kind!r}"
@@ -496,6 +513,11 @@ def _selftest() -> int:
     )
     assert _findings_open_from_table(ftbl) == ["RF-002", "RF-004"], _findings_open_from_table(ftbl)
     assert _findings_open_from_table("no table") is None
+
+    # test_passed: end-wave cần STATE.test_result == pass
+    assert check_test_passed({"test_result": "pass"})[0] is True
+    assert check_test_passed({"test_result": "fail"})[0] is False
+    assert check_test_passed({})[0] is False  # chưa test → chặn
     # cột đảo thứ tự vẫn đúng theo header
     ftbl2 = "| status | severity | finding |\n|--|--|--|\n| open | blocker | RF-009 |\n| open | nit | RF-010 |\n"
     assert _findings_open_from_table(ftbl2) == ["RF-009"], _findings_open_from_table(ftbl2)
