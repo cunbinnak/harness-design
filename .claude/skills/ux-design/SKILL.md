@@ -23,7 +23,7 @@ Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md
 - KHÔNG hardcode color/spacing/typography → **reference design tokens**.
 
 ## Phương pháp
-1. **Research (optional)** — nếu domain/UX chưa rõ + có WebSearch: UX pattern cho product type (form/table/dashboard), WCAG 2.1 AA, enterprise design system (Ant/Material/Atlassian), mobile-first. KHÔNG bịa nguồn.
+1. **Research** — nếu domain/UX chưa rõ + có WebSearch: UX pattern cho product type (form/table/dashboard), WCAG 2.1 AA, enterprise design system (Ant/Material/Atlassian), mobile-first. KHÔNG bịa nguồn.
 2. **User flow** per FEAT Must: entry → screens → nhánh success/error (ASCII nav hoặc Mermaid).
 3. **Per screen**:
    - Wireframe ASCII có annotation rõ.

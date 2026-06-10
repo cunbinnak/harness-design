@@ -18,7 +18,7 @@ Input: `docs/architecture/PROJECT.md` + `docs/architecture/feat/FEAT-*.md` (draf
 > Đây là 3 thứ `build_prompt.py` step 2 + verify command yêu cầu. Mọi thứ khác là phương pháp để ra được chúng cho tốt.
 
 ## Phương pháp phân tích (để ra AC/BR/boundaries chất lượng)
-1. **Research (optional)** — chỉ khi domain phức tạp/chưa rõ và có WebSearch/WebFetch: business process pattern của industry, edge case/failure đã documented, compliance/regulatory. KHÔNG bịa nguồn.
+1. **Research** — chỉ khi domain phức tạp/chưa rõ và có WebSearch/WebFetch: business process pattern của industry, edge case/failure đã documented, compliance/regulatory. KHÔNG bịa nguồn.
 2. **Actor & bounded context** — liệt kê tác nhân (role/system/external) → suy ra `boundaries_suggested`.
 3. **Process flow (Mermaid)** — As-Is (nếu có hệ thống cũ) + To-Be (theo PROJECT). Happy path + nhánh ngoại lệ → giúp tìm AC + edge case.
    ```mermaid

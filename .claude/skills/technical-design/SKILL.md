@@ -36,7 +36,7 @@ Mỗi concern ghi rõ ở ADR / HLD / API (không để hở):
 - **Health checks**: `/health/live`, `/health/ready`.
 
 ## Phương pháp
-1. **Research (optional)** — nếu domain phức tạp + có WebSearch: pattern từ production system (CQRS / Saga / Outbox / Event-Sourcing), API design convention, data consistency ở scale, service decomposition. KHÔNG bịa nguồn.
+1. **Research** — nếu domain phức tạp + có WebSearch: pattern từ production system (CQRS / Saga / Outbox / Event-Sourcing), API design convention, data consistency ở scale, service decomposition. KHÔNG bịa nguồn.
 2. Đọc FEAT → chốt boundary list + kind + quan hệ (depends_on, ai gọi ai).
 3. ADR nền trước (stack, kiến trúc backend, auth, event) → design sau tuân ADR.
 4. Per boundary: HLD (theo `TEMPLATE.hld`) → API (contract + error) → data-model (backend) / UX (FE) → events.
