@@ -103,7 +103,7 @@ def boundary_vars(b: dict, matrix_revision: int) -> dict[str, str]:
     tech = b.get("tech") or {}
     scaffold_refs = SCAFFOLD_REF_SKILLS_PER_KIND.get(kind, [])
     ref_skills = list(b.get("ref_skills") or [])  # situational, do intake quyết per-boundary
-    doc_refs = boundary_doc_refs(boundary_id, kind, b.get("features"))  # GẮN CỨNG docs theo boundary
+    doc_refs = boundary_doc_refs(boundary_id, kind, b.get("features"), b.get("depends_on"))  # GẮN CỨNG docs theo boundary
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return {
         "boundary": boundary_id,

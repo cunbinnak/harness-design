@@ -191,6 +191,20 @@ def detect_dev_spawn(task_prompt: str) -> str | None:
     return None
 
 
+def looks_like_build_prompt(task_prompt: str) -> bool:
+    """True nếu prompt do `build_prompt.py` sinh (có chữ ký STATE BUNDLE frozen / SPAWN PROMPT).
+
+    Dùng để chặn MAIN tự compose tay prompt cho command sub-agent (dễ truyền sai
+    boundary/owned_paths/assumption) — E-6.
+    """
+    if not task_prompt:
+        return False
+    return (
+        "STATE BUNDLE (frozen at spawn)" in task_prompt
+        or "# SPAWN PROMPT" in task_prompt
+    )
+
+
 def boundary_reminder(boundary: str | None) -> str:
     """One-line reminder for Task spawns of dev agents."""
     if not boundary:

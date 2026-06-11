@@ -236,6 +236,14 @@ def _pre_task(payload: dict) -> int:
     prompt = _task_prompt(payload)
     matched = policies.detect_dev_spawn(prompt)
     if matched:
+        # E-6: dev/fix/review sub-agent PHẢI spawn bằng prompt từ build_prompt.py (chứa STATE
+        # BUNDLE frozen + owned_paths + RETURN SCHEMA). MAIN tự viết tay → dễ sai boundary → block.
+        if not policies.looks_like_build_prompt(prompt):
+            return pre_tool_deny(
+                f"Spawn '{matched}' sub-agent bằng prompt tự viết tay — PHẢI chạy "
+                f"`py scripts/build_prompt.py {matched} [--boundary ...]` rồi spawn với output đó "
+                "(STATE BUNDLE frozen + owned_paths + RETURN SCHEMA chuẩn). Tránh truyền sai assumption (E-6)."
+            )
         boundary = state.get("active_boundary")
         reminder = policies.boundary_reminder(boundary)
         # PreToolUse can also use additionalContext for inject without deny
@@ -271,10 +279,24 @@ def handle_subagent_stop(payload: dict) -> int:
         sys.stderr.write(
             f"WARN: SubagentStop RETURN SCHEMA invalid: {'; '.join(errors)}\n"
         )
-    # Clear spawn.active
     try:
         state = state_mod.load_state()
-        state["spawn"]["active"] = None
+    except Exception:
+        state = {}
+    # A-1: compile/lint error (build/lint=fail) KHÔNG được kết thúc ở BẤT KỲ stage nào;
+    #      test=fail chỉ chặn ở DEV/REVIEW_DEV (TEST_EXECUTE/MANUAL_TEST: test fail = log bug, hợp lệ).
+    stage = state.get("stage")
+    red = [k for k in ("build", "lint") if str(parsed.get(k)).lower() == "fail"]
+    if stage in ("DEV", "REVIEW_DEV") and str(parsed.get("test")).lower() == "fail":
+        red.append("test")
+    if red:
+        return stop_block(
+            f"Sub-agent tự báo {', '.join(red)}=fail — KHÔNG kết thúc khi còn đỏ. "
+            "Sửa tới khi xanh rồi mới return (A-1)."
+        )
+    # Clear spawn.active
+    try:
+        state.setdefault("spawn", {})["active"] = None
         state_mod.save_state(state, updated_by="subagent_stop")
     except Exception:
         pass
@@ -353,11 +375,52 @@ def _write_stop_cache(cache: dict, boundary: str, entry: dict) -> None:
         pass
 
 
+def _stop_check_boundary(state: dict, boundary: str, cache: dict) -> str | None:
+    """Build/test 1 boundary scoped theo kind. None = pass/skip; trả message nếu FAIL."""
+    b = _matrix_boundary(boundary)
+    if not b:
+        return None
+    prefix = b.get("prefix") or (state.get("project") or {}).get("service_prefix") or ""
+    kind = b.get("kind", "backend")
+    folder = REPO_ROOT / "services" / f"{prefix}-{boundary}"
+    if not folder.is_dir():
+        return None  # code chưa scaffold → không gate
+
+    cmd = _build_test_cmd(kind, folder)
+    if not cmd:
+        return None  # không nhận diện build tool
+
+    cur_hash = _service_hash(folder)
+    cached = cache.get(boundary, {})
+    if cached.get("hash") == cur_hash:
+        if cached.get("result") == "pass":
+            return None  # code không đổi + lần trước xanh → skip rerun
+        return cached.get("output") or f"build/test FAIL (cached) — boundary {boundary}"
+
+    try:
+        proc = subprocess.run(
+            cmd, cwd=str(folder), capture_output=True, text=True, timeout=STOP_TIMEOUT_SEC
+        )
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as e:
+        sys.stderr.write(f"Stop hook: không chạy được {cmd} ({e}) — fail-open\n")
+        return None  # thiếu tool / timeout → không chặn dev
+
+    if proc.returncode != 0:
+        tail = "\n".join((proc.stdout + proc.stderr).strip().splitlines()[-40:])
+        msg = f"`{' '.join(cmd)}` FAIL (kind={kind}, boundary={boundary}). 40 dòng cuối:\n{tail}"
+        _write_stop_cache(cache, boundary, {"hash": cur_hash, "result": "fail", "output": msg})
+        return msg
+
+    _write_stop_cache(cache, boundary, {"hash": cur_hash, "result": "pass"})
+    return None
+
+
 def handle_stop(payload: dict) -> int:
     """
-    Quality gate cuối turn: stage ∈ {DEV, REVIEW_DEV, TEST_EXECUTE} + active_boundary đã có code
-    → chạy build/test scoped theo kind. Fail → block kèm 40 dòng cuối. Cache content-hash để
-    skip turn sạch. Fail-open mọi lỗi hạ tầng (thiếu tool / timeout / không có boundary).
+    Quality gate cuối turn: stage ∈ {DEV, REVIEW_DEV, TEST_EXECUTE} → build/test scoped theo kind
+    cho MỌI boundary trong wave (A-1: không chỉ active_boundary — boundary đỏ bị bỏ lại khi MAIN
+    /start-dev boundary kế vẫn bị bắt ở turn stop kế). Fail → block kèm 40 dòng cuối. Cache
+    content-hash để skip boundary sạch. Fail-open mọi lỗi hạ tầng (thiếu tool / timeout).
     """
     try:
         state = state_mod.load_state()
@@ -366,46 +429,21 @@ def handle_stop(payload: dict) -> int:
 
     if state.get("stage") not in STOP_RUN_STAGES:
         return allow_silent()
-    boundary = state.get("active_boundary")
-    if not boundary:
+    boundaries = state.get("wave_boundaries") or []
+    if not boundaries:
+        b = state.get("active_boundary")
+        boundaries = [b] if b else []
+    if not boundaries:
         return allow_silent()
 
-    b = _matrix_boundary(boundary)
-    if not b:
-        return allow_silent()
-    prefix = b.get("prefix") or (state.get("project") or {}).get("service_prefix") or ""
-    kind = b.get("kind", "backend")
-    folder = REPO_ROOT / "services" / f"{prefix}-{boundary}"
-    if not folder.is_dir():
-        return allow_silent()  # code chưa scaffold → không gate
-
-    cmd = _build_test_cmd(kind, folder)
-    if not cmd:
-        return allow_silent()  # không nhận diện build tool
-
-    cur_hash = _service_hash(folder)
     cache = _read_stop_cache()
-    cached = cache.get(boundary, {})
-    if cached.get("hash") == cur_hash:
-        if cached.get("result") == "pass":
-            return allow_silent()  # code không đổi + lần trước xanh → skip rerun
-        return stop_block(cached.get("output") or f"build/test FAIL (cached) — boundary {boundary}")
-
-    try:
-        proc = subprocess.run(
-            cmd, cwd=str(folder), capture_output=True, text=True, timeout=STOP_TIMEOUT_SEC
-        )
-    except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as e:
-        sys.stderr.write(f"Stop hook: không chạy được {cmd} ({e}) — fail-open\n")
-        return allow_silent()  # thiếu tool / timeout → không chặn dev
-
-    if proc.returncode != 0:
-        tail = "\n".join((proc.stdout + proc.stderr).strip().splitlines()[-40:])
-        msg = f"`{' '.join(cmd)}` FAIL (kind={kind}, boundary={boundary}). 40 dòng cuối:\n{tail}"
-        _write_stop_cache(cache, boundary, {"hash": cur_hash, "result": "fail", "output": msg})
-        return stop_block(msg)
-
-    _write_stop_cache(cache, boundary, {"hash": cur_hash, "result": "pass"})
+    fails: list[str] = []
+    for bid in boundaries:
+        msg = _stop_check_boundary(state, bid, cache)
+        if msg:
+            fails.append(msg)
+    if fails:
+        return stop_block("\n\n---\n\n".join(fails))
     return allow_silent()
 
 

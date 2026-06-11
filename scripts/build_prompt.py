@@ -195,7 +195,10 @@ def docs_to_read(items: list[tuple[str, str]]) -> str:
     return head + "\n" + body
 
 
-def boundary_doc_refs(boundary_id: str, kind: str, features: list[str] | None) -> list[tuple[str, str]]:
+def boundary_doc_refs(
+    boundary_id: str, kind: str, features: list[str] | None,
+    depends_on: list[str] | None = None,
+) -> list[tuple[str, str]]:
     """Tài liệu BẮT BUỘC đọc cho 1 boundary — GẮN CỨNG deterministic theo boundary_id + kind.
 
     Single source dùng chung bởi build_prompt (spawn-time) + materialize.py (bake vào agent .md),
@@ -207,8 +210,19 @@ def boundary_doc_refs(boundary_id: str, kind: str, features: list[str] | None) -
     refs: list[tuple[str, str]] = [
         ("Project overview / NFR / glossary", "docs/architecture/PROJECT.md"),
         ("HLD (kiến trúc — §4 chốt Layered/Hexagonal)", f"docs/architecture/hld/hld-{b}.md"),
-        ("API contract", f"docs/architecture/api/api-{b}.md"),
     ]
+    # API contract: backend/bff đọc của CHÍNH MÌNH; FE (web/mobile) đọc của backend/bff nó gọi (MATRIX.depends_on).
+    if kind in ("web", "mobile"):
+        deps = list(depends_on or [])
+        if deps:
+            for dep in deps:
+                refs.append((f"API contract của backend/bff `{dep}` (FE gọi — bám đúng shape)",
+                             f"docs/architecture/api/api-{dep}.md"))
+        else:
+            refs.append(("API contract của backend FE gọi (MATRIX.depends_on RỖNG — xem integration design)",
+                         "docs/architecture/api/api-*.md"))
+    else:
+        refs.append(("API contract", f"docs/architecture/api/api-{b}.md"))
     # data-model: technical-design "Backend boundary có data-model" → chỉ backend.
     if kind == "backend":
         refs.append(("Data model", f"docs/architecture/data-model/data-model-{b}.md"))
@@ -432,7 +446,7 @@ def build_boundary_command(
             )
         task_list += [
             _feat_task,
-            "Run scoped build/test (mvn -pl ./ test cho backend; npm test cho bff/web; flutter test cho mobile).",
+            "Run scoped build/test (mvn -pl ./ test cho backend; npm test cho bff/web; flutter test cho mobile) — **phải XANH mới được return**: compile error / test fail → sửa tới khi pass. KHÔNG return khi build/lint/test=fail (SubagentStop + Stop hook sẽ block).",
             "KG: phần design (entities/business_rules/events/permissions) đã seed ở /start-wave — chỉ UPDATE nếu implement khác design (kèm sửa data-model); APPEND phần kinh nghiệm (learnings/gotchas/failure_modes/decisions) khi phát sinh.",
             "Return RETURN SCHEMA.",
         ]
@@ -462,7 +476,7 @@ def build_boundary_command(
             "Đọc cột reproduce + expected + actual + error log + TC + AC.",
             "**Reproduce đúng TC fail** (xác nhận thấy bug) TRƯỚC khi sửa.",
             f"Fix code trong `{service_folder}/` theo rules-{kind} — tối thiểu, đúng root cause.",
-            "Verify: **re-run CHÍNH TC fail** → pass + scoped test pass (regression). **KHÔNG gọi review-agent** (sub-agent không spawn được sub-agent; review-agent là của REVIEW_DEV).",
+            "Verify: **build XANH (no compile error)** + **re-run CHÍNH TC fail** → pass + scoped test pass (regression). **KHÔNG gọi review-agent** (sub-agent không spawn được sub-agent; review-agent là của REVIEW_DEV).",
             f"Test pass → set ô `status` của row `{bug_id}` = `closed` + thêm regression `TC-R*` trong bảng bugs.md.",
             "Append FM (failure mode) vào KG.",
             "Return RETURN SCHEMA với `bug_id`, `fix_verified: true`.",
@@ -481,7 +495,7 @@ def build_boundary_command(
         owned_paths_block(boundary),
         skills_block(skills, available=ref_skills, scaffold=scaffold_block, note="Primary = invoke ngay. Scaffold = BẮT BUỘC khi tạo skeleton (cây thư mục theo ref-pattern). Ref situational = invoke NGAY khi boundary có điều kiện tương ứng (cache/event/log)."),
         docs_to_read(
-            boundary_doc_refs(boundary_id, kind, boundary.get("features"))
+            boundary_doc_refs(boundary_id, kind, boundary.get("features"), boundary.get("depends_on"))
             + [("Wave plan (scope wave hiện tại)", f"docs/plans/{wave_id}.md")]
         ),
         tasks_block(task_list),
@@ -503,13 +517,15 @@ def build_dev_handoff(state: dict, matrix: list[dict], opts: dict) -> str:
         docs_to_read([
             ("docker-compose", "docs/architecture/infra/docker-compose.yml"),
             ("Wave plan", f"docs/plans/{wave_id}.md"),
+            ("Handoff template (BẮT BUỘC điền §1-§4)", "handoff/TEMPLATE.wave.md"),
         ]),
         tasks_block([
             "Invoke skill `infra-local-dev`.",
             "Update docs/architecture/infra/docker-compose.yml thêm service mới (nếu chưa có).",
-            "Verify `docker-compose up -d` thành công, services healthy.",
+            f"`docker-compose up -d --build` (build mọi service image từ Dockerfile + run) → services healthy + **verify cross-boundary connectivity** (caller→callee qua service name theo INTEG-INT/depends_on). Capture `tracking/{wave_id}/docker-ps.json`. Fail → STOP.",
             f"Verify build local của boundary `{boundary_id}` pass.",
-            "Return RETURN SCHEMA với `coverage_pct`, `review_result: pass`, `docker_compose_ok: true`.",
+            f"**Ghi `handoff/{wave_id}.md` §1-§4** (Summary · Service inventory: service/port/health · Start local · Endpoints) theo `handoff/TEMPLATE.wave.md` — QA/UAT dùng để spin up + test. (§5 do end-wave, §6 do done-wave.)",
+            "Return RETURN SCHEMA với `coverage_pct`, `review_result: pass`, `docker_compose_ok: true`, `connectivity_ok: true`.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
     ]
@@ -558,8 +574,8 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
             ("API contracts", "docs/architecture/api/api-*.md"),
         ]),
         tasks_block([
-            "docker-compose up -d, đợi healthy.",
-            "Foreach TC `type=auto` trong bảng registry (P0 trước): run theo `group` (smoke/integration/e2e).",
+            "Infra + service đã UP từ `/dev-handoff` (giữ UP) — **KHÔNG tự dựng**; sanity reachable, down → STOP báo chạy lại `/dev-handoff`.",
+            "Foreach TC `type=auto` (P0 trước) — **black-box trên hệ thống đang chạy**: **API smoke** (gọi endpoint thật → assert status/shape/field) + **UI/e2e** (Playwright/integration_test). KHÔNG build source, KHÔNG đo coverage (việc DEV). Service/UI chưa up → `skip` (ghi lý do), không fail/fake.",
             f"Append result vào `tracking/{wave_id}/test-report.md`.",
             f"Fail → append row vào bảng `tracking/{wave_id}/bugs.md` (origin: auto, đủ TC/AC/error-log). **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/fix-bugs` ở MANUAL_TEST.",
             "**KHÔNG teardown infra** — giữ UP cho MANUAL_TEST; teardown ở `/done-wave`.",

@@ -31,6 +31,6 @@ Ngưỡng `coverage_pct` theo `kind` của `active_boundary` (tra từ `SERVICE-
 
 ```bash
 py scripts/build_prompt.py dev-handoff --boundary order-management
-py scripts/harness.py dev-handoff complete '{"coverage_pct": 85, "review_result": "pass", "docker_compose_ok": true}'
+py scripts/harness.py dev-handoff complete '{"coverage_pct": 85, "review_result": "pass", "docker_compose_ok": true, "connectivity_ok": true}'
 ```
 

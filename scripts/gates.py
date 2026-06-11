@@ -310,6 +310,23 @@ def check_no_open_findings(state: dict) -> tuple[bool, str]:
     return True, ""
 
 
+def check_infra_proof(state: dict) -> tuple[bool, str]:
+    """Bằng chứng đã CHẠY docker (không chỉ self-report): tracking/{wave}/docker-ps.json tồn tại.
+
+    dev-handoff agent capture file này sau `docker-compose up -d --build`. Khó fake hơn cờ bool.
+    """
+    wave_id = (state.get("wave") or {}).get("id")
+    if not wave_id:
+        return False, "chưa có wave (chạy /start-wave trước)"
+    proof = REPO_ROOT / "tracking" / wave_id / "docker-ps.json"
+    if proof.is_file():
+        return True, ""
+    return False, (
+        f"thiếu proof infra 'tracking/{wave_id}/docker-ps.json' — dev-handoff phải "
+        "`docker-compose up -d --build` + capture `docker compose ps` ra file này"
+    )
+
+
 # ========================================================================
 # Rule dispatch
 # ========================================================================
@@ -345,6 +362,8 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "test-plan": [
         {"kind": "flag", "field": "docker_compose_ok", "expected": True},
+        {"kind": "flag", "field": "connectivity_ok", "expected": True},
+        {"kind": "infra_proof"},
     ],
     "test-execute": [
         {"kind": "int_min", "field": "test_cases_count", "min": 1},
@@ -399,6 +418,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_no_open_findings(state)
         if kind == "test_passed":
             return check_test_passed(state)
+        if kind == "infra_proof":
+            return check_infra_proof(state)
     except KeyError as e:
         return False, f"Rule {kind} missing field: {e}"
     return False, f"Unknown gate kind: {kind!r}"

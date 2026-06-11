@@ -82,6 +82,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
   "coverage_fe_pct": 65,
   "review_result": "pass",
   "docker_compose_ok": true,
+  "connectivity_ok": true,
   "infra_status": {
     "services_running": 4,
     "services_healthy": 4,

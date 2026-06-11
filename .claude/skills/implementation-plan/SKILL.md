@@ -50,6 +50,7 @@ Input: `PROJECT.md` + `FEAT-*.md` (AC/BR/boundaries) + design step 3 (ADR/HLD/AP
 - [ ] Mỗi wave có goal + boundaries + features + **dependencies từ wave trước** + exit criteria.
 - [ ] Wave 1 mỏng, chạy được **E2E** (foundation + 1 lát core).
 - [ ] MATRIX mỗi boundary đủ `kind/prefix/tech/wave/features/depends_on`; `ref_skills[]` suy từ design (event/cache/extra → ref tương ứng; CRUD thuần để rỗng); KG skeleton mọi boundary.
+- [ ] **Không có `TBD` / section trống mơ hồ** — chỗ chưa chốt ghi `Open question` (cần ai quyết + vì sao).
 
 ## Done
 - WAVE-SEQUENCE + **wave-{N}.md cho mọi wave** + MATRIX (≥1 boundary) + KG skeleton (khớp verify intake step 4); user đã confirm → intake complete (state INTAKE).

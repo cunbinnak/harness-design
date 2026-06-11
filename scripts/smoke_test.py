@@ -76,6 +76,11 @@ def main() -> int:
     # Save original STATE + MATRIX (restored in finally)
     original = STATE_FILE.read_text(encoding="utf-8")
     matrix_original = MATRIX_FILE.read_text(encoding="utf-8")
+    # infra_proof artifact (gate test-plan: check_infra_proof) — tạo/cleanup hermetic
+    proof_dir = REPO / "tracking" / "wave-001"
+    proof_file = proof_dir / "docker-ps.json"
+    proof_dir_existed = proof_dir.exists()
+    proof_existed = proof_file.exists()
     passed = []
     failed = []
 
@@ -161,11 +166,16 @@ def main() -> int:
         ok = step("REVIEW_DEV -> DEV_HANDOFF", "dev-handoff", {}, "DEV_HANDOFF")
         passed.append(ok) if ok else failed.append("dev-handoff")
 
+        # infra proof (dev-handoff đã `up -d --build` + capture docker-ps.json) — gate test-plan check_infra_proof
+        proof_dir.mkdir(parents=True, exist_ok=True)
+        if not proof_file.exists():
+            proof_file.write_text("[]", encoding="utf-8")
+
         # DEV_HANDOFF -> TEST_PLAN
         ok = step(
             "DEV_HANDOFF -> TEST_PLAN",
             "test-plan",
-            {"docker_compose_ok": True},
+            {"docker_compose_ok": True, "connectivity_ok": True},
             "TEST_PLAN",
         )
         passed.append(ok) if ok else failed.append("test-plan")
@@ -255,6 +265,14 @@ def main() -> int:
         # Restore original STATE + MATRIX
         STATE_FILE.write_text(original, encoding="utf-8")
         MATRIX_FILE.write_text(matrix_original, encoding="utf-8")
+        # cleanup infra_proof artifact (hermetic — chỉ xoá cái test tạo ra)
+        if not proof_existed and proof_file.exists():
+            proof_file.unlink()
+        if not proof_dir_existed and proof_dir.exists():
+            try:
+                proof_dir.rmdir()
+            except OSError:
+                pass
         print("\n(STATE.json + MATRIX restored to pre-test snapshot)")
 
     # ============================================================

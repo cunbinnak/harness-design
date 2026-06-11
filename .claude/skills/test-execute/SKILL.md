@@ -10,32 +10,30 @@ description: Build + run auto test theo registry per stack (mvn/gradle/pytest/je
 
 ## Hoạt động
 1. Đọc `tracking/wave-{N}/test-case-registry.md`.
-2. `docker-compose up -d` (infra theo `docs/architecture/infra/docker-compose.yml`); chờ services healthy.
-3. Foreach **auto** TC (P0 trước, rồi P1, P2) — manual TC để dành stage `MANUAL_TEST`:
-   - Run cmd theo `type` (xem bảng framework dưới).
-   - Append kết quả vào `tracking/wave-{N}/test-report.md`: `TC-ID: pass|fail|skip` + timestamp + duration + log tail.
-   - Ghi log chi tiết vào `tracking/wave-{N}/test-logs/{TC-ID}.log`.
+2. Infra + service đã **UP + connectivity verified ở `/dev-handoff`** (giữ UP) — test-execute **KHÔNG tự dựng**. Sanity reachable (`docker compose ps` healthy / `curl -f /health/ready`); down → **STOP**, báo user chạy lại `/dev-handoff` (KHÔNG test ảo).
+3. Foreach **auto** TC (P0 trước, rồi P1, P2) — chạy **black-box trên hệ thống ĐANG CHẠY** (KHÔNG build từ source, KHÔNG đo coverage — đó là việc DEV). Manual TC để dành `MANUAL_TEST`:
+   - Run theo `type` (bảng dưới): **API smoke** (gọi endpoint thật theo `api-{boundary}.md` → assert status + shape + field nghiệp vụ) · **UI/e2e** (Playwright/integration_test — giao diện load, luồng chính render, action) · contract · perf.
+   - Service/UI cần mà **chưa up → `skip`** (ghi lý do "service chưa up"), KHÔNG fail/fake.
+   - Append kết quả vào `tracking/wave-{N}/test-report.md`: `TC-ID: pass|fail|skip` + timestamp + duration + log tail. Log chi tiết → `tracking/wave-{N}/test-logs/{TC-ID}.log`.
 4. Foreach fail → **append 1 row** vào bảng `tracking/wave-{N}/bugs.md` (skill `bug-logging`; `origin: auto` + đủ cột `TC` + `AC` (từ `TC.ac` registry) + `error log` (excerpt `test-logs/{TC}.log`); **dedup theo TC — re-run cùng TC fail lại thì UPDATE row cũ, KHÔNG tạo row mới**). **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/fix-bugs` ở MANUAL_TEST.
 
-## Framework + lệnh chạy theo stack
-| Kind / Stack | Unit + Coverage | Integration | E2E / khác |
-|---|---|---|---|
-| backend Java/Spring | `mvn -q test jacoco:report` (hoặc `./gradlew test jacocoTestReport`) | `@SpringBootTest` + **Testcontainers** (DB thật, KHÔNG prod) | — |
-| backend Python | `pytest --cov=. --cov-report=xml` | `TestClient` + testcontainers | — |
-| bff/web Node | `npm test -- --coverage` / `npx vitest run --coverage` | `supertest` / MSW + Apollo mock | — |
-| mobile Flutter | `flutter test --coverage` | widget + integration_test | — |
-| e2e (web) | — | — | `npx playwright test` |
-| perf (NFR latency) | — | — | `k6 run` (threshold p99) |
+## Loại TC + công cụ (black-box — hệ thống đang chạy)
+| Loại TC | Công cụ | Kiểm |
+|---|---|---|
+| **API smoke** | curl / REST client / RestAssured / supertest | gọi endpoint thật → status + response shape + field nghiệp vụ (theo `api-{boundary}.md`) |
+| **UI / e2e** | Playwright (web) / integration_test (mobile) | giao diện load, luồng chính render, action chạy, không lỗi console nghiêm trọng |
+| contract | Pact | provider/consumer khớp |
+| perf (NFR latency) | `k6 run` | threshold p99 |
 
-## Coverage gate (per-kind)
-- Đọc coverage report (JaCoCo/coverage.xml/lcov) → so ngưỡng kind: **backend 80 / bff 70 / web·mobile 60**.
-- Dưới ngưỡng = fail (ngưỡng coverage chính enforce ở `/dev-handoff`; ở đây report lại trong test_result).
+> Unit/integration (white-box, build từ source) + coverage là của **DEV** (`/start-dev`), KHÔNG chạy lại ở đây.
+
+## Coverage — KHÔNG đo ở đây
+Coverage (unit/integration) là của **DEV** — đã gate ở `/review-dev` + `/dev-handoff` (per-kind: backend 80 / bff 70 / web·mobile 60). test-execute là **black-box smoke/e2e trên hệ thống đang chạy**, KHÔNG build source, **KHÔNG đo/gate coverage**.
 
 ## Chất lượng test (gate — không chỉ "pass")
-- **Phủ registry**: mỗi **auto-TC trong registry phải có test code** trước khi chạy; thiếu → viết bổ sung (theo `type`/AC) rồi chạy. KHÔNG để TC registry không có code = sót AC.
-- **Deterministic**: inject Clock/seed; KHÔNG dùng time/random/network thật → chạy lại cùng kết quả.
-- **Isolation**: mỗi test tự setup + cleanup state (reset DB/cache giữa test); KHÔNG phụ thuộc thứ tự chạy.
-- **Coverage có nghĩa**: ưu tiên branch coverage; loại generated code; KHÔNG viết test rỗng kéo %.
+- **Phủ registry**: mỗi **auto-TC trong registry phải được CHẠY thật** (gọi API / mở UI), không bỏ qua; skip chỉ khi service/UI chưa up (ghi lý do). KHÔNG đánh `pass` mà không gọi endpoint / không mở UI.
+- **Deterministic**: dữ liệu test cô lập (seed/cleanup riêng); KHÔNG phụ thuộc state dư từ lần chạy trước.
+- **Isolation**: mỗi TC tự setup + cleanup (xoá record nó tạo ra); KHÔNG phụ thuộc thứ tự chạy.
 - **Flaky**: test chập chờn → tìm root cause (timing/shared-state/ordering), KHÔNG retry mù; chưa fix → quarantine + log bug.
 - **Artifacts**: fail → lưu log tail + (e2e) screenshot/video vào `test-logs/`.
 

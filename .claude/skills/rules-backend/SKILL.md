@@ -205,6 +205,7 @@ payment:
 - Method nhỏ, đọc được theo nghiệp vụ; tách logic/điều kiện phức tạp thành private method tên có nghĩa.
 - Tránh if/else và loop lồng sâu. Stream API chỉ dùng khi tăng readability.
 - KHÔNG duplicate business logic. KHÔNG trả null collection — trả empty collection.
+- **Collection bất biến đúng mục đích**: `List.of()` / `Set.of()` / `Map.of()`, `Collections.unmodifiable*`, `Arrays.asList()` là **immutable** (riêng `Stream.toList()` cũng immutable — OK khi return read-only). Chỉ dùng cho constant / default rỗng / return read-only. Nếu collection sẽ `add/remove/put` về sau → khởi tạo mutable (`new ArrayList<>()` / `new HashMap<>()`), nếu không sẽ `UnsupportedOperationException` lúc runtime.
 - KHÔNG thêm dependency mới nếu không cần — ưu tiên util sẵn có của project.
 
 ### Comment quality — agent-first
@@ -230,6 +231,7 @@ payment:
 - [ ] Coverage ≥ 80%; không `@Disabled` thiếu blocker ref; **không H2** trong test.
 - [ ] Không hardcode secret/URL/credential; configurable value externalize qua `@ConfigurationProperties` (không `private (static) final` literal); không rải `@Value` khi ≥ 2 props cùng prefix.
 - [ ] Error code chỉ từ `api-{boundary}.md`; exception dùng enum/descriptor typed (không hardcode code/message tại throw site).
+- [ ] **springdoc-openapi wired** (`/v3/api-docs` + `/swagger-ui`) khi scaffold, contract khớp `api-{boundary}.md`.
 - [ ] Không `nativeQuery` nếu không cần; nếu có → `:tenantId` + comment + test isolation. Filter động/optional → **Specification** (không JPQL `(:x IS NULL OR …)`).
 - [ ] DTO đúng `dto/request/` + `dto/response/`; conversion dùng **MapStruct** (mapper là interface, không impl tay).
 - [ ] Service interface trong `service/`, impl trong `service/impl/`; inject **interface**; `@RequiredArgsConstructor` + `private final` (không `@Autowired`).

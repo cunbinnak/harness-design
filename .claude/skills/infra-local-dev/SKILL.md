@@ -58,6 +58,7 @@ volumes: { pg_data: {} }
 
 ## Verify (BẮT BUỘC chạy lệnh + đọc output, không chỉ viết file)
 ```bash
+docker info >/dev/null 2>&1 || { echo "Docker daemon chưa chạy — bật Docker Desktop"; exit 1; }
 cd docs/architecture/infra && docker compose up -d --build
 # đợi tới khi tất cả healthy (max ~60s)
 for i in $(seq 1 12); do

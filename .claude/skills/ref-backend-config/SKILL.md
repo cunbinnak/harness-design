@@ -261,6 +261,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'  // OpenAPI/Swagger UI
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'org.flywaydb:flyway-core'
@@ -287,6 +288,14 @@ check.dependsOn jacocoTestCoverageVerification
 ```
 
 > Gradle wrapper PHẢI commit: `gradle wrapper --gradle-version 8.7`
+
+> **OpenAPI/Swagger BẮT BUỘC khi scaffold backend**: `springdoc-openapi-starter-webmvc-ui` (đã liệt kê) tự expose `/v3/api-docs` + `/swagger-ui.html` từ annotation controller — contract khớp `api-{boundary}.md`. Config tối thiểu `application.yml`:
+> ```yaml
+> springdoc:
+>   api-docs.path: /v3/api-docs
+>   swagger-ui.path: /swagger-ui.html
+> ```
+> Production cân nhắc tắt `swagger-ui` qua profile.
 
 ## 12. Spring Security — OAuth2 Resource Server
 

@@ -34,6 +34,7 @@ git diff --name-only main...HEAD
    - **Open redirect / link**: URL redirect từ input validate; external link `rel="noopener"`.
    - Dependency không có CVE nghiêm trọng đã biết.
 8. **Owned paths** ⊆ boundary.
+9. **Cấu trúc khớp `ref-frontend-pattern`** (`pages`/`components`/`hooks`/`api`/`stores`/`router`): đặt sai layout = **BLOCKER**; **folder/file thừa không dùng** (component/hook/util mồ côi, scaffold mẫu còn sót, dead code, import chết, "phòng khi cần") → **MAJOR (yêu cầu xóa)**.
 
 ## Anti-patterns cần flag
 - `components/` gọi API trực tiếp (phải qua `hooks/` → `api/`).
@@ -41,6 +42,7 @@ git diff --name-only main...HEAD
 - Hardcode role string thay vì đọc `roles[]` từ JWT.
 - Bỏ trạng thái error (chỉ render khi success).
 - `dangerouslySetInnerHTML` / render HTML từ API chưa sanitize; token trong `localStorage`.
+- Folder/file thừa không dùng (component/hook mồ côi, scaffold mẫu sót, dead code / import chết) — phải xóa, không để lại.
 
 ## Output
 RETURN SCHEMA: `review_result`, `open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.
