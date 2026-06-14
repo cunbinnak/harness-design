@@ -73,11 +73,13 @@ Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
 
 ## 6. Known issues & deferred
 
+> Cột `deferred` = bản TÓM TẮT cho QA/stakeholder. **SoT của deferred-scope (test-plan đọc để tag `@deferred`) = `docs/plans/wave-{N}.md` §6 "Deferred to later waves"** — sửa ở đó, không khai báo deferred mới ở đây (tránh 2 nguồn lệch nhau).
+
 | # | Type | Mô tả | Plan |
 |---|------|-------|------|
 | | bug-known | (low-severity, không block release) | wave kế |
 | | tech-debt | (refactor sau) | wave kế |
-| | deferred | (FEAT defer) | wave-XXX |
+| | deferred | (xem wave-{N}.md §6 — SoT) | wave-XXX |
 
 ## 7. Decisions in wave (link KG)
 

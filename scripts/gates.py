@@ -927,6 +927,22 @@ def _test_log_text(wave_id: str, tc: str, root: Path) -> str:
         return ""
 
 
+def _bugs_tc_refs(wave_id: str, root: Path) -> set[str]:
+    """TC-id (upper) được tham chiếu ở cột 'TC' của bugs.md → biết FAIL nào đã log bug.
+
+    Mirror ZIP lint_execution invariant: mỗi TC FAIL phải có ≥1 bug reference (chống "fail mà
+    không log bug = miss bug"). Cột TC có thể chứa nhiều id / '—'.
+    """
+    bugs = root / "tracking" / wave_id / "bugs.md"
+    if not bugs.is_file():
+        return set()
+    refs: set[str] = set()
+    for r in _parse_md_table_rows(bugs.read_text(encoding="utf-8", errors="ignore"), ("bug", "tc")):
+        for m in re.finditer(r"tc-[\w-]+", r.get("tc") or "", re.IGNORECASE):
+            refs.add(m.group(0).upper())
+    return refs
+
+
 def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
     """test-execute: bằng chứng auto-TC ĐÃ CHẠY THẬT (không cho tự khai pass — chống "test ảo").
 
@@ -954,6 +970,7 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
         return True, ""  # wave manual-only → không có gì để verify
     results = _report_results(rep.read_text(encoding="utf-8", errors="ignore"))
     deferred = _wave_deferred_tokens(wave_id, root)
+    bug_refs = _bugs_tc_refs(wave_id, root)
     problems: list[str] = []
     inscope = ran = 0
     for r in auto_rows:
@@ -978,6 +995,9 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
                 )
         elif not _test_log_text(wave_id, tc, root).strip():
             problems.append(f"{tc} (group={group}): {res} nhưng log rỗng/không có (thiếu bằng chứng đã chạy)")
+        # ZIP lint_execution invariant: FAIL phải log bug (chống "fail mà không log = miss bug")
+        if res == "fail" and tc not in bug_refs:
+            problems.append(f"{tc}: FAIL nhưng KHÔNG có bug nào reference (cột TC) trong bugs.md → miss bug")
     if inscope > 0 and ran == 0 and not problems:
         problems.append("0 auto-TC in-scope thực sự chạy (tất cả skip) — test ảo, service phải UP để test")
     if problems:
@@ -1663,12 +1683,19 @@ def _selftest() -> int:
         assert check_test_evidence(_te_state, root=_troot)[0] is True, "in-scope có network-call + deferred bỏ qua → pass"
         # derive: in-scope TC-I01 pass → 'pass' (TC-I02 deferred không tính)
         assert derive_test_result(_te_state, root=_troot) == "pass"
-        # (d) TC-I01 FAIL trong report → evidence VẪN pass (có network-call = đã chạy thật, fail là bug hợp lệ)
+        # (d) TC-I01 FAIL trong report nhưng KHÔNG log bug → fail (ZIP invariant: miss bug)
         (_tw / "test-report.md").write_text(
             "| TC | Result |\n|----|--------|\n| TC-I01 | FAIL |\n", encoding="utf-8")
-        assert check_test_evidence(_te_state, root=_troot)[0] is True, "TC fail có bằng chứng → evidence pass"
+        ok, msg = check_test_evidence(_te_state, root=_troot)
+        assert (not ok) and "TC-I01" in msg and "miss bug" in msg, f"FAIL không log bug phải fail: {msg}"
+        # (d2) FAIL CÓ bug reference TC-I01 trong bugs.md → evidence pass (fail là bug hợp lệ đã log)
+        (_tw / "bugs.md").write_text(
+            "| BUG | title | status | TC |\n|-----|-------|--------|----|\n"
+            "| BUG-001 | x | open | TC-I01 |\n", encoding="utf-8")
+        assert check_test_evidence(_te_state, root=_troot)[0] is True, "TC fail + đã log bug → evidence pass"
         # nhưng derive = 'fail' (in-scope không all-pass) → end-wave sẽ chặn
         assert derive_test_result(_te_state, root=_troot) == "fail"
+        (_tw / "bugs.md").unlink()
         # (e) tag @deferred nhưng KHÔNG khai báo wave plan → coi in-scope → đòi bằng chứng (đóng loophole)
         _reg_abuse = _reg.replace("| @FEAT-001 | |", "| @FEAT-001 @deferred | deferred (né test) |")
         (_tw / "test-case-registry.md").write_text(_reg_abuse, encoding="utf-8")

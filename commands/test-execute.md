@@ -17,7 +17,7 @@ Chạy auto test cases theo registry **black-box trên hệ thống ĐANG CHẠY
 
 ## Gate `test_evidence` (G12 — chống test ảo)
 
-`scripts/gates.py check_test_evidence` parse registry + `tracking/wave-{N}/test-report.md` + `test-logs/`. Mỗi auto-TC **in-scope** (bỏ `@deferred` đã khai báo wave plan): (a) phải có result trong report; (b) group integration/e2e/perf/security khi pass|fail phải có network-call `METHOD path -> status` trong log; (c) skip phải nêu lý do service-down. **KHÔNG fail vì TC=fail** (bug hợp lệ) — chỉ chặn khi thiếu bằng chứng đã chạy. `test_result` do harness **DERIVE từ report** (in-scope all-pass → pass), không lấy verbatim từ agent. Env-block → `force:true,reason` (audit).
+`scripts/gates.py check_test_evidence` parse registry + `tracking/wave-{N}/test-report.md` + `test-logs/` + `bugs.md`. Mỗi auto-TC **in-scope** (bỏ `@deferred` đã khai báo wave plan): (a) phải có result trong report; (b) group integration/e2e/perf/security khi pass|fail phải có network-call `METHOD path -> status` trong log; (c) skip phải nêu lý do service-down; (d) result=FAIL phải có ≥1 bug reference (cột `TC` bugs.md) — chống "fail quên log = miss bug" (mirror ZIP `lint_execution`). **KHÔNG fail chỉ vì TC=fail** (bug hợp lệ ĐÃ log) — chỉ chặn khi thiếu bằng chứng đã chạy / fail không log bug. `test_result` do harness **DERIVE từ report** (in-scope all-pass → pass), không verbatim từ agent. Env-block → `force:true,reason` (audit).
 
 ## Build prompt + spawn
 
