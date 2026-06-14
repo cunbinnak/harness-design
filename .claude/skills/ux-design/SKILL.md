@@ -1,12 +1,12 @@
 ---
 name: ux-design
-description: UX/UI cho FE boundary (intake step 3) — user flow, wireframe, UI states đầy đủ, design tokens, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md.
+description: UX/UI cho FE boundary (DESIGN, invoke từ technical-design) — user flow, wireframe, UI states đầy đủ, design tokens, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md.
 ---
 
 # UX Design Skill
 
 ## Khi load
-Intake **step 3** (`solution-architect`) khi thiết kế UX cho **FE boundary** (kind `web`/`mobile`). Là **sub-skill** — `technical-design` invoke tới khi làm UX cho FE boundary (không phải step riêng).
+Stage **DESIGN** (`/design`, `solution-architect`) khi thiết kế UX cho **FE boundary** (kind `web`/`mobile`). Là **sub-skill** — `technical-design` invoke khi làm UX cho FE boundary (không phải stage riêng).
 Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md` (user story + AC) + `api-{be}.md` (contract boundary phục vụ).
 
 ## Deliverable

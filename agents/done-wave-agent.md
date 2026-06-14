@@ -78,8 +78,9 @@ Hard close wave: teardown infra docker-compose, archive wave artifacts vào hand
 - `active_boundary = null`
 
 Allowed next:
-- `/intake-requirement` (mode amendment nếu có CR pending hoặc full nếu project tiếp tục mở rộng)
-- `/start-wave <N+1>` (nếu wave kế đã plan ở intake và không cần CR)
+- `/apply-cr <CR-ID>` (nếu có CR pending → DESIGN amendment: /design → /plan → REVIEW)
+- `/start-wave <N+1>` (nếu wave kế đã plan ở /plan và không cần CR)
+- `/discovery-start D0` (nếu mở rộng scope lớn, bootstrap lại front-half)
 
 ## RETURN SCHEMA
 

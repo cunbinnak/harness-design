@@ -48,26 +48,42 @@ import shutil
 import sys
 from pathlib import Path
 
-from harness_lib import load_json, load_yaml, repo_root, save_json, save_yaml, utc_now_iso
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from harness_lib import load_json, repo_root, save_json, utc_now_iso  # noqa: E402
 
 CORE_AGENTS = frozenset({
-    "_template.agent.md",
+    # templates + readme
+    "_template-dev-agent.md",
+    "_template-fix-agent.md",
     "README.md",
-    "intake-orchestrator-agent.md",
-    "requirement-analyst-agent.md",
-    "business-analyst-agent.md",
+    # discovery (D0-D3)
+    "discovery-hypothesis-agent.md",
+    "capability-mapper-agent.md",
+    "event-stormer-agent.md",
+    "charter-author-agent.md",
+    # domain
+    "domain-po-agent.md",
+    "domain-ba-agent.md",
+    # design + plan
     "solution-architect-agent.md",
     "program-planner-agent.md",
-    "apply-cr-agent.md",
-    "start-wave-agent.md",
+    # review singletons (per kind + document)
     "review-document-agent.md",
+    "review-backend-agent.md",
+    "review-bff-agent.md",
+    "review-web-agent.md",
+    "review-mobile-agent.md",
+    # ops
+    "start-wave-agent.md",
     "dev-handoff-agent.md",
     "test-plan-agent.md",
     "test-execute-agent.md",
-    "release-agent.md",
+    "log-bug-agent.md",
     "end-wave-agent.md",
     "done-wave-agent.md",
-    "reviewer-agent.md",
+    # side
+    "apply-cr-agent.md",
 })
 
 
@@ -91,10 +107,17 @@ def collect_targets() -> dict[str, list[Path]]:
             if f.is_file():
                 targets["remove"].append(f)
         for sub, prefix in [
+            # DOMAIN artifacts (author thẳng vào docs/architecture/)
+            ("epics", "EP-"),
             ("feat", "FEAT-"),
+            ("journeys", "JOURNEY-"),
+            ("personas", "PERSONA-"),
+            ("business-rules", "BR-"),
+            # DESIGN artifacts
             ("adr", "ADR-"),
             ("hld", "hld-"),
             ("api", "api-"),
+            ("api", "bff-aggregation-"),
             ("data-model", "data-model-"),
             ("ux", "ux-"),
             ("integrations", "INTEG-"),
@@ -116,15 +139,32 @@ def collect_targets() -> dict[str, list[Path]]:
                 if f.is_file():
                     targets["remove"].append(f)
 
-    # docs/plans
+    # docs/plans (flat layout: WAVE-SEQUENCE.md + wave-{NNN}.md)
     plans = root / "docs/plans"
     if plans.is_dir():
-        for sub in ("project", "waves"):
-            d = plans / sub
-            if d.is_dir():
-                for f in d.rglob("*"):
-                    if f.is_file() and not f.name.startswith("TEMPLATE") and f.name != ".gitkeep":
-                        targets["remove"].append(f)
+        wseq = plans / "WAVE-SEQUENCE.md"
+        if wseq.is_file():
+            targets["remove"].append(wseq)
+        for f in plans.glob("wave-*.md"):
+            if not f.name.startswith("TEMPLATE"):
+                targets["remove"].append(f)
+
+    # docs/discovery (D0-D3 artifacts — sinh ở runtime, giữ TEMPLATE.*)
+    disc = root / "docs/discovery"
+    if disc.is_dir():
+        for name in ("hypothesis-log.md", "persona-pool.md", "capability-map.md", "BOUNDARY-MAP.md"):
+            f = disc / name
+            if f.is_file():
+                targets["remove"].append(f)
+        es = disc / "event-storming"
+        if es.is_dir():
+            for f in es.glob("ES-*.md"):
+                targets["remove"].append(f)
+        bnd = disc / "boundaries"
+        if bnd.is_dir():
+            for child in bnd.iterdir():  # per-boundary {b}/CHARTER.md dirs; giữ TEMPLATE.CHARTER.md (file)
+                if child.is_dir():
+                    targets["remove"].append(child)
 
     # tracking
     tracking = root / "tracking"
@@ -209,45 +249,30 @@ def reset_state(project_id: str | None, display_name: str | None) -> None:
     if not proj.get("display_name"):
         proj["display_name"] = proj["id"].replace("-", " ").title()
 
+    # Schema v4 — khớp harness/STATE.json hiện tại (BOOTSTRAP, allowed_next compute động
+    # từ STATE-MACHINE.json[BOOTSTRAP].allowed_commands — KHÔNG hardcode trong STATE).
     fresh = {
-        "version": 2,
-        "project": proj,
+        "version": 4,
+        "project": {
+            "id": proj["id"],
+            "display_name": proj["display_name"],
+            "service_prefix": None,
+        },
         "wave": {"id": None, "number": None},
         "stage": "BOOTSTRAP",
         "previous_stage": None,
-        "features_in_flight": [],
-        "boundaries_in_flight": [],
         "active_boundary": None,
-        "owned_paths": [],
-        "non_negotiables": [],
-        "context": {
-            "docs": [],
-            "skills": [],
-            "agents": [],
-            "knowledge_graphs": [],
-            "kg_discipline": {
-                "in_progress": [], "do_not_repeat": [], "blockers": [], "active_decisions": []
-            },
-            "rules": [".cursor/rules/harness-agent-discipline.mdc"]
-        },
-        "spawn": {"allowed_stages": ["IMPLEMENTATION", "FIX_MANUAL_BUGS"], "active": None},
-        "workflow": {
-            "last_completed": None,
-            "completed": [],
-            "allowed_next": ["intake-requirement"],
-            "evidence": {},
-            "pipeline": None,
-            "active_command": None
-        },
-        "checkpoints": [],
-        "handoff": {"file": None, "last_sync_at": None},
-        "tracking": {"bugs": [], "change_requests": [], "deferred_items": []},
+        "wave_boundaries": [],
+        "wave_features": [],
+        "spawn": {"active": None},
+        "workflow": {"last_completed": None},
+        "handoff": {"file": None},
         "meta": {
             "revision": 1,
             "updated_at": utc_now_iso(),
             "updated_by": "reset_for_new_project",
-            "notes": f"Fresh starter for project={proj['id']}. Run /intake-requirement to begin."
-        }
+            "notes": f"Fresh starter for project={proj['id']}. Run /discovery-start D0 to begin.",
+        },
     }
     save_json(state_path, fresh)
     print(f"RESET {state_path.relative_to(root)} (project.id={proj['id']})")
@@ -311,7 +336,7 @@ def main() -> int:
     print("=== DONE ===")
     print("Next steps:")
     print("  1. py scripts/harness.py state                       # verify BOOTSTRAP")
-    print("  2. py scripts/build_command_prompt.py intake-requirement --step 1 --input \"<project description>\"")
+    print("  2. py scripts/build_prompt.py discovery-start --disc-wave D0 --input \"<project description>\"")
     return 0
 
 

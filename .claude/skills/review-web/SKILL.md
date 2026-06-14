@@ -14,6 +14,11 @@ npm run -s typecheck
 npm run -s lint
 npx axe-core (hoặc CI a11y job)   # a11y scan
 git diff --name-only main...HEAD
+# Styling/design-fidelity (BẮT BUỘC — bắt 'FE trần'):
+find src -name "*.css" -o -name "*.scss" | wc -l        # phải > 0 (hoặc tailwind/CSS-in-JS)
+grep -rl "className=" src | wc -l                        # số file dùng className
+grep -rE -- "--color-|--font-|--space-|theme\." src      # design token (CSS var) theo ux §4 có được dùng?
+ls tailwind.config.* 2>/dev/null; grep -rl "styled\.\|@emotion\|makeStyles" src   # cơ chế styling khác
 ```
 
 ## Checklist (PASS/FAIL/NA)
@@ -25,7 +30,12 @@ git diff --name-only main...HEAD
    - BFF (nếu design có bff): codegen up-to-date (`npm run codegen` no diff); op name khớp `integrations/INTEG-INT-{web}-to-{bff}.md`.
 4. **No business logic** trong FE: price/score/eligibility lấy từ BE/BFF, không tự tính.
 5. **State handling**: mọi async có loading / error / success (không UI treo khi fail).
-6. **Design fidelity**: page khớp `ux-{boundary}.md` (SCR-XXX).
+6. **Design fidelity (BLOCKER — verify được, KHÔNG đánh giá bằng mắt suông)**: FE phải THỰC SỰ được style theo `ux-{boundary}.md §4 design tokens`, không chỉ markup:
+   - **Có cơ chế styling**: tồn tại ≥1 file `.css/.scss` HOẶC tailwind config HOẶC CSS-in-JS (`styled`/`@emotion`/`makeStyles`). **`className` dùng khắp nơi mà 0 stylesheet = FE unstyled (không định dạng) = BLOCKER** (gate `web_styling` ở dev-handoff cũng chặn cứng).
+   - **Design token thật**: màu/spacing/typography từ `ux §4` được map thành CSS var (`--color-primary` …) / theme config — KHÔNG hardcode hex/px rải rác, KHÔNG bỏ trống.
+   - **className có backing style**: mỗi class BEM trong markup phải có rule CSS định nghĩa (grep class ↔ CSS); class "mồ côi" (khai báo trong JSX nhưng không có CSS) = MAJOR.
+   - **Render proof (khuyến nghị)**: build + serve (hoặc screenshot 1 screen chính) xác nhận trang KHÔNG trắng/không-style; lý tưởng có 1 visual/e2e TC ở registry.
+   - Layout/screen khớp wireframe `ux §3` (SCR/screen), responsive breakpoint `ux §3.*`, theming `ux §4.6` nếu spec yêu cầu.
 7. **Security (FE)**:
    - **XSS**: không `dangerouslySetInnerHTML` với data chưa sanitize; không render HTML thô từ input/API.
    - **Token**: không lưu access/refresh token vào `localStorage` (XSS-exfil) — ưu tiên httpOnly cookie / in-memory; không log token.
@@ -42,6 +52,8 @@ git diff --name-only main...HEAD
 - Hardcode role string thay vì đọc `roles[]` từ JWT.
 - Bỏ trạng thái error (chỉ render khi success).
 - `dangerouslySetInnerHTML` / render HTML từ API chưa sanitize; token trong `localStorage`.
+- **FE unstyled — `className` khắp nơi nhưng 0 CSS/tailwind/CSS-in-JS** (render HTML không màu/layout, trái `ux §4`) → BLOCKER. **Đừng đánh "design fidelity pass" nếu chưa grep ra stylesheet + design token.**
+- Hardcode hex/px thay vì design token (CSS var) theo `ux §4`.
 - Folder/file thừa không dùng (component/hook mồ côi, scaffold mẫu sót, dead code / import chết) — phải xóa, không để lại.
 
 ## Output

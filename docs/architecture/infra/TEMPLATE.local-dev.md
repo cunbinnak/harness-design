@@ -1,11 +1,11 @@
 # Local dev & deploy tối thiểu
 
-> Architect điền khi intake; dev-handoff xác nhận chạy được.
+> Solution-architect điền ở DESIGN (`/design`); dev-handoff xác nhận chạy được.
 
 ## Prerequisites
 
 - Docker Desktop / Compose v2
-- JDK / Node theo `docs/architecture/adr/ADR-001-tech-stack.md`
+- JDK / Node theo ADR tech-stack (`docs/architecture/adr/ADR-*.md`)
 
 ## Chạy stack local
 

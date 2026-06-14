@@ -1,13 +1,14 @@
 ---
 name: implementation-plan
-description: Intake step 4 (program-planner) — WAVE-SEQUENCE + wave-{N}.md cho MỌI wave (full plan toàn dự án, nhiều wave=sprint phụ thuộc nhau) + materialize MATRIX + KG skeleton.
+description: Stage PLAN (/plan, program-planner) — WAVE-SEQUENCE + wave-{N}.md cho MỌI wave (full plan toàn dự án, nhiều wave=sprint phụ thuộc nhau) + materialize MATRIX + KG skeleton. Sau DESIGN, trước REVIEW.
 ---
 
 # Implementation Plan Skill
 
 ## Khi load
-`/intake-requirement` **step 4** — agent `program-planner-agent`, sau step 3.
-Input: `PROJECT.md` + `FEAT-*.md` (AC/BR/boundaries) + design step 3 (ADR/HLD/API/data-model/integrations) + boundary decomposition (kind/stack).
+Command **`/plan`** (stage **PLAN** → REVIEW) — agent `program-planner-agent`, sau `/design`.
+Input: `docs/architecture/PROJECT.md` (Discovery D3) + product DOMAIN (`epics/`, `feat/` AC+BR, `business-rules/`, `journeys/`, `personas/`) + design (`adr/HLD/api/data-model/integrations/ux/events`) + charter boundaries (`docs/discovery/boundaries/*/CHARTER.md`).
+WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt single-repo): có field `wave_class`/`wave_strategy`/`target_count_per_layer` + block YAML per-wave + `targets`=boundary_id từ MATRIX + contract trỏ `docs/architecture/{api,events,ux}/` — điền theo template; harness `start-wave` hiện chỉ đọc wave-number → boundaries từ MATRIX (`wave_class`/`wave_strategy`/`target_count` forward-looking, chưa gate).
 
 ## Wave = sprint — dự án chia thành NHIỀU wave
 - **1 wave = 1 sprint** giao được 1 lát sản phẩm chạy end-to-end.
@@ -15,7 +16,7 @@ Input: `PROJECT.md` + `FEAT-*.md` (AC/BR/boundaries) + design step 3 (ADR/HLD/AP
 - **Wave sau phụ thuộc wave trước** (tính năng này chờ tính năng khác): vd `order` chờ `auth` + `catalog`; `payment` chờ `order`; `customer-app` chờ API order/catalog.
 - **Intake sinh FULL PLAN toàn dự án**: WAVE-SEQUENCE + **chi tiết MỌI wave** (`wave-001.md … wave-00N.md`) ngay từ đầu.
 
-## Deliverable của step 4 (đúng cái command verify)
+## Deliverable của /plan (đúng cái gate plan verify)
 1. **`docs/plans/WAVE-SEQUENCE.md`** — **roadmap toàn dự án** theo `TEMPLATE.WAVE-SEQUENCE.md`: chia **toàn bộ** boundary/FEAT thành **nhiều wave** theo phụ thuộc. Mỗi wave: goal + boundaries in scope + features + **dependencies (cần gì từ wave trước)** + estimated effort + exit criteria. (Wave 1, Wave 2, Wave 3, …)
 2. **`docs/plans/wave-001.md` … `wave-00N.md`** — chi tiết **MỌI wave** (mỗi wave 1 file theo `TEMPLATE.wave.md`): boundaries in scope, FEAT + AC count, thứ tự dev (foundation trước), cross-wave dependency, exit criteria. *(Scope đổi về sau → refine wave-{N}.md qua `/apply-cr`.)*
 3. **`harness/SERVICE-BOUNDARY-MATRIX.json`** — materialize từ decomposition: **≥ 1 boundary**, mỗi boundary `{boundary_id, kind, prefix, tech{language,framework,data_store}, wave, features[], ref_skills[], depends_on, consumed_by}` (+ `owned_paths`/`repo_url` nếu có).
@@ -27,10 +28,10 @@ Input: `PROJECT.md` + `FEAT-*.md` (AC/BR/boundaries) + design step 3 (ADR/HLD/AP
 > ```bash
 > py scripts/materialize_matrix.py <boundaries.json>     # hoặc --json '[...]' ; --mode merge ; --dry-run
 > ```
-> Script gate `stage ∈ {BOOTSTRAP, INTAKE}`, validate (kind hợp lệ, boundary_id unique, depends_on tồn tại) rồi ghi MATRIX + bump revision.
+> Script gate `stage ∈ {BOOTSTRAP, PLAN}`, validate (kind hợp lệ, boundary_id unique, depends_on tồn tại) rồi ghi MATRIX + bump revision.
 
 ## Phương pháp chia wave
-1. **Map FEAT → boundary**: từ `boundaries_suggested` (step 2) + decomposition (step 3).
+1. **Map FEAT → boundary**: từ charter boundaries (Discovery D3) + FEAT/`epic_ref` (DOMAIN) + decomposition (DESIGN).
 2. **Dựng đồ thị phụ thuộc** boundary/FEAT (`depends_on`): cái gì cần cái gì ready trước.
 3. **Topological → wave** (sprint):
    - **Wave 1 = foundation mỏng** (auth/shared + 1–2 capability core) đủ chạy **E2E sớm** (login + 1 luồng nghiệp vụ chính).
@@ -39,18 +40,21 @@ Input: `PROJECT.md` + `FEAT-*.md` (AC/BR/boundaries) + design step 3 (ADR/HLD/AP
 4. **Viết wave-{N}.md cho mọi wave** (theo `TEMPLATE.wave.md`).
 5. **Materialize MATRIX** (mỗi boundary: `wave` + `features[]` + `ref_skills[]` + `depends_on`) + **KG skeleton** per boundary.
 
-## Flow step 4 (theo command)
+## Flow (/plan)
 - Iterate với user: trình bày WAVE-SEQUENCE (toàn dự án) + tất cả wave-{N}.md + MATRIX → "OK chưa? chỉnh gì?" → sửa. Lặp tới khi user confirm (không giới hạn số vòng).
-- Sau user confirm: return RETURN SCHEMA với `user_confirmed: true`, `step: 4` (step cuối → main chạy `harness intake-requirement complete '{step:4, all_steps_done:true}'`).
+- Sau user confirm: return RETURN SCHEMA với `user_confirmed: true` → main chạy `py scripts/harness.py plan complete '{}'` (gate plan_gate: WAVE-SEQUENCE + MATRIX + wave files + KG) → transition PLAN → REVIEW.
 
 ## Quality checklist
 - [ ] WAVE-SEQUENCE phủ **100% boundary + FEAT** (không sót, KHÔNG gom hết vào 1 wave).
+- [ ] **No orphan capability** — mỗi wave cover ≥1 capability từ CHARTER §3; mọi capability có wave (ZIP planning-rules).
 - [ ] Chia **≥ 2 wave** khi có phụ thuộc; thứ tự topological (không phụ thuộc ngược/vòng).
 - [ ] **Mỗi wave trong WAVE-SEQUENCE có file `wave-{N}.md` detail tương ứng** (full plan).
 - [ ] Mỗi wave có goal + boundaries + features + **dependencies từ wave trước** + exit criteria.
+- [ ] **≥1 wave điền đủ `wave_class` + `wave_strategy`** (dù forward-looking chưa gate — giữ field theo template).
 - [ ] Wave 1 mỏng, chạy được **E2E** (foundation + 1 lát core).
+- [ ] **Deferred-scope khai báo tường minh** (G1): AC/feature chủ động hoãn sang wave sau (auth/idempotency/event ở wave CRUD…) ghi vào `## 6 → Deferred to later waves` của `wave-{N}.md` (token `FEAT-NNN[:AC-M]`/`BR-NNN`). Đây là SoT để test-plan tag `@deferred` → test-execute skip → end-wave close sạch (không cần ép `test_result`).
 - [ ] MATRIX mỗi boundary đủ `kind/prefix/tech/wave/features/depends_on`; `ref_skills[]` suy từ design (event/cache/extra → ref tương ứng; CRUD thuần để rỗng); KG skeleton mọi boundary.
 - [ ] **Không có `TBD` / section trống mơ hồ** — chỗ chưa chốt ghi `Open question` (cần ai quyết + vì sao).
 
 ## Done
-- WAVE-SEQUENCE + **wave-{N}.md cho mọi wave** + MATRIX (≥1 boundary) + KG skeleton (khớp verify intake step 4); user đã confirm → intake complete (state INTAKE).
+- WAVE-SEQUENCE + **wave-{N}.md cho mọi wave** + MATRIX (≥1 boundary) + KG skeleton (khớp gate plan_gate); user đã confirm → PLAN → REVIEW (rồi /approve-document → /start-wave).

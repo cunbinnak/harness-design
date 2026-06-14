@@ -4,23 +4,23 @@ role: "side:apply-cr"
 command: apply-cr
 primary_skill: business-analysis
 secondary_skills: [implementation-plan]
-stage_transition: "DONE -> INTAKE"
+stage_transition: "DONE -> DOMAIN_AUTHORING"
 ---
 
 # Apply CR Agent
 
 ## Identity
 
-Phân tích Change Request và chuẩn bị **intake amendment**. CR file = đã duyệt (không gate approve). Chỉ allow từ state DONE để tránh nhiễu wave đang chạy.
+Phân tích Change Request và chuẩn bị **design amendment**. CR file = đã duyệt (không gate approve). Chỉ allow từ state DONE để tránh nhiễu wave đang chạy.
 
 | | |
 |---|---|
 | Command | `/apply-cr <CR-ID>` |
-| Stage trigger | DONE -> INTAKE (amendment mode) |
+| Stage trigger | DONE -> DOMAIN_AUTHORING (amendment) |
 | Pre-condition | State = DONE (wave hiện tại đã done-wave hoặc end-wave) + CR file tồn tại |
-| Post complete | User chạy `/intake-requirement` với mode amendment |
+| Post complete | CR feature → `/domain-start` author epic/feat/BR → `/domain-end`. CR kiến trúc-only → `/domain-end` thẳng. Rồi `/design` → `/design-end` → `/plan` → REVIEW → `/start-wave`. |
 
-**KHÔNG phải:** intake specialist (produce artifacts), review-document (revise docs sau intake).
+**KHÔNG phải:** solution-architect/program-planner (produce artifacts ở DESIGN/PLAN), review-document (revise docs).
 
 ## Trách nhiệm
 
@@ -30,7 +30,7 @@ Phân tích Change Request và chuẩn bị **intake amendment**. CR file = đã
 4. Identify boundaries affected (cross-reference với `harness/SERVICE-BOUNDARY-MATRIX.json`).
 5. Edit file CR section "Kế hoạch cập nhật" với impact analysis + plan.
 6. (On-demand) Invoke `implementation-plan` để đánh giá impact lên wave plan.
-7. Return RETURN SCHEMA với `cr_id`, `needs_intake=true` (thường yes).
+7. Return RETURN SCHEMA với `cr_id`, `needs_redesign=true` (thường yes).
 
 ## Workflow
 
@@ -45,9 +45,10 @@ Phân tích Change Request và chuẩn bị **intake amendment**. CR file = đã
    - Cần intake amendment: yes/no
    - Blocker / open questions
 6. (Optional) Invoke implementation-plan để verify wave plan impact
-7. Return RETURN SCHEMA
-8. Sau complete: harness STATE → INTAKE
-9. User tự chạy /intake-requirement với evidence chứa intake_mode=amendment + cr_id
+7. Phân loại CR: (a) thêm/đổi FEATURE (product) hay (b) chỉ kiến trúc/contract. Nếu cần BOUNDARY MỚI → báo user dùng done-wave→/discovery-start D3 (KHÔNG apply-cr).
+8. Return RETURN SCHEMA
+9. Sau complete: harness STATE → DOMAIN_AUTHORING
+10. CR feature → /domain-start author epic/feat/BR → /domain-end. CR kiến trúc-only → /domain-end thẳng. Rồi /design → /design-end → /plan → REVIEW → /start-wave.
 ```
 
 ## Skills
@@ -66,20 +67,23 @@ Phân tích Change Request và chuẩn bị **intake amendment**. CR file = đã
 
 - Implement code; sửa `services/`.
 - Rewrite toàn bộ PROJECT/ADR — chỉ vùng CR ảnh hưởng.
-- Tự đoán boundary mới (dùng CR + MATRIX hoặc đề xuất user add boundary qua intake step 4).
+- Tự đoán/tạo boundary MỚI — boundary mới (chưa trong BOUNDARY-MAP) phải qua done-wave→`/discovery-start D3` (charter), KHÔNG qua apply-cr.
 - `/apply-cr` khi state khác DONE — tránh nhiễu wave đang chạy.
-- Auto chạy `/intake-requirement` thay user — user quyết.
+- Auto chạy `/domain-start`/`/design` thay user — user quyết.
 
 ## Sau agent này
 
 ```
-STATE → INTAKE (amendment mode flag set)
+STATE → DOMAIN_AUTHORING (amendment)
 
 User runs:
-  /intake-requirement   (orchestration sẽ detect amendment mode từ CR evidence)
-  → Claude main spawn 4 specialists trong amendment mode
-  → Chỉ sửa file/section liên quan CR
-  → Mode amendment gates nhẹ hơn full
+  CR thêm/đổi FEATURE → /domain-start <EPIC|FEATURE|BR|...> (author epic/feat/BR vùng CR) → /domain-end
+  CR kiến trúc-only    → /domain-end (qua thẳng — epic/feat/BR cũ đã đủ gate)
+  → /design (amendment ADR/HLD/API/... vùng CR) → /design-end
+  → /plan  (re-scope wave + MATRIX nếu cần)
+  → REVIEW (/review-document → /approve-document → /start-wave)
+
+CR cần BOUNDARY MỚI → KHÔNG dùng apply-cr; dùng done-wave → /discovery-start D3.
 ```
 
 ## RETURN SCHEMA
@@ -95,8 +99,8 @@ User runs:
   "lint": "pass",
   "test": "pass",
   "cr_id": "CR-001",
-  "needs_intake": true,
-  "intake_mode": "amendment",
+  "needs_redesign": true,
+  "amendment_scope": "design",
   "affected_docs": [
     "docs/architecture/feat/FEAT-002-...md",
     "docs/architecture/api/api-order-mgmt.md"

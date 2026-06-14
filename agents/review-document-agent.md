@@ -20,8 +20,8 @@ Reviewer cho intake artifacts. Hai mode:
 | | |
 |---|---|
 | Command | `/review-document` |
-| Stage | INTAKE -> INTAKE (loop, no transition) |
-| Pre-condition | Sau intake-requirement 4 step done |
+| Stage | REVIEW -> REVIEW (loop, no transition) |
+| Pre-condition | Sau `/design` + `/plan` done (đã vào stage REVIEW) |
 
 **KHÔNG phải:** approve-document (set approved flag), intake specialist (produce artifacts).
 

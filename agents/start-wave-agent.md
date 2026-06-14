@@ -4,7 +4,7 @@ role: "ops:start-wave"
 command: start-wave
 primary_skill: null
 secondary_skills: []
-stage_transition: "INTAKE -> WAVE_OPEN"
+stage_transition: "REVIEW -> WAVE_OPEN"
 ---
 
 # Start Wave Agent
@@ -16,7 +16,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG skeleton từ MATRIX, 
 | | |
 |---|---|
 | Command | `/start-wave <N>` |
-| Stage trigger | INTAKE -> WAVE_OPEN |
+| Stage trigger | REVIEW -> WAVE_OPEN |
 | Pre-condition | `approved=true` trong STATE (qua `/approve-document`) |
 
 ## Trách nhiệm
@@ -24,7 +24,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG skeleton từ MATRIX, 
 1. Verify `docs/plans/wave-{N}.md` tồn tại + có boundaries + features.
 2. Verify `harness/SERVICE-BOUNDARY-MATRIX.json` có entries cho boundaries trong wave.
 3. Run `py scripts/materialize.py --wave {N}` → gen per-boundary dev/fix agent + KG skeleton.
-4. Verify materialize output: `agents/dev-{prefix}-*` + `fix-{prefix}-*` + `knowledge-base/{prefix}-*.knowledge-graph.yaml` tồn tại cho mọi boundary.
+4. Verify materialize output: `agents/dev-{prefix}-*` + `fix-{prefix}-*` + `knowledge-base/{boundary}.knowledge-graph.yaml` (KG tên KHÔNG prefix — khớp materialize.py) tồn tại cho mọi boundary.
 5. **Seed phần design vào KG cho MỖI boundary trong wave** — **Edit ĐÚNG file vừa materialize `knowledge-base/{boundary}.knowledge-graph.yaml`** (template duy nhất = `TEMPLATE.knowledge-graph.yaml`; KHÔNG tạo file mới / đổi tên). Đọc docs đã chốt → ghi vào file đó:
    - `entities` ← `data-model-{boundary}.md` (entity + attributes + invariants)
    - `business_rules` ← các `FEAT-*` của boundary (BR-* + enforcement_point)
@@ -61,7 +61,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG skeleton từ MATRIX, 
 ## Forbidden
 
 - Tạo `agents/dev-*` `fix-*` bằng tay — PHẢI qua materialize.py.
-- Sửa `harness/SERVICE-BOUNDARY-MATRIX.json` — đó là intake step 4.
+- Sửa `harness/SERVICE-BOUNDARY-MATRIX.json` — đó là `/plan` (stage PLAN).
 - Code trong services/.
 - Start wave khi chưa có approved=true.
 

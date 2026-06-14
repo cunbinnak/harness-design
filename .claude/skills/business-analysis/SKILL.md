@@ -1,25 +1,26 @@
 ---
 name: business-analysis
-description: Intake step 2 (business-analyst) — refine FEAT thành AC testable + BR + boundaries_suggested. Dùng process flow / use case / edge case làm phương pháp phân tích.
+description: Lens phân tích AC/BR — kiểm AC testable + BR logical + scope rõ. Dùng bởi /review-document (review product DOMAIN/DESIGN) + /apply-cr (analyze CR impact). Process flow / use case / edge case làm phương pháp.
 ---
 
 # Business Analysis Skill
 
 ## Khi load
-`/intake-requirement` **step 2** — agent `business-analyst-agent`, sau step 1 (`requirement-analysis`).
-Input: `docs/architecture/PROJECT.md` + `docs/architecture/feat/FEAT-*.md` (draft từ step 1).
+- **`/review-document`** (review-document-agent): soi product (FEAT/AC + BR) + design xem AC có testable, BR có logical, scope có rõ — trả issues cho user feed feedback.
+- **`/apply-cr`** (apply-cr-agent): analyze CR impact lên scope/AC/BR → vùng cần re-design.
 
-## Deliverable của step 2 (đúng cái command verify)
-**Refine mỗi `docs/architecture/feat/FEAT-*.md`** (giữ cấu trúc `TEMPLATE.feat.md`) đạt 3 thứ:
-1. **AC testable** — Given/When/Then hoặc condition đo được; mỗi user story ≥ 1 AC; cover cả non-happy-path.
-2. **Business rules `BR-*`** — table: rule + nơi áp dụng (endpoint/domain service/UI) + nguồn (policy/regulation/stakeholder).
-3. **`boundaries_suggested`** — bounded context → boundary nào đảm nhận (gợi ý; solution-architect chốt ở step 3).
+Input: `docs/architecture/{PROJECT.md, feat/FEAT-*.md, business-rules/BR-*.md}` + (apply-cr) `tracking/change-requests/{cr-id}-*.md`.
 
-> Đây là 3 thứ `build_prompt.py` step 2 + verify command yêu cầu. Mọi thứ khác là phương pháp để ra được chúng cho tốt.
+## Cái cần đảm bảo (chất lượng AC/BR — FEAT do DOMAIN author)
+1. **AC testable** — Given/When/Then (Cho/Khi/Thì) hoặc condition đo được; mỗi user story ≥ 1 AC; cover cả non-happy-path.
+2. **Business rules `BR-*`** — phát biểu rõ + nguồn (policy/regulation/stakeholder) + ≥2 ví dụ; `related_features` ≥1.
+3. **Scope rõ** — §Ngoài phạm vi đủ để QC biết KHÔNG test gì; bounded context rõ (boundary thật chốt ở DESIGN/PLAN).
+
+> DOMAIN (`/domain-start`) author FEAT/BR; skill này là LENS kiểm chất lượng (review) + phân tích thay đổi (CR) — KHÔNG tự author FEAT.
 
 ## Phương pháp phân tích (để ra AC/BR/boundaries chất lượng)
 1. **Research** — chỉ khi domain phức tạp/chưa rõ và có WebSearch/WebFetch: business process pattern của industry, edge case/failure đã documented, compliance/regulatory. KHÔNG bịa nguồn.
-2. **Actor & bounded context** — liệt kê tác nhân (role/system/external) → suy ra `boundaries_suggested`.
+2. **Actor & bounded context** — liệt kê tác nhân (role/system/external) → suy ra bounded context (gợi ý boundary; DESIGN chốt).
 3. **Process flow (Mermaid)** — As-Is (nếu có hệ thống cũ) + To-Be (theo PROJECT). Happy path + nhánh ngoại lệ → giúp tìm AC + edge case.
    ```mermaid
    flowchart TD
@@ -33,17 +34,16 @@ Input: `docs/architecture/PROJECT.md` + `docs/architecture/feat/FEAT-*.md` (draf
 
 > Process flow / use case / edge case có thể **ghi kèm vào FEAT** (section phụ trợ sau Business rules) — không bắt buộc verify, nhưng giúp dev/test/reviewer hiểu rõ.
 
-## Flow step 2 (theo command)
-- Iterate với user: trình bày refine → hỏi "OK chưa? cần chỉnh gì?" → sửa. Lặp tới khi user confirm (không giới hạn số vòng).
-- Sau user confirm: return RETURN SCHEMA với `user_confirmed: true`, `step: 2`.
+## Flow
+- **review-document**: soi → trả `issues[]` (file + concern) cho user; KHÔNG tự sửa product (DOMAIN author sửa, hoặc revision loop).
+- **apply-cr**: analyze CR → ghi impact vào CR file §Kế hoạch cập nhật + return `affected_docs`/`boundaries_affected`.
 
-## Quality checklist
-- [ ] Mỗi user story có ≥ 1 AC testable (Given/When/Then), gồm non-happy-path.
-- [ ] BR-* có nơi áp dụng + nguồn tham chiếu.
-- [ ] `boundaries_suggested` cho mọi capability (bounded context → boundary).
+## Quality checklist (khi review / phân tích)
+- [ ] Mỗi user story có ≥ 1 AC testable (Cho/Khi/Thì), gồm non-happy-path.
+- [ ] BR-* có nguồn tham chiếu + ≥2 ví dụ + `related_features` ≥1.
+- [ ] Scope rõ (§Ngoài phạm vi đủ cho QC); bounded context rõ.
 - [ ] (Phương pháp) process flow / use case / edge case đã cân nhắc để không sót AC.
-- [ ] Assumption + constraint nêu rõ.
 - [ ] (Nếu research) ≥ 1 nguồn thật, ghi link.
 
 ## Done
-- Mỗi FEAT có **AC testable + BR-* + boundaries_suggested** (khớp verify intake step 2); user đã confirm.
+- review-document: trả issues list cho user feedback. apply-cr: CR impact analysis ghi vào CR file.

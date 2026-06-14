@@ -2,8 +2,8 @@
 name: review-document
 description: "Revision loop. User feed feedback, agent revise doc. Lặp đến khi user OK"
 argument-hint: "\"<feedback>\" [--file path]  (vd: \"FEAT-002 AC quá mơ hồ\" --file docs/architecture/feat/FEAT-002.md)"
-when_state: [INTAKE]
-sets_stage: INTAKE
+when_state: [REVIEW]
+sets_stage: REVIEW
 spawn:
   agent: review-document-agent
   skills: [business-analysis]
@@ -61,7 +61,7 @@ User truyền feedback sau slash command:
 
 ## State semantics
 
-- State KHÔNG đổi (INTAKE → INTAKE).
+- State KHÔNG đổi (REVIEW → REVIEW).
 - Mỗi call xử lý feedback rồi revise doc (STATE.json chỉ giữ trạng thái hiện tại — không log feedback).
 - User có thể chạy `/review-document` không giới hạn lần.
 

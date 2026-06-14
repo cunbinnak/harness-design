@@ -1,71 +1,244 @@
-# PROJECT — {project_name}
+---
+type: design
+artifact_kind: project
+status: ACTIVE
+version: 1
+tier: T0
+owner_authority: Architecture Authority
+owner_role: "discovery:charter-author (derive ở D3, gộp aggregate D6)"
+created_at: "{{DATE}}"
+last_reviewed: "{{DATE}}"
+service_prefix: "{{prefix}}"            # chốt ở D3 — dùng cho services/{prefix}-{boundary}/
+---
 
-> **Purpose:** Mô tả dự án ở cấp cao nhất — vision, scope, KPI, NFR, constraints.
-> **Owner:** `intake:requirement-analyst` (bước 1) → `intake:business-analyst` (bước 2 refine).
-> **Audience:** Mọi agent intake/review, dev (đọc làm bối cảnh), stakeholder.
-> **Out of scope:** Per-boundary design (→ [`hld/`](hld/)), API (→ [`api/`](api/)), UI (→ [`ux/`](ux/)), wave plan (→ [`../plans/`](../plans/)).
+# PROJECT — {{project_name}}
+
+> Điền NGẮN GỌN: ưu tiên bảng/bullet, không văn xuôi thừa, không lặp. Doc này agent downstream đọc nhiều lần — tiết kiệm context.
+> Tài liệu cấp cao nhất: gộp PRD + SYSTEM-ARCHITECTURE + TECHSTACK + ROADMAP (single-repo). Owner: `discovery:charter-author` (derive D3, gộp D6). Source-of-truth cho: vision, scope, NFR, security, metrics, glossary, stack, roadmap.
+> Out of scope (file khác): per-boundary design → `hld/`; API → `api/`; schema → `data-model/`; UI → `ux/`; wave chi tiết → `../plans/`.
 
 ---
 
-## Tổng quan
+## 1. Tổng quan (PRD)
 
-- **Tên / mã dự án:**
-- **One-liner:** (sản phẩm làm gì cho ai)
-- **Vấn đề giải quyết:**
+- **Tên / mã:** {{project_name}} / prefix `{{prefix}}`
+- **One-liner:** {{làm gì, cho ai, giá trị gì}}
+- **Vấn đề giải quyết:** {{pain point — trích hypothesis-log §problem}}
+- **Vision (1 câu):** {{tương lai khi thành công}}
 
-## Đối tượng
+### 1.1 Hypotheses + risk (từ D0)
 
-- **Người dùng chính:** (persona — chỉ liệt kê, chi tiết UI ở [`ux/`](ux/))
-- **Bên liên quan:**
-- **Giả định môi trường:** (cloud, on-prem, mobile/web...)
+| Giả thuyết | Loại | Cách kiểm chứng | Trạng thái |
+|---|---|---|---|
+| {{H1: ...}} | hypothesis | {{metric / experiment}} | {{open/validated}} |
+| {{A1: ...}} | anti-hypothesis | {{...}} | {{...}} |
 
-## Phạm vi dự án
+---
 
-| In scope | Out of scope |
-|----------|--------------|
-| | |
+## 2. Đối tượng (personas)
 
-## Mục tiêu & KPI
+> Chỉ liệt kê + nhu cầu cốt lõi. Chi tiết → `personas/`; UI flow → `ux/`.
 
-- **Mục tiêu kinh doanh:**
-- **KPI / điều kiện done cấp dự án:**
+| Persona | Vai trò | Nhu cầu cốt lõi (job-to-be-done) |
+|---|---|---|
+| {{Cashier}} | {{người dùng chính}} | {{nhận order nhanh, ít thao tác}} |
+| {{Manager}} | {{...}} | {{báo cáo real-time}} |
 
-## Ràng buộc
+- **Bên liên quan (không trực tiếp dùng):** {{owner, kế toán, IT}}
+- **Giả định môi trường:** {{cloud/on-prem; web/mobile; mạng/thiết bị}}
 
-- **Pháp lý / compliance:**
-- **Kỹ thuật cứng:** (tech stack bắt buộc, integration phải có...)
-- **Vận hành:** (timeline, team size, budget)
+---
 
-## NFR (project-wide)
+## 3. Phạm vi dự án
 
-> Targets cấp dự án. Boundary có thể refine trong HLD §NFR nếu cần stricter.
+| In scope (làm) | Out of scope (KHÔNG làm — và vì sao) |
+|---|---|
+| {{...}} | {{... — lý do: hoãn / ngoài năng lực / không cốt lõi}} |
 
-| Attribute | Target |
-|-----------|--------|
-| Performance | (vd. p95 latency < 200ms) |
-| Availability | (vd. 99.5%) |
-| Security | (vd. OWASP Top 10) |
-| Test Coverage | BE ≥ 80%, FE ≥ 60% |
-| Scalability | (vd. {N} req/s @ {users}) |
-| Observability | (vd. structured JSON logs) |
+**Anti-capabilities (cố ý KHÔNG làm):** {{vd. "Không làm loyalty/CRM trong v1."}}
 
-## Nguyên tắc thiết kế
+---
 
-- (vd. API-first, bounded context, event-driven nếu áp dụng)
+## 4. Mục tiêu & success metrics
 
-## Glossary
+- **Mục tiêu kinh doanh:** {{...}}
+- **Điều kiện "done" cấp dự án:** {{khi nào coi là hoàn thành MVP/v1}}
+
+| Metric | Baseline | Target | Đo bằng |
+|---|---|---|---|
+| {{Thời gian nhận 1 order}} | {{90s}} | {{< 30s}} | {{instrumentation}} |
+| {{Tỷ lệ báo cáo đúng giờ}} | {{60%}} | {{> 95%}} | {{...}} |
+
+---
+
+## 5. Ràng buộc
+
+- **Pháp lý / compliance:** {{hoá đơn điện tử, lưu trữ N năm, data residency}}
+- **Kỹ thuật cứng:** {{stack bắt buộc, integration phải có, legacy phải tương thích}}
+- **Vận hành:** {{timeline, team=1 người, budget, hạ tầng sẵn}}
+
+---
+
+## 6. System architecture (cấp dự án)
+
+> Bức tranh boundary tổng thể. Chi tiết per-boundary → HLD; ownership/owned_paths/kind → MATRIX.
+
+### 6.1 Boundary inventory
+
+| Boundary | kind | Trách nhiệm | Phụ thuộc | Wave |
+|---|---|---|---|---|
+| `{{auth}}` | backend | {{xác thực + phân quyền}} | — | {{1}} |
+| `{{order}}` | backend | {{quản lý order}} | `{{auth}}` | {{1}} |
+| `{{bff-pos}}` | bff | {{aggregate cho POS app}} | `{{order, auth}}` | {{2}} |
+| `{{pos-web}}` | web | {{giao diện thu ngân}} | `{{bff-pos}}` | {{2}} |
+
+### 6.2 Topology (C4 — Container level)
+
+```mermaid
+flowchart TB
+  subgraph clients[Clients]
+    Web[{{pos-web}}]
+    Mobile[{{manager-mobile}}]
+  end
+  subgraph bff[BFF]
+    BFF[{{bff-pos}}]
+  end
+  subgraph backend[Backend]
+    Auth[{{auth}}]
+    Order[{{order}}]
+  end
+  subgraph infra[Stateful infra]
+    DB[({{Postgres}})]
+    Cache[({{Redis}})]
+    Bus{{Kafka}}
+  end
+  Web --> BFF
+  Mobile --> BFF
+  BFF --> Auth
+  BFF --> Order
+  Order -->|event| Bus
+  Order --> DB
+  Auth --> DB
+  Order --> Cache
+```
+
+### 6.3 Nguyên tắc thiết kế (project-wide invariants)
+
+> Chi tiết + enforcement → `ARCHITECTURE-PRINCIPLES.md`.
+
+- {{Boundary + kind — không fullstack (P1)}}
+- {{Contract-first cross-boundary (P2)}}
+- {{No business logic in frontend (I1)}}
+- {{No cross-boundary FK — link by id, resolve app-layer}}
+- {{Event-driven cho cross-boundary side-effect (nếu áp dụng)}}
+
+---
+
+## 7. Tech stack (TECHSTACK)
+
+### 7.1 Per-kind stack
+
+| kind | Language / runtime | Framework | Build | Test |
+|---|---|---|---|---|
+| backend | {{Java 21}} | {{Spring Boot 3.4}} | {{Gradle}} | {{JUnit5 + Testcontainers}} |
+| bff | {{Node.js 22}} | {{Apollo Server}} | {{npm}} | {{Jest}} |
+| web | {{TypeScript}} | {{React 19 + Vite}} | {{npm}} | {{Vitest + Playwright}} |
+| mobile | {{Dart}} | {{Flutter 3}} | {{flutter}} | {{flutter test}} |
+
+> Stack per boundary chốt ở DESIGN (ADR tech-stack). Bảng này là default; boundary có thể khác (ghi ở HLD + ADR).
+
+### 7.2 Cross-cutting infra
+
+| Hạng mục | Lựa chọn | Ghi chú |
+|---|---|---|
+| Primary DB | {{Postgres 16}} | schema-per-boundary |
+| Cache / idempotency | {{Redis 7}} | keyspace-per-boundary |
+| Message bus | {{Kafka / RabbitMQ}} | cross-boundary event |
+| Auth | {{OAuth2 / JWT}} | `ADR-platform-auth` |
+| Secrets | {{Vault / env-mount}} | không hardcode |
+| Observability | {{OTel + JSON log}} | ADR observability |
+| Local dev | docker-compose | `infra/docker-compose.yml` |
+
+### 7.3 Rationale chọn stack
+
+- {{vd. "Java 21 + Spring: team quen, ecosystem mạnh cho transactional service."}}
+
+---
+
+## 8. NFR (project-wide)
+
+> Target cấp dự án — số cụ thể, đo được. Boundary refine chặt hơn ở HLD §7; KHÔNG lỏng hơn bảng này.
+
+| Attribute | Target | Đo / verify |
+|---|---|---|
+| Performance | {{p95 < 200ms; p99 < 500ms}} | perf TC |
+| Availability | {{99.5%}} | healthcheck + uptime |
+| Scalability | {{1000 req/s @ {{N}} concurrent}} | load test |
+| Durability | {{no data loss on single-node crash}} | resilience TC |
+| Security | {{OWASP Top 10 clean; auth mọi endpoint}} | security review + TC |
+| Test coverage | BE ≥ 80%, BFF ≥ 70%, web/mobile ≥ 60% | `/dev-handoff` gate |
+| Observability | {{JSON log + RED metric + trace}} | review |
+| Maintainability | {{1 người vận hành — ưu tiên đơn giản}} | — |
+
+---
+
+## 9. Security & compliance
+
+| Concern | Approach |
+|---|---|
+| AuthN / AuthZ | {{JWT + RBAC; deny-by-default}} |
+| Multi-tenant isolation | {{tenant_id mọi query; không leak cross-tenant}} |
+| Data at rest | {{encrypt PII column}} |
+| Data in transit | {{TLS mọi hop}} |
+| Secrets management | {{Vault; rotate định kỳ}} |
+| Audit trail | {{log security-relevant ops}} |
+| Compliance regime | {{hoá đơn điện tử, lưu trữ N năm, GDPR-like}} |
+| PII inventory | {{field nào PII, ở boundary nào}} |
+
+---
+
+## 10. Roadmap (cấp dự án — wave level)
+
+> Cao cấp theo capability → wave. Chi tiết → `../plans/WAVE-SEQUENCE.md` + `wave-{N}.md`.
+
+| Wave | Theme / capability | Boundary đụng tới | Mục tiêu "done" |
+|---|---|---|---|
+| {{1}} | {{Core order + auth}} | `{{auth, order}}` | {{nhận order end-to-end}} |
+| {{2}} | {{POS UI + BFF}} | `{{bff-pos, pos-web}}` | {{thu ngân dùng được}} |
+| {{3}} | {{Reporting}} | `{{report, manager-mobile}}` | {{báo cáo real-time}} |
+
+**Dependencies giữa wave:** {{vd. "Wave 2 cần Wave 1 (contract order); Wave 3 cần event Wave 1."}}
+
+---
+
+## 11. Glossary
 
 | Thuật ngữ | Định nghĩa |
-|-----------|------------|
-| | |
+|---|---|
+| {{Order}} | {{...}} |
+| {{Tenant}} | {{...}} |
+| {{Boundary}} | đơn vị giao hàng có `kind`; scaffold ra 1 service repo |
 
-## Open questions
+---
 
-- [ ] (câu hỏi) → @owner → deadline
+## 12. Open questions
 
-## Liên kết
+| Câu hỏi | Ảnh hưởng | Owner | Hạn |
+|---|---|---|---|
+| [ ] {{...}} | {{...}} | {{@owner}} | {{Wave-N}} |
 
-- FEAT: [`feat/FEAT-*.md`](feat/)
-- ADR: [`adr/ADR-*.md`](adr/)
-- Plans: [`../plans/project/waves-roadmap.md`](../plans/project/waves-roadmap.md)
-- Shared KG: [`../../knowledge-base/{boundary}.knowledge-graph.yaml`](../../knowledge-base/{boundary}.knowledge-graph.yaml)
+---
+
+## 13. Liên kết
+
+- Hypothesis (D0): `../discovery/hypothesis-log.md` · Capability (D1): `../discovery/capability-map.md` · Boundary (D3): `../discovery/BOUNDARY-MAP.md`
+- Principles: `ARCHITECTURE-PRINCIPLES.md` · Taxonomy: `SEVERITY-TEST-TAXONOMY.md` · Epics/Features: `epics/` · `feat/`
+- ADR: `adr/` · HLD: `hld/` · Plans: `../plans/WAVE-SEQUENCE.md` · Matrix: `../../harness/SERVICE-BOUNDARY-MATRIX.json`
+
+---
+
+## 14. Change log
+
+| Date | Version | Author | Description |
+|---|---|---|---|
+| {{DATE}} | 1 | discovery:charter-author | Initial PROJECT (derive D3, gộp aggregate D6) |

@@ -1,8 +1,8 @@
 ---
 name: apply-cr
-description: "Change request amendment. Chỉ allow từ DONE state. Re-trigger intake."
+description: "Change request amendment. Chỉ allow từ DONE state. Re-enter DOMAIN_AUTHORING (CR feature mới author được epic/feat/BR; CR kiến trúc → /domain-end qua thẳng)."
 when_state: ['DONE']
-sets_stage: INTAKE
+sets_stage: DOMAIN_AUTHORING
 spawn:
   agent: "apply-cr-agent"
   skills: []
@@ -13,19 +13,22 @@ gates: [{type: non_empty, field: cr_id}]
 
 ## Mục đích
 
-Sau khi wave done, nếu có scope change -> tạo CR file -> chạy `/apply-cr` -> re-trigger intake amendment để phân tích lại impact.
+Sau khi wave done, có scope change → tạo CR file → `/apply-cr` → STATE re-enter **DOMAIN_AUTHORING** (đầu pipeline authoring, sau discovery). apply-cr-agent phân tích impact CR; rồi:
+- **CR thêm/đổi feature** (product): `/domain-start <EPIC|FEATURE|BR|...>` author artifact mới → `/domain-end`.
+- **CR chỉ đổi kiến trúc/contract** (không feature mới): `/domain-end` qua thẳng (epic/feat/BR cũ đã đủ gate) → DESIGN.
+- Tiếp: `/design` → `/design-end` → `/plan` → `/review-document` → `/approve-document` → `/start-wave`.
+
+> Re-enter DOMAIN (không phải DESIGN) để mở rộng feature sau ship mượt. CR cần **boundary MỚI** (chưa có trong BOUNDARY-MAP) → dùng đường `done-wave` → `/discovery-start D3` (charter boundary mới) thay vì apply-cr.
 
 ## Build prompt + spawn
 
 ```bash
-# Tạo CR file trước
-# tracking/change-requests/CR-001-add-payment.md (theo TEMPLATE)
+# Tạo CR file trước: tracking/change-requests/CR-001-add-payment.md (theo TEMPLATE)
 py scripts/build_prompt.py apply-cr --cr-id CR-001
 py scripts/harness.py apply-cr complete '{"cr_id": "CR-001"}'
-# STATE.stage -> INTAKE (amendment mode)
+# STATE.stage -> DOMAIN_AUTHORING
 ```
 
-## Sau khi vào INTAKE
+## Sau khi vào DOMAIN_AUTHORING
 
-Chạy lại `/intake-requirement` với evidence `{"intake_mode": "amendment", "cr_id": "CR-001"}` để 4 step pipeline phân tích CR.
-
+CR feature → `/domain-start` author epic/feat/BR vùng CR → `/domain-end` → `/design` → `/design-end` → `/plan` → REVIEW → `/start-wave`. CR kiến trúc-only → `/domain-end` ngay → `/design`...

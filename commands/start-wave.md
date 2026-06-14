@@ -1,12 +1,12 @@
 ---
 name: start-wave
 description: "Mở wave N. Materialize per-boundary agents + KG + folder structure từ MATRIX."
-when_state: ['INTAKE']
+when_state: ['REVIEW']
 sets_stage: WAVE_OPEN
 spawn:
   agent: "start-wave-agent"
   skills: []
-gates: [{type: flag, field: approved, expected: true}, {type: int_min, field: wave_n, min: 1}, {type: file_exists, path: harness/SERVICE-BOUNDARY-MATRIX.json}]
+gates: [{type: flag, field: approved, expected: true}, {type: int_min, field: wave_n, min: 1}, {type: file_exists, path: harness/SERVICE-BOUNDARY-MATRIX.json}, {type: wave_in_matrix, field: wave_n}]
 ---
 
 # /start-wave

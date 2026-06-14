@@ -62,7 +62,7 @@ Sinh test-case-registry.md cho wave. Bao gồm smoke + integration + E2E + manua
 - Sửa source code trong `services/`.
 - Bỏ trống AC mapping — mỗi TC phải trace.
 - Quên cột `Type=auto|manual` — test-execute không phân biệt được.
-- Sửa FEAT/AC content — đó là intake step 2.
+- Sửa FEAT/AC content — đó là DOMAIN (`/domain-start FEATURE`).
 
 ## RETURN SCHEMA
 
@@ -80,6 +80,9 @@ Sinh test-case-registry.md cho wave. Bao gồm smoke + integration + E2E + manua
   "test_cases_auto": 18,
   "test_cases_manual": 7,
   "ac_coverage_pct": 100,
-  "docker_compose_ok": true
+  "docker_compose_ok": true,
+  "connectivity_ok": true
 }
 ```
+
+> `docker_compose_ok` + `connectivity_ok` = infra status kế thừa từ `/dev-handoff` (verify stack còn UP). Gate test-plan cần CẢ 2 flag + infra-proof (`tracking/{wave}/docker-ps.json` do dev-handoff capture).

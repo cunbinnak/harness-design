@@ -17,16 +17,18 @@
 | Total TCs in registry | {N} |
 | Auto TCs | {N_auto} |
 | Manual TCs | {N_manual} |
-| Auto logs produced | {N_logs} (MUST == auto TCs) |
+| Deferred (skip, out-of-scope wave) | {N_deferred} |
+| Auto logs produced | {N_logs} (MUST == auto in-scope TCs) |
 | Passed | {N_pass} |
 | Failed | {N_fail} |
 | Skipped (N/A) | {N_skip} |
-| Bugs logged | {N_bugs} |
-| Fix loops triggered | {N_fixes} |
+| Bugs logged | {N_bugs} (origin=auto; KHÔNG fix ở đây — fix qua /fix-bugs) |
 | Screenshots captured | {N_screenshots} |
 | Overall | **PASS** (all P0 pass) / **FAIL** (any P0 fail) |
 
 ---
+
+> **Gate `test_evidence` (G12):** mỗi auto-TC in-scope phải có log thật `test-logs/{TC}.log`; group integration/e2e/perf/security khi pass|fail phải có dòng network-call `METHOD path -> status` (vd `POST /v1/holds -> 200`); skip phải nêu lý do service-down. Deferred-TC (`@deferred`, khai báo wave plan) → skip, không tính.
 
 ## Per-TC Results (cross-ref logs)
 
@@ -85,16 +87,8 @@ Bug logged: BUG-001 (tracking/wave-{N}/bugs.md#BUG-001)
 Origin: auto
 Severity: high (validation should not 500)
 Boundary: order-mgmt
-Status: open → fixed (after fix loop)
+Status: open (test-execute CHỈ log, KHÔNG fix; fix qua /fix-bugs ở MANUAL_TEST)
 ```
-
----
-
-## Fix loops triggered
-
-| Iteration | Bug | Fix agent | Duration | Result |
-|-----------|-----|-----------|----------|--------|
-| 1 | BUG-001 | fix-{prefix}-order-mgmt-agent | 3m12s | Fixed, re-run TC-I02 PASS |
 
 ---
 
@@ -108,9 +102,7 @@ order-mgmt          ...          order     Up (healthy)   8080->8080
 postgres            ...          db        Up (healthy)   5432->5432
 redis               ...          cache     Up (healthy)   6379->6379
 
-Teardown (end):
-- docker-compose down: SUCCESS
-- Volumes cleaned: YES
+(Infra GIỮ UP cho MANUAL_TEST — teardown ở /done-wave, KHÔNG ở test-execute.)
 ```
 
 ---

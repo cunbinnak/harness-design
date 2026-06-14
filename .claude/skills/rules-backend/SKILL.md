@@ -229,6 +229,7 @@ payment:
 
 ## Coding checklist — verify trước khi báo done
 - [ ] Coverage ≥ 80%; không `@Disabled` thiếu blocker ref; **không H2** trong test.
+- [ ] **Gate `code_compliance` (dev-handoff)** sẽ HARD-FAIL nếu: thiếu `Dockerfile`; build file khai `com.h2database`; `application.{yml,properties}` có `jdbc:h2:` hoặc `ddl-auto: create-drop`; hoặc không có file config. → scaffold Dockerfile (multi-stage maven→JRE) + config Postgres + migration (Flyway/Liquibase) NGAY khi dev (không để handoff mới sửa).
 - [ ] Không hardcode secret/URL/credential; configurable value externalize qua `@ConfigurationProperties` (không `private (static) final` literal); không rải `@Value` khi ≥ 2 props cùng prefix.
 - [ ] Error code chỉ từ `api-{boundary}.md`; exception dùng enum/descriptor typed (không hardcode code/message tại throw site).
 - [ ] **springdoc-openapi wired** (`/v3/api-docs` + `/swagger-ui`) khi scaffold, contract khớp `api-{boundary}.md`.

@@ -1,6 +1,10 @@
 """
 End-to-end smoke test for state machine.
-Walks through all 10 states + 12 commands with mock evidence.
+Walks through 17 states + 19 commands with mock evidence.
+
+Front-half (Discovery D0-D3 → Domain → Design → Plan → Review) gate check artifact
+trên disk; smoke test verify TRANSITION nên dùng force-bypass (nội dung gate test riêng
+ở gates.py / discovery_gate.py selftest). Force ghi audit tracking/decisions.md → hermetic restore.
 
 Run: py scripts/smoke_test.py
 """
@@ -76,11 +80,17 @@ def main() -> int:
     # Save original STATE + MATRIX (restored in finally)
     original = STATE_FILE.read_text(encoding="utf-8")
     matrix_original = MATRIX_FILE.read_text(encoding="utf-8")
-    # infra_proof artifact (gate test-plan: check_infra_proof) — tạo/cleanup hermetic
+    # decisions.md: force-bypass ghi audit row → save/restore hermetic
+    decisions_file = REPO / "tracking" / "decisions.md"
+    decisions_existed = decisions_file.exists()
+    decisions_original = decisions_file.read_text(encoding="utf-8") if decisions_existed else None
+    # infra_proof + health_proof artifacts (gate dev-handoff/test-plan) — tạo/cleanup hermetic
     proof_dir = REPO / "tracking" / "wave-001"
     proof_file = proof_dir / "docker-ps.json"
+    health_file = proof_dir / "health-proof.json"
     proof_dir_existed = proof_dir.exists()
     proof_existed = proof_file.exists()
+    health_existed = health_file.exists()
     passed = []
     failed = []
 
@@ -98,28 +108,47 @@ def main() -> int:
         # ============================================================
         print("\n## 1. Happy path (full cycle)\n")
         reset_state()
+        FB = {"force": True, "reason": "smoke-test transition walk"}  # bypass disk-gate
 
-        # BOOTSTRAP -> INTAKE
-        ok = step("BOOTSTRAP -> INTAKE", "intake-requirement", {"step": 1}, "INTAKE")
-        passed.append(ok) if ok else failed.append("BOOTSTRAP->INTAKE")
+        # BOOTSTRAP -> DISC_D0 (discovery-start)
+        ok = step("BOOTSTRAP -> DISC_D0", "discovery-start", {"wave": "D0"}, "DISC_D0")
+        passed.append(ok) if ok else failed.append("BOOTSTRAP->DISC_D0")
 
-        # INTAKE loop (step 2, 3, 4)
-        for n in [2, 3, 4]:
-            ok = step(f"INTAKE step {n}", "intake-requirement", {"step": n}, "INTAKE")
-            passed.append(ok) if ok else failed.append(f"INTAKE step {n}")
+        # Discovery D0->D1->D2->D3 (discovery-end, gate disk → force bypass)
+        for frm, to in [("D0", "DISC_D1"), ("D1", "DISC_D2"), ("D2", "DISC_D3")]:
+            ok = step(f"DISC_{frm} -> {to}", "discovery-end", {"wave": frm, **FB}, to)
+            passed.append(ok) if ok else failed.append(f"discovery-end {frm}")
 
-        # INTAKE -> INTAKE (review-document, revision loop)
-        ok = step("review-document feedback", "review-document", {"feedback_processed": True}, "INTAKE")
+        # DISC_D3 -> DOMAIN_AUTHORING (chốt service_prefix)
+        ok = step("DISC_D3 -> DOMAIN_AUTHORING", "discovery-end",
+                  {"wave": "D3", "service_prefix": "demo", **FB}, "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("discovery-end D3")
+
+        # DOMAIN_AUTHORING self-loop (domain-start) + -> DESIGN (domain-end)
+        ok = step("DOMAIN self (domain-start FEATURE)", "domain-start", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("domain-start")
+        ok = step("DOMAIN_AUTHORING -> DESIGN", "domain-end", FB, "DESIGN")
+        passed.append(ok) if ok else failed.append("domain-end")
+
+        # DESIGN self-loop (design refine) ; DESIGN -> PLAN (design-end) ; PLAN -> REVIEW (plan)
+        ok = step("DESIGN self (design refine)", "design", {}, "DESIGN")
+        passed.append(ok) if ok else failed.append("design self-loop")
+        ok = step("DESIGN -> PLAN", "design-end", FB, "PLAN")
+        passed.append(ok) if ok else failed.append("design-end")
+        ok = step("PLAN -> REVIEW", "plan", FB, "REVIEW")
+        passed.append(ok) if ok else failed.append("plan")
+
+        # REVIEW -> REVIEW (review-document, revision loop)
+        ok = step("review-document feedback", "review-document", {"feedback_processed": True}, "REVIEW")
         passed.append(ok) if ok else failed.append("review-document")
 
-        # INTAKE -> INTAKE (approve-document, set approved flag)
-        ok = step("approve-document", "approve-document", {"approved": True}, "INTAKE")
+        # REVIEW -> REVIEW (approve-document, set approved flag)
+        ok = step("approve-document", "approve-document", {"approved": True}, "REVIEW")
         passed.append(ok) if ok else failed.append("approve-document")
 
-        # INTAKE -> WAVE_OPEN (start-wave)
-        # Prerequisite: MATRIX file must exist (it does from v3)
+        # REVIEW -> WAVE_OPEN (start-wave) — derive wave_boundaries/features từ MATRIX
         ok = step(
-            "INTAKE -> WAVE_OPEN",
+            "REVIEW -> WAVE_OPEN",
             "start-wave",
             {"approved": True, "wave_n": 1},
             "WAVE_OPEN",
@@ -162,14 +191,25 @@ def main() -> int:
         )
         passed.append(ok) if ok else failed.append("review-dev wave")
 
-        # REVIEW_DEV -> DEV_HANDOFF (gate all_boundaries_reviewed: cả 2 pass + coverage theo kind BE80/web60)
+        # infra proof: dev-handoff PHẢI có docker-ps.json chứng minh wave services lên THẬT
+        # (content-validated). Gate infra_proof giờ chạy ở CẢ dev-handoff lẫn test-plan →
+        # tạo proof TRƯỚC dev-handoff, content = order-management + storefront running.
+        proof_dir.mkdir(parents=True, exist_ok=True)
+        proof_file.write_text(
+            '[{"Service":"order-management","State":"running","Health":"healthy"},'
+            '{"Service":"storefront","State":"running","Health":""}]',
+            encoding="utf-8",
+        )
+        # health_proof: app reachable (HARNESS curl /health/ready) — mỗi wave service 1 probe ok
+        health_file.write_text(
+            '{"probes":[{"boundary":"order-management","http_status":200,"ok":true},'
+            '{"boundary":"storefront","http_status":200,"ok":true}]}',
+            encoding="utf-8",
+        )
+
+        # REVIEW_DEV -> DEV_HANDOFF (gate: all_boundaries_reviewed + infra_proof + health_proof content-validated)
         ok = step("REVIEW_DEV -> DEV_HANDOFF", "dev-handoff", {}, "DEV_HANDOFF")
         passed.append(ok) if ok else failed.append("dev-handoff")
-
-        # infra proof (dev-handoff đã `up -d --build` + capture docker-ps.json) — gate test-plan check_infra_proof
-        proof_dir.mkdir(parents=True, exist_ok=True)
-        if not proof_file.exists():
-            proof_file.write_text("[]", encoding="utf-8")
 
         # DEV_HANDOFF -> TEST_PLAN
         ok = step(
@@ -182,10 +222,13 @@ def main() -> int:
 
         # TEST_PLAN -> TEST_EXECUTE -> (auto) MANUAL_TEST
         # state.complete() now chains auto-transition when test_result=pass
+        # test_evidence gate đọc registry/report THẬT (test riêng ở gates.py selftest) → smoke
+        # dùng force-bypass (đúng triết lý: smoke verify TRANSITION; nội dung gate test hermetic).
         ok = step(
             "TEST_PLAN -> TEST_EXECUTE -(auto)-> MANUAL_TEST",
             "test-execute",
-            {"test_cases_count": 5, "test_result": "pass"},
+            {"test_cases_count": 5, "test_result": "pass",
+             "force": True, "reason": "smoke transition walk (test-evidence content tested in gates selftest)"},
             "MANUAL_TEST",
         )
         passed.append(ok) if ok else failed.append("test-execute + auto")
@@ -208,6 +251,11 @@ def main() -> int:
             "DONE",
         )
         passed.append(ok) if ok else failed.append("end-wave")
+
+        # DONE -> DOMAIN_AUTHORING (apply-cr: CR re-enter domain cho mở rộng feature sau ship)
+        ok = step("DONE -> DOMAIN (apply-cr)", "apply-cr", {"cr_id": "CR-001"}, "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("apply-cr -> DOMAIN")
+        patch_state({"stage": "DONE"})  # restore DONE để test done-wave tiếp
 
         # DONE -> BOOTSTRAP (done-wave teardown)
         ok = step(
@@ -233,7 +281,15 @@ def main() -> int:
         passed.append(ok) if ok else failed.append("reject wrong cmd")
 
         # Gate fail: dev-handoff khi coverage dưới ngưỡng kind (gate wave-scoped đọc STATE.review_results)
-        state_mod.complete("intake-requirement", {"step": 1})
+        # Đưa nhanh về WAVE_OPEN qua force-bypass front-half rồi start-wave.
+        FB = {"force": True, "reason": "smoke negative-case setup"}
+        state_mod.complete("discovery-start", {"wave": "D0"})
+        for frm in ["D0", "D1", "D2", "D3"]:
+            state_mod.complete("discovery-end", {"wave": frm, "service_prefix": "demo", **FB})
+        state_mod.complete("domain-end", FB)
+        state_mod.complete("design-end", FB)
+        state_mod.complete("plan", FB)
+        state_mod.complete("approve-document", {"approved": True})
         state_mod.complete("start-wave", {"approved": True, "wave_n": 1})
         patch_state({"wave_boundaries": ["x"], "wave": {"id": "wave-001", "number": 1}})
         state_mod.complete("start-dev", {"boundary": "x"})
@@ -255,19 +311,32 @@ def main() -> int:
 
         # Gate fail: start-wave with a wave that maps to no boundary in MATRIX
         reset_state()
-        state_mod.complete("intake-requirement", {"step": 1})  # BOOTSTRAP -> INTAKE
+        FB2 = {"force": True, "reason": "smoke unknown-wave setup"}
+        state_mod.complete("discovery-start", {"wave": "D0"})
+        for frm in ["D0", "D1", "D2", "D3"]:
+            state_mod.complete("discovery-end", {"wave": frm, "service_prefix": "demo", **FB2})
+        state_mod.complete("domain-end", FB2)
+        state_mod.complete("design-end", FB2)
+        state_mod.complete("plan", FB2)
+        state_mod.complete("approve-document", {"approved": True})
         result = state_mod.complete("start-wave", {"approved": True, "wave_n": 99})
         ok = not result["ok"] and "wave 99" in result.get("error", "")
         print(f"  [{'OK  ' if ok else 'FAIL'}] reject start-wave unknown wave {result.get('error', '')[:50]}")
         passed.append(ok) if ok else failed.append("reject unknown wave")
 
     finally:
-        # Restore original STATE + MATRIX
+        # Restore original STATE + MATRIX + decisions.md (force-bypass ghi audit)
         STATE_FILE.write_text(original, encoding="utf-8")
         MATRIX_FILE.write_text(matrix_original, encoding="utf-8")
-        # cleanup infra_proof artifact (hermetic — chỉ xoá cái test tạo ra)
+        if decisions_existed:
+            decisions_file.write_text(decisions_original, encoding="utf-8")
+        elif decisions_file.exists():
+            decisions_file.unlink()
+        # cleanup infra_proof + health_proof artifacts (hermetic — chỉ xoá cái test tạo ra)
         if not proof_existed and proof_file.exists():
             proof_file.unlink()
+        if not health_existed and health_file.exists():
+            health_file.unlink()
         if not proof_dir_existed and proof_dir.exists():
             try:
                 proof_dir.rmdir()

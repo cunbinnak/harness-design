@@ -1,186 +1,274 @@
-# UX — {boundary_id}
+---
+type: design
+artifact_kind: ux-spec
+boundary: "{{fe-boundary-name}}"   # boundary kind=web/mobile trong MATRIX
+status: "DRAFT | APPROVED | DEPRECATED"
+platform: ["web"]                  # ["web"] | ["mobile"] | ["web","mobile"]
+a11y_target: "WCAG 2.1 AA"
+last_reviewed: "{{DATE}}"
+---
 
-> **Purpose:** User flows + wireframes + UI states cho FE boundary `{boundary_id}`.
-> **Owner:** `intake:solution-architect` (intake bước 3).
-> **Audience:** `dev:frontend`, `review:frontend`, `test-plan` (E2E + manual TC), stakeholder UAT.
-> **Out of scope:**
-> - BE implementation → [`../hld/hld-{be_boundary}.md`](../hld/)
-> - API endpoints → [`../api/api-{be_boundary}.md`](../api/)
-> - DB schema → [`../data-model/data-model-{be_boundary}.md`](../data-model/)
+> Điền NGẮN GỌN: ưu tiên bảng/bullet, không văn xuôi thừa, không lặp. Doc này agent downstream đọc nhiều lần — tiết kiệm context.
+
+# UX — `{{boundary}}` (FE)
+
+> 1 file / FE boundary (kind=web/mobile): user-flow + nhiều screen + design tokens + component API + global UI patterns. Wireframe = ASCII inline (KHÔNG file MOCKUP riêng). Author ở DESIGN (skill `ux-design`). Tả what render+behave từ góc user — KHÔNG implementation.
 
 ---
 
-## Tổng quan
+## 1. Tổng quan
 
-| | |
+| Aspect | Value |
 |---|---|
-| **Persona chính** | (vai trò — chi tiết user ở [PROJECT.md](../PROJECT.md)) |
-| **Platform** | Web SPA / Mobile / Hybrid |
-| **Design system** | (khớp ADR ui-kit nếu có) |
-| **Ngôn ngữ** | (vi / en / multi) |
-| **A11y target** | WCAG 2.1 AA |
-| **BE boundaries phục vụ** | (list `{be_id}` — đọc API từ [`../api/`](../api/)) |
+| Boundary | `{{boundary}}` (kind {{web/mobile}}) |
+| Personas | `personas/PERSONA-{{name}}.md` (chính + phụ) |
+| Platform | {{web desktop+mobile / iOS+Android}} |
+| Design system / ui-kit | theo **ADR ui-kit** (`adr/ADR-*-ui-kit.md`) — màu/spacing/typography qua **design tokens** (§4), KHÔNG hardcode |
+| A11y target | WCAG 2.1 AA (§9) |
+| Theming | light + dark + high-contrast (§4.6) |
+| BE boundaries phục vụ | `{{be-boundary}}` (`api/api-{{be-boundary}}.md`) |
+| FEAT trong boundary | `feat/FEAT-*.md` (mỗi FEAT Must ≥1 flow §2) |
 
 ---
 
-## User flows
+## 2. User flows
 
-> Mỗi FEAT Must có ít nhất 1 flow. ASCII navigation diagram.
+> Mỗi FEAT Must ≥ 1 flow: entry → screens → nhánh success/error. ASCII nav hoặc Mermaid.
 
-### UF-1 — {tên flow} ({FEAT-001})
+### 2.1 Flow: {{FEAT-NNN — tên flow}}
 
 ```
-[Entry]
-   │
-   ▼
-SCR-001 ── action ──► SCR-002 ── submit ──► SCR-003 (success)
-                         │                       │
-                  validation fail            error toast
-                         ▼                       │
-                   SCR-002 (errors)              ▼
-                                            SCR-002 (retry)
+[Danh sách đơn] --bấm "Hoàn tiền"--> [Form hoàn tiền] --submit hợp lệ--> [Chi tiết yêu cầu] (toast OK)
+                                          └--lỗi BR--> [Form + field error] (form re-enable)
 ```
 
-**Mô tả ngắn:**
-1. User vào `SCR-001` → thấy {content}
-2. Action → `SCR-002` form
-3. Submit → pass: `SCR-003` · fail: inline error
-
-### UF-2 — (thêm flow per FEAT)
+<!-- Thêm flow cho mỗi FEAT Must -->
 
 ---
 
-## Screens
+## 3. Screens
 
-> Per screen: wireframe + components + API calls + UI states. Bỏ qua sections KHÔNG áp dụng.
+> Lặp block cho MỖI screen. Wireframe ASCII inline. Component states đầy đủ. API call khớp `api-{{be}}.md`.
 
-### SCR-001 — {Tên màn hình list}
+### 3.1 Screen: {{Tên màn}} (`/refunds/new`)
 
-**Route:** `/{path}` · **Mục đích:** (1 câu) · **States:** loading | empty | filled | error
+**Mục tiêu**: {{1 câu user làm gì}}.
 
-#### Wireframe
-
+**Wireframe (ASCII)**:
 ```
-┌─────────────────────────────────────────────────┐
-│  Header                              [User] [⋮] │
-├─────────────────────────────────────────────────┤
-│  Page Title                  [+ Tạo mới]        │
-│  [Tìm kiếm ___]  [Filter ▼]                     │
-│  ┌─────────────────────────────────────────┐   │
-│  │ # │ Tên     │ Status   │ Date   │ Action│   │
-│  │ 1 │ {name}  │ ● Active │ 2026..│ [✎][🗑]│   │
-│  └─────────────────────────────────────────┘   │
-│  ◄ Prev  [1][2][3]…  Next ►                     │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│ AppShell (sidebar + topbar)             │
+│ Page header: "Yêu cầu hoàn tiền"        │
+│ Card tóm tắt đơn (ngày, số tiền, KH)    │
+│ Form: [Số tiền] [Lý do] [Đính kèm]      │
+│       [Gửi yêu cầu] (phải)              │
+└─────────────────────────────────────────┘
 ```
 
-#### Components
+**Component states** (mỗi component nêu đủ trong: `default / hover / focus / disabled / loading / error / empty`):
 
-| Component | Loại | Note |
-|-----------|------|------|
-| `<DataTable>` | display | sortable, paginated |
-| `<SearchInput>` | input | debounce 300ms |
+| Component | States cần | Ghi chú |
+|---|---|---|
+| `<RefundForm>` | default · editing-valid · editing-invalid · submitting · be-error | submit disabled khi invalid/submitting |
+| `<AmountInput>` | default · focus · error | currency prefix |
+| `<AttachmentUploader>` | empty · uploading · done · rejected | progress per file |
 
-#### API calls
+**API calls** (khớp `api/api-{{be-boundary}}.md`):
 
-| Trigger | Endpoint | Method | Loading state |
-|---------|----------|--------|--------------|
-| Mount / filter | `/v1/{resource}?page=N&q=...` | GET | Skeleton |
-| Delete row | `/v1/{resource}/{id}` | DELETE | Button disabled |
+| Trigger | Operation | Method | Loading state |
+|---|---|---|---|
+| Submit form | `POST /refunds` | POST | submit spinner + form lock |
+| Load card đơn | `GET /payments/:id` | GET | skeleton card |
 
-#### UI states
+**Validation FE-side** (UX shortcut — BE owns truth qua BR; map BE `error.code` → field):
 
-| State | Hiển thị | Trigger |
-|-------|---------|---------|
-| loading | Skeleton rows | API đang gọi |
-| empty | "Chưa có dữ liệu. [+ Tạo mới]" | data.length === 0 |
-| error | Toast "Lỗi tải. Thử lại" | API error |
+| Field | Required | Rule | BE error.code → field |
+|---|---|---|---|
+| amount | Yes | ≥0, ≤ payment.balance, 2 decimals | `REFUND_TOO_LARGE` |
+| reason | Yes | 5–500 ký tự | `VALIDATION_FAILED` (details.field=reason) |
+| attachments | No | ≤10MB, jpg/png/pdf | `ATTACHMENT_REJECTED` |
+
+**Screen states**:
+
+| State | Visual cue |
+|---|---|
+| Initial / empty | Form blank, submit disabled |
+| Editing (invalid) | Field error visible, submit disabled |
+| Submitting | Submit disabled + spinner, form locked |
+| Success | Toast + redirect `/refunds/:id` |
+| BE error (4xx/422) | Field/form error theo `error.code`, form re-enabled |
+| Network error (5xx) | Toast + retry |
+| Offline | Banner + queue submit |
+
+**Responsive**:
+
+| Breakpoint | Layout |
+|---|---|
+| Mobile (<768px) | 1 cột; card collapse |
+| Tablet (768–1024) | form 2 cột; card sticky |
+| Desktop (>1024) | mặc định wireframe trên |
+
+<!-- Lặp §3.x cho màn tiếp -->
 
 ---
 
-### SCR-002 — {Tên form / modal}
+## 4. Design tokens
 
-**Type:** Modal / Full page · **Mục đích:** Create / Edit `{entity}` · **States:** idle | submitting | success | error
+> Token semantic — lấy từ **ADR ui-kit** (`adr/ADR-*-ui-kit.md`). KHÔNG hardcode hex/px trong code. Web → CSS var / Tailwind; mobile → theme object (Flutter `ColorScheme`/`TextTheme`).
 
-#### Wireframe
+### 4.1 Color (semantic)
 
-```
-┌─────────────────────────────────────┐
-│  {Title}                        [✕] │
-├─────────────────────────────────────┤
-│  Tên *  [___________________]       │
-│   ! Tên không được để trống         │
-│  Mô tả  [textarea, 3 rows]          │
-│  Status: ○ Active ● Pending         │
-├─────────────────────────────────────┤
-│            [Hủy]    [Lưu]           │
-└─────────────────────────────────────┘
-```
+| Token | Giá trị | Dùng cho |
+|---|---|---|
+| `color.primary` / `color.primary-fg` | `{{#1E40AF}}` / `{{#FFFFFF}}` | Hành động chính / chữ trên primary |
+| `color.surface` / `color.text` / `color.text-muted` | `{{#FFFFFF}}` / `{{#0F172A}}` / `{{#64748B}}` | Nền / chữ chính / chữ phụ |
+| `color.success` / `color.warning` / `color.error` | `{{#16A34A}}` / `{{#F59E0B}}` / `{{#DC2626}}` | OK / cảnh báo / lỗi |
+| `color.border` / `color.border-focus` | `{{#E5E7EB}}` / `{{#3B82F6}}` | Viền / focus ring |
 
-#### Validation rules (FE-side)
+### 4.2 Typography
 
-| Field | Required | Rule | Error message |
-|-------|----------|------|--------------|
-| Tên | ✓ | 2–100 ký tự | "Tên không được để trống / quá dài" |
-| Mô tả | ✗ | max 500 | "Tối đa 500 ký tự" |
+| Token | Giá trị |
+|---|---|
+| `font.family-sans` | `{{'Inter', system-ui, sans-serif}}` |
+| `font.size.sm/base/lg/xl` | `{{14/16/18/20}}px` |
+| `font.size.2xl/3xl/4xl` | `{{24/30/36}}px` (h3/h2/h1) |
+| `font.weight.normal/medium/semibold/bold` | `{{400/500/600/700}}` |
+| `font.leading.tight/normal/relaxed` | `{{1.2/1.5/1.75}}` |
 
-#### API calls
+### 4.3 Spacing
 
-| Action | Endpoint | Method | On success | On error |
-|--------|----------|--------|------------|---------|
-| Submit create | `/v1/{resource}` | POST | Close modal, refresh, ✓ toast | Inline error |
-| Submit update | `/v1/{resource}/{id}` | PUT | Same | Inline error |
+| Token | Giá trị |
+|---|---|
+| `space.1/2/3/4` | `{{4/8/12/16}}px` |
+| `space.6/8/12/16` | `{{24/32/48/64}}px` |
+
+### 4.4 Radius / elevation / motion
+
+| Token | Giá trị |
+|---|---|
+| `radius.sm/md/lg/full` | `{{4/8/12/9999}}px` |
+| `elevation.1/2/3` | `{{0 1px 2px / 0 4px 8px / 0 12px 24px}}` |
+| `motion.fast/base/slow` | `{{120/200/320}}ms` · `motion.ease` `{{cubic-bezier(0.4,0,0.2,1)}}` |
+
+### 4.5 Codegen mapping
+
+| Nhóm | Web | Mobile (Flutter) |
+|---|---|---|
+| Color | `--color-primary` | `ColorScheme.primary` |
+| Typography | `--font-size-base` | `TextTheme` entry |
+| Spacing | Tailwind / CSS var | `EdgeInsets.all(Spacing.md)` |
+| Radius / Motion | CSS var / transition | `BorderRadius` / `Duration+Curves` |
+
+### 4.6 Theming
+
+| Mode | Bắt buộc | Override |
+|---|---|---|
+| Light | Yes | default |
+| Dark | Yes | system preference + user override (`color-dark.*`) |
+| High contrast | Yes | map từ OS / forced-colors |
 
 ---
 
-### SCR-003 — (thêm màn hình khác — bỏ qua section không áp dụng)
+## 5. Component API (boundary-level / shared)
+
+> API component dùng chung (prop contract, KHÔNG implementation). Lặp block cho mỗi component đáng tài liệu hoá.
+
+### 5.1 `<Button>`
+
+| Prop | Type | Default | Bắt buộc | Mô tả |
+|---|---|---|---|---|
+| `variant` | `"primary"\|"secondary"\|"ghost"\|"danger"` | `"primary"` | no | Mức nhấn |
+| `size` | `"sm"\|"md"\|"lg"` | `"md"` | no | Kích thước |
+| `disabled` / `loading` | `boolean` | `false` | no | Vô hiệu / spinner+disable |
+| `iconLeft / iconRight` | `IconName?` | — | no | Icon kèm |
+| `aria-label` | `string?` | — | yes nếu icon-only | Nhãn a11y |
+| `onClick` | `(e) => void` | — | no | Handler |
+
+**Behavior**: disabled = no focus + `aria-disabled` + opacity .5; loading = `aria-busy` + spinner, label giữ. Touch target ≥ 48px (mobile) / 40px (web).
+**A11y**: `<button>` semantic; Space+Enter trigger; focus ring 2px `border-focus` offset 2px.
+
+### 5.2 `<Input>` / `<Dialog>` / `<Toast>` …
+
+{{Lặp shape §5.1: props table + behavior + a11y}}
 
 ---
 
-## Global UI patterns
+## 6. Content (copy → i18n)
 
-### Notifications / Toasts
+> Mọi text user-facing qua i18n key — KHÔNG hardcode.
 
-| Tình huống | Style | Vị trí | Nội dung mẫu |
-|-----------|-------|--------|-------------|
-| Success | green | top-right, 3s | "✓ Lưu thành công" |
-| Error | red | top-right | "Lỗi hệ thống" |
-| Confirm delete | dialog | center modal | "Bạn chắc muốn xóa?" |
+| Element | i18n key | vi |
+|---|---|---|
+| Page title | `refunds.form.title` | "Yêu cầu hoàn tiền" |
+| Submit | `refunds.form.submit` | "Gửi yêu cầu" |
+| Lỗi `REFUND_TOO_LARGE` | `refunds.errors.too_large` | "Số tiền vượt số dư có thể hoàn" |
 
-### Routing & guards
+---
 
-```
-/                     → Home / Dashboard
-/{resource}           → SCR-001 (list)
-/{resource}/new       → SCR-002 (create)
-/{resource}/{id}      → SCR-003 (detail)
-/{resource}/{id}/edit → SCR-002 (edit mode)
-/login                → Login
-/403, /404            → Error pages
-```
+## 7. Permission-based UI
 
-- All `/{resource}*` → require auth token
-- Redirect `/login?redirect={current}` nếu token invalid
+> Ẩn/hiện theo `roles[]` (JWT). Defense-in-depth: BE VẪN enforce — ẩn UI chỉ cho UX.
 
-### Responsive
+| Element | Role cần | Khi thiếu quyền |
+|---|---|---|
+| Nút "Gửi yêu cầu" | `refund-issuer` | ẩn nút |
+| Tab "Duyệt" | `manager` | ẩn tab |
 
-| Breakpoint | Behavior |
-|-----------|----------|
-| Desktop (≥1024px) | Full layout, sidebar visible |
-| Tablet (768–1023px) | Sidebar collapse |
-| Mobile (<768px) | Stack, table → card |
+---
 
-### Accessibility checklist (WCAG 2.1 AA)
+## 8. Global UI patterns
 
-- [ ] Form input có `label` / `aria-label`
-- [ ] Focus visible mọi interactive
-- [ ] Color contrast ≥ 4.5:1
-- [ ] Keyboard navigation (Tab/Enter/Esc)
-- [ ] `role="dialog"` cho modal, `aria-live` cho toast
-- [ ] Error msg gắn input qua `aria-describedby`
+- **Toast**: success/error/warning — vị trí + thời gian + `aria-live`.
+- **Routing/guards**: route nào cần auth/role; redirect khi 401/403.
+- **Responsive**: breakpoint chung (sidebar collapse, table → card).
+- **Empty/overflow**: quy ước chung. **Loading**: skeleton (initial) vs spinner (action).
 
-## Open questions
+---
 
-| # | Câu hỏi | Owner | Deadline |
-|---|---------|-------|----------|
-| | | | |
+## 9. Accessibility (WCAG 2.1 AA)
+
+| Aspect | Implementation |
+|---|---|
+| Heading | `<h1>` page title, không skip level |
+| Form labels | `<label for>` mọi input |
+| Required | `aria-required="true"` + dấu * |
+| Error association | `aria-describedby` input → error |
+| Submit feedback | `aria-busy` khi submitting |
+| Focus | field invalid đầu tiên nhận focus khi submit |
+| Keyboard | Tab order rõ; Enter submit; Esc đóng modal; focus trap trong dialog |
+| Contrast | ≥ 4.5:1 (text), ≥ 3:1 (UI component/icon) |
+| Touch target | ≥ 44pt iOS / 48dp Android / 40px web |
+| Reduced motion | tắt animation khi `prefers-reduced-motion` |
+| Screen reader | semantic markup; aria tối thiểu-đúng; live region async update |
+| Forced colors | high-contrast Windows: component vẫn dùng được |
+
+---
+
+## 10. Edge cases + dev handoff
+
+- [ ] Đơn đã hoàn hết → chặn từ list; URL trực tiếp → "không còn số dư" + back.
+- [ ] Concurrent: admin khác hoàn cùng đơn → optimistic lock `409 CONFLICT` → reload.
+- [ ] User tier đổi giữa session → refresh role check khi submit; cấm → `403` friendly.
+- [ ] Browser back sau submit success → về `/refunds`, KHÔNG quay lại form.
+- [ ] Animation/transition + overflow text + breakpoint — note cho dev.
+
+---
+
+## 11. Open questions
+
+- [ ] {{Câu hỏi cần Business/Architecture chốt}}
+
+---
+
+## 12. References
+
+- FEAT: `feat/FEAT-*.md` · Persona: `personas/PERSONA-*.md` · Flow: `hld/hld-{{boundary}}.md §4`
+- Backend contract: `api/api-{{be-boundary}}.md` · Tokens/ui-kit: `adr/ADR-*-ui-kit.md` · Convention: `rules-web` / `rules-mobile`
+
+---
+
+## 13. Change log
+
+| Date | Author | Description |
+|---|---|---|
+| {{DATE}} | solution-architect | Initial UX spec cho `{{boundary}}` |

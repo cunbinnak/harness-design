@@ -4,7 +4,7 @@ role: "review:web"
 command: review-dev
 kind_filter: web
 primary_skill: review-web
-secondary_skills: [rules-web, ref-frontend-config, ref-frontend-pattern]
+secondary_skills: [rules-web]
 orchestrated_by: "MAIN loop /review-dev — review GHI findings + trả open_findings; MAIN (không phải review) spawn fix Mode B"
 kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 ---
@@ -49,8 +49,8 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 - **Primary** (invoke ngay): `review-web` — checklist process + thresholds
 - **Available on-demand**:
   - `rules-web` — convention bắt buộc (verify code khớp)
-  - `ref-frontend-config` — config pattern (verify package.json, env, build)
-  - `ref-frontend-pattern` — cấu trúc thư mục + tổ chức component (data layer REST/BFF)
+
+> Review = WHAT (code có khớp convention/AC không), KHÔNG nạp `ref-frontend-*` (HOW = dev-side) — nhất quán với review-backend/bff/mobile + builder review-dev (chỉ truyền `rules-{kind}`).
 
 > **Rules cụ thể nằm trong skill** — tune skill khi cần customize per-project.
 

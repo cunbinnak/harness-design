@@ -2,6 +2,8 @@
 
 Per-wave tracking artifacts. Flat structure (không nested).
 
+> **3 thang phân loại** (bug `sev` high/med/low · review `severity` BLOCKER/MAJOR/MINOR/NIT/QUESTION · TC `pri` P0/P1/P2) — mapping nhất quán + test_type/tag taxonomy: `docs/architecture/SEVERITY-TEST-TAXONOMY.md` (SSOT).
+
 ## Cấu trúc
 
 ```
@@ -75,7 +77,7 @@ tracking/
 Change Request lưu trong **wave folder bị ảnh hưởng**, không cross-wave global.
 
 - CR-NNN raised mid wave-001 affecting wave-002 → `tracking/wave-002/change-requests/CR-NNN-*.md`
-- Sau done-wave-001, user chạy `/apply-cr CR-NNN` → analyze CR + plan amendment cho intake wave-002
+- Từ DONE state, user chạy `/apply-cr CR-NNN` → analyze CR → DESIGN amendment (`/design` → `/plan` → REVIEW) cập nhật wave-002
 
 ## Workflow
 

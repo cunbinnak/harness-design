@@ -5,9 +5,9 @@
 
 ## Project
 
-Orchestrator framework triển khai ADLC (Architecture-Driven Lifecycle): từ "nhận yêu cầu" → "phân tích thiết kế" → "code" → "test" → "release", combine AI agents + người theo state machine 10 states + 14 slash commands.
+Orchestrator framework triển khai ADLC (Architecture-Driven Lifecycle): Discovery (D0-D3) → Domain → Design → Plan → Review → wave execution (Dev/Test/Done), combine AI agents + người theo state machine **17 states + 19 slash commands**.
 
-Tech: Python 3.14 (kernel), Java/Spring Boot (services generated per boundary, target stack tùy intake).
+Tech: Python 3.14 (kernel), service stack per-boundary set ở DESIGN (vd Java 21 + Spring Boot, Node + Apollo, React + Vite, Flutter).
 
 ## Setup
 
@@ -19,7 +19,7 @@ py scripts/state.py validate         # validate config
 
 ## Commands
 
-14 slash commands theo state machine. Xem [commands/README.md](commands/README.md) để biết flow.
+19 slash commands theo state machine. Xem [commands/README.md](commands/README.md) để biết flow.
 
 Mỗi command có 2 lệnh:
 ```bash
@@ -39,7 +39,7 @@ py scripts/harness.py <cmd> complete '<evidence>'     # apply gate + transition 
 ```bash
 py scripts/gates.py                  # gates selftest
 py scripts/state.py validate         # STATE schema validate
-py scripts/smoke_test.py             # E2E state machine 18 cases
+py scripts/smoke_test.py             # E2E state machine 28 assertions
 ```
 
 ## Architecture rules
@@ -64,10 +64,11 @@ py scripts/smoke_test.py             # E2E state machine 18 cases
 │   ├── STATE-MACHINE.json
 │   ├── SERVICE-BOUNDARY-MATRIX.json
 │   └── PROTOCOL.md
-├── agents/                         16 singleton + 2 template + N materialized
-├── commands/                       14 command source (synced to .claude/commands/)
+├── agents/                         21 singleton + 2 template + N materialized
+├── commands/                       19 command source (synced to .claude/commands/)
 ├── scripts/                        Python kernel + hooks
-├── docs/architecture/              PROJECT + FEAT + ADR + HLD + API + data-model + UX + events + integrations + infra
+├── docs/discovery/                 hypothesis-log + persona-pool + capability-map + event-storming + BOUNDARY-MAP + CHARTER (D0-D3)
+├── docs/architecture/              PROJECT + epics + feat + journeys + personas + business-rules (DOMAIN) + ADR + HLD + API + data-model + UX + events + integrations (DESIGN)
 ├── docs/plans/                     WAVE-SEQUENCE + wave-{N}
 ├── tracking/                       Per-wave test-cases + report + bugs + signoff + CR
 ├── knowledge-base/                 Per-boundary KG

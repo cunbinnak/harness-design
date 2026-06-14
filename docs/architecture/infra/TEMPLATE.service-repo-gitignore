@@ -1,0 +1,40 @@
+# Template .gitignore cho service repo con (polyrepo).
+# Dev sub-agent emit vao services/{{prefix}}-{{boundary}}/.gitignore lan dau scaffold.
+# Giu cac block phu hop {{kind}}; phan chung ap dung moi kind.
+
+# --- chung ---
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+.vscode/
+*.local
+
+# --- kind=backend (Java / Spring Boot / Gradle / Maven) ---
+target/
+build/
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+hs_err_pid*
+
+# --- kind=bff (Node + Apollo) / kind=web (React + Vite) ---
+node_modules/
+dist/
+.next/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+pnpm-debug.log*
+
+# --- kind=mobile (Flutter) ---
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+.flutter-plugins
+.flutter-plugins-dependencies

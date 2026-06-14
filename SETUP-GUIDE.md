@@ -29,7 +29,7 @@ py scripts/reset_for_new_project.py
 # 3. Verify state
 py scripts/harness.py state
 # stage: BOOTSTRAP
-# allowed_commands: [intake-requirement]
+# allowed_commands: [discovery-start]
 ```
 
 ## Daily workflow
@@ -53,21 +53,31 @@ py scripts/harness.py can <command>    # YES/NO command có được allowed
 
 KHÔNG sửa `harness/STATE.json` tay — hook chặn.
 
-## Workflow sequence (14 commands)
+## Workflow sequence (19 commands)
 
 ```
 BOOTSTRAP
-   ↓ /intake-requirement "<project description>"
-INTAKE
-   ↓ /review-document "<feedback>" (revision loop)
+   ↓ /discovery-start D0 "<project description>"
+DISC_D0..D3   (D0 hypothesis · D1 persona+capability · D2 event-storming · D3 charter+PROJECT.md)
+   ↺ /discovery-start <D> (self-loop re-spawn/refine)
+   ↓ /discovery-end <D> (gate disk per wave → wave kế; D3 → DOMAIN_AUTHORING)
+DOMAIN_AUTHORING
+   ↺ /domain-start <EPIC|FEATURE|JOURNEY|BR|PERSONA> (self-loop author product → docs/architecture/)
+   ↓ /domain-end (gate ≥1 epic+feat+BR)
+DESIGN
+   ↓ /design (ADR/HLD/API/data-model/UX/events/integrations + docker-compose)
+PLAN
+   ↓ /plan (WAVE-SEQUENCE + wave-*.md + MATRIX + KG skeleton)
+REVIEW
+   ↺ /review-document "<feedback>" (revision loop)
    ↓ /approve-document (set approved=true)
    ↓ /start-wave <N>
 WAVE_OPEN
    ↓ /start-dev <boundary>
 DEV
-   ↓ /review-dev (review ghi findings → MAIN spawn fix → re-review)
+   ↓ /review-dev (gate no_open_findings — review ghi findings → MAIN spawn fix → re-review)
 REVIEW_DEV
-   ↓ /dev-handoff (verify infra + coverage)
+   ↓ /dev-handoff (gate all_boundaries_reviewed: review pass + coverage theo kind)
 DEV_HANDOFF
    ↓ /test-plan
 TEST_PLAN
@@ -78,33 +88,40 @@ MANUAL_TEST
    ↺ /log-bug "<mô tả>" (UAT phát hiện bug → log-bug-agent ghi row origin=manual)
    ↺ /fix-bugs (sweep mọi bug open: auto+manual) hoặc /fix-bugs <bug-id>
    ↺ /test-execute (re-run full auto suite sau fix → bug mới/regression → fix tiếp)
-   ↓ /end-wave (UAT signed + no_open_bugs)
+   ↓ /end-wave (UAT signed + test_result=pass + no_open_bugs)
 DONE
    ├ /done-wave → BOOTSTRAP (next wave)
-   └ /apply-cr <CR-ID> → INTAKE (amendment)
+   └ /apply-cr <CR-ID> → DESIGN (amendment: /design → /plan → REVIEW)
 ```
 
-## Intake (4-step pipeline)
+> Phủ ĐỦ D0-D7 của ADLC dạng gộp (D4-D7 → DESIGN/PLAN, D6 → D3 PROJECT.md). Xem `CLAUDE.md §ADLC MAPPING`.
 
-`/intake-requirement` — Claude main spawn 4 specialists tuần tự (flat orchestration, no orchestrator agent):
+## Front-half (Discovery → Domain → Design → Plan)
 
-| Step | Specialist | Skill | Output |
-|------|-----------|-------|--------|
-| 1 | requirement-analyst | requirement-analysis | PROJECT.md + FEAT-*.md draft + service_prefix |
-| 2 | business-analyst | business-analysis | FEAT refined (AC + BR + boundaries_suggested) |
-| 3 | solution-architect | technical-design | ADR + HLD + API + data-model + UX + events + integrations + infra/docker-compose |
-| 4 | program-planner | implementation-plan | WAVE-SEQUENCE + wave-001 + MATRIX + materialize per-boundary agents/KG |
+Mỗi stage spawn agent bởi Claude main (flat orchestration, no orchestrator agent):
+
+| Stage | Command | Agent / skill | Output |
+|------|---------|---------------|--------|
+| Discovery D0 | `/discovery-start D0` | discovery-hypothesis-agent / `discovery-hypothesis` | `docs/discovery/hypothesis-log.md` |
+| Discovery D1 | `/discovery-start D1` | capability-mapper-agent / `capability-mapping` | `persona-pool.md` + `capability-map.md` |
+| Discovery D2 | `/discovery-start D2` | event-stormer-agent / `event-storming` | `event-storming/ES-*.md` |
+| Discovery D3 | `/discovery-start D3` | charter-author-agent / `boundary-charter` | `BOUNDARY-MAP` + `boundaries/*/CHARTER.md` + `PROJECT.md` + service_prefix |
+| Domain | `/domain-start <mode>` | domain-po/ba-agent / `domain-po`,`domain-ba` | `epics/` `feat/` `journeys/` `personas/` `business-rules/` |
+| Design | `/design` | solution-architect-agent / `technical-design` | ADR + HLD + API + data-model + UX + events + integrations + docker-compose |
+| Plan | `/plan` | program-planner-agent / `implementation-plan` | WAVE-SEQUENCE + wave-*.md + MATRIX + KG skeleton |
 
 ```bash
-/intake-requirement "CRM cho công ty bán nhựa HDPE multi-tenant"
-# → Claude main runs 4 specialists sequentially, sub-agents produce docs
-# → User reviews docs
-/review-document "PROJECT.md thiếu NFR security"
-# → review-document-agent revises
+/discovery-start D0 "CRM cho công ty bán nhựa HDPE multi-tenant"
+/discovery-end D0          # gate ≥3 hypothesis → DISC_D1
+# ... D1, D2, D3 (mỗi wave: /discovery-start → review → /discovery-end)
+/discovery-end D3          # → DOMAIN_AUTHORING
+/domain-start FEATURE      # author FEAT (self-loop EPIC/JOURNEY/BR/PERSONA)
+/domain-end                # → DESIGN
+/design                    # → PLAN
+/plan                      # → REVIEW
+/review-document "PROJECT.md thiếu NFR security"   # revise
 /approve-document
-# → sets approved=true
-/start-wave 1
-# → materialize per-boundary, transition WAVE_OPEN
+/start-wave 1              # materialize per-boundary, → WAVE_OPEN
 ```
 
 ## Dev cycle
@@ -161,32 +178,39 @@ cp tracking/_templates/TEMPLATE.cr.md tracking/wave-002/change-requests/CR-001-a
 
 # 2. State phải = DONE (sau done-wave hoặc end-wave)
 /apply-cr CR-001
-# → analyze impact, transition INTAKE (amendment mode)
+# → analyze impact, transition DESIGN (amendment)
 
-# 3. Re-run intake amendment
-/intake-requirement
-# → only updates affected files per CR
+# 3. Re-run DESIGN amendment
+/design            # only updates affected ADR/HLD/API/... per CR
+/plan              # re-scope wave plan + MATRIX nếu cần
 /review-document "..."
 /approve-document
-/start-wave 2    # next wave với scope updated
+/start-wave 2      # next wave với scope updated
+# (CR đổi product epic/feat/BR → /domain-start trước rồi /design)
 ```
 
 ## Gate checklist (summary)
 
-| Command | Main evidence |
+| Command | Main gate (gates.py) |
 |---------|--------------|
-| `intake-requirement` | `step >= 1` |
+| `discovery-start` | `wave` non-empty (D0..D3) |
+| `discovery-end` | `discovery_wave` — gate disk artifact per wave (force-bypass + reason) |
+| `domain-start` | `mode` non-empty |
+| `domain-end` | `domain_gate` — ≥1 epic + ≥1 feat + ≥1 BR |
+| `design` | `design_gate` — ADR≥3 + HLD + API + INTEG |
+| `plan` | `plan_gate` — WAVE-SEQUENCE + MATRIX + wave-*.md + KG |
 | `review-document` | `feedback_processed: true` |
 | `approve-document` | `approved: true` |
-| `start-wave` | `approved: true` + `wave_n >= 1` |
+| `start-wave` | `approved: true` + `wave_n >= 1` + MATRIX + `wave_in_matrix` |
 | `start-dev` | `boundary` ∈ wave_boundaries |
-| `dev-handoff` | `coverage_pct >= 80` + `review_result: pass` |
-| `test-plan` | `docker_compose_ok: true` |
-| `test-execute` | `test_cases_count >= 1` + `test_result: pass` (auto) |
-| `fix-bugs` | `bug_id` non-empty |
-| `end-wave` | `uat_signed: true` + `no_open_bugs` |
+| `review-dev` | `no_open_findings` (BLOCKER/MAJOR sạch) |
+| `dev-handoff` | `all_boundaries_reviewed` (mọi boundary review pass + coverage theo kind) |
+| `test-plan` | `docker_compose_ok` + `connectivity_ok` + `infra_proof` (docker-ps.json) |
+| `test-execute` | `test_cases_count >= 1`; auto-transition theo `test_result` |
+| `log-bug` / `fix-bugs` | `bug_id` non-empty |
+| `end-wave` | `uat_signed: true` + `test_result=pass` + `no_open_bugs` |
 | `done-wave` | `teardown_ok: true` |
-| `apply-cr` | `cr_id` non-empty (chỉ từ DONE state) |
+| `apply-cr` | `cr_id` non-empty (chỉ từ DONE → DESIGN) |
 
 Chi tiết: xem [harness/PROTOCOL.md](harness/PROTOCOL.md).
 
@@ -199,10 +223,10 @@ Hook config: `.claude/settings.json` (9 events, đã wire ở Step 9 rebuild).
 | SessionStart | Brief STATE đầu session |
 | UserPromptSubmit | Inject `[HARNESS stage=X ...]` mỗi turn |
 | PreToolUse(Bash) | Check gate khi `harness <X> complete` |
-| PreToolUse(Write\|Edit) | Block protected files (STATE.json, STATE-MACHINE.json, settings.json) |
-| PreToolUse(Task) | KHÔNG block theo stage; inject boundary reminder |
+| PreToolUse(Write\|Edit\|NotebookEdit) | Block 4 kernel files (STATE.json, STATE-MACHINE.json, SERVICE-BOUNDARY-MATRIX.json, settings.json) |
+| PreToolUse(Task) | KHÔNG block theo stage; inject boundary reminder + block dev/fix/review spawn tự viết tay (E-6) |
 | PostToolUse(Bash) | no-op (STATE chỉ giữ trạng thái hiện tại) |
-| SubagentStop | Validate RETURN SCHEMA JSON |
+| SubagentStop | Validate RETURN SCHEMA JSON (7 field) |
 | PreCompact | Pin STATE summary trước compact |
 | SessionEnd | Cleanup spawn.active stale |
 
@@ -213,7 +237,7 @@ Vi phạm → hook print error rõ và refuse.
 | Path | Role |
 |------|------|
 | `harness/STATE.json` | Current stage (chỉ trạng thái hiện tại, no history) |
-| `harness/STATE-MACHINE.json` | 10 states + 14 transitions |
+| `harness/STATE-MACHINE.json` | 17 states + 29 transitions |
 | `harness/SERVICE-BOUNDARY-MATRIX.json` | Boundary metadata + owned_paths |
 | `harness/PROTOCOL.md` | Orchestrator ↔ sub-agent protocol |
 | `scripts/harness.py` | CLI entry |
@@ -225,7 +249,8 @@ Vi phạm → hook print error rõ và refuse.
 | `agents/` | Agent inventory (singleton + materialized) |
 | `commands/` | Slash command source (synced to `.claude/commands/`) |
 | `.claude/skills/` | On-demand skills (project-customizable) |
-| `docs/architecture/` | PROJECT + FEAT + ADR + HLD + API + data-model + UX + events + integrations |
+| `docs/discovery/` | hypothesis-log + persona-pool + capability-map + event-storming + BOUNDARY-MAP + CHARTER (D0-D3) |
+| `docs/architecture/` | PROJECT + epics + feat + journeys + personas + business-rules (DOMAIN) + ADR + HLD + API + data-model + UX + events + integrations (DESIGN) |
 | `docs/plans/` | WAVE-SEQUENCE + wave-{N} |
 | `tracking/wave-{N}/` | Per-wave test/bugs/signoff + CR |
 | `knowledge-base/` | Per-boundary KG yaml |

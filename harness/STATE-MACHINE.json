@@ -3,17 +3,78 @@
   "initial_state": "BOOTSTRAP",
   "states": {
     "BOOTSTRAP": {
-      "description": "Khởi tạo, chưa có wave nào. Target reset sau /done-wave.",
+      "description": "Khởi tạo, chưa có wave. Vào DISCOVERY (D0-D3) qua /discovery-start. Target reset sau /done-wave.",
       "allowed_commands": [
-        "intake-requirement"
+        "discovery-start"
       ],
-      "allowed_spawn": false,
+      "allowed_spawn": true,
       "read_only_spawn_always": true
     },
-    "INTAKE": {
-      "description": "Intake done. /review-document loop revise theo feedback. /approve-document mark approved. /start-wave (gate approved=true) chuyen WAVE_OPEN.",
+    "DISC_D0": {
+      "description": "D0 hypothesis-log. /discovery-start D0 spawn hypothesis agent; /discovery-end D0 gate → D1.",
       "allowed_commands": [
-        "intake-requirement",
+        "discovery-start",
+        "discovery-end"
+      ],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
+    },
+    "DISC_D1": {
+      "description": "D1 capability-map+persona-pool. /discovery-start D1 spawn capability-mapper; /discovery-end D1 → D2.",
+      "allowed_commands": [
+        "discovery-start",
+        "discovery-end"
+      ],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
+    },
+    "DISC_D2": {
+      "description": "D2 event-storming. /discovery-start D2 spawn event-stormer (per domain); /discovery-end D2 → D3.",
+      "allowed_commands": [
+        "discovery-start",
+        "discovery-end"
+      ],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
+    },
+    "DISC_D3": {
+      "description": "D3 charter + PROJECT.md. /discovery-start D3 spawn charter-author; /discovery-end D3 gate → DOMAIN_AUTHORING.",
+      "allowed_commands": [
+        "discovery-start",
+        "discovery-end"
+      ],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
+    },
+    "DOMAIN_AUTHORING": {
+      "description": "DOMAIN authoring (continuous) — po-author (EPIC/FEATURE/JOURNEY) + ba-author (BR/PERSONA) author product THẲNG vào docs/architecture/{epics,feat,journeys,business-rules,personas}/ (single-repo, KHÔNG translate). /domain-start <mode> spawn; /domain-end gate (≥1 epic+feat+BR) → DESIGN.",
+      "allowed_commands": [
+        "domain-start",
+        "domain-end"
+      ],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
+    },
+    "DESIGN": {
+      "description": "Technical design — /design spawn solution-architect: ADR/HLD/API/data-model/UX/events/integrations. Gate → PLAN.",
+      "allowed_commands": [
+        "design",
+        "design-end"
+      ],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
+    },
+    "PLAN": {
+      "description": "Implementation plan — /plan spawn program-planner: WAVE-SEQUENCE + wave-{N} + MATRIX + KG skeleton. Gate → REVIEW.",
+      "allowed_commands": [
+        "plan"
+      ],
+      "allowed_spawn": true,
+      "read_only_spawn_always": true
+    },
+    "REVIEW": {
+      "description": "Review + approve + launch wave (đổi tên từ INTAKE). /review-document loop, /approve-document set approved, /start-wave mở wave.",
+      "allowed_commands": [
         "review-document",
         "approve-document",
         "start-wave"
@@ -98,25 +159,8 @@
   },
   "transitions": [
     {
-      "from": "BOOTSTRAP",
-      "to": "INTAKE",
-      "trigger": "intake-requirement",
-      "evidence_required": {
-        "step": 1
-      }
-    },
-    {
-      "from": "INTAKE",
-      "to": "INTAKE",
-      "trigger": "intake-requirement",
-      "evidence_required": {
-        "step": "2|3|4",
-        "user_confirmed_prev": true
-      }
-    },
-    {
-      "from": "INTAKE",
-      "to": "INTAKE",
+      "from": "REVIEW",
+      "to": "REVIEW",
       "trigger": "review-document",
       "evidence_required": {
         "feedback_processed": true
@@ -124,8 +168,8 @@
       "note": "Revise loop. User cung cap feedback, agent revise doc. KHONG set approved."
     },
     {
-      "from": "INTAKE",
-      "to": "INTAKE",
+      "from": "REVIEW",
+      "to": "REVIEW",
       "trigger": "approve-document",
       "evidence_required": {
         "approved": true
@@ -133,7 +177,7 @@
       "note": "User mark docs OK. Set approved=true in STATE. KHONG transition state. /start-wave gate check approved."
     },
     {
-      "from": "INTAKE",
+      "from": "REVIEW",
       "to": "WAVE_OPEN",
       "trigger": "start-wave",
       "evidence_required": {
@@ -168,20 +212,18 @@
       "from": "REVIEW_DEV",
       "to": "DEV_HANDOFF",
       "trigger": "dev-handoff",
-      "evidence_required": {
-        "coverage_pct": {
-          "min": 80
-        },
-        "review_result": "pass"
-      }
+      "evidence_required": {},
+      "note": "gate=all_boundaries_reviewed (wave-scoped, gates.py): mọi wave_boundary review_result=pass + coverage theo kind (BE80/BFF70/web60/mobile60) đọc từ STATE.review_results"
     },
     {
       "from": "DEV_HANDOFF",
       "to": "TEST_PLAN",
       "trigger": "test-plan",
       "evidence_required": {
-        "docker_compose_ok": true
-      }
+        "docker_compose_ok": true,
+        "connectivity_ok": true
+      },
+      "note": "gate=test-plan (gates.py): docker_compose_ok + connectivity_ok (infra status từ dev-handoff) + infra_proof (tracking/{wave}/docker-ps.json)"
     },
     {
       "from": "TEST_PLAN",
@@ -253,12 +295,130 @@
     },
     {
       "from": "DONE",
-      "to": "INTAKE",
+      "to": "DOMAIN_AUTHORING",
       "trigger": "apply-cr",
       "evidence_required": {
         "cr_id": "any"
       },
-      "note": "CR amendment chỉ từ DONE, không từ state khác"
+      "note": "CR amendment re-enter DOMAIN_AUTHORING: feature mới → /domain-start author epic/feat/BR; CR chỉ kiến trúc → /domain-end qua thẳng → /design → /design-end → /plan → REVIEW → /start-wave."
+    },
+    {
+      "from": "DOMAIN_AUTHORING",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-start",
+      "evidence_required": {
+        "mode": "any"
+      },
+      "note": "spawn po/ba author theo mode (EPIC/FEATURE/JOURNEY/BR/PERSONA)"
+    },
+    {
+      "from": "DESIGN",
+      "to": "DESIGN",
+      "trigger": "design",
+      "evidence_required": {},
+      "note": "self-loop: re-spawn solution-architect de thao luan/refine. KHONG advance — dung /design-end de sang PLAN."
+    },
+    {
+      "from": "DESIGN",
+      "to": "PLAN",
+      "trigger": "design-end",
+      "evidence_required": {},
+      "note": "gate design_gate (ADR>=3 + HLD + API + INTEG + per-boundary completeness). Advance DESIGN->PLAN."
+    },
+    {
+      "from": "PLAN",
+      "to": "REVIEW",
+      "trigger": "plan",
+      "evidence_required": {},
+      "note": "gate: WAVE-SEQUENCE + MATRIX + wave files + KG"
+    },
+    {
+      "from": "DOMAIN_AUTHORING",
+      "to": "DESIGN",
+      "trigger": "domain-end",
+      "evidence_required": {},
+      "note": "gate: epic+feat+BR ở docs/architecture/ → DESIGN"
+    },
+    {
+      "from": "BOOTSTRAP",
+      "to": "DISC_D0",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D0"
+      },
+      "note": "enter D0 + spawn hypothesis"
+    },
+    {
+      "from": "DISC_D0",
+      "to": "DISC_D0",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D0"
+      },
+      "note": "re-spawn/refine D0"
+    },
+    {
+      "from": "DISC_D1",
+      "to": "DISC_D1",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D1"
+      },
+      "note": "spawn capability-mapper"
+    },
+    {
+      "from": "DISC_D2",
+      "to": "DISC_D2",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D2"
+      },
+      "note": "spawn event-stormer per domain"
+    },
+    {
+      "from": "DISC_D3",
+      "to": "DISC_D3",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D3"
+      },
+      "note": "spawn charter-author"
+    },
+    {
+      "from": "DISC_D0",
+      "to": "DISC_D1",
+      "trigger": "discovery-end",
+      "evidence_required": {
+        "wave": "D0"
+      },
+      "note": "gate D0 → D1"
+    },
+    {
+      "from": "DISC_D1",
+      "to": "DISC_D2",
+      "trigger": "discovery-end",
+      "evidence_required": {
+        "wave": "D1"
+      },
+      "note": "gate D1 → D2"
+    },
+    {
+      "from": "DISC_D2",
+      "to": "DISC_D3",
+      "trigger": "discovery-end",
+      "evidence_required": {
+        "wave": "D2"
+      },
+      "note": "gate D2 → D3"
+    },
+    {
+      "from": "DISC_D3",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "discovery-end",
+      "evidence_required": {
+        "wave": "D3"
+      },
+      "note": "gate D3 → DOMAIN (bridge)"
     }
   ]
 }

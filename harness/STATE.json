@@ -25,8 +25,8 @@
   },
   "meta": {
     "revision": 1,
-    "updated_at": "2026-05-30T02:01:48.911310+00:00",
-    "updated_by": "complete:start-wave",
-    "notes": "Fresh STATE for v4 harness. Stage=BOOTSTRAP, allowed_next compute động từ STATE-MACHINE.json[states][BOOTSTRAP].allowed_commands."
+    "updated_at": "2026-06-14T15:27:17.206300+00:00",
+    "updated_by": "reset_for_new_project",
+    "notes": "Fresh starter for project=adlc-design. Run /discovery-start D0 to begin."
   }
 }

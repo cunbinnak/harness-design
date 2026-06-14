@@ -31,6 +31,7 @@ py scripts/build_prompt.py start-dev --boundary order-management
 
 - Đọc DOCS IN SCOPE inline trong prompt
 - Lần đầu: tạo `services/{project.service_prefix}-{boundary}/` skeleton (pom.xml / package.json / pubspec.yaml theo kind)
+- Lần đầu: emit guardrail repo con — `CLAUDE.md` + `.claude/settings.json` + `.gitignore` từ `docs/architecture/infra/TEMPLATE.service-repo-*` (create-if-missing, substitute placeholder từ MATRIX + STATE.project)
 - Implement AC trong FEAT
 - Append KG, return RETURN SCHEMA
 

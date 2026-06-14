@@ -7,7 +7,7 @@ Giao thức orchestrator (Harness v4) ↔ sub-agent. Harness = lớp ngoài mode
 | Khái niệm | File |
 |----------|------|
 | State hiện tại | `harness/STATE.json` |
-| State machine (10 states + 14 transitions) | `harness/STATE-MACHINE.json` |
+| State machine (17 states + 29 transitions) | `harness/STATE-MACHINE.json` |
 | Boundary metadata + ownership | `harness/SERVICE-BOUNDARY-MATRIX.json` |
 | Gate logic (per command) | `scripts/gates.py` (inline, không separate file) |
 | Hook policies (9 events) | `scripts/hooks/policies.py` + `dispatcher.py` |
@@ -16,20 +16,19 @@ Giao thức orchestrator (Harness v4) ↔ sub-agent. Harness = lớp ngoài mode
 | Spec sản phẩm | `docs/architecture/`, `docs/plans/` |
 | Tracking artifacts per wave | `tracking/wave-{N}/` |
 
-## State machine (10 states)
+## State machine (17 states)
 
+**Front-half** (intake tách nhỏ — clone ADLC DISCOVERY/DOMAIN/ARCHITECT):
 ```
-BOOTSTRAP → INTAKE → WAVE_OPEN → DEV → REVIEW_DEV → DEV_HANDOFF
-                                  ↑       ↓
-                                  └ fix-bugs (loop)
-                                           ↓
-                          TEST_PLAN → TEST_EXECUTE → (auto) MANUAL_TEST
-                                                      ↑       ↓
-                                                      └ fix (loop)
-                                                              ↓
-                                                            DONE → BOOTSTRAP
-                                                              ↓ apply-cr
-                                                            INTAKE (amendment)
+BOOTSTRAP → DISC_D0 → DISC_D1 → DISC_D2 → DISC_D3 → DOMAIN_AUTHORING → DESIGN → PLAN → REVIEW
+   discovery-start/end (self-loop re-spawn; gate disk per wave)   │            │       │
+   D3 → DOMAIN_AUTHORING                domain-start (self-loop) ──┘   /design   /plan  review/approve
+```
+**Back-half** (wave execution):
+```
+REVIEW → WAVE_OPEN → DEV → REVIEW_DEV → DEV_HANDOFF → TEST_PLAN → TEST_EXECUTE → (auto) MANUAL_TEST → DONE → BOOTSTRAP
+ start-wave  start-dev↻      ↑ fix Mode B loop                                    ↑ fix-bugs/log-bug↻      │
+                                                                                          DONE → DESIGN (apply-cr amendment)
 ```
 
 Chi tiết transitions + evidence required: xem `harness/STATE-MACHINE.json`.
@@ -70,14 +69,16 @@ Mỗi sub-agent PHẢI return JSON ở dòng cuối message:
 ```
 
 Extra fields theo loại agent (xem agent file RETURN SCHEMA section):
-- Intake step: `user_confirmed`, `step_completed`, `project_prefix`, `features_proposed`, ...
-- Review: `review_result`, `checklist_summary`, `fix_loops_triggered`
-- Test execute: `test_result`, `test_breakdown`, `bugs_logged`
-- Dev handoff: `coverage_pct`, `docker_compose_ok`, `infra_status`
-- End wave: `uat_signed`, `no_open_bugs`
-- Done wave: `teardown_ok`
+- Discovery (D0-D3): `wave`, `user_confirmed`, `service_prefix` (D3)
+- Domain (po/ba): `mode`, `user_confirmed`
+- Design: `user_confirmed`, `boundaries_proposed`, `adrs_created`, `nfr_addressed`
+- Plan: `user_confirmed`, `waves_planned`, `boundaries_materialized`
+- Review: `review_result`, `open_findings`, `coverage_pct`
+- Test execute: `test_result`, `test_cases_count`, `bugs_logged`
+- Dev handoff: `coverage_pct`, `docker_compose_ok`, `connectivity_ok`
+- End wave: `uat_signed`; Done wave: `teardown_ok`
 
-`kg_appended` BẮT BUỘC khi `files_changed` không rỗng. Hook SubagentStop warn nếu thiếu.
+> RETURN SCHEMA canonical (7 field bắt buộc) inject bởi `build_prompt.py RETURN_SCHEMA_TEMPLATE`. `kg_appended` là soft-guidance trong prompt (warn ở text), **KHÔNG** enforce ở hook SubagentStop (`RETURN_SCHEMA_REQUIRED` chỉ gồm completed/deferred/needs_review/files_changed/build/lint/test).
 
 ## Gate evidence
 
@@ -91,14 +92,19 @@ Evidence là input cho gates.py check tại moment complete. Pass → state tran
 
 | Command | Gate chính (gates.py) |
 |---------|----------------------|
-| `intake-requirement` | `step >= 1` |
+| `discovery-start` | `wave` non-empty (D0..D3) |
+| `discovery-end` | `discovery_wave` — `discovery_gate.py <wave>` check artifact disk (force-bypass + reason) |
+| `domain-start` | `mode` non-empty (EPIC/FEATURE/JOURNEY/BR/PERSONA) |
+| `domain-end` | `domain_gate` — ≥1 epic + ≥1 feat + ≥1 BR ở docs/architecture/ |
+| `design` | `design_gate` — ADR≥3 + HLD + API + INTEG |
+| `plan` | `plan_gate` — WAVE-SEQUENCE + MATRIX + wave-*.md + KG skeleton |
 | `review-document` | `feedback_processed: true` |
 | `approve-document` | `approved: true` |
 | `start-wave` | `approved: true` + `wave_n >= 1` + MATRIX file tồn tại |
 | `start-dev` | `boundary` ∈ `wave_boundaries` |
-| `review-dev` | (no evidence) |
-| `dev-handoff` | `coverage_pct >= 80` + `review_result: pass` |
-| `test-plan` | `docker_compose_ok: true` |
+| `review-dev` | `no_open_findings` — reject complete nếu review-findings.md còn row BLOCKER/MAJOR status=open (review_results vẫn ghi vào STATE cho gate dev-handoff) |
+| `dev-handoff` | `all_boundaries_reviewed` — mọi `wave_boundaries` review pass + coverage theo kind (BE80/BFF70/web60/mobile60) đọc từ STATE.review_results (KHÔNG check infra — infra-proof là gate test-plan) |
+| `test-plan` | `docker_compose_ok: true` + `connectivity_ok` + infra proof |
 | `test-execute` | `test_cases_count >= 1` |
 | `_auto` (TEST_EXECUTE → MANUAL_TEST) | `test_result` (any — pass HAY fail) |
 | `log-bug` | `bug_id` non-empty (log-bug-agent trả về sau khi append row) |
@@ -128,11 +134,11 @@ Tất cả route qua `scripts/hooks/dispatcher.py --event <name>`:
 | Notification | * | Inject state header |
 | PreCompact | * | Pin STATE summary hiện tại (stage + wave + boundary) |
 | PreToolUse | Bash | Check `harness <X> complete` gate; deny nếu sai |
-| PreToolUse | Write\|Edit | Block protected files (STATE/STATE-MACHINE/settings.json) |
-| PreToolUse | Task | KHÔNG block theo stage (Explore agent free); inject boundary reminder |
+| PreToolUse | Write\|Edit\|MultiEdit\|NotebookEdit | Block 4 kernel files (STATE.json, STATE-MACHINE.json, SERVICE-BOUNDARY-MATRIX.json, settings.json) |
+| PreToolUse | Task | KHÔNG block theo stage (Explore free); inject boundary reminder + block dev/fix/review spawn bằng prompt tự viết tay (E-6) |
 | PostToolUse | Bash | no-op (STATE.json chỉ giữ trạng thái hiện tại) |
-| SubagentStop | * | Parse RETURN SCHEMA, validate fields |
-| Stop | * | (stub — sẽ implement build/lint/test runner per kind sau) |
+| SubagentStop | * | Parse RETURN SCHEMA, validate 7 field bắt buộc |
+| Stop | * | Build/lint/test **wave-scoped** per kind khi stage ∈ {DEV, REVIEW_DEV, TEST_EXECUTE} + có sửa services/; đỏ→block 40 dòng cuối; cache git-hash |
 | SessionEnd | * | Cleanup spawn.active nếu stale |
 
 Hook policies pure functions in `scripts/hooks/policies.py`. Dispatcher routes events to handlers. Fail-open: hook crash → allow tool call.

@@ -2,8 +2,8 @@
 name: approve-document
 description: "User mark doc OK (approved=true). KHÔNG đổi state. Cho phép /start-wave"
 argument-hint: "(no arguments)"
-when_state: [INTAKE]
-sets_stage: INTAKE
+when_state: [REVIEW]
+sets_stage: REVIEW
 spawn:
   agent: null
   skills: []
@@ -29,9 +29,9 @@ Không argument.
 ## Workflow
 
 ```
-1. Read harness/STATE.json → verify stage == INTAKE
+1. Read harness/STATE.json → verify stage == REVIEW
 2. Báo user:
-   "Confirm approve toàn bộ intake artifacts?
+   "Confirm approve toàn bộ artifacts (Discovery + DOMAIN + DESIGN + PLAN)?
    - PROJECT.md
    - FEAT-*.md (N files)
    - ADR + HLD + API + data-model + UX + events + integrations
@@ -49,7 +49,7 @@ Không argument.
 
 ## State semantics
 
-- State KHÔNG đổi (INTAKE → INTAKE).
+- State KHÔNG đổi (REVIEW → REVIEW).
 - Set `approved=true` trong STATE qua complete evidence.
 - `/start-wave` gate check `approved=true` → pass.
 
@@ -61,7 +61,6 @@ Không argument.
 
 ## Sau approve
 
-Allowed commands ở INTAKE state:
-- `/start-wave <N>` → transition INTAKE → WAVE_OPEN, materialize.
-- `/review-document` vẫn allow (nếu user reconsider).
-- `/intake-requirement` vẫn allow (re-run mode amendment hoặc full).
+Allowed commands ở REVIEW state:
+- `/start-wave <N>` → transition REVIEW → WAVE_OPEN, materialize.
+- `/review-document` vẫn allow (nếu user reconsider, revise thêm).

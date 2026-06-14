@@ -20,8 +20,8 @@ metadata:
     data_store: "{{tech_data_store}}"
   epics: []
   features: []
-  integration_ref: null     # nếu kind=bff: path tới INTEG-BFF-{{boundary}}.md
-  integration_consumers: [] # nếu kind=backend: list path INTEG-BFF-*.md reference
+  integration_ref: null     # nếu kind=bff: path tới INTEG-INT-{{bff}}-to-*.md
+  integration_consumers: [] # nếu kind=backend: list path INTEG-INT-*.md reference
 
 # ────────────────────────────────────────────────
 # ENTITIES — aggregate roots, entities, value objects

@@ -1,26 +1,30 @@
 ---
 name: test-execute
-description: "Build service local + run auto test + log bug (origin=auto). KHÔNG fix (fix qua /fix-bugs). Auto-transition MANUAL_TEST sau khi chạy. Re-run được từ MANUAL_TEST sau fix."
+description: "Chạy auto TC BLACK-BOX trên hệ thống đang chạy + log bug (origin=auto). KHÔNG build source, KHÔNG fix (fix qua /fix-bugs). Auto-transition MANUAL_TEST sau khi chạy. Re-run được từ MANUAL_TEST sau fix."
 when_state: ['TEST_PLAN', 'MANUAL_TEST']
 sets_stage: TEST_EXECUTE
 spawn:
   agent: "test-execute-agent"
   skills: [test-execute, specialist-testing, bug-logging, infra-local-dev]
-gates: [{type: int_min, field: test_cases_count, min: 1}]
+gates: [{type: int_min, field: test_cases_count, min: 1}, {type: test_evidence}]
 ---
 
 # /test-execute
 
 ## Mục đích
 
-Build & run service local theo docker-compose. Execute test cases theo registry. Fail -> log bug (origin=auto) vào bugs.md. **KHÔNG fix ở đây** — fix qua `/fix-bugs` ở MANUAL_TEST. Auto-transition MANUAL_TEST sau khi chạy (pass HAY fail).
+Chạy auto test cases theo registry **black-box trên hệ thống ĐANG CHẠY** (KHÔNG build source). Fail -> log bug (origin=auto) vào bugs.md. **KHÔNG fix ở đây** — fix qua `/fix-bugs` ở MANUAL_TEST. Auto-transition MANUAL_TEST sau khi chạy (pass HAY fail).
+
+## Gate `test_evidence` (G12 — chống test ảo)
+
+`scripts/gates.py check_test_evidence` parse registry + `tracking/wave-{N}/test-report.md` + `test-logs/`. Mỗi auto-TC **in-scope** (bỏ `@deferred` đã khai báo wave plan): (a) phải có result trong report; (b) group integration/e2e/perf/security khi pass|fail phải có network-call `METHOD path -> status` trong log; (c) skip phải nêu lý do service-down. **KHÔNG fail vì TC=fail** (bug hợp lệ) — chỉ chặn khi thiếu bằng chứng đã chạy. `test_result` do harness **DERIVE từ report** (in-scope all-pass → pass), không lấy verbatim từ agent. Env-block → `force:true,reason` (audit).
 
 ## Build prompt + spawn
 
 ```bash
 py scripts/build_prompt.py test-execute
 py scripts/harness.py test-execute complete '{"test_cases_count": 15, "test_result": "pass"}'
-# auto-transition: STATE.stage -> MANUAL_TEST
+# auto-transition: STATE.stage -> MANUAL_TEST ; harness DERIVE lại test_result từ test-report.md
 ```
 
 ## Flow (test-only, KHÔNG fix)

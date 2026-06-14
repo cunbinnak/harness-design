@@ -1,9 +1,9 @@
 """
-Materialize harness/SERVICE-BOUNDARY-MATRIX.json từ boundary decomposition (intake step 4).
+Materialize harness/SERVICE-BOUNDARY-MATRIX.json từ boundary decomposition (stage PLAN, /plan).
 
 Lý do tồn tại: MATRIX nằm trong PROTECTED_PATHS — hook PreToolUse(Write|Edit) chặn mọi
 sửa tay bằng Write/Edit tool. Script này chạy qua Bash (không bị hook đó chặn) và tự gate
-theo stage để vẫn tôn trọng ý đồ bảo vệ: CHỈ cho materialize khi stage ∈ {BOOTSTRAP, INTAKE}.
+theo stage để vẫn tôn trọng ý đồ bảo vệ: CHỈ cho materialize khi stage ∈ {BOOTSTRAP, PLAN}.
 
 CLI:
   py scripts/materialize_matrix.py <boundaries.json> [--mode replace|merge] [--dry-run]
@@ -14,7 +14,7 @@ Input boundary (mỗi entry):
   required: boundary_id (str, unique), kind (backend|bff|web|mobile), prefix (str)
   optional: tech{language,framework,data_store}, wave (int, default 1),
             features [] (list FEAT-id boundary đảm nhận — nguồn cho STATE.wave_features),
-            ref_skills [] (list tên skill ref situational boundary cần ngoài scaffold; intake step 3/4
+            ref_skills [] (list tên skill ref situational boundary cần ngoài scaffold; DESIGN+PLAN
                            quyết từ design — kernel chỉ truyền qua, không biết tên skill cụ thể),
             depends_on [], consumed_by [], purpose (str), owned_paths [], repo_url (str)
 """
@@ -31,7 +31,7 @@ MATRIX_FILE = REPO_ROOT / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
 STATE_FILE = REPO_ROOT / "harness" / "STATE.json"
 
 KINDS = {"backend", "bff", "web", "mobile"}
-ALLOW_STAGES = {"BOOTSTRAP", "INTAKE"}
+ALLOW_STAGES = {"BOOTSTRAP", "PLAN"}
 
 
 # ========================================================================
@@ -217,7 +217,7 @@ def main() -> int:
             sys.stdout.reconfigure(encoding="utf-8")
         except Exception:
             pass
-    ap = argparse.ArgumentParser(description="Materialize SERVICE-BOUNDARY-MATRIX.json (intake step 4).")
+    ap = argparse.ArgumentParser(description="Materialize SERVICE-BOUNDARY-MATRIX.json (stage PLAN, /plan).")
     ap.add_argument("path", nargs="?", help="Đường dẫn file JSON chứa boundaries (list hoặc {boundaries:[...]})")
     ap.add_argument("--json", help="Inline JSON boundaries thay cho file")
     ap.add_argument("--mode", choices=["replace", "merge"], default="replace", help="replace (mặc định) | merge theo boundary_id")

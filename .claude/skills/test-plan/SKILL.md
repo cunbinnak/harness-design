@@ -6,20 +6,48 @@ description: Sinh test-case-registry.md cho wave — TC per AC + enterprise cove
 # Test Plan Skill
 
 ## Khi load
-`test-plan-agent` ở `/test-plan` (state TEST_PLAN). Input: `FEAT-*.md` (AC) + `api-{boundary}.md` + `PROJECT.md` (NFR).
+`test-plan-agent` ở `/test-plan` (state TEST_PLAN). Input: `FEAT-*.md` (AC) + `BR-*.md` (rule enforce) + `api-{boundary}.md` + `PROJECT.md` (NFR) + `JOURNEY-*.md` (e2e) + `ux-{boundary}.md` (a11y).
 
 > **Vai trò: THIẾT KẾ test case** (viết spec vào registry) — KHÔNG viết code test, KHÔNG chạy. Code test do **dev** viết khi code (mỗi AC có test, `rules §N`); `/test-execute` chạy + bổ sung test còn thiếu so với registry.
 
+## Deferred-scope (G1 — để end-wave close sạch tự nhiên)
+Đọc `## Deferred to later waves` trong `docs/plans/wave-{N}.md` + `tracking/wave-{N}/review-findings.md` (status wontfix/accepted có lý do defer). Mọi AC/feature **đã chủ động hoãn sang wave sau** (vd auth/idempotency/event ở wave-1 chỉ-CRUD):
+- TC tương ứng VẪN viết (để wave sau reuse) nhưng đánh **tag `@deferred`** + `note: deferred wave-N` + KHÔNG đặt `pri P0`.
+- Defer **chỉ có hiệu lực khi feature/AC đó được khai báo trong `## Deferred to later waves` của wave plan** — tag `@deferred` đơn lẻ (không khai báo) sẽ bị test-execute coi in-scope và vẫn phải chạy (chống lạm dụng tag để né test).
+- Hệ quả: test-execute `skip(deferred)` không log bug; `test_result` (harness derive) chỉ tính in-scope → đạt `pass` tự nhiên khi in-scope xanh, KHÔNG cần ép `test_result=pass` thủ công.
+
 ## Output: `tracking/wave-{N}/test-case-registry.md` (format BẢNG — mỗi TC = 1 HÀNG)
-Theo `TEMPLATE.test-case-registry.md`. Cột: `TC | group | type | boundary | feature | AC | pri | pre-condition | steps | expected | note` + bảng **Coverage matrix** (AC → TC).
-- `type`: `auto` (test-execute chạy) | `manual` (UAT/QA). `group`: smoke/integration/e2e/uat/regression. `AC`: `FEAT-N:AC-M` (mọi TC trace ≥ 1 AC, trừ smoke infra). `pri`: P0|P1|P2. `note`: framework (playwright) / verifier / `ref_bug`.
-- Steps/Expected giữ ngắn 1 cell; chi tiết dài → UAT script riêng.
+Theo `TEMPLATE.test-case-registry.md`. Cột: `TC | group | type | boundary | feature | AC | BR | pri | pre-condition | test-data | steps | expected | tags | note` + bảng **Coverage matrix** (AC → TC).
+- `group` = test_type bản chất (functional/integration/e2e/performance/security/accessibility + alias smoke/regression/uat) — enum + khi-nào-dùng ở `SEVERITY-TEST-TAXONOMY §4`.
+- `type`: `auto` (test-execute chạy được bằng tool) | `manual` (UAT/QA tay) — TRỤC KHÁC với `group`.
+- `AC`: `FEAT-N:AC-M` (mọi TC trace ≥1 AC, trừ smoke infra). `BR`: `BR-N` nếu TC enforce 1 business rule (optional).
+- `pri`: P0|P1|P2 — quy tắc gán ở `SEVERITY-TEST-TAXONOMY §3`. `tags`: ≥1 `@FEAT-<id>` + ≥1 suite tag (`SEVERITY-TEST-TAXONOMY §5`).
+- `test-data`/Steps/Expected giữ ngắn 1 cell; chi tiết dài (selector, payload, SQL fixture) → UAT script riêng / `test-execute` automation.
+
+## Traceability TC↔AC (rigor bắt buộc — hai chiều)
+- Mỗi TC trace ≥1 `FEAT-N:AC-M` (+ `BR-N` nếu enforce rule). KHÔNG TC mồ côi (không trace AC nào — trừ `TC-S*` smoke infra).
+- Mọi AC `Must` của FEAT in-scope → ≥1 TC (không AC mồ côi). Bảng **Coverage matrix** chứng minh: AC → TC list + count.
+- Đọc FEAT § "Tiêu chí chấp nhận" (BDD Cho/Khi/Thì) → mỗi dòng AC ánh xạ ≥1 TC. Parse `## Tiêu chí chấp nhận` đếm AC, so với count TC linked → assert phủ 100%.
+
+## Cumulative registry + DEDUPE (registry sống qua wave)
+- Registry là **pool tích luỹ** — TC từ wave trước GIỮ NGUYÊN, wave mới chỉ thêm/reuse.
+- **Trước khi thêm TC mới**: check trùng trong registry — cùng `feature` + cùng `group` + steps tương tự ≥ ~70% → **REUSE** (đánh dấu `note: reuse W{prev}`, KHÔNG copy nội dung). Khác hẳn → **CREATE**. Mid (mơ hồ) → judgement, ghi lý do `note`.
+- TC-ID không tái dùng cho nội dung khác (immutable). Regression `TC-R*` link `ref_bug` (bug đã fix) — chống tái phát.
+
+## Remap khi AC đổi (qa-translator concept — single-repo, KHÔNG cần command mới)
+Khi `/apply-cr` refine AC của FEAT đã có TC:
+- AC **xoá hẳn** / **mâu thuẫn lớn** (behavior đảo) → đánh dấu TC `note: STALE (FEAT-N AC đổi W{cr})` + re-author TC mới thay thế (giữ row cũ làm history, không xoá).
+- AC **refine nhỏ** (reword / thêm precondition / thêm negative) → update steps/expected của TC tại chỗ, ghi `note: remap W{cr}`.
+- AC **không đổi** → no-op. Coverage matrix re-verify sau remap.
 
 ## Test pyramid (phân bổ)
-- **unit/isolation** (nhiều): domain/service thuần, mock infra.
-- **integration** (vừa): api + DB thật (Testcontainers), khớp contract.
-- **e2e** (ít): luồng theo AC (Playwright cho FE).
-- **perf** (chỉ khi NFR latency) · **security** (chỉ khi NFR security).
+- **unit/isolation** (nhiều): domain/service thuần, mock infra. (Dev viết — không vào registry trừ invariant phức tạp.)
+- **functional** (nhiều): 1 hành vi/feature theo 1 AC, scope hẹp.
+- **integration** (vừa): api + DB thật (Testcontainers) / cross-boundary qua contract.
+- **e2e** (ít): journey end-to-end UI→DB, không stub (CHỈ wave full-stack BE+FE).
+- **performance** (chỉ khi NFR latency) · **security** (chạm auth/payment/PII) · **accessibility** (CHỈ wave full-stack FE).
+
+> test_type ưu tiên theo wave strategy (backend-heavy / frontend-heavy / full-stack): xem `SEVERITY-TEST-TAXONOMY §4.2`.
 
 ## Coverage matrix per AC (enterprise — không chỉ happy path)
 Mỗi AC sinh TC cho các nhánh sau (bỏ nhánh không áp dụng):
@@ -47,14 +75,15 @@ Mỗi AC sinh TC cho các nhánh sau (bỏ nhánh không áp dụng):
 - **Decision table**: BR nhiều điều kiện → bảng tổ hợp điều kiện → kết quả kỳ vọng (phủ tổ hợp quan trọng).
 - **State-transition**: entity có `status` → test MỌI chuyển hợp lệ + ≥1 chuyển bị cấm (khớp state machine `data-model`).
 - **Edge data**: null/empty · unicode/ký tự đặc biệt · số âm/0 · precision tiền tệ · timezone/DST · chuỗi cực dài.
-- **Dữ liệu test**: deterministic (seed cố định, inject Clock) · độc lập per TC (không phụ thuộc TC khác) · tự cleanup · KHÔNG dùng data prod.
+- **Dữ liệu test** (cột `test-data`): deterministic (seed cố định, inject Clock) · độc lập per TC (không phụ thuộc TC khác) · tự cleanup · KHÔNG dùng data prod.
 
 ## Quy ước
 1. Mỗi AC có ≥ 1 TC happy + TC cho error path/tenant/idempotency áp dụng được.
-2. Smoke test cross-boundary cho mọi integration điểm (login + create + read).
-3. P0 = blocker release · P1 = must-have · P2 = nice-to-have.
+2. Smoke test cross-boundary cho mọi integration điểm (login + create + read). **Gate `contract_test_present` (G4/G6):** mỗi consumer boundary (có `depends_on` trong wave) PHẢI có ≥1 auto-TC group=contract|integration|e2e nối tới nó (boundary cell hoặc tags chứa consumer-id) — chống "thiếu liên kết BE-FE" lọt test (BUG-010/011/012).
+3. P0 = blocker release · P1 = must-have · P2 = nice-to-have (`SEVERITY-TEST-TAXONOMY §3`).
 4. Contract TC: response/enum/error code khớp `api-{boundary}.md` (deep → `specialist-testing`).
 5. **Traceability 2 chiều**: mọi AC `Must` → ≥1 TC (không AC mồ côi); mọi TC → đúng 1 AC (không TC thừa không trace).
+6. **Forbidden trong narrative TC** (steps/expected cell vẫn được dùng selector/payload cho automation): không gắn tên class/SQL/DOM selector vào cột `expected` — TC mô tả behavior, sống lâu hơn implementation.
 
 ## Done
-- Mọi AC trace ≥ 1 TC (2 chiều); endpoint nhạy cảm có error paths + tenant isolation + idempotency + concurrency; event boundary có TC idempotent/DLQ; priority gán đúng.
+- Mọi AC `Must` trace ≥1 TC (2 chiều); coverage matrix phủ 100%; endpoint nhạy cảm có error paths + tenant isolation + idempotency + concurrency; event boundary có TC idempotent/DLQ; dedupe-check trước khi thêm TC (reuse vs create ghi `note`); priority + tags gán đúng theo `SEVERITY-TEST-TAXONOMY`.

@@ -246,6 +246,23 @@ def wave_features_from_matrix(wave_n: int) -> list[str]:
     return out
 
 
+def _append_decision(ref: str, rationale: str) -> None:
+    """Append 1 audit row vào tracking/decisions.md (cho force-override discovery gate).
+
+    Clone cơ chế audit của ZIP: gate bypass phải để lại dấu vết.
+    """
+    path = REPO_ROOT / "tracking" / "decisions.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    if not path.exists():
+        path.write_text(
+            "# Decisions log\n\n| Date | Ref | Rationale |\n|---|---|---|\n",
+            encoding="utf-8",
+        )
+    with path.open("a", encoding="utf-8") as f:
+        f.write(f"| {ts} | {ref} | {rationale} |\n")
+
+
 def apply_effects(command: str, evidence: dict, state: dict) -> None:
     """Mutate `state` in place to reflect runtime fields a command establishes.
 
@@ -253,10 +270,36 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
     (e.g. wave_boundaries for /start-dev) stay at their init values and block the flow.
     Keyed on the user command (not _auto). Side-effect free except a MATRIX read.
     """
-    if command == "intake-requirement":
-        prefix = evidence.get("project_prefix")
+    if command == "discovery-start":
+        # Discovery wave entry: ghi nhận spawn active cho wave hiện tại.
+        wave = evidence.get("wave")
+        if wave:
+            state.setdefault("spawn", {})["active"] = f"discovery-{wave}"
+
+    elif command == "discovery-end":
+        # D3 charter-author chốt service_prefix (derive PROJECT). Audit force override.
+        prefix = evidence.get("service_prefix")
         if prefix:
             state.setdefault("project", {})["service_prefix"] = prefix
+        if evidence.get("force") is True:
+            _append_decision(
+                f"discovery-end {evidence.get('wave','?')} --force",
+                evidence.get("reason") or "(no reason given)",
+            )
+
+    elif command == "domain-start":
+        # Ghi nhận spawn active theo mode (EPIC/FEATURE/JOURNEY/BR/PERSONA).
+        mode = evidence.get("mode")
+        if mode:
+            state.setdefault("spawn", {})["active"] = f"domain-{mode}"
+
+    elif command == "domain-end":
+        # Audit force override gate DOMAIN.
+        if evidence.get("force") is True:
+            _append_decision(
+                f"domain-end ({state.get('stage','?')}) --force",
+                evidence.get("reason") or "(no reason given)",
+            )
 
     elif command == "start-wave":
         try:
@@ -285,17 +328,44 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
         if isinstance(rr, list):
             state["review_results"] = rr
 
+    elif command == "dev-handoff":
+        # Audit force override gate infra_proof (vd env không có Docker → bypass có lý do).
+        if evidence.get("force") is True:
+            _append_decision("dev-handoff --force", evidence.get("reason") or "(no reason given)")
+
+    elif command == "test-plan":
+        # Audit force override gate infra_proof/connectivity.
+        if evidence.get("force") is True:
+            _append_decision("test-plan --force", evidence.get("reason") or "(no reason given)")
+
     elif command == "test-execute":
-        # Lưu kết quả lần test-execute cuối → gate /end-wave (test_passed) ép re-run xanh sau fix.
-        tr = evidence.get("test_result")
+        # DERIVE test_result từ test-report.md (G12) — KHÔNG tin agent tự khai. Chỉ tính auto-TC
+        # in-scope (bỏ deferred): all-pass → 'pass', còn lại → 'fail'. Fallback evidence khi force/thiếu file.
+        # → gate /end-wave (test_passed) đọc giá trị honest này, ép re-run xanh sau fix.
+        derived = gates.derive_test_result(state)
+        tr = derived if derived is not None else evidence.get("test_result")
         if tr:
             state["test_result"] = tr
         tc = evidence.get("test_cases_count")
         if isinstance(tc, int):
             state["test_cases_count"] = tc
+        if evidence.get("force") is True:
+            _append_decision("test-execute --force", evidence.get("reason") or "(no reason given)")
 
     elif command == "done-wave":
         # Hard close → BOOTSTRAP: clear per-wave runtime fields so STATE is a clean slate.
+        state["wave"] = {"id": None, "number": None}
+        state["wave_boundaries"] = []
+        state["wave_features"] = []
+        state["active_boundary"] = None
+        state["review_results"] = []
+        state["test_result"] = None
+        state["test_cases_count"] = 0
+
+    elif command == "apply-cr":
+        # DONE → DOMAIN_AUTHORING (amendment): clear per-wave runtime fields của wave vừa đóng
+        # (GIỮ project.service_prefix) để spawn prompt DOMAIN/DESIGN/PLAN không in context wave cũ.
+        # Re-enter DOMAIN để CR thêm feature mới author được epic/feat/BR; CR chỉ kiến trúc → /domain-end qua thẳng.
         state["wave"] = {"id": None, "number": None}
         state["wave_boundaries"] = []
         state["wave_features"] = []

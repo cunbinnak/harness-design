@@ -6,6 +6,7 @@
 >
 > Enum — severity: `BLOCKER | MAJOR | MINOR | NIT | QUESTION` · status: `open | resolved | accepted | wontfix` · type: `rule | BR | AC | arch | security | test | other`.
 > `MINOR/NIT/QUESTION` không chặn gate (reviewer set `accepted`/`wontfix` nếu không sửa). Chỉ `BLOCKER/MAJOR` còn `open` mới chặn.
+> Map `severity` ↔ bug `sev` ↔ TC `pri`: xem `docs/architecture/SEVERITY-TEST-TAXONOMY.md` §2.
 
 | FINDING | severity | status | boundary | file | type | description | suggested fix |
 |---------|----------|--------|----------|------|------|-------------|---------------|

@@ -16,23 +16,32 @@ py scripts/reset_for_new_project.py    # clear artifacts cũ
 py scripts/harness.py state            # verify stage=BOOTSTRAP
 ```
 
-## Workflow (14 commands, 10 states)
+## Workflow (19 commands, 17 states)
+
+Front-half (intake tách nhỏ — clone ADLC; phủ đủ D0-D7 dạng gộp, xem `CLAUDE.md §ADLC MAPPING`):
 
 ```
-BOOTSTRAP → /intake-requirement "<project description>"
-INTAKE    → /review-document "<feedback>" (revise loop)
-            /approve-document
-            /start-wave <N>
+BOOTSTRAP → /discovery-start D0 "<project description>"
+DISC_D0..D3 → /discovery-end <D>  (D0 hypothesis · D1 persona+capability · D2 event-storming · D3 charter+PROJECT.md)
+DISC_D3   → DOMAIN_AUTHORING
+DOMAIN_AUTHORING → /domain-start <EPIC|FEATURE|JOURNEY|BR|PERSONA> (self-loop) → /domain-end
+DESIGN    → /design   (ADR/HLD/API/data-model/UX/events/integrations)
+PLAN      → /plan     (WAVE-SEQUENCE + wave-*.md + MATRIX + KG skeleton)
+REVIEW    → /review-document "<feedback>" (revise loop) → /approve-document → /start-wave <N>
+```
+
+Back-half (wave execution):
+
+```
 WAVE_OPEN → /start-dev <boundary>
-DEV       → /review-dev
-REVIEW_DEV → /dev-handoff (coverage>=80, infra ok)
+DEV       → /review-dev   (gate no_open_findings)
+REVIEW_DEV → /dev-handoff (gate all_boundaries_reviewed: review pass + coverage theo kind)
 DEV_HANDOFF → /test-plan
 TEST_PLAN → /test-execute (run + log bug auto, KHÔNG fix)
 TEST_EXECUTE → (auto) MANUAL_TEST (pass HAY fail)
-MANUAL_TEST → /fix-bugs <bug-id> (loop)
-              /end-wave (UAT signed)
+MANUAL_TEST → /log-bug "<mô tả>" · /fix-bugs [<bug-id>] (loop) · /end-wave (UAT signed)
 DONE      → /done-wave → BOOTSTRAP (next wave)
-            /apply-cr <CR-ID> → INTAKE (amendment)
+            /apply-cr <CR-ID> → DESIGN (amendment: /design → /plan → REVIEW)
 ```
 
 Mỗi command có 2 lệnh:
@@ -53,18 +62,18 @@ KHÔNG sửa `harness/STATE.json` thủ công — hook chặn.
 ├── SETUP-GUIDE.md                  Setup + workflow detail
 ├── .claude/
 │   ├── settings.json              9 hooks + permissions deny
-│   ├── commands/                  14 slash commands (synced from commands/)
+│   ├── commands/                  19 slash commands (synced from commands/)
 │   └── skills/                    On-demand skills (project-customizable)
 ├── harness/
 │   ├── STATE.json                 Current stage (chỉ trạng thái hiện tại, no history)
-│   ├── STATE-MACHINE.json         10 states + 14 transitions
+│   ├── STATE-MACHINE.json         17 states + 29 transitions
 │   ├── SERVICE-BOUNDARY-MATRIX.json  Boundary metadata + owned_paths
 │   └── PROTOCOL.md                Orchestrator ↔ sub-agent protocol
 ├── agents/
 │   ├── _template-{dev,fix}-agent.md   Materialize templates
-│   ├── {intake,review,ops,side}-agents (16 singletons)
+│   ├── {discovery,domain,design,plan,review,ops,side}-agents (21 singletons)
 │   └── dev-{prefix}-{boundary}-agent  (materialized per boundary)
-├── commands/                       14 slash command sources
+├── commands/                       19 slash command sources
 ├── scripts/
 │   ├── harness.py                 CLI thin wrapper
 │   ├── state.py                   STATE manager
@@ -77,10 +86,11 @@ KHÔNG sửa `harness/STATE.json` thủ công — hook chặn.
 │       ├── dispatcher.py          Single entry for 9 hook events
 │       └── policies.py            Pure check functions
 ├── docs/
-│   ├── architecture/              PROJECT + FEAT + ADR + HLD + API + data-model + UX + events + integrations + infra
+│   ├── discovery/                hypothesis-log + persona-pool + capability-map + event-storming + BOUNDARY-MAP + boundaries/CHARTER (D0-D3)
+│   ├── architecture/              PROJECT + epics + feat + journeys + personas + business-rules (DOMAIN) + ADR + HLD + API + data-model + UX + events + integrations + infra (DESIGN)
 │   └── plans/                     WAVE-SEQUENCE.md + wave-{N}.md
 ├── tracking/
-│   ├── _templates/                5 templates (test/bugs/signoff/cr)
+│   ├── _templates/                6 templates (test-case-registry/bugs/test-report/qc-signoff/review-findings/cr)
 │   └── wave-{N}/                  Per-wave: test cases + report + bugs + signoff + CR
 ├── knowledge-base/
 │   ├── TEMPLATE.knowledge-graph.yaml
@@ -109,7 +119,7 @@ KHÔNG sửa `harness/STATE.json` thủ công — hook chặn.
 ```bash
 py scripts/gates.py            # gates selftest
 py scripts/state.py validate   # STATE schema validate
-py scripts/smoke_test.py       # E2E state machine (18 cases)
+py scripts/smoke_test.py       # E2E state machine (28 assertions)
 ```
 
 Pass cả 3 → setup OK.

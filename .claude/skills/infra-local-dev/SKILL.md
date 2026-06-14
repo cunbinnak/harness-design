@@ -7,7 +7,7 @@ description: Setup + verify infra local cho test handoff — docker-compose serv
 
 ## Khi load
 `dev-handoff-agent` ở `/dev-handoff` (state DEV_HANDOFF). **Mục tiêu:** khi DONE, `test-execute` agent chạy được local — app boundary + DB/Redis/Kafka **healthy**, schema **migrated**.
-Input: `docs/architecture/infra/docker-compose.yml` (skeleton từ intake step 3) + boundaries trong wave (MATRIX) + `data-model-{boundary}.md` (migrations).
+Input: `docs/architecture/infra/docker-compose.yml` (skeleton từ DESIGN `/design`) + boundaries trong wave (MATRIX) + `data-model-{boundary}.md` (migrations).
 
 ## Output: `docs/architecture/infra/docker-compose.yml` (1 vị trí chuẩn)
 Yêu cầu:
@@ -91,7 +91,7 @@ psql "postgresql://postgres:postgres@localhost:5432/app_dev" -c "\dt" \
 ```
 `count = 0` → migration chưa chạy, debug ngay.
 
-## Done (gate `/dev-handoff`: `docker_compose_ok=true`)
+## Done (dev-handoff-agent set `docker_compose_ok`/`connectivity_ok=true` + capture docker-ps.json — evidence cho gate `/test-plan` kế tiếp; gate `/dev-handoff` riêng = all_boundaries_reviewed)
 - `docker-compose.yml` valid, **mọi service (app boundary + infra) healthy**; migrations applied (schema có tables).
 - **Kết nối liên service (cross-boundary connectivity)**: mỗi dependency `INTEG-INT-*` / `depends_on` MATRIX đã verify caller gọi được callee qua service name (HTTP 200 / topic tồn tại) — không chỉ healthy riêng lẻ.
 - Test agent chạy được: `docker compose exec {service} <test-cmd>` / `curl localhost:{port}/health`.

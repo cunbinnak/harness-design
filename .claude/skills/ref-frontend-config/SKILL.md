@@ -21,7 +21,6 @@ description: Mẫu cấu hình FE — package.json scripts, env vars, build conf
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "cypress run --headless",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "a11y": "vitest run --testPathPattern=a11y",

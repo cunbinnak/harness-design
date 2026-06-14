@@ -38,3 +38,9 @@ services/*
 docs/architecture/integrations/INTEG-EXT-*/sandbox-credentials.md
 docs/architecture/integrations/INTEG-EXT-*/notes-internal.md
 harness/.stop-cache.json
+
+# Reference archives (vd {{PROJECT-CODE}}-ADLC.zip — ADLC ZIP gốc để đối chiếu, KHÔNG track)
+*.zip
+
+# Ghi chú nội bộ backlog (working note, KHÔNG track)
+docs/HARNESS-IMPROVEMENT-BACKLOG.md

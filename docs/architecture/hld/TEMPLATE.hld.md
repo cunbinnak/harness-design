@@ -1,123 +1,294 @@
-# HLD — {boundary_id}
+---
+type: design
+artifact_kind: hld
+target_boundary: "{{boundary}}"
+# FE boundary (web/mobile): vẫn dùng target_boundary; thay §3 Layering backend bằng app/features/shared/services (Arch-Principles §3.2)
+kind: "backend | bff | web | mobile"
+status: ACTIVE
+version: 1
+tier: T2
+owner_authority: Architecture Authority
+created_at: "{{DATE}}"
+last_reviewed: "{{DATE}}"
+related_feats: []                       # FEAT boundary hiện thực (≥1)
+upstream_deps: []                        # boundary mình GỌI/consume
+downstream_consumers: []                 # boundary GỌI mình/consume event mình
+adr_refs: []                             # ADR chốt quyết định lớn
+---
 
-> **Purpose:** Thiết kế **cấp cao** (HLD) của boundary `{boundary_id}` — view kiến trúc/logic + ranh giới trách nhiệm, KHÔNG phải code chi tiết.
-> **Owner:** `intake:solution-architect` (intake bước 3) · **Audience:** `dev:*` / `review:*` / `fix:*` / QA / stakeholder kỹ thuật.
-> **Out of scope (link chi tiết):** chi tiết layout file/folder → `ref-{kind}-pattern` (HLD §4 đã chốt kiến trúc + layer) · endpoints → [`../api/`](../api/) · schema → [`../data-model/`](../data-model/) · UI → [`../ux/`](../ux/) · cross-boundary → [`../integrations/`](../integrations/) · NFR dự án → [`../PROJECT.md`](../PROJECT.md) · infra → [`../infra/`](../infra/).
-> **Quy ước:** section gắn **(tùy chọn)** → bỏ nếu boundary không áp dụng (vd CRUD đơn giản, không outbound/event).
+# HLD — `{{boundary}}` ({{kind}})
+
+> Điền NGẮN GỌN: ưu tiên bảng/bullet, không văn xuôi thừa, không lặp. Doc này agent downstream đọc nhiều lần — tiết kiệm context.
+> Source-of-truth cho dev: architectural style, layering, package, data flow, NFR, failure mode. Layout file cụ thể → skill `ref-{kind}-pattern`. Cross-boundary chỉ tham chiếu qua contract (`api/`, `events/`).
 
 ---
 
-**Boundary:** `{boundary_id}` · **Kind:** `{kind}` (backend|bff|web|mobile) · **Stack:** `{language + framework}` · **Wave(s):** `{waves}` · **FEAT:** (FEAT-xxx)
+## 1. Mục tiêu + bối cảnh (C4 — System Context)
+
+**Boundary này làm gì (1-2 câu):** {{vd. "Quản lý vòng đời refund: nhận yêu cầu, gọi provider, ghi sổ, phát event."}}
+
+**Capabilities (map về FEAT):**
+
+| Capability | FEAT | Mô tả ngắn |
+|---|---|---|
+| {{Issue refund}} | `FEAT-{{...}}` | {{...}} |
+| {{Query status}} | `FEAT-{{...}}` | {{...}} |
+
+**C4 Context:**
+
+```mermaid
+flowchart LR
+  subgraph external[Bên ngoài]
+    Provider[{{Stripe}}]
+  end
+  Upstream[{{caller: BFF/boundary khác}}] -->|REST api-{{boundary}}| THIS[{{boundary}}<br/>kind={{kind}}]
+  THIS -->|event {{EventName}}| Downstream[{{consumer}}]
+  THIS -->|HTTP| Provider
+  THIS -->|R/W| DB[({{Postgres schema {{boundary}}}})]
+  THIS -->|cache/idem| Cache[({{Redis}})]
+```
+
+**Out of scope:** {{vd. "Không xử lý chargeback (boundary dispute lo)."}}
 
 ---
 
-## 1. Design goals & responsibilities
-- **Goals:** boundary sinh ra để giải quyết gì (1–3 mục, gắn FEAT/business value).
-- **Responsibilities:** … (boundary CHỊU trách nhiệm gì)
-- **Non-responsibilities:** … (KHÔNG làm — vd: không xử lý thanh toán = `payment`; không lưu profile = `auth`)
+## 2. Architectural style + driver
 
-## 2. Data ownership
-- **Sở hữu (source of truth):** {Entity-A}, {Entity-B} — nơi duy nhất ghi.
-- **Đọc-only (không own):** {Entity-X} lấy qua API/event của {boundary}.
-- Cross-boundary liên kết qua **id** (no FK — `rules-backend`). Schema → [`data-model-{boundary_id}.md`](../data-model/).
-
-## 3. Context (C4 L1) + integration summary
-```
- [Actor: {role}] ──► [ {boundary_id} ({kind}) ] ──sync/async──► [ {downstream/ext} ]
-                            ▲ event/HTTP
-                     [ {upstream boundary} ]
-```
-| Hướng | Đối tác | Kiểu | Đồng bộ? | Mục đích |
-|---|---|---|---|---|
-| Inbound (ai gọi mình) | {upstream} | HTTP/event | sync/async | … |
-| Outbound (mình gọi ai) | {downstream/ext} | HTTP/event | sync/async | … |
-
-Detail: [`integrations/INTEG-*.md`](../integrations/).
-
-## 4. Architecture (C4 container + component)
-> Container = đơn vị runtime. Component = phân rã nội bộ App service theo **kiến trúc CHỐT tại đây**.
-
-| Container (runtime) | Tech | Trách nhiệm |
-|---|---|---|
-| App service | {framework} | xử lý request/nghiệp vụ |
-| Datastore / Cache / Broker | {PostgreSQL / Redis / Kafka} | state / cache-lock / event (bỏ dòng không dùng) |
-
-**Kiến trúc boundary: `{Layered | Hexagonal}`** — chốt tại HLD (theo ADR `backend-architecture`). **HLD là source** cho dev; `ref-{kind}-pattern` = chi tiết cách đặt folder/file của kiến trúc này (không quyết lại).
-
-Layered (classic Spring) — điền `package` thật của boundary:
-
-| Layer | Package | Trách nhiệm |
-|---|---|---|
-| Controller | `controller` | nhận request, validate, map error → response |
-| Service | `service` | business logic + transaction boundary + orchestration |
-| Repository | `repository` | đọc-ghi DB (JPA) |
-| Client / Consumer | `client` / `consumer` | gọi external / phát-nhận event (nếu có) |
-| Mapper / DTO / Enum / Config | `mapper` `dto` `enums` `config` | convert / contract / hằng / bean |
-
-> Nếu boundary chọn **Hexagonal**: thay bảng trên bằng `domain` / `application` (port in-out) / `adapter.in.web` / `adapter.out.persistence|client` — chốt rõ ở đây.
-
-## 5. Key flows (sequence)
-> Mỗi FEAT `Must` ≥ 1 flow: **happy + ≥ 1 nhánh lỗi quan trọng**. Ghi BR-x tại bước thực thi (detail → FEAT). Lane đặt theo kiến trúc §4 (Layered: Controller/Service/Repository).
-```
-Client  Controller  Service   Repository  DB
- │─req──►│─validate─►│─apply BR-1►│─────────►│
- │◄─2xx──│◄──────────│◄───────────│◄─────────│
- │─(invalid)►│ 400 VALIDATION (error codes → api-*.md)
-```
-**BR:** BR-1, BR-2 ([`FEAT-XXX`](../feat/)) · **Error paths:** [`api-{boundary_id}.md`](../api/)
-
-## 6. Auth & permission
-- **Ai được gọi:** role/permission theo nhóm endpoint (vd `manager` → quản lý; `staff` → đọc).
-- **Tenant isolation:** mọi query filter `tenant_id` từ token. **Public vs internal:** endpoint nào public (login/health) vs internal.
-- Identity lấy từ security context, KHÔNG tin client.
-
-## 7. Consistency & transaction strategy *(tùy chọn — khi multi-write / cross-boundary / event)*
-- **Tx boundary:** ở service/use-case; multi-write trong 1 boundary = 1 ACID tx.
-- **Cross-boundary:** KHÔNG distributed tx → **eventual consistency** qua event; publish **sau commit** (after-commit / outbox).
-- **Idempotency:** consumer/callback/retry dedup theo event/idempotency key.
-- **Saga/compensation:** nếu luồng trải nhiều boundary — mô tả bước + bước bù.
-
-## 8. Failure behavior & resilience *(tùy chọn — khi có outbound call)*
-- **Downstream lỗi:** fail-fast hay degrade; fallback/cache stale; lỗi propagate ra client thế nào.
-- **Partial failure:** DB commit nhưng event/cache fail → bù (outbox retry / reconcile).
-
-| Downstream | Timeout | Retry | Circuit breaker | Fallback |
-|---|---|---|---|---|
-| {boundary_b / ext} | (ms) | (strategy) | (threshold) | (behavior) |
-
-## 9. Deployment & scaling topology
-- **Đơn vị deploy:** 1 container/image; stateless (state ở DB/cache).
-- **Scaling:** scale ngang N replica (vd HPA theo CPU/req); điểm nghẽn dự kiến (DB pool, lock…).
-- **Sticky/affinity:** có cần không (mặc định KHÔNG — stateless). **Startup deps:** DB/broker phải sẵn (health-gated).
-- Infra/compose local → [`../infra/`](../infra/).
-
-## 10. Observability *(chỉ ghi điểm đặc thù — mặc định kế thừa PROJECT/ADR)*
-Log structured + `traceId` (không log nhạy cảm) · metrics rate/latency/error + business metric · tracing propagate qua downstream/event · health `/health/live|ready`.
-
-## 11. API surface (tóm tắt)
-| Nhóm | Method/Op | Mục đích |
-|---|---|---|
-| {Resource} | GET/POST/PUT/DELETE `/v1/{resource}` | … |
-
-Contract + error format → [`api-{boundary_id}.md`](../api/).
-
-## 12. NFR refinements *(tùy chọn — chỉ khi stricter hơn PROJECT)*
-| Attribute | Project | Boundary (stricter) | Cơ chế |
+| Aspect | Choice | Driver | ADR |
 |---|---|---|---|
-| (vd Performance) | p95 < 200ms | p95 < 100ms | index, pool max=20 |
+| Style | {{Hexagonal / Layered / Onion}} | {{...}} | `ADR-{{boundary}}-{{NNN}}` |
+| Inbound | {{REST / GraphQL / gRPC}} | {{...}} | — |
+| Outbound | {{REST + Event-driven}} | {{...}} | — |
+| State mgmt | {{Stateless+DB / CQRS / Event Sourcing}} | {{...}} | — |
+| Concurrency | {{Optimistic (version) / Pessimistic / MVCC}} | {{...}} | `ADR-{{boundary}}-{{NNN}}` |
+| Consistency | {{Strong trong boundary; eventual cross-boundary}} | {{...}} | — |
 
-## 13. ADR references *(theo chủ đề, không hardcode số)*
-| ADR (chủ đề) | Áp dụng vào boundary |
-|---|---|
-| tech-stack | {framework}, {ORM} |
-| backend-architecture | Layered (`api→application→domain→infrastructure`) hoặc Hexagonal — theo ADR |
-| auth | JWT validate mọi endpoint trừ public |
+> Single-repo: KHÔNG fullstack boundary (P1). Quyết định lớn phải có ADR backing (P4).
 
-> Quyết định cục bộ (không lên ADR) → KG `decisions`.
+---
 
-## 14. Risks & open questions
-| # | Risk / Question | Severity | Owner | Status |
+## 3. Layering + dependency direction (Arch-Principles §3.1)
+
+> Backend: hexagonal. FE thay bằng `app/ → features/ → shared/ → services/` (§3.2).
+
+```
+infra/inbound   (HTTP controller, event consumer, scheduler)
+      ▼
+application     (use-case, command/query handler, tx boundary)
+      ▼
+domain          (entities, VO, domain events/services — PURE, no framework)
+      ▲
+infra/outbound  (DB adapter, event publisher, external HTTP client)
+```
+
+**Dependency rules (verify ở `/review-dev` + ArchUnit):**
+- `domain/` KHÔNG depend `infra/`|`application/` — pure, test không cần Spring.
+- `application/` orchestrate + mở tx; KHÔNG SQL/HTTP detail; KHÔNG business rule chi tiết (rule ở `domain/`).
+- Outbound integration qua adapter (port ở domain/application, impl ở infra/outbound). Inbound+outbound thay được không phá application+domain.
+
+---
+
+## 4. Module / package map
+
+> Path = `services/{{prefix}}-{{boundary}}/` (owned_paths trong MATRIX). Layout chi tiết → skill `ref-{kind}-pattern`.
+
+| Module | Path (dưới service root) | Responsibility | Depends on |
+|---|---|---|---|
+| `inbound-http` | `.../inbound/http/` | REST controller, validation, map DTO↔command | application |
+| `inbound-events` | `.../inbound/events/` | Event consumer, idempotent dispatch | application |
+| `application` | `.../application/` | Use-case handler, tx boundary, orchestration | domain, ports |
+| `domain` | `.../domain/` | Entity, VO, domain event/service, port interface | (none) |
+| `outbound-db` | `.../outbound/db/` | Repository impl, ORM mapping | domain (port) |
+| `outbound-events` | `.../outbound/events/` | Event publisher (after-commit) | domain (port) |
+| `outbound-{{provider}}` | `.../outbound/{{provider}}/` | External client + ACL | domain (port) |
+
+---
+
+## 5. Data flow (per capability)
+
+> 1 sequence diagram / capability quan trọng. Rõ tx boundary + điểm gọi external (ngoài tx).
+
+### 5.1 {{Capability-1, e.g. "Issue refund"}}
+
+```mermaid
+sequenceDiagram
+  participant Client as Caller (BFF/Backend)
+  participant API as inbound-http
+  participant App as application/RefundHandler
+  participant Domain as domain/Refund
+  participant Repo as outbound-db
+  participant Bus as outbound-events
+  participant Ext as outbound-stripe
+
+  Client->>API: POST /refunds (Idempotency-Key)
+  API->>App: refund(command)
+  Note over App,Repo: BEGIN TX
+  App->>Repo: load Payment (lock/version)
+  App->>Domain: Refund.create(...)
+  Domain-->>App: Refund + RefundIssued
+  App->>Repo: save Refund
+  Note over App,Repo: COMMIT TX
+  App->>Ext: capture refund — NGOÀI tx
+  App->>Bus: publish RefundIssued (after-commit)
+  API-->>Client: 201 + body
+```
+
+**Edge/error path (≥1):** {{vd. "Provider timeout sau commit → Refund PENDING_CAPTURE; reconciliation retry; consumer thấy event chỉ sau capture ok."}}
+
+### 5.2 {{Capability-2}}
+{{Same structure}}
+
+---
+
+## 6. Transactional boundaries + consistency
+
+| Operation | Tx scope | Isolation | Ngoài tx (external/async) | Consistency cross-boundary |
 |---|---|---|---|---|
-| R1 | | High/Med/Low | | Open/Resolved |
+| {{Issue refund}} | save Refund | {{Read Committed}} | provider capture, event publish | eventual (qua event) |
 
-> Blocker thực sự → KG `discipline.blockers` (chặn `complete`).
+**Invariants:**
+- Gọi external PHẢI ngoài DB tx (tránh giữ tx chờ network); compensating action nếu fail post-commit.
+- Event publish **after-commit** (outbox); không publish nếu rollback.
+- Cross-boundary KHÔNG distributed tx — saga / eventual + idempotent consumer.
+
+**Saga / compensation (nếu flow nhiều bước cross-boundary):**
+
+| Bước | Action | Compensation nếu bước sau fail |
+|---|---|---|
+| 1 | {{reserve}} | {{release reservation}} |
+| 2 | {{charge}} | {{refund charge}} |
+
+---
+
+## 7. Non-functional requirements (NFR — refine từ PROJECT.md, KHÔNG lỏng hơn)
+
+| Attribute | Target | Mechanism | Verify ở |
+|---|---|---|---|
+| Latency p99 (inbound) | {{< 200ms}} | {{pool, index, no N+1}} | perf TC |
+| Latency p99 (gồm external) | {{< 500ms}} | {{async event, circuit breaker}} | perf TC |
+| Throughput | {{1000 req/s peak}} | {{horizontal scale stateless}} | load test |
+| Availability | {{99.5%}} | {{healthcheck, graceful degradation}} | infra |
+| Durability | {{no data loss on crash}} | {{commit trước ack, outbox}} | resilience TC |
+
+---
+
+## 8. Persistence
+
+| Store | Purpose | Schema / keyspace | Owner layer |
+|---|---|---|---|
+| {{Postgres}} schema `{{boundary}}` | Primary OLTP | `db/migrations/V__*.sql` | outbound-db |
+| {{Redis}} `{{boundary}}:*` | Cache + idempotency | (key pattern §10) | application |
+
+**Migration:** forward-only, no destructive DROP cùng wave (expand→migrate→contract). 1 file `V{n}__*.sql`, không sửa migration đã merge.
+**Schema chi tiết:** → `data-model/data-model-{{boundary}}.md`. **Cross-boundary KHÔNG FK** — link bằng id, join app-layer (P1/P5).
+
+---
+
+## 9. Contracts — inbound + event + integration (high-level)
+
+> Chỉ list quan hệ. Schema chi tiết ở contract artifact tương ứng.
+
+**Inbound API (mình expose):** → `api/api-{{boundary}}.md`
+
+| Endpoint (essence) | Capability | Consumer |
+|---|---|---|
+| `POST /{{...}}` | {{Issue refund}} | {{BFF/boundary-x}} |
+
+**Events (mình phát):** → `events/{{boundary}}-events.md`
+
+| Event | Produced by | Trigger | Subscribers | Delivery |
+|---|---|---|---|---|
+| `{{EventName-1}}` | `application/{{Handler}}` | {{after refund committed}} | {{boundary-2,3}} | at-least-once, idempotent |
+
+**External integrations (mình gọi):** → `integrations/INTEG-EXT-{{name}}.md`
+
+| Provider | Purpose | Sync/Async | Failure handling |
+|---|---|---|---|
+| {{Stripe}} | Payment capture | Sync HTTP | retry 3× exp; circuit breaker sau 5 fail |
+
+**Common error envelope:** chuẩn chung (`ADR-platform-api-error-convention`) — 400/401/403/404/409/429/500. Domain code ở `api/api-{{boundary}}.md`.
+
+---
+
+## 10. Security (boundary-specific)
+
+| Concern | Mechanism | ADR |
+|---|---|---|
+| AuthN | {{JWT verify; validate iss/aud/exp}} | `ADR-platform-auth` |
+| AuthZ | {{RBAC tại application entry; deny-by-default}} | — |
+| Multi-tenant | {{tenant_id mọi query; enforce qua repository wrapper}} | — |
+| Secrets | {{Vault/env-mount, không hardcode}} | — |
+| Idempotency | {{Idempotency-Key → store 24h Redis; replay trả kết quả cũ}} | `ADR-{{boundary}}-{{NNN}}` |
+| Input validation | {{validate ở inbound, reject trước application}} | — |
+| PII | {{field nào PII, mask log, encrypt at-rest nếu cần}} | — |
+
+---
+
+## 11. Observability
+
+| Signal | What | Where |
+|---|---|---|
+| Logs | JSON, `correlation_id`, `tenant_id`, no PII raw | inbound + outbound |
+| Metrics | RED per endpoint; business KPI ({{refund volume}}) | exporter |
+| Traces | OTel span per use-case, propagate header cross-boundary | mọi layer |
+| Audit | Security ops (auth fail, refund, admin override) | audit log riêng |
+| Alerts | {{p99 > target, error-rate > X%, DLT > N}} | — |
+
+Convention (log schema / metric naming / trace header) chốt ở ADR observability.
+
+---
+
+## 12. Failure modes + resilience
+
+| Mode | Detection | Impact | Mitigation | Recovery |
+|---|---|---|---|---|
+| DB primary down | healthcheck fail | write fail | fail-fast 503 | failover; replay outbox |
+| Provider timeout | timeout/circuit-open | refund PENDING | retry queue + circuit breaker | reconciliation job |
+| Event bus down | publish fail | consumer chậm | outbox giữ event | replay khi bus up |
+| Poison message | consume fail lặp | consumer kẹt | retry N → DLT | manual triage DLT |
+
+**Degradation:** {{vd. "Provider down → nhận yêu cầu PENDING, không block user; capture sau."}}
+
+---
+
+## 13. Scaling assumptions
+
+| Dimension | Assumption | Mechanism khi vượt | Trigger scale |
+|---|---|---|---|
+| Throughput | {{1000 req/s}} | thêm instance (stateless) | {{CPU > 70%}} |
+| Data volume | {{N rows/table}} | partition theo tháng | {{table > X rows}} |
+| Connection | {{pool M}} | tăng pool / read-replica | {{pool saturation}} |
+
+---
+
+## 14. ADRs index (boundary này)
+
+| ADR-ID | Title | Status | Quyết định gì |
+|---|---|---|---|
+| `ADR-{{boundary}}-001` | {{Title}} | ACCEPTED | {{...}} |
+
+Chi tiết: `adr/ADR-{{boundary}}-*.md`. Quyết định mới khi code → tạo ADR mới (P4) + cập nhật bảng.
+
+---
+
+## 15. Open questions / risks
+
+| Câu hỏi / rủi ro | Ảnh hưởng | Owner | Hạn quyết |
+|---|---|---|---|
+| [ ] {{provider rate-limit chưa rõ}} | {{chặn throughput}} | {{@owner}} | {{Wave-N}} |
+
+---
+
+## 16. References
+
+- Charter: `docs/discovery/boundaries/{{boundary}}/CHARTER.md` · Project: `PROJECT.md` · Principles: `ARCHITECTURE-PRINCIPLES.md`
+- Data model: `data-model/data-model-{{boundary}}.md` · API: `api/api-{{boundary}}.md` · Events: `events/{{boundary}}-events.md` · Integrations: `integrations/INTEG-EXT-{{name}}.md`
+- KG: `knowledge-base/{{boundary}}.knowledge-graph.yaml` · Pattern: skill `ref-{kind}-pattern`
+
+---
+
+## 17. Change log
+
+| Date | Version | Author | CR/ADR | Description |
+|---|---|---|---|---|
+| {{DATE}} | 1 | {{Author}} | — | Initial HLD |

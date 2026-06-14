@@ -9,8 +9,8 @@ docs/plans/
 ├── README.md
 ├── TEMPLATE.WAVE-SEQUENCE.md   (template roadmap)
 ├── TEMPLATE.wave.md            (template per-wave)
-├── WAVE-SEQUENCE.md            (intake step 4 sinh, full project roadmap)
-├── wave-001.md                 (intake step 4 sinh, wave 1 detail)
+├── WAVE-SEQUENCE.md            (/plan sinh, full project roadmap)
+├── wave-001.md                 (/plan sinh, wave 1 detail)
 ├── wave-002.md
 └── wave-NNN.md
 ```
@@ -21,24 +21,24 @@ docs/plans/
 |------|-----------|---------|
 | `TEMPLATE.WAVE-SEQUENCE.md` | repo (template) | Skeleton cho overall roadmap |
 | `TEMPLATE.wave.md` | repo (template) | Skeleton cho per-wave detail |
-| `WAVE-SEQUENCE.md` | program-planner-agent (intake step 4) | Full project roadmap: số wave, boundary breakdown, timeline, resource, risks |
-| `wave-{NNN}.md` | program-planner-agent (intake step 4) | Per-wave plan: boundaries, features, dependencies, exit criteria, rollback |
+| `WAVE-SEQUENCE.md` | program-planner-agent (stage PLAN, `/plan`) | Full project roadmap: số wave, boundary breakdown, timeline, resource, risks |
+| `wave-{NNN}.md` | program-planner-agent (stage PLAN, `/plan`) | Per-wave plan: boundaries, features, dependencies, exit criteria, rollback |
 
 ## Workflow
 
 ```
-Intake step 4 (program-planner):
+/plan — stage PLAN (program-planner):
   → Read PROJECT.md + FEAT-*.md + ADR + HLD per boundary
   → Write WAVE-SEQUENCE.md (overall roadmap với N waves)
-  → Write wave-001.md (chi tiết wave đầu)
-  → (Optional) Write wave-002.md, ... nếu plan rõ
-  → Write harness/SERVICE-BOUNDARY-MATRIX.json (boundary metadata)
-  → Run materialize.py (gen dev/fix agents + KG per boundary)
+  → Write wave-001.md … wave-00N.md (chi tiết MỌI wave)
+  → Materialize harness/SERVICE-BOUNDARY-MATRIX.json (boundary metadata; gate stage ∈ {BOOTSTRAP, PLAN})
+  → KG skeleton per boundary
+  → Gate plan_gate → PLAN → REVIEW
 
-/start-wave <N>:
+/start-wave <N>:  (sau /approve-document ở REVIEW)
   → Read wave-{NNN}.md
   → Verify boundaries trong MATRIX
-  → Transition INTAKE → WAVE_OPEN
+  → Transition REVIEW → WAVE_OPEN
 ```
 
 ## Per-wave structure

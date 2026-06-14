@@ -23,11 +23,11 @@ Tất cả route qua `dispatcher.py --event <name>`. Config trong `.claude/setti
 | Notification | * | Inject state header |
 | PreCompact | * | Pin STATE summary hiện tại trước compaction |
 | PreToolUse | Bash | Check `harness <X> complete` gate; deny nếu sai |
-| PreToolUse | Write\|Edit\|MultiEdit | Block protected files (STATE.json, STATE-MACHINE.json, settings.json) |
-| PreToolUse | Task | KHÔNG block theo stage; inject boundary reminder cho dev-spawn |
+| PreToolUse | Write\|Edit\|MultiEdit\|NotebookEdit | Block 4 kernel files (STATE.json, STATE-MACHINE.json, SERVICE-BOUNDARY-MATRIX.json, settings.json) |
+| PreToolUse | Task | KHÔNG block theo stage; inject boundary reminder + block dev/fix/review spawn bằng prompt tự viết tay (E-6) |
 | PostToolUse | Bash | no-op (STATE.json chỉ giữ trạng thái hiện tại) |
-| SubagentStop | * | Parse RETURN SCHEMA JSON, validate fields |
-| Stop | * | (stub — sẽ implement build/lint/test runner per kind sau) |
+| SubagentStop | * | Parse RETURN SCHEMA JSON, validate 7 field bắt buộc |
+| Stop | * | Build/lint/test **wave-scoped** per kind khi stage ∈ {DEV, REVIEW_DEV, TEST_EXECUTE} + có sửa services/; đỏ→block 40 dòng; cache git-hash |
 | SessionEnd | * | Cleanup `spawn.active` nếu stale |
 
 ## Output format (Claude Code spec)
@@ -74,10 +74,10 @@ except Exception as e:
 | Nhóm | Functions | Dùng ở event |
 |------|-----------|--------------|
 | State formatting | `format_state_brief`, `state_header_line`, `memory_marker` | SessionStart, UserPromptSubmit, PreCompact, Notification |
-| Protected files | `is_protected_file`, `safe_rel_path` | PreToolUse(Write\|Edit) |
+| Protected files | `is_protected_file`, `safe_rel_path` | PreToolUse(Write\|Edit\|NotebookEdit) |
 | Bash gate | `parse_harness_complete` | PreToolUse(Bash), PostToolUse(Bash) |
 | Return schema | `extract_json_object`, `validate_return_schema` | SubagentStop |
-| Task spawn | `detect_dev_spawn`, `boundary_reminder` | PreToolUse(Task) |
+| Task spawn | `detect_dev_spawn`, `boundary_reminder`, `looks_like_build_prompt` | PreToolUse(Task) |
 
 ## Debug
 

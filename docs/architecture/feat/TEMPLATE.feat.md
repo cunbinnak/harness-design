@@ -1,45 +1,157 @@
-# FEAT-XXX: {title}
-
-> **Purpose:** Mô tả một feature — user value, AC testable, business rules.
-> **Owner:** `intake:requirement-analyst` (draft) → `intake:business-analyst` (refine AC + BR).
-> **Audience:** dev (biết phải build gì), test-plan (biết phải test gì), reviewer (biết phải đối chiếu).
-> **Out of scope:** Implementation (→ [`../hld/hld-{boundary}.md`](../hld/)), API (→ [`../api/api-{boundary}.md`](../api/)), UI wireframe (→ [`../ux/ux-{fe}.md`](../ux/)).
-
+---
+type: domain-artifact
+artifact_kind: feature-intent
+id: "FEAT-{{PREFIX}}-{{NNN}}"
+status: "DRAFT | REVIEW | APPROVED"
+version: 1
+tier: T2
+owner_authority: business
+owner: "{{người chịu trách nhiệm feature — single-person: chính bạn}}"
+priority: "P0 | P1 | P2 | P3"
+epic_ref: "EP-{{PREFIX}}-{{NNN}}"   # 1 epic cha (gate planning_lint, trỏ file thật)
+feat_type: "user_facing | platform"   # user_facing=có UI demo; platform=backend-only (gate planning_lint)
+business_rule_refs: ["BR-{{PREFIX}}-{{NNN}}"]   # BR phải tuân thủ (gate planning_lint, trỏ file thật)
+journey_refs: ["JOURNEY-{{PREFIX}}-{{NNN}}"]   # journey feature hiện thực
+persona_refs: ["PERSONA-{{PREFIX}}-{{NNN}}"]
+outcome_persona: "PERSONA-{{PREFIX}}-{{NNN}}"   # persona CHÍNH nhận outcome
+demo_signature: "{{1 câu: demo gì để CHỨNG MINH feature đạt (anti-gaming) — nguồn cho wave demo_target}}"
+target_boundary_hint: "{{boundary name (kind backend/web/mobile) hoặc TBD}}"
+has_ui_touchpoint: true
+source: domain-author
+last_reviewed: "{{YYYY-MM-DD}}"
 ---
 
-**Ưu tiên:** Must | Should | Could
-**Boundary dự kiến:** (gợi ý — solution-architect chốt, materialize trong matrix)
+> Điền NGẮN GỌN: ưu tiên bảng/bullet, không văn xuôi thừa, không lặp. Doc này agent downstream đọc nhiều lần — tiết kiệm context.
 
-## Mục tiêu
+> AC viết BDD plain Vietnamese (Cho/Khi/Thì), ngôn ngữ NGHIỆP VỤ thuần — không tech (endpoint/API/HTTP status/component/tên bảng/cache/token). APPROVED khi: epic_ref + feat_type + ≥1 business_rule_refs trỏ file THẬT; mỗi AC testable (QC seed 1:1); phủ happy + validation + lỗi nghiệp vụ (+ a11y/responsive nếu has_ui_touchpoint); demo_signature cụ thể; có "Ngoài phạm vi".
 
-(1-2 câu — feature giải quyết vấn đề gì cho user, khớp [PROJECT.md](../PROJECT.md))
+# FEAT-{{PREFIX}}-{{NNN}} — {{Tên tính năng}}
 
-## Phạm vi feature
+## 1. Mục tiêu nghiệp vụ
 
-- **In scope:**
-- **Out of scope:**
+{{1-2 câu: giải quyết vấn đề gì cho persona, gắn outcome epic cha.}}
 
-## Acceptance criteria
+## 2. Persona dùng tính năng
 
-Mỗi AC phải **testable** (Given/When/Then hoặc condition đo được). test-plan-agent dùng AC này để sinh test case.
+> Persona chính trùng `outcome_persona`. Phân biệt người THAO TÁC vs người NHẬN kết quả.
 
-- [ ] **AC-1:** (Given ... When ... Then ...)
-- [ ] **AC-2:**
-- [ ] **AC-3:**
+| Persona | Vai trò |
+|---|---|
+| {{PERSONA-XXX-001 — Merchant Admin}} | {{Người chính — tạo yêu cầu}} |
+| {{PERSONA-XXX-002 — Manager}} | {{Approver nếu vượt ngưỡng (tuỳ chọn)}} |
 
-## Business rules
+## 3. User story
 
-| ID | Rule | Apply at |
-|----|------|----------|
-| BR-1 | (rule cụ thể) | (endpoint / domain service / UI form) |
-| BR-2 | | |
+**Là** {{persona}}, **tôi muốn** {{khả năng}}, **để** {{outcome nghiệp vụ}}.
 
-## Phụ thuộc
+## 4. Tiêu chí chấp nhận (Acceptance Criteria)
 
-- **Depends on:** (FEAT-XXX hoặc —)
-- **Blocks:** (FEAT-YYY hoặc —)
+> Mỗi AC: **Cho** (bối cảnh) / **Khi** (hành động) / **Thì** (kết quả quan sát được). Độc lập testable, QC seed 1:1. Phủ tối thiểu các archetype áp dụng được; thêm AC nếu thiếu archetype.
 
-## Liên kết
+| Archetype | Bắt buộc khi |
+|---|---|
+| Happy path | Luôn |
+| Validation đầu vào | Có nhập liệu |
+| Lỗi nghiệp vụ | Có BR / điều kiện chặn |
+| Phân quyền | Quyền phụ thuộc vai trò |
+| A11y + responsive | has_ui_touchpoint=true |
+| Trạng thái rỗng/tải/lỗi tải | UI có dữ liệu động |
 
-- Wave: `../../plans/wave-{N}.md` (FEAT này thuộc wave nào)
-- KG: BR của FEAT → seed vào `business_rules` của `knowledge-base/{boundary}.knowledge-graph.yaml` (boundary đảm nhận) ở `/start-wave`
+### AC-1: {{Happy path — tên ngắn}}
+
+**Cho** {{persona, quyền, trạng thái dữ liệu}}
+**Khi** {{hành động persona}}
+**Thì** {{kết quả quan sát được + thay đổi trạng thái nghiệp vụ}}
+
+### AC-2: {{Validation đầu vào — tên ngắn}}
+
+**Cho** {{persona đang nhập liệu}}
+**Khi** {{nhập giá trị không hợp lệ — vd vượt số dư, xem [BR-{{PREFIX}}-001](../business-rules/BR-{{PREFIX}}-001.md)}}
+**Thì** {{từ chối, báo lý do rõ tại đúng chỗ, không đổi dữ liệu}}
+
+### AC-3: {{Lỗi nghiệp vụ — tên ngắn}}
+
+**Cho** {{đầu vào hợp lệ}}
+**Khi** {{điều kiện chặn nghiệp vụ — vd yêu cầu song song, trạng thái không cho thao tác}}
+**Thì** {{thông báo nghiệp vụ rõ + hướng dẫn tiếp; KHÔNG "HTTP 409"}}
+
+### AC-4: {{Happy path mở rộng / kết quả phụ — tên ngắn}}
+
+**Cho** {{...}}
+**Khi** {{persona hoàn tất hành động chính}}
+**Thì** hệ thống:
+- {{Cập nhật trạng thái nghiệp vụ}}
+- {{Đưa sang màn hình/kết quả tiếp}}
+- {{Gửi xác nhận tới các bên liên quan}}
+
+### AC-5: {{A11y — chỉ khi has_ui_touchpoint}}
+
+**Cho** {{persona dùng bàn phím / trình đọc màn hình}}
+**Khi** {{thao tác qua màn hình}}
+**Thì** {{tab order hợp lý, mọi trường có nhãn, lỗi đọc được bằng screen reader}}
+
+### AC-6: {{Responsive — chỉ khi has_ui_touchpoint}}
+
+**Cho** {{persona dùng điện thoại / tablet / máy tính}}
+**Khi** {{màn hình hiển thị}}
+**Thì** {{bố cục hợp thiết bị, không cuộn ngang, không che nội dung}}
+
+<!-- Thêm AC theo archetype còn thiếu. Mỗi AC testable + tầng nghiệp vụ. -->
+
+## 5. Bảng ánh xạ AC → BR (traceability)
+
+> Mỗi BR liên quan ≥1 AC kiểm chứng; mỗi AC "lỗi nghiệp vụ" trỏ về BR nguồn.
+
+| AC | Archetype | BR liên quan | Ghi chú |
+|---|---|---|---|
+| AC-1 | Happy path | — | {{...}} |
+| AC-2 | Validation | [BR-{{PREFIX}}-001](../business-rules/BR-{{PREFIX}}-001.md) | {{...}} |
+| AC-3 | Lỗi nghiệp vụ | [BR-{{PREFIX}}-002](../business-rules/BR-{{PREFIX}}-002.md) | {{...}} |
+
+## 6. Quy tắc liên quan
+
+> Mọi BR ở đây phải có trong frontmatter `business_rule_refs` và trỏ file THẬT.
+
+| Business Rule | Vai trò trong feature |
+|---|---|
+| [BR-{{PREFIX}}-001](../business-rules/BR-{{PREFIX}}-001.md) | {{Số tiền hoàn ≤ số dư còn lại}} |
+| [BR-{{PREFIX}}-002](../business-rules/BR-{{PREFIX}}-002.md) | {{Đơn đã chargeback không cho hoàn thủ công}} |
+
+## 7. Bằng chứng demo (anti-gaming)
+
+> Cụ thể hoá `demo_signature` thành kịch bản quan sát được — nguồn cho wave `demo_target`. CHỨNG MINH outcome, không chỉ "code chạy".
+
+- Kịch bản: {{persona làm A → B → C; người xem thấy X}}
+- Dữ liệu mẫu cần có: {{...}}
+- Coi là "đạt": {{tiêu chí quan sát được}}
+
+## 8. Ngoài phạm vi (QC dựa vào để biết KHÔNG test gì)
+
+> BẮT BUỘC. Mỗi mục nói rõ thuộc feature/epic/phase nào.
+
+- {{Hoàn tiền tự động theo lịch — feature riêng}}
+- {{Workflow duyệt nhiều cấp — feature riêng}}
+- {{Tích hợp kế toán bên thứ ba — phase sau}}
+
+## 9. Câu hỏi cần Business Authority xác nhận
+
+> Liệt kê hết điểm chưa chắc, kèm phương án mặc định.
+
+- [ ] {{Giới hạn số yêu cầu/đơn? (mặc định: 1 yêu cầu đang mở/đơn)}}
+- [ ] {{Lý do hoàn preset hay free text?}}
+- [ ] {{Đính kèm bằng chứng bắt buộc hay tuỳ chọn?}}
+
+## 10. References
+
+- Epic cha: `docs/architecture/epics/EP-{{PREFIX}}-{{NNN}}.md`
+- Journey: `docs/architecture/journeys/JOURNEY-{{PREFIX}}-{{NNN}}.md`
+- Personas: `docs/architecture/personas/PERSONA-{{PREFIX}}-{{NNN}}.md`
+- Business rules: `docs/architecture/business-rules/BR-{{PREFIX}}-*.md`
+- UX (nếu có UI, do DESIGN): `docs/architecture/ux/ux-{{boundary}}.md`
+
+## 11. Change log
+
+| Date | Version | Status | Author | Thay đổi |
+|---|---|---|---|---|
+| {{YYYY-MM-DD}} | 1 | DRAFT | {{tác giả}} | Initial |
+| {{YYYY-MM-DD}} | 1 | APPROVED | Business Authority | Sign-off — sẵn sàng DESIGN |

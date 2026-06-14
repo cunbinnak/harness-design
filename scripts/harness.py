@@ -19,7 +19,13 @@ sys.path.insert(0, str(SCRIPTS))
 import state as state_mod  # noqa: E402
 
 COMMANDS = [
-    "intake-requirement",
+    "discovery-start",
+    "discovery-end",
+    "domain-start",
+    "domain-end",
+    "design",
+    "design-end",
+    "plan",
     "review-document",
     "approve-document",
     "start-wave",
@@ -28,6 +34,7 @@ COMMANDS = [
     "dev-handoff",
     "test-plan",
     "test-execute",
+    "log-bug",
     "fix-bugs",
     "end-wave",
     "done-wave",

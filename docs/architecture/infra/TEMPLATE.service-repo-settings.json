@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "Template settings.json cho service repo con (polyrepo). Dev sub-agent emit vao services/{{prefix}}-{{boundary}}/.claude/settings.json lan dau scaffold. Bo block 'allow' theo {{kind}}: GIU 1 trong 4 block backend/bff-web/mobile, xoa 3 block con lai. Day la permission cuc bo cho session chay RIENG trong service repo (ngoai orchestrator). Hook harness (dispatcher) song o design-repo cha .claude/settings.json — service repo KHONG co STATE.json nen KHONG wire dispatcher; chi giu permission allowlist + optional Stop guard local (xem _hook_note).",
+  "_hook_note": "Hook orchestration (PreToolUse boundary-guard, Stop build/test gate, SubagentStop schema-check) chay o DESIGN-REPO khi spawn dev sub-agent — do la noi co STATE.json + scripts/hooks/dispatcher.py. Service repo standalone KHONG can va KHONG nen copy dispatcher (no phu thuoc STATE.json + MATRIX cua design-repo). Neu muon mot Stop-gate build/test cuc bo khi sua code trong service repo session rieng, them mot hook command don gian chay '{{build_cmds}}' va exit non-zero khi do — nhung mac dinh de TRONG de tranh phu thuoc. Gate build/test that su nam o Stop hook cua design-repo (chay khi stage in DEV/REVIEW_DEV/TEST_EXECUTE va co code thay doi trong services/{prefix-boundary}/).",
+  "permissions": {
+    "allow_backend": [
+      "Read", "Write", "Edit", "Grep", "Glob",
+      "Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)", "Bash(git blame:*)",
+      "Bash(ls:*)", "Bash(pwd:*)", "Bash(find:*)", "Bash(wc:*)",
+      "Bash(./gradlew:*)", "Bash(gradle:*)", "Bash(mvn:*)",
+      "Bash(docker compose:*)", "Bash(docker ps:*)", "Bash(docker logs:*)", "Bash(docker exec:*)", "Bash(docker inspect:*)"
+    ],
+    "allow_bff_web": [
+      "Read", "Write", "Edit", "Grep", "Glob",
+      "Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)", "Bash(git blame:*)",
+      "Bash(ls:*)", "Bash(pwd:*)", "Bash(find:*)", "Bash(wc:*)",
+      "Bash(pnpm:*)", "Bash(npm:*)", "Bash(npx:*)", "Bash(node:*)",
+      "Bash(docker compose:*)", "Bash(docker ps:*)", "Bash(docker logs:*)", "Bash(docker exec:*)", "Bash(docker inspect:*)"
+    ],
+    "allow_mobile": [
+      "Read", "Write", "Edit", "Grep", "Glob",
+      "Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)", "Bash(git blame:*)",
+      "Bash(ls:*)", "Bash(pwd:*)", "Bash(find:*)", "Bash(wc:*)",
+      "Bash(flutter:*)", "Bash(dart:*)"
+    ],
+    "deny": [
+      "Read(**/target/**)",
+      "Read(**/build/**)",
+      "Read(**/dist/**)",
+      "Read(**/node_modules/**)",
+      "Read(**/.gradle/**)",
+      "Read(**/.dart_tool/**)",
+      "Read(**/__pycache__/**)",
+      "Read(**/.git/objects/**)",
+      "Read(**/*.class)"
+    ]
+  }
+}

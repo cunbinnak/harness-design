@@ -5,6 +5,7 @@
 - **Status:** proposed | approved | implemented | rejected
 - **Date:** YYYY-MM-DD
 - **Wave ảnh hưởng:** wave-001, wave-002 (hoặc —)
+- **Áp dụng từ:** DONE state → `/apply-cr` → DESIGN amendment
 - **Loại:** scope | business-rule | ux | technical | bug-as-change
 
 ## Mô tả thay đổi
@@ -16,25 +17,25 @@
 | File / vùng | Hành động |
 |-------------|-----------|
 | docs/architecture/feat/FEAT-xxx.md | sửa AC … |
-| docs/plans/waves/wave-00N/wave.md | bổ sung task … |
+| docs/plans/wave-{NNN}.md | bổ sung task … |
 | docs/architecture/… | chỉ nếu ảnh hưởng boundary |
 
 ## Kế hoạch cập nhật
 
-_(apply-cr agent điền — orchestrator chạy intake amendment sau `apply-cr complete`)_
+_(apply-cr agent điền — sau `apply-cr complete`: STATE → DESIGN; user chạy `/design` (amendment) → `/plan` → REVIEW)_
 
 | File / vùng | Hành động |
 |-------------|-----------|
 | | |
 
 - **Boundaries ảnh hưởng:** (chỉ id trong roster/matrix)
-- **Cần intake amendment:** yes / no
+- **Cần re-design (DESIGN amendment):** yes / no
 - **Blocker / open questions:**
 
 ## Phạm vi implement
 
 - Boundary:
-- Có cần **intake-requirement** (amendment) không: yes / no
+- Có cần `/design` (amendment) → `/plan` không: yes / no (CR đổi product → `/domain-start` trước)
 
 ## Quyết định
 

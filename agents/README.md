@@ -1,21 +1,39 @@
 # Agents
 
-Source of truth: 19 file trong `agents/` (16 singleton command + 2 templates + README). Per-boundary dev/fix agent **materialize từ MATRIX** ở `/start-wave` (không commit sample).
+Source of truth: 24 file trong `agents/` (21 singleton command + 2 templates + README). Per-boundary dev/fix agent **materialize từ MATRIX** ở `/start-wave` (không commit sample).
 
-State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 states, 14 commands).
+State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (17 states, 19 commands).
 
 ## Agent inventory
 
-### Intake (4 specialists + main orchestrate)
+> Front-half = DISCOVERY (D0-D3) → DOMAIN_AUTHORING → DESIGN → PLAN → REVIEW. Mỗi stage spawn bởi **Claude main** (flat pattern, no orchestrator agent).
 
-`/intake-requirement` được orchestrate bởi **Claude main** (no orchestrator agent — flat pattern). Main spawn 4 specialists tuần tự:
+### Discovery (4 specialists)
 
-| Step | Agent | Skill primary | Output chính |
+`/discovery-start <D>` spawn agent per wave (self-loop re-spawn); `/discovery-end <D>` verify gate → wave kế.
+
+| Wave | Agent | Skill primary | Output chính |
 |------|-------|---------------|--------------|
-| 1 | [requirement-analyst-agent](requirement-analyst-agent.md) | `requirement-analysis` | PROJECT.md + FEAT-*.md draft + project.service_prefix |
-| 2 | [business-analyst-agent](business-analyst-agent.md) | `business-analysis` | FEAT refined (AC testable + BR + boundaries_suggested) |
-| 3 | [solution-architect-agent](solution-architect-agent.md) | `technical-design` | ADR + HLD + API + data-model + UX + events + integrations + infra/docker-compose |
-| 4 | [program-planner-agent](program-planner-agent.md) | `implementation-plan` | WAVE-SEQUENCE + wave-001 + MATRIX + materialize per-boundary dev/fix/KG |
+| D0 | [discovery-hypothesis-agent](discovery-hypothesis-agent.md) | `discovery-hypothesis` | `docs/discovery/hypothesis-log.md` |
+| D1 | [capability-mapper-agent](capability-mapper-agent.md) | `capability-mapping` | `persona-pool.md` + `capability-map.md` |
+| D2 | [event-stormer-agent](event-stormer-agent.md) | `event-storming` | `event-storming/ES-*.md` |
+| D3 | [charter-author-agent](charter-author-agent.md) | `boundary-charter` | `BOUNDARY-MAP.md` + `boundaries/*/CHARTER.md` + derive `PROJECT.md` + chốt `service_prefix` |
+
+### Domain (2 specialists)
+
+`/domain-start <EPIC\|FEATURE\|JOURNEY\|BR\|PERSONA>` (self-loop) → `/domain-end` (gate → DESIGN). Author **thẳng vào `docs/architecture/`**.
+
+| Agent | Mode | Skill primary | Output chính |
+|-------|------|---------------|--------------|
+| [domain-po-agent](domain-po-agent.md) | EPIC / FEATURE / JOURNEY | `domain-po` | `epics/` + `feat/` (AC BDD) + `journeys/` |
+| [domain-ba-agent](domain-ba-agent.md) | BR / PERSONA | `domain-ba` | `business-rules/` + `personas/` |
+
+### Design + Plan (2 specialists)
+
+| Command | Agent | Skill primary | Output chính |
+|---------|-------|---------------|--------------|
+| `/design` | [solution-architect-agent](solution-architect-agent.md) | `technical-design` | ADR + HLD + API + data-model + UX + events + integrations + infra/docker-compose |
+| `/plan` | [program-planner-agent](program-planner-agent.md) | `implementation-plan` | WAVE-SEQUENCE + wave-*.md + MATRIX + materialize per-boundary dev/fix/KG |
 
 ### Review (5 singletons)
 
@@ -30,11 +48,11 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 s
 > Review agents là **singleton per kind** (1 file dùng cho mọi boundary cùng kind).
 > Rules/checklist cụ thể nằm trong skill (project-customizable), KHÔNG hardcode trong agent file.
 
-### Operations (6 ops)
+### Operations (7 ops)
 
 | Agent | Command | Skill primary | Stage transition |
 |-------|---------|---------------|------------------|
-| [start-wave-agent](start-wave-agent.md) | `/start-wave` | (none — pure orchestration) | INTAKE → WAVE_OPEN |
+| [start-wave-agent](start-wave-agent.md) | `/start-wave` | (none — pure orchestration) | REVIEW → WAVE_OPEN |
 | [dev-handoff-agent](dev-handoff-agent.md) | `/dev-handoff` | `infra-local-dev` | REVIEW_DEV → DEV_HANDOFF |
 | [test-plan-agent](test-plan-agent.md) | `/test-plan` | `test-plan` | DEV_HANDOFF → TEST_PLAN |
 | [test-execute-agent](test-execute-agent.md) | `/test-execute` | `test-execute` | TEST_PLAN → TEST_EXECUTE → (auto) MANUAL_TEST |
@@ -46,11 +64,11 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (10 s
 
 | Agent | Command | Skill primary | Stage transition |
 |-------|---------|---------------|------------------|
-| [apply-cr-agent](apply-cr-agent.md) | `/apply-cr <CR-ID>` | `business-analysis` | DONE → INTAKE (amendment mode) |
+| [apply-cr-agent](apply-cr-agent.md) | `/apply-cr <CR-ID>` | `business-analysis` | DONE → DESIGN (amendment) |
 
-## Materialize per-boundary (after intake)
+## Materialize per-boundary (after /plan)
 
-Sau intake step 4 + `/start-wave`, `materialize.py` gen per boundary:
+Sau `/plan` + `/start-wave`, `materialize.py` gen per boundary:
 
 | Type | File | Template |
 |------|------|----------|
@@ -58,7 +76,7 @@ Sau intake step 4 + `/start-wave`, `materialize.py` gen per boundary:
 | Fix | `agents/fix-{prefix}-{boundary}-agent.md` | [_template-fix-agent.md](_template-fix-agent.md) |
 | KG | `knowledge-base/{boundary}.knowledge-graph.yaml` | [TEMPLATE.knowledge-graph.yaml](../knowledge-base/TEMPLATE.knowledge-graph.yaml) |
 
-> Các file này **không commit sẵn** — sinh khi `/start-wave` materialize từ MATRIX. Repo ship "sạch" (MATRIX rỗng cho tới khi intake).
+> Các file này **không commit sẵn** — sinh khi `/start-wave` materialize từ MATRIX. Repo ship "sạch" (MATRIX rỗng cho tới khi `/plan`).
 
 ## v4 agent file structure
 
@@ -67,9 +85,9 @@ Mỗi agent có 7 sections:
 ```yaml
 ---
 name: <agent-name>
-role: "<role-namespace>:<sub-role>"  # vd "intake:requirement-analyst", "review:backend"
+role: "<role-namespace>:<sub-role>"  # vd "design:solution-architect", "review:backend"
 command: <slash-command>              # spawn command
-pipeline_step: <N|null>               # 1-4 cho intake specialist
+stage: <STAGE|null>                   # stage agent chạy (vd DESIGN, PLAN)
 primary_skill: <skill-name|null>      # invoke ngay khi spawn
 secondary_skills: [...]               # available on-demand
 stage_transition: "<from> -> <to>"    # state machine transition

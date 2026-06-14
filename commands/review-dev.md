@@ -6,7 +6,7 @@ sets_stage: REVIEW_DEV
 spawn:
   agent: "review-{kind}-agent (mỗi boundary trong wave, theo kind)"
   skills: review-{kind}
-gates: []
+gates: [{type: no_open_findings}]
 ---
 
 # /review-dev

@@ -4,19 +4,23 @@ Python kernel cho ADLC Design Harness. ~10 file core.
 
 ## Inventory
 
-| Script | Mục đích | LOC |
-|--------|----------|-----|
-| `harness.py` | CLI thin wrapper (gọi state.py) | ~60 |
-| `state.py` | STATE manager: load/save/validate/transition (no history) | ~280 |
-| `gates.py` | Pure gate functions per command (no side effect) | ~280 |
-| `build_prompt.py` | Build self-contained spawn prompt per command | ~430 |
-| `materialize.py` | Per-boundary artifact generator (dev/fix/KG từ MATRIX) | ~210 |
-| `materialize_matrix.py` | Ghi SERVICE-BOUNDARY-MATRIX.json (intake step 4, gate stage, validate) | ~190 |
-| `smoke_test.py` | E2E state machine walkthrough (18 cases) | ~190 |
-| `sync_commands.py` | Sync `commands/*.md` → `.claude/commands/` | ~60 |
-| `reset_for_new_project.py` | Clear v4 artifacts khi fork repo | ~200 |
-| `hooks/dispatcher.py` | Single entry route 9 hook events | ~310 |
-| `hooks/policies.py` | Pure check functions cho hooks | ~200 |
+| Script | Mục đích |
+|--------|----------|
+| `harness.py` | CLI thin wrapper (gọi state.py) |
+| `state.py` | STATE manager: load/save/validate/transition (no history) |
+| `gates.py` | Pure gate functions per command (no side effect) |
+| `build_prompt.py` | Build self-contained spawn prompt per command |
+| `materialize.py` | Per-boundary artifact generator (dev/fix/KG từ MATRIX) |
+| `materialize_matrix.py` | Ghi SERVICE-BOUNDARY-MATRIX.json (stage PLAN, gate stage, validate) |
+| `discovery_gate.py` | Gate D0-D3 (port từ ZIP, adapt single-repo) |
+| `harness_lib.py` | Shared helper (repo_root/load_json/save_json/utc_now_iso) cho tooling phụ |
+| `smoke_test.py` | E2E state machine walkthrough (28 assertions) |
+| `sync_commands.py` | Sync `commands/*.md` → `.claude/commands/` |
+| `reset_for_new_project.py` | Clear v4 artifacts khi fork repo |
+| `hooks/dispatcher.py` | Single entry route 9 hook events |
+| `hooks/policies.py` | Pure check functions cho hooks |
+
+> (LOC column bỏ — drift mỗi lần sửa, không có giá trị contract.)
 
 ## Entry points
 
@@ -31,8 +35,8 @@ py scripts/build_prompt.py <command> [options]       # stdout self-contained pro
 py scripts/build_prompt.py <command> --stats         # size breakdown
 py scripts/build_prompt.py <command> --save path     # write to file + stdout
 
-# Materialize MATRIX (intake step 4 — MATRIX bị hook chặn Write tay, dùng script này)
-py scripts/materialize_matrix.py <boundaries.json>   # gate stage ∈ {BOOTSTRAP,INTAKE}, validate, ghi MATRIX
+# Materialize MATRIX (stage PLAN — MATRIX bị hook chặn Write tay, dùng script này)
+py scripts/materialize_matrix.py <boundaries.json>   # gate stage ∈ {BOOTSTRAP,PLAN}, validate, ghi MATRIX
 py scripts/materialize_matrix.py --json '[...]' --mode merge   # update theo boundary_id
 py scripts/materialize_matrix.py <f>.json --dry-run  # in ra, không ghi
 py scripts/materialize_matrix.py --selftest
