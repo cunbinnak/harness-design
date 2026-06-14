@@ -41,6 +41,3 @@ harness/.stop-cache.json
 
 # Reference archives (vd {{PROJECT-CODE}}-ADLC.zip — ADLC ZIP gốc để đối chiếu, KHÔNG track)
 *.zip
-
-# Ghi chú nội bộ backlog (working note, KHÔNG track)
-docs/HARNESS-IMPROVEMENT-BACKLOG.md
