@@ -16,6 +16,7 @@ from typing import Any
 
 import discovery_gate
 import planning_lint
+import wave_sequence_lint
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -1170,6 +1171,21 @@ _TENANT_ID_NAME_RE = re.compile(
 )
 
 
+def check_wave_sequence_lint(evidence: dict | None = None) -> tuple[bool, str]:
+    """Gate /plan: validate WAVE-SEQUENCE.md §wave-NNN (G16, port ZIP wave-sequence-validate).
+
+    Enum class/strategy + target_count ≤ 3/layer + strategy layer-purity (horizontal-be/-fe) +
+    vertical parent_epic + inherited_active file tồn tại (single-repo). Field từng là "trang trí" giờ
+    được gate. force=true → bypass (audit). Warning không chặn (chỉ error)."""
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    ok, errors = wave_sequence_lint.run_lint()
+    if ok:
+        return True, ""
+    return False, "wave-sequence-lint fail: " + "; ".join(errors)
+
+
 def check_api_transport_consistency(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
     """API spec KHÔNG được truyền tenant-id qua query string — phải header `X-Tenant-ID`/JWT claim.
 
@@ -1237,6 +1253,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "plan_integrity"},  # MATRIX FEAT-id backing + depends_on no-cycle/no-dangling (force bypass)
         {"kind": "matrix_coherence"},  # MATRIX phủ mọi boundary BOUNDARY-MAP đúng kind (force bypass)
         {"kind": "api_transport"},   # tenant-id qua header/JWT, KHÔNG query (G6 — chống drift BUG-012) (force bypass)
+        {"kind": "wave_sequence_lint"},  # WAVE-SEQUENCE §wave-NNN: enum/cap≤3/strategy-invariant (G16) (force bypass)
     ],
     "review-document": [
         {"kind": "flag", "field": "feedback_processed", "expected": True},
@@ -1332,6 +1349,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_contract_test_present(state, evidence)
         if kind == "api_transport":
             return check_api_transport_consistency(evidence)
+        if kind == "wave_sequence_lint":
+            return check_wave_sequence_lint(evidence)
         if kind == "web_styling":
             return check_web_styling(state, evidence)
         if kind == "discovery_wave":
@@ -1792,6 +1811,12 @@ def _selftest() -> int:
         assert check_api_transport_consistency({"force": True}, root=_aroot)[0] is True
     finally:
         _shutil.rmtree(_aroot, ignore_errors=True)
+
+    # wave_sequence_lint (G16): wiring + force-bypass (logic test đầy đủ ở wave_sequence_lint._selftest)
+    assert check_wave_sequence_lint({"force": True}) == (True, "")
+    assert isinstance(check_wave_sequence_lint()[0], bool)
+    import wave_sequence_lint as _wsl
+    assert _wsl._selftest() == 0
 
     print("OK: gates.py selftest passed")
     return 0

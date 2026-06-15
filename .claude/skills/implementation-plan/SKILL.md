@@ -8,7 +8,7 @@ description: Stage PLAN (/plan, program-planner) — WAVE-SEQUENCE + wave-{N}.md
 ## Khi load
 Command **`/plan`** (stage **PLAN** → REVIEW) — agent `program-planner-agent`, sau `/design`.
 Input: `docs/architecture/PROJECT.md` (Discovery D3) + product DOMAIN (`epics/`, `feat/` AC+BR, `business-rules/`, `journeys/`, `personas/`) + design (`adr/HLD/api/data-model/integrations/ux/events`) + charter boundaries (`docs/discovery/boundaries/*/CHARTER.md`).
-WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt single-repo): có field `wave_class`/`wave_strategy`/`target_count_per_layer` + block YAML per-wave + `targets`=boundary_id từ MATRIX + contract trỏ `docs/architecture/{api,events,ux}/` — điền theo template; harness `start-wave` hiện chỉ đọc wave-number → boundaries từ MATRIX (`wave_class`/`wave_strategy`/`target_count` forward-looking, chưa gate).
+WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt single-repo): có field `wave_class`/`wave_strategy`/`target_count_per_layer` + block YAML per-wave (`### §wave-NNN`) + `targets`=boundary_id từ MATRIX + contract trỏ `docs/architecture/{api,events,ux}/` — điền theo template. `start-wave` đọc wave-number → boundaries từ MATRIX; còn `wave_class`/`wave_strategy`/`targets` **được gate `wave_sequence_lint` ở `/plan`** (enum + cap≤3 + strategy layer-purity + vertical parent_epic + inherited_active file tồn tại) → phải điền §2 block YAML đúng schema.
 
 ## Wave = sprint — dự án chia thành NHIỀU wave
 - **1 wave = 1 sprint** giao được 1 lát sản phẩm chạy end-to-end.
@@ -50,7 +50,7 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 - [ ] Chia **≥ 2 wave** khi có phụ thuộc; thứ tự topological (không phụ thuộc ngược/vòng).
 - [ ] **Mỗi wave trong WAVE-SEQUENCE có file `wave-{N}.md` detail tương ứng** (full plan).
 - [ ] Mỗi wave có goal + boundaries + features + **dependencies từ wave trước** + exit criteria.
-- [ ] **≥1 wave điền đủ `wave_class` + `wave_strategy`** (dù forward-looking chưa gate — giữ field theo template).
+- [ ] **MỌI wave điền đủ `wave_class` + `wave_strategy` + `targets` + §2 block YAML** (gate `wave_sequence_lint` parse: enum + `target_count_per_layer ≤ 3` + strategy layer-purity + vertical `parent_epic` + `inherited_active` file tồn tại — sai field này chặn `/plan`).
 - [ ] Wave 1 mỏng, chạy được **E2E** (foundation + 1 lát core).
 - [ ] **Deferred-scope khai báo tường minh** (G1): AC/feature chủ động hoãn sang wave sau (auth/idempotency/event ở wave CRUD…) ghi vào `## 6 → Deferred to later waves` của `wave-{N}.md` (token `FEAT-NNN[:AC-M]`/`BR-NNN`). Đây là SoT để test-plan tag `@deferred` → test-execute skip → end-wave close sạch (không cần ép `test_result`).
 - [ ] MATRIX mỗi boundary đủ `kind/prefix/tech/wave/features/depends_on`; `ref_skills[]` suy từ design (event/cache/extra → ref tương ứng; CRUD thuần để rỗng); KG skeleton mọi boundary.
