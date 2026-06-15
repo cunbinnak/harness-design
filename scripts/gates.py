@@ -138,8 +138,9 @@ _CSS_IN_JS_MARKERS = ("styled.", "styled(", "@emotion", "makeStyles", "createUse
 
 
 def _web_styling_signals(src_dir: Path) -> dict:
-    """Quét src của 1 web boundary → tín hiệu styling: file CSS, tailwind, CSS-in-JS, có className."""
-    sig = {"css_files": 0, "has_className": False, "has_css_in_js": False, "has_tailwind": False}
+    """Quét src của 1 web boundary → tín hiệu styling: file CSS, tailwind, CSS-in-JS, className, dùng design-token."""
+    sig = {"css_files": 0, "has_className": False, "has_css_in_js": False,
+           "has_tailwind": False, "uses_token": False}
     if not src_dir.is_dir():
         return sig
     for p in src_dir.rglob("*"):
@@ -148,6 +149,13 @@ def _web_styling_signals(src_dir: Path) -> dict:
         suf = p.suffix.lower()
         if suf in _WEB_STYLE_EXTS:
             sig["css_files"] += 1
+            try:
+                ctxt = p.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            # G15: dùng design token (CSS var) thay vì hardcode; hoặc import shared design-tokens.
+            if "var(--" in ctxt or "@import" in ctxt and "design-tokens" in ctxt:
+                sig["uses_token"] = True
             continue
         if suf in (".tsx", ".ts", ".jsx", ".js"):
             try:
@@ -160,6 +168,8 @@ def _web_styling_signals(src_dir: Path) -> dict:
                 sig["has_css_in_js"] = True
             if "@tailwind" in txt:
                 sig["has_tailwind"] = True
+            if "var(--" in txt or "design-tokens" in txt:
+                sig["uses_token"] = True
     boundary_root = src_dir.parent
     for tw in ("tailwind.config.js", "tailwind.config.ts", "tailwind.config.cjs", "tailwind.config.mjs"):
         if (boundary_root / tw).is_file():
@@ -197,8 +207,17 @@ def check_web_styling(state: dict, evidence: dict | None = None, root: Path | No
                 f"{bid}: dùng className nhưng 0 styling (CSS/tailwind/CSS-in-JS) → FE unstyled "
                 f"(không màu/layout), không theo ux-{bid}.md §4 design tokens"
             )
+            continue
+        # G15: style bằng PLAIN CSS (không tailwind/CSS-in-JS) thì phải dùng design token (var(--...))
+        # — chống FE bịa màu/spacing rời design-tokens.css. Tailwind/CSS-in-JS có cơ chế token riêng → miễn.
+        plain_css_only = sig["css_files"] > 0 and not sig["has_tailwind"] and not sig["has_css_in_js"]
+        if styled and plain_css_only and not sig["uses_token"]:
+            problems.append(
+                f"{bid}: CSS không dùng design token `var(--color-/--font-/--space-...)` (hardcode hex/px) "
+                f"→ không theo `docs/architecture/ux/design-tokens.css` (G15). Import token + style qua var(--...)"
+            )
     if problems:
-        return False, "; ".join(problems) + " — implement CSS theo ux §4 (design tokens → CSS var) rồi rebuild"
+        return False, "; ".join(problems) + " — implement CSS theo ux §4 / design-tokens.css (token → CSS var) rồi rebuild"
     return True, ""
 
 
@@ -1551,8 +1570,13 @@ def _selftest() -> int:
         (_wsrc / "App.tsx").write_text('export const A = () => <div className="x">hi</div>', encoding="utf-8")
         ok, msg = check_web_styling(_ws_state, root=_wroot)
         assert not ok and "web1" in msg, f"web_styling phải chặn FE unstyled: {msg}"
+        # (G15) plain CSS hardcode (không var(--)) → FAIL (không dùng design token)
         (_wsrc / "App.css").write_text(".x{color:red}", encoding="utf-8")
-        assert check_web_styling(_ws_state, root=_wroot)[0] is True, "web_styling phải pass khi có CSS"
+        ok, msg = check_web_styling(_ws_state, root=_wroot)
+        assert (not ok) and "design token" in msg, f"web_styling phải chặn CSS hardcode không token: {msg}"
+        # CSS dùng var(--...) token → PASS
+        (_wsrc / "App.css").write_text(".x{color:var(--color-primary);padding:var(--space-md)}", encoding="utf-8")
+        assert check_web_styling(_ws_state, root=_wroot)[0] is True, "web_styling phải pass khi CSS dùng design token"
         assert check_web_styling(_ws_state, {"force": True}, root=_wroot)[0] is True
     finally:
         _sh_ws.rmtree(_wroot, ignore_errors=True)

@@ -21,6 +21,7 @@ Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md
 - Project có design system / **ADR ui-kit** → TUÂN THEO (layout, color, component pattern, mobile nav).
 - Chưa có → tự define dựa `PROJECT.md` + best practice, rồi ghi vào **ADR ui-kit**.
 - KHÔNG hardcode color/spacing/typography → **reference design tokens**.
+- **Shared design tokens (G15):** tạo/giữ `docs/architecture/ux/design-tokens.css` (SoT 1 file dùng chung MỌI web boundary, theo `TEMPLATE.design-tokens.css`: `--color-*`/`--font-*`/`--space-*`/`--radius-*` + dark/hc theme). ux-{boundary}.md §4 tham chiếu token NÀY (không bịa palette per-boundary). Web FE consume qua `var(--...)`; mobile map `ThemeData`/`ColorScheme`. Gate `web_styling` ép plain-CSS phải dùng `var(--...)`.
 
 ## Phương pháp
 1. **Research** — nếu domain/UX chưa rõ + có WebSearch: UX pattern cho product type (form/table/dashboard), WCAG 2.1 AA, enterprise design system (Ant/Material/Atlassian), mobile-first. KHÔNG bịa nguồn.
@@ -41,7 +42,7 @@ Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md
 - [ ] Mọi màn hình mới có wireframe (desktop + mobile nếu khác).
 - [ ] Mọi component có đủ states (default/hover/disabled/loading/error/empty).
 - [ ] API call mỗi screen khớp `api-{be}.md` (op name, method, loading state).
-- [ ] Design tokens referenced — KHÔNG hardcode màu/spacing/typography.
+- [ ] Design tokens referenced — KHÔNG hardcode màu/spacing/typography; shared `design-tokens.css` tồn tại + §4 trỏ tới nó.
 - [ ] Permission-based UI documented (ẩn/hiện theo quyền).
 - [ ] A11y WCAG 2.1 AA checklist pass.
 - [ ] Handoff notes có edge case dev dễ sót.

@@ -44,8 +44,12 @@ gates: [{type: all_boundaries_reviewed}, {type: infra_proof}, {type: health_proo
 ### `code_compliance` (content-validated — backend, đối xứng web_styling)
 `scripts/gates.py check_code_compliance`: mỗi **backend** boundary đã scaffold phải (a) có `Dockerfile`; (b) build file KHÔNG khai H2 (`com.h2database`); (c) `application.{yml,yaml,properties}` (kể cả profile) KHÔNG `jdbc:h2:` và KHÔNG `ddl-auto: create-drop`; (d) có ≥1 file config. Bắt đúng chuỗi defect "test xanh nhờ H2" che bug prod (flyway-postgres thiếu, TIMESTAMP vs TIMESTAMPTZ) + "dev done ≠ runnable" (thiếu Dockerfile). Env-block → `force:true,reason` (audit).
 
-### `web_styling` (content-validated — chặn FE unstyled)
-`scripts/gates.py check_web_styling`: mỗi web boundary trong wave, nếu source dùng `className=` mà KHÔNG có cơ chế styling nào (0 file `.css/.scss`, không tailwind config, không CSS-in-JS) → **FAIL**. Bắt đúng defect "FE giao thiếu CSS, render không màu/layout, không theo `ux-{boundary}.md §4 design tokens`" — lỗi mà test (query role/text) + review tĩnh đều mù. Env-block → `force:true,reason` (audit). Reviewer cũng phải verify (skill `review-web` §6 Design fidelity = BLOCKER).
+### `web_styling` (content-validated — chặn FE unstyled + lệch design token)
+`scripts/gates.py check_web_styling`: mỗi web boundary trong wave:
+1. dùng `className=` mà KHÔNG có cơ chế styling nào (0 file `.css/.scss`, không tailwind, không CSS-in-JS) → **FAIL** (FE unstyled, render không màu/layout).
+2. **(G15)** style bằng **plain CSS** (không tailwind/CSS-in-JS) mà KHÔNG dùng design token `var(--...)` → **FAIL** (hardcode hex/px, lệch `docs/architecture/ux/design-tokens.css`). Tailwind/CSS-in-JS có cơ chế token riêng → miễn.
+
+Bắt đúng defect "FE thiếu CSS / bịa style rời design system" — lỗi mà test (query role/text) + review tĩnh đều mù. Env-block → `force:true,reason` (audit). Reviewer cũng verify (skill `review-web` §6 Design fidelity = BLOCKER).
 
 ## Build prompt + spawn
 
