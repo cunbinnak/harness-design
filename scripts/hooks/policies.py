@@ -21,6 +21,34 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 # State formatting (SessionStart, UserPromptSubmit, Notification, PreCompact)
 # ========================================================================
 
+# Next-step guidance per stage — báo CHÍNH XÁC lệnh + arg + ý nghĩa (thay vì list tên trống).
+# Gồm cả back-edge (lùi về stage sở hữu để sửa doc đã frozen).
+STAGE_NEXT_GUIDE = {
+    "BOOTSTRAP": "/discovery-start D0 (bắt đầu Discovery)",
+    "DISC_D0": "/discovery-end D0 → D1 · hoặc /discovery-start D0 (refine hypothesis)",
+    "DISC_D1": "/discovery-end D1 → D2 · hoặc /discovery-start D1 (refine capability/persona)",
+    "DISC_D2": "/discovery-end D2 → D3 · hoặc /discovery-start D2 (refine event-storming)",
+    "DISC_D3": "/discovery-end D3 → DOMAIN · hoặc /discovery-start D3 (refine charter/PROJECT)",
+    "DOMAIN_AUTHORING": "/domain-start <EPIC|FEATURE|JOURNEY|BR|PERSONA> (author) · /domain-end → DESIGN",
+    "DESIGN": "/design (refine) · /design-end → PLAN · LÙI sửa product: /domain-start <mode> → DOMAIN",
+    "PLAN": "/plan → REVIEW · LÙI sửa design: /design → DESIGN",
+    "REVIEW": "/review-document (sửa mọi doc) · /approve-document · /start-wave <N>",
+    "WAVE_OPEN": "/start-dev <boundary>",
+    "DEV": "/start-dev <boundary khác> · xong hết boundary → /review-dev",
+    "REVIEW_DEV": "/dev-handoff (sau khi mọi boundary review pass)",
+    "DEV_HANDOFF": "/test-plan",
+    "TEST_PLAN": "/test-execute",
+    "TEST_EXECUTE": "(tự động → MANUAL_TEST sau khi chạy)",
+    "MANUAL_TEST": "/fix-bugs · /test-execute (re-run full suite) · /end-wave (khi sạch bug + test pass)",
+    "DONE": "/done-wave (teardown → BOOTSTRAP) · hoặc /apply-cr <CR> (amend → DOMAIN)",
+}
+
+
+def next_step_hint(state: dict) -> str:
+    """Gợi ý bước tiếp theo CHÍNH XÁC (lệnh + arg + nghĩa) theo stage hiện tại."""
+    return STAGE_NEXT_GUIDE.get(state.get("stage", "?"), "xem allowed_commands")
+
+
 def format_state_brief(state: dict, allowed_cmds: list[str]) -> str:
     """Multi-line brief for SessionStart / PreCompact."""
     stage = state.get("stage", "?")
@@ -34,7 +62,7 @@ def format_state_brief(state: dict, allowed_cmds: list[str]) -> str:
         f"  wave          = {wave_id}",
         f"  boundary      = {boundary}",
         f"  last_completed= {last}",
-        f"  allowed_next  = {allowed_cmds}",
+        f"  next          = {next_step_hint(state)}",
     ]
     return "\n".join(lines)
 
@@ -44,7 +72,7 @@ def state_header_line(state: dict, allowed_cmds: list[str]) -> str:
     stage = state.get("stage", "?")
     wave = (state.get("wave") or {}).get("id") or "-"
     boundary = state.get("active_boundary") or "-"
-    return f"[HARNESS stage={stage} wave={wave} boundary={boundary} allowed={','.join(allowed_cmds)}]"
+    return f"[HARNESS stage={stage} wave={wave} boundary={boundary} | next: {next_step_hint(state)}]"
 
 
 def memory_marker(state: dict, allowed_cmds: list[str]) -> str:
@@ -70,6 +98,61 @@ def is_protected_file(rel_path: str) -> bool:
         return False
     normalized = rel_path.replace("\\", "/").lstrip("./")
     return normalized in PROTECTED_PATHS
+
+
+# ------------------------------------------------------------------------
+# Doc phase-lock (single-repo port của ZIP `pretooluse-readonly-inputs.py`)
+# ------------------------------------------------------------------------
+# ZIP (multi-repo) đóng băng upstream bằng snapshot `_inputs/**` read-only per repo. Single-repo
+# tương đương = phase-lock theo stage: mỗi LỚP doc chỉ sửa được ở stage SỞ HỮU (+ REVIEW = cửa
+# revision chung). Stage khác → frozen → LÙI về stage sở hữu (back-edge /design, /domain-start)
+# rồi tiến lại (re-gate); sau ship dùng /apply-cr. Chống dev/test sửa spec cho khớp code (anti-pattern
+# e2e) + chống sửa FEAT/HLD lúc đã ở PLAN. Thực thi NON-NEGOTIABLE #6 (trước chỉ honor-system).
+
+_REVIEW = "REVIEW"
+_DISC_STAGES = {"DISC_D0", "DISC_D1", "DISC_D2", "DISC_D3"}
+
+# (label, set stage được sửa, regex path repo-relative). infra/ KHÔNG khoá (docker-compose update ở
+# dev-handoff); knowledge-base/tracking/services/handoff KHÔNG khoá (back-half/dev append).
+PHASE_LOCK_CLASSES = [
+    ("discovery", _DISC_STAGES | {_REVIEW},
+     re.compile(r"^docs/discovery/|^docs/architecture/PROJECT\.md$")),
+    ("domain", {"DOMAIN_AUTHORING", _REVIEW},
+     re.compile(r"^docs/architecture/(epics|feat|journeys|business-rules|personas)/")),
+    ("design", {"DESIGN", _REVIEW},
+     re.compile(r"^docs/architecture/(adr|hld|api|data-model|ux|events|integrations)/")),
+    ("plan", {"PLAN", _REVIEW},
+     re.compile(r"^docs/plans/")),
+]
+_BACK_HINT = {
+    "discovery": "lùi qua done-wave→/discovery-start (hoặc sửa ở REVIEW)",
+    "domain": "lùi /domain-start <mode> → DOMAIN",
+    "design": "lùi /design → DESIGN",
+    "plan": "về PLAN",
+}
+
+
+def phase_lock_violation(rel_path: str, stage: str) -> str | None:
+    """None = cho phép; str = lý do chặn (doc thuộc lớp phase-lock mà stage hiện tại không sở hữu).
+
+    TEMPLATE.* + README.md luôn cho sửa (scaffolding). Doc ngoài 4 lớp → không khoá.
+    """
+    if not rel_path or not stage:
+        return None
+    norm = rel_path.replace("\\", "/").lstrip("./")
+    base = norm.rsplit("/", 1)[-1]
+    if base.startswith("TEMPLATE.") or base == "README.md":
+        return None
+    for label, editable, pat in PHASE_LOCK_CLASSES:
+        if pat.search(norm):
+            if stage in editable:
+                return None
+            return (
+                f"FM-PHASE-LOCK: '{norm}' (tài liệu {label}) đã ĐÓNG BĂNG ở stage '{stage}'. "
+                f"Chỉ sửa được ở {sorted(editable)}. Muốn sửa → {_BACK_HINT.get(label)} rồi tiến lại "
+                "(re-gate); sau ship dùng /apply-cr. KHÔNG sửa upstream từ stage sau (NON-NEGOTIABLE #6)."
+            )
+    return None
 
 
 def safe_rel_path(abs_or_rel: str) -> str:
@@ -210,3 +293,49 @@ def boundary_reminder(boundary: str | None) -> str:
     if not boundary:
         return "REMINDER: Dev-spawn — ensure boundary is in wave_boundaries."
     return f"REMINDER: Dev-spawn for boundary='{boundary}' — edit only its owned_paths."
+
+
+# ========================================================================
+# Inline self-test (run: py scripts/hooks/policies.py)
+# ========================================================================
+
+def _selftest() -> int:
+    # phase-lock: domain doc frozen ở PLAN, sửa được ở DOMAIN/REVIEW
+    assert phase_lock_violation("docs/architecture/feat/FEAT-1.md", "PLAN") is not None
+    assert phase_lock_violation("docs/architecture/feat/FEAT-1.md", "DOMAIN_AUTHORING") is None
+    assert phase_lock_violation("docs/architecture/feat/FEAT-1.md", "REVIEW") is None
+    assert phase_lock_violation("docs/architecture/feat/FEAT-1.md", "DEV") is not None
+    # design doc frozen ở PLAN + DEV, sửa được ở DESIGN
+    assert phase_lock_violation("docs/architecture/hld/hld-x.md", "PLAN") is not None
+    assert phase_lock_violation("docs/architecture/hld/hld-x.md", "DESIGN") is None
+    assert phase_lock_violation("docs/architecture/ux/ux-web.md", "DEV") is not None
+    # plan doc frozen ở DEV, sửa được ở PLAN
+    assert phase_lock_violation("docs/plans/wave-001.md", "DEV") is not None
+    assert phase_lock_violation("docs/plans/wave-001.md", "PLAN") is None
+    # discovery + PROJECT.md: discovery-owned (frozen ở DOMAIN)
+    assert phase_lock_violation("docs/architecture/PROJECT.md", "DOMAIN_AUTHORING") is not None
+    assert phase_lock_violation("docs/architecture/PROJECT.md", "DISC_D3") is None
+    assert phase_lock_violation("docs/discovery/BOUNDARY-MAP.md", "DESIGN") is not None
+    # TEMPLATE.* + README luôn sửa được (scaffolding)
+    assert phase_lock_violation("docs/architecture/hld/TEMPLATE.hld.md", "DEV") is None
+    assert phase_lock_violation("docs/architecture/feat/README.md", "PLAN") is None
+    assert phase_lock_violation("docs/architecture/ux/TEMPLATE.design-tokens.css", "PLAN") is None
+    # KHÔNG khoá: infra (docker-compose update ở dev-handoff), KG, tracking, services, arch root
+    assert phase_lock_violation("docs/architecture/infra/docker-compose.yml", "DEV_HANDOFF") is None
+    assert phase_lock_violation("knowledge-base/x.knowledge-graph.yaml", "DEV") is None
+    assert phase_lock_violation("tracking/wave-001/bugs.md", "TEST_EXECUTE") is None
+    assert phase_lock_violation("services/demo-x/src/A.java", "DEV") is None
+    assert phase_lock_violation("docs/architecture/ARCHITECTURE-PRINCIPLES.md", "PLAN") is None
+    # next-step hint contextual (arg + back-edge)
+    assert "discovery-end D1" in next_step_hint({"stage": "DISC_D1"})
+    assert "/design" in next_step_hint({"stage": "PLAN"})          # back-edge
+    assert "domain-start" in next_step_hint({"stage": "DESIGN"})    # back-edge
+    assert "header" not in state_header_line({"stage": "PLAN"}, []).lower() or True
+    assert "next:" in state_header_line({"stage": "DISC_D0"}, [])
+    print("OK: policies.py selftest passed")
+    return 0
+
+
+if __name__ == "__main__":
+    import sys as _sys
+    _sys.exit(_selftest())

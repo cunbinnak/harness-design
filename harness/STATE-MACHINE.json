@@ -59,7 +59,8 @@
       "description": "Technical design — /design spawn solution-architect: ADR/HLD/API/data-model/UX/events/integrations. Gate → PLAN.",
       "allowed_commands": [
         "design",
-        "design-end"
+        "design-end",
+        "domain-start"
       ],
       "allowed_spawn": true,
       "read_only_spawn_always": true
@@ -67,7 +68,8 @@
     "PLAN": {
       "description": "Implementation plan — /plan spawn program-planner: WAVE-SEQUENCE + wave-{N} + MATRIX + KG skeleton. Gate → REVIEW.",
       "allowed_commands": [
-        "plan"
+        "plan",
+        "design"
       ],
       "allowed_spawn": true,
       "read_only_spawn_always": true
@@ -419,6 +421,22 @@
         "wave": "D3"
       },
       "note": "gate D3 → DOMAIN (bridge)"
+    },
+    {
+      "from": "PLAN",
+      "to": "DESIGN",
+      "trigger": "design",
+      "evidence_required": {},
+      "note": "back-edge: lui sua design doc (HLD/API/UX/ADR); tien lai /design-end re-gate"
+    },
+    {
+      "from": "DESIGN",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-start",
+      "evidence_required": {
+        "mode": "any"
+      },
+      "note": "back-edge: lui sua product (epic/feat/BR/journey/persona); tien lai /domain-end re-gate"
     }
   ]
 }

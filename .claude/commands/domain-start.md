@@ -2,7 +2,7 @@
 name: domain-start
 description: "DOMAIN (clone ADLC, chia nhỏ product): author Epic/Feature/Journey (po) + Business-rule/Persona (ba) THẲNG vào docs/architecture/. Spawn agent theo mode."
 argument-hint: "<EPIC|FEATURE|JOURNEY|BR|PERSONA>  (vd: /domain-start FEATURE)"
-when_state: [DOMAIN_AUTHORING]
+when_state: [DOMAIN_AUTHORING, DESIGN]
 sets_stage: DOMAIN_AUTHORING
 spawn:
   agent: "domain-po-agent (EPIC/FEATURE/JOURNEY) | domain-ba-agent (BR/PERSONA)"
@@ -13,6 +13,8 @@ gates: [{type: non_empty, field: mode}]
 # /domain-start
 
 > **Clone ADLC DOMAIN** (chia nhỏ product), adapt single-repo: author **thẳng vào `docs/architecture/`** (KHÔNG docs/domain riêng, KHÔNG translate — đó là plumbing multi-repo). Vào DOMAIN từ DISC_D3 qua `/discovery-end D3`.
+>
+> **Back-edge:** `/domain-start <mode>` cũng gọi được **từ DESIGN** (DESIGN→DOMAIN_AUTHORING) khi cần lùi sửa product (epic/feat/BR/journey/persona) đã bị phase-lock đóng băng. Sửa xong `/domain-end` → DESIGN (re-gate), rồi `/design` → `/design-end` → `/plan`.
 
 ## Mục đích
 Spawn agent author product chia nhỏ theo mode (self-loop trong DOMAIN_AUTHORING).

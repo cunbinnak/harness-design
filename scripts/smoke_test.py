@@ -324,6 +324,22 @@ def main() -> int:
         print(f"  [{'OK  ' if ok else 'FAIL'}] reject start-wave unknown wave {result.get('error', '')[:50]}")
         passed.append(ok) if ok else failed.append("reject unknown wave")
 
+        # ============================================================
+        # Back-edges: lùi sửa upstream doc (PLAN→DESIGN, DESIGN→DOMAIN)
+        # ============================================================
+        print("\n## 3. Back-edges (lùi sửa doc đã frozen)\n")
+        reset_state()
+        FB3 = {"force": True, "reason": "smoke back-edge setup"}
+        state_mod.complete("discovery-start", {"wave": "D0"})
+        for frm in ["D0", "D1", "D2", "D3"]:
+            state_mod.complete("discovery-end", {"wave": frm, "service_prefix": "demo", **FB3})
+        state_mod.complete("domain-end", FB3)
+        state_mod.complete("design-end", FB3)  # giờ ở PLAN
+        ok = step("PLAN -> DESIGN (lùi /design)", "design", {}, "DESIGN")
+        passed.append(ok) if ok else failed.append("back-edge PLAN->DESIGN")
+        ok = step("DESIGN -> DOMAIN (lùi /domain-start)", "domain-start", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("back-edge DESIGN->DOMAIN")
+
     finally:
         # Restore original STATE + MATRIX + decisions.md (force-bypass ghi audit)
         STATE_FILE.write_text(original, encoding="utf-8")

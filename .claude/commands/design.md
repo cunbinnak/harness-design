@@ -2,7 +2,7 @@
 name: design
 description: "Technical design (stage DESIGN, self-loop): spawn solution-architect → ADR/HLD/API/data-model/UX/events/integrations. Chạy lại để THẢO LUẬN/REFINE. Advance sang PLAN bằng /design-end."
 argument-hint: "(không cần arg)"
-when_state: [DESIGN]
+when_state: [DESIGN, PLAN]
 sets_stage: DESIGN
 spawn:
   agent: solution-architect-agent
@@ -13,6 +13,8 @@ gates: []
 # /design
 
 > Technical design — skill `technical-design`, stage sau DOMAIN. Input = product (epic/feat/BR/journey/persona ở docs/architecture/) + charter (Discovery D3). **Self-loop**: chạy `/design` bao nhiêu lần tuỳ ý để thảo luận/chỉnh sửa với agent; chỉ `/design-end` mới sang PLAN.
+>
+> **Back-edge:** `/design` cũng gọi được **từ PLAN** (PLAN→DESIGN) khi cần lùi sửa design doc (HLD/API/UX/ADR) đã bị phase-lock đóng băng ở PLAN. Sửa xong `/design-end` → PLAN (re-gate), rồi `/plan`.
 
 ## Workflow
 1. Run `py scripts/build_prompt.py design`.

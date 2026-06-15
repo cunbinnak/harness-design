@@ -220,6 +220,15 @@ def _pre_write_edit(payload: dict) -> int:
         return pre_tool_deny(
             f"'{path}' là kernel file. KHÔNG sửa tay — dùng `py scripts/harness.py <cmd> complete '...'` để transition state."
         )
+    # Phase-lock: doc upstream đã qua stage sở hữu → frozen (port ZIP readonly-inputs cho single-repo).
+    try:
+        stage = state_mod.load_state().get("stage")
+    except Exception:
+        stage = None
+    if stage:
+        violation = policies.phase_lock_violation(path, stage)
+        if violation:
+            return pre_tool_deny(violation)
     return allow_silent()
 
 
