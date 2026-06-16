@@ -11,7 +11,7 @@ Usage:
 Options:
   --boundary X        # for start-dev, review-dev, dev-handoff, fix-bugs
   --disc-wave D       # for discovery-start|end (D0|D1|D2|D3)
-  --mode M            # for domain-start (EPIC|FEATURE|JOURNEY|BR|PERSONA)
+  --mode M            # for domain-po (EPIC|FEATURE|JOURNEY) | domain-ba (BR|PERSONA)
   --wave N            # for start-wave
   --bug-id BUG-NNN    # for fix-bugs
   --cr-id CR-NNN      # for apply-cr
@@ -318,8 +318,8 @@ def build_discovery_start(state: dict, matrix: list[dict], opts: dict) -> str:
         extra_tasks = [
             "**Sau charter**: derive `docs/architecture/PROJECT.md` (PRD: scope in/out + NFR số + "
             "security/compliance + success metrics + glossary) từ hypothesis + capability + event-storming.",
-            "**KHÔNG sinh FEAT/Epic/BR ở D3** — DOMAIN (stage sau) sở hữu product: author THẲNG vào "
-            "`docs/architecture/{epics,feat,business-rules}/` qua `/domain-start`. D3 chỉ charter + BOUNDARY-MAP + PROJECT.md.",
+            "**KHÔNG sinh FEAT/Epic/BR ở D3** — DOMAIN (stage sau) sở hữu product: author BUSINESS vào "
+            "`docs/domain/` qua `/domain-po`/`/domain-ba`. D3 chỉ charter + BOUNDARY-MAP + PROJECT.md.",
             "**Chốt `service_prefix`** (kebab ngắn) → trả trong RETURN SCHEMA `service_prefix`.",
         ]
     parts = [
@@ -340,7 +340,9 @@ def build_discovery_start(state: dict, matrix: list[dict], opts: dict) -> str:
             "Iterate tới khi user confirm. Idempotent: re-run thì update file đã có, KHÔNG blind-append.",
             f"Return RETURN SCHEMA với `wave: \"{wave}\"`, `user_confirmed: true`"
             + (", `service_prefix: \"<prefix>\"`" if wave == "D3" else "") + ".",
-            f"Sau khi xong + user OK → main chạy `/discovery-end {wave}` (verify gate → wave kế).",
+            (f"Sau khi xong + user OK → main chạy `/discovery-start {'D' + str(int(wave[1:]) + 1)}` "
+             f"(gate {wave} → vào wave kế)." if wave != "D3"
+             else "Sau khi xong + user OK → main chạy `/discovery-end` (gate D3 → DOMAIN_AUTHORING)."),
         ]),
         RETURN_SCHEMA_TEMPLATE + f"\n\nExtra fields:\n- `wave`: `{wave}`\n- `user_confirmed`: `true`"
         + ("\n- `service_prefix`: `<kebab>` (D3 chốt)" if wave == "D3" else ""),
@@ -349,27 +351,21 @@ def build_discovery_start(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_discovery_end(state: dict, matrix: list[dict], opts: dict) -> str:
-    wave = (opts.get("disc_wave") or "").upper()
-    stage = state.get("stage") or ""
-    wave_from_stage = {"DISC_D0": "D0", "DISC_D1": "D1", "DISC_D2": "D2", "DISC_D3": "D3"}.get(stage)
-    eff_wave = wave_from_stage or wave or "D0"
-    next_map = {"D0": "DISC_D1 (/discovery-start D1)", "D1": "DISC_D2 (/discovery-start D2)",
-                "D2": "DISC_D3 (/discovery-start D3)", "D3": "DOMAIN_AUTHORING → /domain-start <EPIC|FEATURE...> (author product plain VN)"}
+    """Chốt Discovery (chỉ ở DISC_D3): gate D3 → DOMAIN_AUTHORING."""
     parts = [
-        f"# SPAWN PROMPT — /discovery-end {eff_wave}",
-        "\n**Instant action (no sub-agent)** — verify gate + transition.",
-        state_bundle(state, {"discovery_wave": eff_wave}),
+        "# SPAWN PROMPT — /discovery-end (chốt Discovery)",
+        "\n**Instant action (no sub-agent)** — verify gate D3 + transition → DOMAIN_AUTHORING.",
+        state_bundle(state, {"discovery_wave": "D3"}),
         NON_NEGOTIABLES,
-        f"## TASK — đóng wave {eff_wave}\n\n"
-        f"1. Chạy `py scripts/discovery_gate.py {eff_wave}` để xem gate pass/fail (đọc kỹ message nếu fail).\n"
-        f"2. Gate PASS → `py scripts/harness.py discovery-end complete '{{\"wave\":\"{eff_wave}\"}}'` "
-        f"→ transition → {next_map.get(eff_wave,'?')}.\n"
-        f"3. Gate FAIL → KHÔNG complete. Báo user artifact còn thiếu; quay lại `/discovery-start {eff_wave}` bổ sung.\n"
-        f"4. **Override (chỉ khi user đồng ý bỏ qua)**: "
-        f"`py scripts/harness.py discovery-end complete '{{\"wave\":\"{eff_wave}\",\"force\":true,\"reason\":\"<lý do>\"}}'` "
-        f"→ skip gate + ghi audit `tracking/decisions.md`.",
-        f"## Sau D3\n\nWave D3 → DOMAIN_AUTHORING. Báo user: chạy `/domain-start <EPIC|FEATURE|JOURNEY|BR|PERSONA>` "
-        f"để author product THẲNG vào docs/architecture/ (single-repo, KHÔNG translate), rồi `/domain-end` (gate: ≥1 epic+feat+BR) → DESIGN.",
+        "## TASK — chốt Discovery (D3)\n\n"
+        "1. Chạy `py scripts/discovery_gate.py D3` để xem gate pass/fail (charter + BOUNDARY-MAP + PROJECT.md + service_prefix).\n"
+        "2. Gate PASS → `py scripts/harness.py discovery-end complete '{\"service_prefix\":\"<kebab>\"}'` "
+        "→ transition → DOMAIN_AUTHORING.\n"
+        "3. Gate FAIL → KHÔNG complete. Báo user artifact D3 còn thiếu; quay lại `/discovery-start D3` bổ sung.\n"
+        "4. **Override (chỉ khi user đồng ý bỏ qua)**: "
+        "`'{\"service_prefix\":\"<kebab>\",\"force\":true,\"reason\":\"<lý do>\"}'` → skip gate + ghi audit `tracking/decisions.md`.",
+        "## Sau khi vào DOMAIN_AUTHORING\n\nBáo user: chạy `/domain-po <EPIC|FEATURE|JOURNEY>` + `/domain-ba <BR|PERSONA>` "
+        "author BUSINESS plain VN vào `docs/domain/` (loop tới khi OK) → `/domain-approve <id|all>` (ký) → `/domain-translate` (dịch sang eng docs/architecture/) → `/domain-end` → DESIGN.",
     ]
     return "\n\n".join(parts)
 
@@ -381,53 +377,60 @@ def build_discovery_end(state: dict, matrix: list[dict], opts: dict) -> str:
 
 DOMAIN_MODES = {
     "EPIC": {"skill": "domain-po", "agent": "domain-po-agent", "role": "po-author",
-             "out": "docs/architecture/epics/EP-<PREFIX>-NNN.md",
-             "tmpl": "docs/architecture/epics/TEMPLATE.epic.md",
+             "out": "docs/domain/epics/EP-<PREFIX>-NNN.md",
+             "tmpl": "docs/domain/epics/TEMPLATE.epic.md",
              "boot": [("Hypothesis (D0)", "docs/discovery/hypothesis-log.md"),
                       ("Capability-map (D1)", "docs/discovery/capability-map.md"),
                       ("Persona-pool (D1)", "docs/discovery/persona-pool.md"),
-                      ("Feature con (nếu có)", "docs/architecture/feat/FEAT-*.md")]},
+                      ("Feature con (business, nếu có)", "docs/domain/feat/FEAT-*.md")]},
     "FEATURE": {"skill": "domain-po", "agent": "domain-po-agent", "role": "po-author",
-                "out": "docs/architecture/feat/FEAT-<PREFIX>-NNN.md",
-                "tmpl": "docs/architecture/feat/TEMPLATE.feat.md",
-                "boot": [("Epic cha", "docs/architecture/epics/EP-*.md"),
-                         ("Journey liên quan (flow → AC đúng)", "docs/architecture/journeys/JOURNEY-*.md"),
-                         ("BR liên quan", "docs/architecture/business-rules/BR-*.md"),
+                "out": "docs/domain/feat/FEAT-<PREFIX>-NNN.md",
+                "tmpl": "docs/domain/feat/TEMPLATE.feat.md",
+                "boot": [("Epic cha (business)", "docs/domain/epics/EP-*.md"),
+                         ("Journey liên quan (flow → AC đúng)", "docs/domain/journeys/JOURNEY-*.md"),
+                         ("BR liên quan (business)", "docs/domain/business-rules/BR-*.md"),
                          ("Persona-pool", "docs/discovery/persona-pool.md")]},
     "JOURNEY": {"skill": "domain-po", "agent": "domain-po-agent", "role": "po-author",
-                "out": "docs/architecture/journeys/JOURNEY-<PREFIX>-NNN.md",
-                "tmpl": "docs/architecture/journeys/TEMPLATE.journey.md",
+                "out": "docs/domain/journeys/JOURNEY-<PREFIX>-NNN.md",
+                "tmpl": "docs/domain/journeys/TEMPLATE.journey.md",
                 "boot": [("Persona-pool (D1) — actor + goal cho journey", "docs/discovery/persona-pool.md"),
-                         ("Persona chi tiết", "docs/architecture/personas/PERSONA-*.md"),
+                         ("Persona chi tiết (business)", "docs/domain/personas/PERSONA-*.md"),
                          ("Event-storming D2 (OPTIONAL ref — CHỈ khi cần truy flow/event làm chuỗi step)", "docs/discovery/event-storming/ES-*.md")]},
     "BR": {"skill": "domain-ba", "agent": "domain-ba-agent", "role": "ba-author",
-           "out": "docs/architecture/business-rules/BR-<PREFIX>-NNN.md",
-           "tmpl": "docs/architecture/business-rules/TEMPLATE.business-rule.md",
-           "boot": [("Feature dùng rule (nguồn chính của BR)", "docs/architecture/feat/FEAT-*.md"),
-                    ("Journey liên quan (trigger nghiệp vụ)", "docs/architecture/journeys/JOURNEY-*.md"),
+           "out": "docs/domain/business-rules/BR-<PREFIX>-NNN.md",
+           "tmpl": "docs/domain/business-rules/TEMPLATE.business-rule.md",
+           "boot": [("Feature dùng rule (nguồn chính của BR, business)", "docs/domain/feat/FEAT-*.md"),
+                    ("Journey liên quan (trigger nghiệp vụ)", "docs/domain/journeys/JOURNEY-*.md"),
                     ("Event-storming hot-spot D2 (OPTIONAL ref — CHỈ khi cần seed rule từ hot-spot)", "docs/discovery/event-storming/ES-*.md")]},
     "PERSONA": {"skill": "domain-ba", "agent": "domain-ba-agent", "role": "ba-author",
-                "out": "docs/architecture/personas/PERSONA-<PREFIX>-NNN.md",
-                "tmpl": "docs/architecture/personas/TEMPLATE.persona.md",
+                "out": "docs/domain/personas/PERSONA-<PREFIX>-NNN.md",
+                "tmpl": "docs/domain/personas/TEMPLATE.persona.md",
                 "boot": [("Persona-pool (D1) — adapt chi tiết", "docs/discovery/persona-pool.md"),
-                         ("Journey persona tham gia", "docs/architecture/journeys/JOURNEY-*.md")]},
+                         ("Journey persona tham gia", "docs/domain/journeys/JOURNEY-*.md")]},
     # WIREFRAME bỏ: wireframe = UX = ux/ (DESIGN phase technical-design lo, không phải DOMAIN artifact riêng).
 }
+# po viết EPIC/FEATURE/JOURNEY · ba viết BR/PERSONA (tách lệnh /domain-po, /domain-ba).
+DOMAIN_PO_MODES = ("EPIC", "FEATURE", "JOURNEY")
+DOMAIN_BA_MODES = ("BR", "PERSONA")
 
 
-def build_domain_start(state: dict, matrix: list[dict], opts: dict) -> str:
-    """DOMAIN author product (Epic/Feature/BR) thẳng vào docs/architecture/. Doc-pointing kiểu ZIP (boot sequence)."""
-    mode = (opts.get("mode") or "FEATURE").upper()
-    spec = DOMAIN_MODES.get(mode, DOMAIN_MODES["FEATURE"])
-    # Boot sequence (clone style ZIP agent: numbered priority reads, template SAU references).
-    boot = list(spec["boot"]) + [(f"Template {mode} (giữ NGUYÊN cấu trúc — gate glob đọc {mode}-*.md)", spec["tmpl"])]
+def build_domain_author(state: dict, matrix: list[dict], opts: dict) -> str:
+    """DOMAIN author BUSINESS doc (plain VN) vào docs/domain/ (A1). po=EPIC/FEATURE/JOURNEY, ba=BR/PERSONA.
+
+    KÝ (approve) + DỊCH (translate) là bước RIÊNG sau — KHÔNG approve/dịch ở đây.
+    """
+    cmd = opts.get("command") or "domain-po"
+    default_mode = "FEATURE" if cmd == "domain-po" else "BR"
+    mode = (opts.get("mode") or default_mode).upper()
+    spec = DOMAIN_MODES.get(mode, DOMAIN_MODES[default_mode])
+    boot = list(spec["boot"]) + [(f"Template {mode} (giữ NGUYÊN cấu trúc + mục 'Câu hỏi cho Author')", spec["tmpl"])]
     mode_task = {
         "EPIC": "Epic gom feature theo capability + outcome cho persona. §Vision + §Success metrics nghiệp vụ "
                 "(KHÔNG metric kỹ thuật) + §MVP scope (link FEAT) + §Ngoài phạm vi. "
                 "**`feature_refs` PHẢI link ≥2 FEAT** (ZIP planning-rules: <2 → granularity sai, merge). `target_capability` + `priority`.",
-        "FEATURE": "**≥4 AC** BDD (Cho/Khi/Thì — stricter than ZIP floor 3, chủ đích enterprise) + `epic_ref` + `feat_type` (user_facing|platform) "
-                   "+ `business_rule_refs` (link BR; thiếu → spawn /domain-start BR trước) + `has_ui_touchpoint`. "
-                   "§Ngoài phạm vi (QC dựa vào). AC mô tả hành vi nghiệp vụ — chi tiết kỹ thuật để DESIGN.",
+        "FEATURE": "**≥4 AC** BDD (Cho/Khi/Thì) + `epic_ref` + `feat_type` (user_facing|platform) "
+                   "+ `business_rule_refs` (link BR; thiếu → /domain-ba BR trước) + `has_ui_touchpoint`. "
+                   "§Ngoài phạm vi (QC dựa vào). AC mô tả HÀNH VI NGHIỆP VỤ thuần.",
         "BR": "§Phát biểu quy tắc + §Lý do (reference nguồn: luật/policy/contract/decision) + §Khi nào áp dụng "
               "+ **≥2 ví dụ cụ thể** (1 happy + 1 vi phạm — QC seed test). `severity` CORNERSTONE/NORMAL + `related_features`.",
         "JOURNEY": "3-7 step hành trình người dùng, mỗi step (hành động + kỳ vọng + cảm xúc). `persona_refs` + touchpoints "
@@ -436,8 +439,8 @@ def build_domain_start(state: dict, matrix: list[dict], opts: dict) -> str:
                    "**Anti-persona BẮT BUỘC** (ai KHÔNG phải target). `persona_pool_ref`.",
     }[mode]
     parts = [
-        f"# SPAWN PROMPT — /domain-start {mode}",
-        f"\nAgent: **{spec['agent']}** ({spec['role']}) · Skill: `{spec['skill']}` · Output: `{spec['out']}`",
+        f"# SPAWN PROMPT — /{cmd} {mode}",
+        f"\nAgent: **{spec['agent']}** ({spec['role']}) · Skill: `{spec['skill']}` · Output: `{spec['out']}` (BUSINESS plain VN)",
         state_bundle(state, {"domain_mode": mode}),
         NON_NEGOTIABLES,
         skills_block([spec["skill"]]),
@@ -447,9 +450,14 @@ def build_domain_start(state: dict, matrix: list[dict], opts: dict) -> str:
             f"Invoke skill `{spec['skill']}`; đọc agent spec `agents/{spec['agent']}.md` (owned_paths + boot + forbidden).",
             f"Đọc boot sequence trên (targeted). Author `{spec['out']}` theo template — giữ cấu trúc + frontmatter.",
             mode_task,
-            "Author bằng ngôn ngữ nghiệp vụ (BDD AC, business rule) — chi tiết kỹ thuật (contract/endpoint/schema) để DESIGN bổ sung.",
-            "status bắt đầu DRAFT; interactive với user (≤5 câu nghiệp vụ); user duyệt → `status: APPROVED`. Idempotent re-run.",
-            f"Author thêm artifact khác → gọi lại `/domain-start <mode>`. Return RETURN SCHEMA `wave: \"authoring\"`, `mode: \"{mode}\"`, `files_changed`.",
+            "**Ngôn ngữ NGHIỆP VỤ THUẦN** (no jargon): KHÔNG tên class/SQL/API-path/HTTP-status/schema — "
+            "chi tiết kỹ thuật để `/domain-translate` sinh ở eng layer (docs/architecture/). Gate `domain_no_jargon` (lúc ký) chặn jargon.",
+            "**Hỏi NGAY sau khi viết (bổ sung):** đọc mục **'Câu hỏi cho Author'** trong template → dùng AskUserQuestion hỏi user "
+            "TỪNG câu mở đó NGAY → fold câu trả lời vào doc. KHÔNG để câu hỏi treo.",
+            "**Lặp tới khi OK (bổ sung):** vòng draft → trình user → user góp ý → sửa → lặp; CHỈ dừng khi user xác nhận OK. KHÔNG one-shot.",
+            "`status: DRAFT` (KHÔNG tự approve — ký là bước riêng `/domain-approve`). Idempotent re-run.",
+            f"Author thêm artifact → gọi lại `/domain-po`/`/domain-ba <mode>`. Xong cả bộ → `/domain-approve <id|all>` (ký) → `/domain-translate` (dịch eng). "
+            f"Return RETURN SCHEMA `wave: \"authoring\"`, `mode: \"{mode}\"`, `files_changed`.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
     ]
@@ -464,13 +472,61 @@ def build_domain_end(state: dict, matrix: list[dict], opts: dict) -> str:
         NON_NEGOTIABLES,
         "## TASK — đóng DOMAIN authoring\n\n"
         "1. Gate (kind `domain_gate`): ≥1 `docs/architecture/epics/EP-*.md` + ≥1 `docs/architecture/feat/FEAT-*.md` "
-        "+ ≥1 `docs/architecture/business-rules/BR-*.md`.\n"
+        "+ ≥1 `docs/architecture/business-rules/BR-*.md` (= ĐẦU RA eng do `/domain-translate` đã sinh).\n"
         "2. PASS → `py scripts/harness.py domain-end complete '{}'` → transition DOMAIN_AUTHORING → DESIGN.\n"
-        "3. FAIL → KHÔNG complete; author thêm artifact thiếu (`/domain-start EPIC|FEATURE|BR`) rồi `/domain-end` lại.\n"
+        "3. FAIL (chưa có eng output) → KHÔNG complete; kiểm đã `/domain-approve` + `/domain-translate` chưa (eng layer sinh từ đó), hoặc author thêm rồi ký+dịch lại.\n"
         "4. Override (user đồng ý): `py scripts/harness.py domain-end complete '{\"force\":true,\"reason\":\"<lý do>\"}'` → ghi audit tracking/decisions.md.",
         "## Sau DOMAIN (vào DESIGN)\n\nProduct (epic/feat/BR) đã có ở docs/architecture/. Stage → DESIGN. "
         "Chạy `/design` (technical-design: ADR/HLD/API/data-model/UX/events/integrations) → `/plan` "
         "(implementation-plan: WAVE-SEQUENCE+MATRIX+KG) → REVIEW → /approve-document → /start-wave 1.",
+    ]
+    return "\n\n".join(parts)
+
+
+def build_domain_approve(state: dict, matrix: list[dict], opts: dict) -> str:
+    """KÝ business doc (target rỗng = all). Instant action: jargon-check + stamp approved:true."""
+    target = opts.get("target") or "all"
+    parts = [
+        f"# SPAWN PROMPT — /domain-approve {target}",
+        "\n**Instant action** — business-owner KÝ business doc (ký TRƯỚC, dịch SAU).",
+        state_bundle(state, {"approve_target": target}),
+        NON_NEGOTIABLES,
+        "## TASK — ký business doc\n\n"
+        f"1. `py scripts/domain_approve.py {target}` — jargon-check `docs/domain/` ({'mọi doc' if target=='all' else target}); "
+        "sạch → stamp `approved: true` vào frontmatter; còn jargon → refuse + báo doc/đoạn (sửa cho plain rồi ký lại).\n"
+        f"2. PASS → `py scripts/harness.py domain-approve complete '{{\"target\":\"{target}\"}}'` (gate `domain_no_jargon`) → ở lại DOMAIN_AUTHORING.\n"
+        "3. Ký lẻ: `/domain-approve EP-<...>` · ký hết: `/domain-approve` (không arg = all).\n"
+        "4. Override (user đồng ý): thêm `\"force\":true,\"reason\":\"...\"` → ghi audit.\n"
+        "→ Khi MỌI business doc đã ký → `/domain-translate` (gate `domain_signed`).",
+    ]
+    return "\n\n".join(parts)
+
+
+def build_domain_translate(state: dict, matrix: list[dict], opts: dict) -> str:
+    """DỊCH business (docs/domain/, đã ký) → eng (docs/architecture/) — spawn domain-translator."""
+    parts = [
+        "# SPAWN PROMPT — /domain-translate",
+        "\nAgent: **domain-translator-agent** · Skill: `domain-translator` · business → engineering spec.",
+        state_bundle(state),
+        NON_NEGOTIABLES,
+        skills_block(["domain-translator"]),
+        docs_to_read([
+            ("Business epics (đã ký)", "docs/domain/epics/EP-*.md"),
+            ("Business features (đã ký)", "docs/domain/feat/FEAT-*.md"),
+            ("Business rules (đã ký)", "docs/domain/business-rules/BR-*.md"),
+            ("Business journeys/personas (đã ký)", "docs/domain/{journeys/JOURNEY-*,personas/PERSONA-*}.md"),
+            ("Eng templates (giữ cấu trúc)", "docs/architecture/{epics,feat,business-rules,journeys,personas}/TEMPLATE.*.md"),
+        ]),
+        tasks_block([
+            "Invoke skill `domain-translator`. CHỈ dịch khi gate `domain_signed` pass (mọi business doc `approved:true`).",
+            "Foreach business doc ở `docs/domain/` → DỊCH sang eng artifact tương ứng `docs/architecture/{epics,feat,business-rules,journeys,personas}/` "
+            "theo eng template: GIỮ NGUYÊN Ý nghiệp vụ, THÊM độ chính xác kỹ thuật (BDD AC chuẩn, field/enum/error code, ref-id). KHÔNG bịa scope mới.",
+            "Truy vết: eng doc frontmatter `source: docs/domain/<file>` (biết dịch từ đâu). Giữ id (FEAT-x business → FEAT-x eng).",
+            "Interactive nếu business doc mơ hồ (≤5 câu); KHÔNG tự quyết scope nghiệp vụ — hỏi user.",
+            "Xong → `py scripts/harness.py domain-translate complete '{}'`. Return RETURN SCHEMA `files_changed` (eng docs sinh ra).",
+            "Sau dịch: `/domain-end` (gate `domain_gate`: eng epic+feat+BR tồn tại) → DESIGN.",
+        ]),
+        RETURN_SCHEMA_TEMPLATE,
     ]
     return "\n\n".join(parts)
 
@@ -574,16 +630,30 @@ def build_review_document(state: dict, matrix: list[dict], opts: dict) -> str:
         section_label = f"## REVISION TASK\n\nFeedback từ user: **\"{feedback}\"**" + (f"\nTarget file: `{target_file}`" if target_file else "")
     else:
         tasks = [
-            "Sanity check toàn bộ intake artifacts (KHÔNG sửa file).",
-            "Read PROJECT.md → check scope, NFR, glossary đủ?",
-            "Read FEAT-*.md → check AC testable, có BR rules?",
-            "Read ADR-*.md → ≥ 3 file, có rationale?",
-            "Read HLD/API/data-model/UX per boundary → đủ per boundary?",
-            "Read WAVE-SEQUENCE + wave-001 + MATRIX → consistent?",
-            "Return issues[] với cụ thể file + concern.",
-            "User dùng kết quả để quyết định feedback cho call tiếp.",
+            "Sanity-check toàn bộ doc đã author (discovery + domain + design + plan) — READ-ONLY, KHÔNG sửa doc.",
+            "**Độ phủ năng lực (quan trọng nhất):** đối chiếu `capability-map.md` (D1) + nhu cầu mỗi persona "
+            "(`persona-pool.md`) + mỗi journey → MỌI năng lực phải có ≥1 FEAT phủ. Năng lực NỀN mà loại sản "
+            "phẩm này đương nhiên cần (xác thực/đăng nhập/cấp token, phân quyền, multi-tenant nếu SaaS, xử lý "
+            "lỗi/empty-state) mà KHÔNG có FEAT/AC → gap BLOCKER (đây chính là lỗi 'thiếu luồng login' lọt tới handoff).",
+            "**Mâu thuẫn cross-doc:** FEAT vs BR, AC vs api/data-model, HLD vs PROJECT scope, MATRIX vs BOUNDARY-MAP "
+            "— phát biểu trái nhau ở 2 doc → gap.",
+            "**AC testable:** mỗi FEAT.AC `Must` đo được (Cho/Khi/Thì), gồm non-happy-path; không testable → gap.",
+            "**Cross-ref integrity:** epic↔feat↔BR↔journey↔persona id tham chiếu phải tồn tại (không dangling).",
+            "**Câu hỏi cho Author chưa chốt:** còn `## Câu hỏi cho Author` / TODO chưa trả lời trong doc → gap.",
+            "Ghi MỌI gap vào `tracking/doc-review-findings.md` (template `tracking/_templates/TEMPLATE.doc-review-findings.md`): "
+            "mỗi gap 1 row `DR-NNN | severity | concern | file | status` (severity BLOCKER/MAJOR/MINOR; status=open). "
+            "**Luôn ghi file kể cả KHÔNG có gap** (bảng rỗng) — gate /approve-document đọc file này; thiếu file = review chưa chạy = chặn approve.",
+            "Return issues[] (file + concern + severity). KHÔNG sửa doc nguồn — user feed `/review-document \"<feedback>\"` "
+            "(revision mode) hoặc lùi `/domain-start` author bổ sung để vá gap BLOCKER/MAJOR.",
         ]
-        section_label = "## SANITY CHECK TASK\n\nNo feedback provided. Mode: sanity check — output issues list, KHÔNG sửa file."
+        section_label = (
+            "## SANITY-CHECK TASK (gap / mâu thuẫn / thiếu độ phủ)\n\n"
+            "No feedback → mode sanity-check: quét gap toàn bộ doc, ghi `tracking/doc-review-findings.md`, "
+            "KHÔNG sửa doc nguồn.\n\n"
+            "> Gate `/approve-document` chặn nếu file còn gap **BLOCKER/MAJOR** status=open → ép vá trước khi start-wave "
+            "(mirror review-dev cho code, nhưng cho TÀI LIỆU). Mục tiêu chính: bắt **thiếu năng lực nền (vd auth/login)** "
+            "trước khi vào build."
+        )
 
     parts = [
         f"# SPAWN PROMPT — /review-document ({mode})",
@@ -591,10 +661,15 @@ def build_review_document(state: dict, matrix: list[dict], opts: dict) -> str:
         state_bundle(state, {"mode": mode, "has_feedback": has_feedback}),
         NON_NEGOTIABLES,
         section_label,
-        skills_block(["business-analysis"], note="Skill check business rules + AC testability."),
+        skills_block(["business-analysis"], note="Skill check business rules + AC testability (lens AC/BR). GAP/độ-phủ năng lực: theo SANITY-CHECK TASK dưới."),
         docs_to_read([
             ("PROJECT", "docs/architecture/PROJECT.md"),
+            ("Capability map (độ phủ)", "docs/discovery/capability-map.md"),
+            ("Persona pool (nhu cầu)", "docs/discovery/persona-pool.md"),
+            ("Epics", "docs/architecture/epics/EP-*.md"),
             ("FEAT all", "docs/architecture/feat/FEAT-*.md"),
+            ("Business rules", "docs/architecture/business-rules/BR-*.md"),
+            ("Journeys", "docs/architecture/journeys/JOURNEY-*.md"),
             ("ADR all", "docs/architecture/adr/ADR-*.md"),
             ("HLD per boundary", "docs/architecture/hld/hld-*.md"),
             ("API per boundary", "docs/architecture/api/api-*.md"),
@@ -605,9 +680,11 @@ def build_review_document(state: dict, matrix: list[dict], opts: dict) -> str:
             ("WAVE-SEQUENCE", "docs/plans/WAVE-SEQUENCE.md"),
             ("Wave plans", "docs/plans/wave-*.md"),
             ("MATRIX", "harness/SERVICE-BOUNDARY-MATRIX.json"),
+            ("Findings (ghi vào)", "tracking/doc-review-findings.md"),
+            ("Findings template", "tracking/_templates/TEMPLATE.doc-review-findings.md"),
         ]),
         tasks_block(tasks),
-        RETURN_SCHEMA_TEMPLATE + "\n\nExtra fields:\n- `mode`: `revision` | `sanity-check`\n- `issues`: `[{file, concern}]` (sanity-check)\n- `revisions`: `[{file, summary}]` (revision)\n- `feedback_processed`: `true` (set khi mode=revision đã apply)",
+        RETURN_SCHEMA_TEMPLATE + "\n\nExtra fields:\n- `mode`: `revision` | `sanity-check`\n- `issues`: `[{file, concern, severity}]` (sanity-check — mirror các row DR-NNN đã ghi)\n- `findings_file`: `tracking/doc-review-findings.md` (sanity-check — LUÔN ghi, kể cả 0 gap)\n- `revisions`: `[{file, summary}]` (revision)\n- `feedback_processed`: `true` (set khi mode=revision đã apply)",
     ]
     return "\n\n".join(parts)
 
@@ -618,7 +695,11 @@ def build_approve_document(state: dict, matrix: list[dict], opts: dict) -> str:
         "\n**Instant action** — KHÔNG spawn sub-agent. Pure CLI complete.",
         state_bundle(state),
         NON_NEGOTIABLES,
-        "## TASK\n\n1. Ask user explicit confirm.\n2. User reply 'yes' → run `py scripts/harness.py approve-document complete '{\"approved\":true}'`.\n3. User reply 'no' → cancel, suggest /review-document.\n4. Sau approve: report 'Approved. Run /start-wave 1 để mở wave đầu tiên.'",
+        "## TASK\n\n1. Ask user explicit confirm.\n2. User reply 'yes' → run `py scripts/harness.py approve-document complete '{\"approved\":true}'`.\n3. User reply 'no' → cancel, suggest /review-document.\n4. Sau approve: report 'Approved. Run /start-wave 1 để mở wave đầu tiên.'\n\n"
+        "> **Gate `doc_review`:** lệnh này bị CHẶN nếu `/review-document` (no-arg, sanity-check) chưa chạy "
+        "(thiếu `tracking/doc-review-findings.md`) hoặc còn gap **BLOCKER/MAJOR** open. Vá gap (revision loop "
+        "hoặc lùi `/domain-start`) tới sạch. Edge thật → `'{\"approved\":true,\"force\":true,\"reason\":\"<lý do>\"}'` "
+        "(bypass + audit `tracking/decisions.md`).",
     ]
     return "\n\n".join(parts)
 
@@ -771,11 +852,13 @@ def build_dev_handoff(state: dict, matrix: list[dict], opts: dict) -> str:
         ]),
         tasks_block([
             "Invoke skill `infra-local-dev`.",
-            "Update docs/architecture/infra/docker-compose.yml thêm service mới (nếu chưa có).",
-            f"`docker-compose up -d --build` (build mọi service image từ Dockerfile + run) → services healthy + **verify cross-boundary connectivity** (caller→callee qua service name theo INTEG-INT/depends_on). Fail → STOP.",
-            f"**MAIN/orchestrator chạy `py scripts/capture_infra_proof.py`** (HARNESS đo, KHÔNG agent tự ghi) → sinh `tracking/{wave_id}/docker-ps.json` (gate infra_proof) + `tracking/{wave_id}/health-proof.json` (gate health_proof: curl /health/ready mỗi wave service phải trả 2xx). Có service chưa UP → script exit !=0 → STOP, sửa rồi chạy lại (KHÔNG tay viết proof).",
-            f"Verify build local của boundary `{boundary_id}` pass.",
-            f"**Ghi `handoff/{wave_id}.md` §1-§4** (Summary · Service inventory: service/port/health · Start local · Endpoints) theo `handoff/TEMPLATE.wave.md` — QA/UAT dùng để spin up + test. (§5 do end-wave, §6 do done-wave.)",
+            "**dev-handoff = INFRA-ONLY:** CHỈ sửa `docs/architecture/infra/docker-compose.yml`. **TUYỆT ĐỐI KHÔNG sửa `services/{boundary}/**`** (Dockerfile/src/config/migration) — hook chặn. Dockerfile do dev scaffold (gate code_compliance); thiếu/sai → STOP + fix-agent.",
+            "Update docs/architecture/infra/docker-compose.yml thêm service mới (nếu chưa có) + env khớp app đọc.",
+            f"`docker-compose up -d --build` → services healthy + **verify cross-boundary connectivity** (caller→callee qua service name theo INTEG-INT/depends_on).",
+            f"**MAIN/orchestrator chạy `py scripts/capture_infra_proof.py`** (HARNESS đo) → `tracking/{wave_id}/docker-ps.json` (infra_proof) + `health-proof.json` (health_proof: curl /health/ready 2xx). Service chưa UP → exit !=0.",
+            "**Service chưa healthy → `docker compose logs <svc>` chẩn ROOT-CAUSE:** (a) lỗi compose/env → sửa docker-compose.yml + up lại; (b) **lỗi code/migration/config/Dockerfile trong `services/{boundary}/`** (tên/kiểu cột migration sai, thiếu HealthController, healthcheck curl trên image không có curl…) → **STOP, báo MAIN spawn `fix-{boundary}-agent` (Mode B)** kèm root-cause → fix → re-run /dev-handoff. KHÔNG tự sửa code.",
+            f"Verify build local boundary `{boundary_id}` pass (đọc kết quả, KHÔNG sửa source).",
+            f"**Ghi `handoff/{wave_id}.md` §1-§4** (Summary · Service inventory: service/port/health · Start local · Endpoints) theo `handoff/TEMPLATE.wave.md`. (§5 end-wave, §6 done-wave.)",
             "Return RETURN SCHEMA với `coverage_pct`, `review_result: pass`, `docker_compose_ok: true`, `connectivity_ok: true`.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
@@ -792,16 +875,17 @@ def build_test_plan(state: dict, matrix: list[dict], opts: dict) -> str:
         NON_NEGOTIABLES,
         skills_block(["test-plan"]),
         docs_to_read([
+            ("Template registry (BẮT BUỘC — copy cấu trúc cột; KHÔNG tự chế format)", "tracking/_templates/TEMPLATE.test-case-registry.md"),
             ("FEAT all", "docs/architecture/feat/FEAT-*.md"),
             ("API contracts", "docs/architecture/api/api-*.md"),
             ("UX", "docs/architecture/ux/ux-*.md"),
             ("Wave plan", f"docs/plans/{wave_id}.md"),
-            ("Existing tests", f"tracking/{wave_id}/test-case-registry.md (if exists)"),
+            ("Existing tests", f"tracking/{wave_id}/test-case-registry.md (nếu đã có)"),
         ]),
         tasks_block([
-            "Invoke skill `test-plan`.",
+            "Invoke skill `test-plan`. **Đọc template `tracking/_templates/TEMPLATE.test-case-registry.md`** (đúng đường dẫn này) → copy cấu trúc cột, KHÔNG tự tạo format mới.",
             "Foreach FEAT in wave: foreach AC: tạo TC-* entry.",
-            f"**Deferred-scope (G1):** đọc mục `## Deferred to later waves` trong `docs/plans/{wave_id}.md` + review-findings wontfix → TC cho AC/feature deferred đánh tag `@deferred` + `note: deferred wave-N`. Các TC này test-execute sẽ skip(deferred), KHÔNG tính bug/fail (đạt test_result=pass tự nhiên). Defer phải khai báo ở wave plan mới có hiệu lực (tag đơn lẻ vô tác dụng).",
+            f"**Deferred-scope:** đọc mục `## Deferred to later waves` trong `docs/plans/{wave_id}.md` + review-findings wontfix → TC cho AC/feature deferred đánh tag `@deferred` + `note: deferred wave-N`. Các TC này test-execute sẽ skip(deferred), KHÔNG tính bug/fail (đạt test_result=pass tự nhiên). Defer phải khai báo ở wave plan mới có hiệu lực (tag đơn lẻ vô tác dụng).",
             f"Write to `tracking/{wave_id}/test-case-registry.md` (per skill format).",
             "Cover P0 (blocker), P1 (must-have), P2 (nice-to-have).",
             "Return RETURN SCHEMA với `test_cases_count: N`, `docker_compose_ok: true`, `connectivity_ok: true` (infra status kế thừa từ /dev-handoff — verify stack còn UP; gate test-plan cần cả 2 flag + infra_proof + health_proof).",
@@ -827,8 +911,9 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
         ]),
         tasks_block([
             "Infra + service đã UP từ `/dev-handoff` (giữ UP) — **KHÔNG tự dựng**; sanity reachable, down → STOP báo chạy lại `/dev-handoff`.",
+            "**SEED data tiền-đề — BẮT BUỘC trước khi chạy TC cần data:** đọc cột `pre-condition`/`test-data` của TC → tạo prerequisite (token/tenant/entity) **qua API thật** (POST tạo theo `api-{boundary}.md`) — black-box, KHÔNG insert DB tay nếu có endpoint. Reference/sample data (lookup, slot…) đã seed ở `docs/architecture/infra/init/*.sql` lúc dev-handoff. Sau TC → **cleanup** record vừa tạo (isolation, deterministic). TC cần data mà không seed = KHÔNG được `skip`/`pass` khống (phải seed rồi chạy thật).",
             "Foreach TC `type=auto` (P0 trước) — **black-box trên hệ thống đang chạy**: **API smoke** (gọi endpoint thật → assert status/shape/field) + **UI/e2e** (Playwright/integration_test). KHÔNG build source, KHÔNG đo coverage (việc DEV). Service/UI chưa up → `skip` (ghi lý do service-down vào log), không fail/fake.",
-            "TC tag `@deferred` (G1, AC/feature đã khai báo deferred ở wave plan) → `skip(deferred)`, **KHÔNG log bug, KHÔNG tính fail** (out-of-scope wave này).",
+            "TC tag `@deferred` (AC/feature đã khai báo deferred ở wave plan) → `skip(deferred)`, **KHÔNG log bug, KHÔNG tính fail** (out-of-scope wave này).",
             f"Append result vào `tracking/{wave_id}/test-report.md` (mỗi TC: result + network-call `METHOD path -> status`). **Bằng chứng bắt buộc (gate test_evidence):** mỗi auto-TC in-scope phải có log thật ở `tracking/{wave_id}/test-logs/{{TC}}.log`; group integration/e2e/perf/security phải có dòng `METHOD path -> status` trong log; skip phải nêu lý do service-down. Thiếu = gate chặn (nghi test ảo).",
             f"Fail → append row vào bảng `tracking/{wave_id}/bugs.md` (origin: auto, đủ TC/AC/error-log). **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/fix-bugs` ở MANUAL_TEST.",
             "**KHÔNG teardown infra** — giữ UP cho MANUAL_TEST; teardown ở `/done-wave`.",
@@ -910,7 +995,7 @@ def build_apply_cr(state: dict, matrix: list[dict], opts: dict) -> str:
             "Identify affected boundaries (cross-reference MATRIX). Nếu CR cần BOUNDARY MỚI (chưa trong BOUNDARY-MAP) → KHÔNG dùng apply-cr; báo user dùng `done-wave` → `/discovery-start D3` (charter boundary mới).",
             "Update CR file § 'Kế hoạch cập nhật' với impact analysis.",
             f"Return RETURN SCHEMA với `cr_id: {cr_id}`.",
-            "After complete: STATE → **DOMAIN_AUTHORING**. CR feature → `/domain-start <EPIC|FEATURE|BR|...>` author artifact mới → `/domain-end`. CR kiến trúc-only → `/domain-end` qua thẳng. Rồi `/design` → `/design-end` → `/plan` → REVIEW → `/start-wave`.",
+            "After complete: STATE → **DOMAIN_AUTHORING**. CR feature → `/domain-po`/`/domain-ba` author business mới → `/domain-approve` → `/domain-translate` → `/domain-end`. CR kiến trúc-only → `/domain-end` qua thẳng. Rồi `/design` → `/design-end` → `/plan` → REVIEW → `/start-wave`.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
     ]
@@ -1031,7 +1116,10 @@ def build_log_bug(state: dict, matrix: list[dict], opts: dict) -> str:
 BUILDERS = {
     "discovery-start": build_discovery_start,
     "discovery-end": build_discovery_end,
-    "domain-start": build_domain_start,
+    "domain-po": lambda s, m, o: build_domain_author(s, m, {**o, "command": "domain-po"}),
+    "domain-ba": lambda s, m, o: build_domain_author(s, m, {**o, "command": "domain-ba"}),
+    "domain-approve": build_domain_approve,
+    "domain-translate": build_domain_translate,
     "domain-end": build_domain_end,
     "design": build_design,
     "design-end": build_design_end,
@@ -1098,7 +1186,8 @@ def main() -> int:
     ap.add_argument("--boundary")
     ap.add_argument("--wave", type=int)
     ap.add_argument("--disc-wave", dest="disc_wave", help="for /discovery-start|end (D0|D1|D2|D3)")
-    ap.add_argument("--mode", help="for /domain-start (EPIC|FEATURE|JOURNEY|BR|PERSONA)")
+    ap.add_argument("--mode", help="for /domain-po (EPIC|FEATURE|JOURNEY) | /domain-ba (BR|PERSONA)")
+    ap.add_argument("--target", help="for /domain-approve (EP-/FEAT-/BR-... id, hoặc bỏ trống = all)")
     ap.add_argument("--bug-id", dest="bug_id")
     ap.add_argument("--cr-id", dest="cr_id")
     ap.add_argument("--input")
@@ -1117,6 +1206,7 @@ def main() -> int:
         "input": args.input,
         "disc_wave": args.disc_wave,
         "mode": args.mode,
+        "target": args.target,
         "feedback": args.feedback,
         "description": args.description,
         "target_file": args.target_file,

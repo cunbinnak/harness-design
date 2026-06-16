@@ -36,10 +36,15 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 
 ```
 1. Invoke skill `infra-local-dev` → load full bash checklist + verify rules
-2. Walk checklist trong skill: coverage → infra single location → build → healthcheck → smoke functional → proof artifacts
-3. Bất kỳ step fail → STOP, KHÔNG complete, báo user cần fix
+2. Walk checklist: coverage → infra single location → build → healthcheck → smoke functional → proof artifacts
+3. Container chưa healthy → `docker compose logs <svc>` chẩn ROOT-CAUSE:
+   - (a) lỗi compose/env → sửa `docs/architecture/infra/docker-compose.yml` + up lại (đây là việc của dev-handoff).
+   - (b) lỗi code/migration/config/Dockerfile trong `services/{boundary}/` → **STOP, KHÔNG tự sửa** (hook chặn),
+         báo MAIN spawn `fix-{boundary}-agent` (Mode B) kèm root-cause → fix → re-run /dev-handoff.
 4. All pass → fill handoff doc + KG → return RETURN SCHEMA
 ```
+
+> **dev-handoff INFRA-ONLY:** file DUY NHẤT được sửa = `docs/architecture/infra/docker-compose.yml`. Mọi thứ trong `services/` (Dockerfile/src/config/migration) READ-ONLY (hook `FM-HANDOFF-NO-CODE-FIX` chặn). Lỗi schema/migration lẽ ra đã bị bắt ở DEV qua integration-test Testcontainers `ddl-auto: validate` (rules/review-backend).
 
 > **Bash command chi tiết + verify rules nằm trong skill `infra-local-dev`** — tune skill khi customize per-project, KHÔNG sửa agent này.
 
@@ -62,7 +67,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 - Skip smoke functional — chỉ check `/health` không đủ (phải có auth + create + FE + kết nối liên service cross-boundary).
 - Skip `docker-compose ps` verify all healthy.
 - Complete khi coverage < threshold.
-- Sửa source code trong `services/`.
+- **Sửa BẤT KỲ file nào trong `services/{boundary}/**`** (Dockerfile/src/config/migration) — hook `FM-HANDOFF-NO-CODE-FIX` chặn; lỗi code → STOP + `fix-{boundary}-agent` (Mode B). dev-handoff chỉ sửa `docker-compose.yml`.
 - Bypass infra build với mock.
 - Tạo file `docker-compose*.yml` ở vị trí khác (SINGLE location bắt buộc).
 

@@ -1,9 +1,9 @@
 ---
 name: discovery-end
-description: "Đóng 1 Discovery wave: verify exit gate (discovery_gate.py) → transition wave kế. D3 → DOMAIN_AUTHORING. Override: force + reason."
-argument-hint: "<D0|D1|D2|D3>  (vd: /discovery-end D0)"
-when_state: [DISC_D0, DISC_D1, DISC_D2, DISC_D3]
-sets_stage: DISC_D1
+description: "CHỐT Discovery (1 lần, không arg): verify gate D3 (discovery_gate.py) → DOMAIN_AUTHORING. Override: force + reason."
+argument-hint: "(không cần arg — chỉ chốt ở DISC_D3)"
+when_state: [DISC_D3]
+sets_stage: DOMAIN_AUTHORING
 spawn:
   agent: "none (instant action — verify gate + transition)"
   skills: []
@@ -12,27 +12,21 @@ gates: [{type: discovery_wave}]
 
 # /discovery-end
 
-> Đóng wave Discovery hiện tại. Verify gate trên disk (`scripts/discovery_gate.py`) → transition. Đây là điểm enforce: thiếu artifact → block.
+> **Chốt toàn bộ Discovery** (chỉ gọi 1 lần, ở DISC_D3). Verify gate D3 trên disk → DOMAIN_AUTHORING. Điểm enforce cuối: thiếu charter/BOUNDARY-MAP/PROJECT.md → block.
+>
+> Tiến qua D0→D1→D2→D3 KHÔNG dùng lệnh này nữa — dùng `/discovery-start D{N+1}` (xem `/discovery-start`).
 
 ## Mục đích
-Verify exit gate của wave đang ở (gate lấy theo `state.stage`) rồi transition:
-- DISC_D0 → DISC_D1, DISC_D1 → DISC_D2, DISC_D2 → DISC_D3.
-- **DISC_D3 → DOMAIN_AUTHORING** (author Epic/Feature/BR vào docs/architecture/).
-
-## Input
-`$ARGUMENTS` = D-wave đang đóng (D0..D3). Có thể bỏ — gate tự lấy theo stage hiện tại.
+Verify exit gate D3 (charter + BOUNDARY-MAP + PROJECT.md + service_prefix) rồi transition **DISC_D3 → DOMAIN_AUTHORING** (author Epic/Feature/BR vào docs/architecture/).
 
 ## Workflow
-1. Run: `py scripts/build_prompt.py discovery-end --disc-wave $1` (xem hướng dẫn).
-2. Chạy `py scripts/discovery_gate.py <wave>` để xem gate pass/fail (đọc message nếu fail).
-3. **Gate PASS** → `py scripts/harness.py discovery-end complete '{"wave":"<wave>"}'` → transition wave kế.
-   - D3 thêm `service_prefix` từ charter: `'{"wave":"D3","service_prefix":"<kebab>"}'`.
-4. **Gate FAIL** → KHÔNG complete. Báo user artifact thiếu; quay lại `/discovery-start <wave>` bổ sung rồi `/discovery-end` lại.
-5. **Override** (chỉ khi user đồng ý bỏ qua gate): `py scripts/harness.py discovery-end complete '{"wave":"<wave>","force":true,"reason":"<lý do>"}'` → skip gate + ghi audit `tracking/decisions.md`.
+1. Chạy `py scripts/discovery_gate.py D3` để xem gate pass/fail (đọc message nếu fail).
+2. **Gate PASS** → `py scripts/harness.py discovery-end complete '{"service_prefix":"<kebab>"}'` → DOMAIN_AUTHORING.
+3. **Gate FAIL** → KHÔNG complete. Báo user artifact D3 còn thiếu; quay lại `/discovery-start D3` bổ sung rồi `/discovery-end` lại.
+4. **Override** (chỉ khi user đồng ý bỏ qua gate): `'{"service_prefix":"<kebab>","force":true,"reason":"<lý do>"}'` → skip gate + ghi audit `tracking/decisions.md`.
 
 ## State semantics
-- Transition DISC_D{N} → DISC_D{N+1} (N<3) hoặc DISC_D3 → DOMAIN_AUTHORING.
-- Gate `discovery_wave` lấy wave theo `state.stage` (faithful: gate của stage đang rời), fallback `evidence.wave`.
+- Chỉ 1 transition: DISC_D3 → DOMAIN_AUTHORING. Gate `discovery_wave` lấy wave theo `state.stage` (= D3).
 
 ## Sau D3 (vào DOMAIN_AUTHORING)
 Báo user:

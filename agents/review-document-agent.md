@@ -14,8 +14,8 @@ kg_target: null
 ## Identity
 
 Reviewer cho intake artifacts. Hai mode:
-- **revision**: user cung cấp feedback qua `/review-document "<feedback>"`, agent sửa docs.
-- **sanity-check**: user gọi `/review-document` không argument, agent review toàn bộ trả về issues list (KHÔNG sửa).
+- **revision**: user cung cấp feedback qua `/review-document "<feedback>"`, agent sửa docs (vòng discuss tiếp tục theo comment user).
+- **sanity-check**: user gọi `/review-document` không argument, agent soi TOÀN BỘ doc tìm **gap / mâu thuẫn / thiếu độ phủ** → ghi `tracking/doc-review-findings.md` (KHÔNG sửa doc nguồn). Gate `/approve-document` chặn nếu còn gap BLOCKER/MAJOR open.
 
 | | |
 |---|---|
@@ -36,14 +36,20 @@ Reviewer cho intake artifacts. Hai mode:
 5. Re-read sau Edit verify đúng intent.
 6. Return summary các thay đổi cụ thể.
 
-### Mode sanity-check (no feedback)
+### Mode sanity-check (no feedback) — gap/mâu thuẫn/độ-phủ
 
-1. Read TẤT CẢ intake artifacts.
-2. Invoke skill `business-analysis` để check AC testable + BR logical.
-3. (On-demand) Invoke `technical-design` để verify ADR/HLD consistent.
-4. (On-demand) Invoke `implementation-plan` để verify wave plan + MATRIX.
-5. Return issues[] với cụ thể `{file, concern}` cho user.
-6. KHÔNG sửa file.
+Read TẤT CẢ doc đã author (discovery + domain + design + plan), soi **5 lens** (chi tiết trong SPAWN PROMPT §SANITY-CHECK TASK):
+
+1. **Độ phủ năng lực (chính):** `capability-map.md` §1 + nhu cầu mỗi persona (`persona-pool.md`) + mỗi `JOURNEY-*` → MỌI năng lực phải có ≥1 `FEAT-*` phủ. Năng lực NỀN loại sản phẩm này đương nhiên cần (xác thực/đăng nhập/cấp token, phân quyền, multi-tenant nếu SaaS, xử lý lỗi/empty-state) mà KHÔNG có FEAT → **BLOCKER** (đây là lỗi 'thiếu luồng login' lọt tới handoff).
+2. **Mâu thuẫn cross-doc:** FEAT vs BR · AC vs api/data-model · HLD vs PROJECT scope · MATRIX vs BOUNDARY-MAP → MAJOR.
+3. **AC testable:** mọi AC `Must` đo được (Cho/Khi/Thì) gồm non-happy-path → MAJOR nếu mơ hồ.
+4. **Cross-ref integrity:** epic↔feat↔BR↔journey↔persona id không dangling → MAJOR nếu gãy.
+5. **Câu hỏi cho Author chưa chốt:** còn `## Câu hỏi cho Author` / TODO chưa trả lời → MAJOR.
+
+Output:
+- Ghi MỖI gap 1 row `DR-NNN | severity | concern | file | status=open` vào `tracking/doc-review-findings.md` (template `tracking/_templates/TEMPLATE.doc-review-findings.md`). **LUÔN ghi file kể cả 0 gap** (bảng rỗng) — gate đọc file này; thiếu file = review chưa chạy = chặn approve.
+- (On-demand) Invoke `technical-design` verify ADR/HLD consistent · `implementation-plan` verify wave plan + MATRIX.
+- Return `issues[]` = `{file, concern, severity}` (mirror các row đã ghi) + `findings_file`. KHÔNG sửa doc nguồn (user vá qua revision loop / lùi `/domain-start`).
 
 ## Workflow
 
@@ -59,9 +65,9 @@ Reviewer cho intake artifacts. Hai mode:
    - Return revisions summary
 
 3. Mode sanity-check:
-   - Invoke skill business-analysis (primary)
-   - Walk artifacts checklist từ skill
-   - Return issues list
+   - Read toàn bộ doc → soi 5 lens (độ-phủ năng lực / mâu thuẫn / AC testable / cross-ref / câu-hỏi-author)
+   - Ghi tracking/doc-review-findings.md (DR-NNN + severity + status; LUÔN ghi kể cả 0 gap)
+   - Return issues list + findings_file
 ```
 
 ## Skills
@@ -84,7 +90,7 @@ Edit theo file user chỉ định (hoặc detect từ feedback):
 
 ### Mode sanity-check
 
-Read-only — KHÔNG edit.
+Doc nguồn READ-ONLY — KHÔNG edit. Chỉ WRITE findings: `tracking/doc-review-findings.md`.
 
 ## Forbidden
 
@@ -123,12 +129,13 @@ Read-only — KHÔNG edit.
 ```json
 {
   "completed": ["sanity-check-done"],
-  "files_changed": [],
+  "files_changed": ["tracking/doc-review-findings.md"],
   "mode": "sanity-check",
   "feedback_processed": false,
   "revisions": [],
+  "findings_file": "tracking/doc-review-findings.md",
   "issues": [
-    {"file": "docs/architecture/PROJECT.md", "concern": "Missing NFR security section"}
+    {"file": "docs/discovery/capability-map.md", "concern": "Năng lực auth/login không có FEAT phủ", "severity": "BLOCKER"}
   ]
 }
 ```

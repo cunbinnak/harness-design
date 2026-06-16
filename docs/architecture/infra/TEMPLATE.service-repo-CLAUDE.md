@@ -30,7 +30,7 @@ Design source-of-truth song o **design-repo cha** (ADLC Design Harness). Khi mo 
   .gitignore                    # tu TEMPLATE.service-repo-gitignore
   .claude/settings.json         # permission allowlist build tool theo kind
   # --- kind=backend (Java 21 + Spring Boot 3.4) ---
-  pom.xml | build.gradle.kts
+  build.gradle                  # Gradle default (Groovy DSL, KHÔNG kts); pom.xml chỉ khi ADR chọn Maven
   src/main/java/...             # code
   src/main/resources/           # application.yml, migrations
   src/test/java/...             # unit + integration test

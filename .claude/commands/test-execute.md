@@ -15,7 +15,7 @@ gates: [{type: int_min, field: test_cases_count, min: 1}, {type: test_evidence}]
 
 Chạy auto test cases theo registry **black-box trên hệ thống ĐANG CHẠY** (KHÔNG build source). Fail -> log bug (origin=auto) vào bugs.md. **KHÔNG fix ở đây** — fix qua `/fix-bugs` ở MANUAL_TEST. Auto-transition MANUAL_TEST sau khi chạy (pass HAY fail).
 
-## Gate `test_evidence` (G12 — chống test ảo)
+## Gate `test_evidence` (chống test ảo)
 
 `scripts/gates.py check_test_evidence` parse registry + `tracking/wave-{N}/test-report.md` + `test-logs/` + `bugs.md`. Mỗi auto-TC **in-scope** (bỏ `@deferred` đã khai báo wave plan): (a) phải có result trong report; (b) group integration/e2e/perf/security khi pass|fail phải có network-call `METHOD path -> status` trong log; (c) skip phải nêu lý do service-down; (d) result=FAIL phải có ≥1 bug reference (cột `TC` bugs.md) — chống "fail quên log = miss bug" (mirror ZIP `lint_execution`). **KHÔNG fail chỉ vì TC=fail** (bug hợp lệ ĐÃ log) — chỉ chặn khi thiếu bằng chứng đã chạy / fail không log bug. `test_result` do harness **DERIVE từ report** (in-scope all-pass → pass), không verbatim từ agent. Env-block → `force:true,reason` (audit).
 

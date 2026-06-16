@@ -8,7 +8,7 @@
 > Steps/Expected/test-data giữ ngắn 1 cell (chi tiết dài → UAT script / automation riêng). test-execute parse cột `type=auto` để chạy.
 > Khi `/apply-cr` đổi AC: TC bị ảnh hưởng → `note: STALE` (re-author) hoặc `note: remap W{cr}` (refine nhỏ). Coverage matrix re-verify sau remap.
 > Quy tắc gán `pri` + `group`(test_type) enum + tag taxonomy: xem `docs/architecture/SEVERITY-TEST-TAXONOMY.md` §3-§5.
-> **Deferred (G1):** AC/feature đã hoãn ở `## Deferred to later waves` của `wave-{N}.md` → TC đánh tag `@deferred` + `note: deferred wave-N` → test-execute `skip(deferred)`, không log bug, không tính fail. Tag chỉ hiệu lực khi wave plan khai báo (chống né test).
+> **Deferred:** AC/feature đã hoãn ở `## Deferred to later waves` của `wave-{N}.md` → TC đánh tag `@deferred` + `note: deferred wave-N` → test-execute `skip(deferred)`, không log bug, không tính fail. Tag chỉ hiệu lực khi wave plan khai báo (chống né test).
 
 | TC | group | type | boundary | feature | AC | BR | pri | pre-condition | test-data | steps | expected | tags | note |
 |----|-------|------|----------|---------|----|----|-----|---------------|-----------|-------|----------|------|------|

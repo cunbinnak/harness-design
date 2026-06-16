@@ -7,7 +7,7 @@ sets_stage: REVIEW
 spawn:
   agent: null
   skills: []
-gates: [{type: flag, field: approved, expected: true}]
+gates: [{type: doc_review}, {type: flag, field: approved, expected: true}]
 ---
 
 # /approve-document
@@ -17,6 +17,15 @@ gates: [{type: flag, field: approved, expected: true}]
 User explicit approve toàn bộ intake artifacts sau khi đã review (qua `/review-document` revision loop) và happy. Command này KHÔNG spawn sub-agent (instant action), chỉ set `approved=true` trong STATE.
 
 Sau khi approved → có thể chạy `/start-wave` (gate check `approved=true`).
+
+## Gate `doc_review` (ép sanity-check trước approve)
+
+`scripts/gates.py check_doc_review` đọc `tracking/doc-review-findings.md` (do `/review-document` no-arg ghi):
+- **Thiếu file** → doc-review sanity-check CHƯA chạy → **chặn** (chạy `/review-document` no-arg trước).
+- Còn gap **BLOCKER/MAJOR** `status` open → **chặn** (vá qua revision loop hoặc lùi `/domain-start`).
+- Mọi gap đóng / chỉ MINOR open → pass.
+
+> Mirror `review-dev` `no_open_findings` (cho code) — nhưng cho TÀI LIỆU: bắt **thiếu năng lực nền (vd auth/login)** trước khi commit-to-build. Edge thật → `'{"approved":true,"force":true,"reason":"<lý do>"}'` (bypass + audit `tracking/decisions.md`).
 
 ## Input
 

@@ -39,6 +39,7 @@ Build service local + run auto test với PROOF cho mỗi TC. Log bug (origin=au
 2. (On-demand) Invoke `infra-local-dev` để verify infra UP
 3. Walk auto TC list:
    - Setup directories (test-logs/, screenshots/)
+   - **SEED data tiền-đề nếu TC cần:** đọc `pre-condition`/`test-data` → tạo prerequisite qua API thật (`api-{boundary}.md`) TRƯỚC khi chạy; reference/sample data ở `docs/architecture/infra/init/*.sql` (dev-handoff). Cleanup sau TC (isolation). TC cần data mà không seed → KHÔNG `skip`/`pass` khống.
    - Foreach TC: run cmd → capture proof (log + screenshot) → update result
    - Fail: invoke `bug-logging` → append row bugs.md (origin=auto). KHÔNG spawn fix.
 4. Verify proof: log count == auto TC count (else REFUSE complete)

@@ -6,7 +6,7 @@ sets_stage: REVIEW_DEV
 spawn:
   agent: "review-{kind}-agent (mỗi boundary trong wave, theo kind)"
   skills: review-{kind}
-gates: [{type: no_open_findings}]
+gates: [{type: non_empty, field: review_results}, {type: no_open_findings}]
 ---
 
 # /review-dev
@@ -71,6 +71,7 @@ MAIN ghi {boundary, kind, review_result: pass, coverage_pct}
 - **Tuần tự, không song song** — xong boundary này mới sang boundary kế (dễ trace, fix-loop không đụng nhau).
 - **MAIN spawn cả review lẫn fix** — review-agent read-only, KHÔNG tự spawn (sub-agent không nest spawn).
 - Boundary nào fix mãi không sạch → **STOP**, báo user, KHÔNG complete.
+- **Gate `non_empty review_results`:** `complete` PHẢI kèm `review_results` (list per-boundary) — `complete {}` bị reject ngay, chống tạo `STATE.review_results` rỗng rồi kẹt `/dev-handoff` (trước đây phải inject tay).
 - **Gate `no_open_findings` chặn `/review-dev complete`** nếu `review-findings.md` còn row BLOCKER/MAJOR `status=open` → ép fix sạch trước khi rời REVIEW_DEV.
-- `review_results` lưu vào STATE; gate `/dev-handoff` verify thêm: mọi `wave_boundaries` đều pass + coverage đạt ngưỡng kind (BE80 / BFF70 / web60 / mobile60).
+- `review_results` lưu vào STATE; gate `/dev-handoff` (`all_boundaries_reviewed`) verify: mọi `wave_boundaries` pass + coverage đạt ngưỡng kind (BE80/BFF70/web60/mobile60). Env-block → `dev-handoff` `force:true,reason` bypass được (giờ all_boundaries_reviewed cũng honor force, audit decisions.md).
 - Boundary chưa từng `/start-dev` (không có code) → review fail → gate chặn (ép dev đủ trước khi handoff).

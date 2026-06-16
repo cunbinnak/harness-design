@@ -15,7 +15,7 @@ gates: [{type: flag, field: docker_compose_ok, expected: true}, {type: flag, fie
 
 Phân tích FEAT + AC -> sinh test cases. Output `tracking/wave-{N}/test-case-registry.md` **format BẢNG** (mỗi TC = 1 hàng: TC/group/type/boundary/feature/AC/pri/pre-condition/steps/expected/note) + Coverage matrix.
 
-**Deferred-scope (G1):** đọc `## Deferred to later waves` của `docs/plans/wave-{N}.md` (+ review-findings wontfix) → TC cho AC/feature deferred tag `@deferred` + `note: deferred wave-N`. test-execute sẽ skip(deferred) → end-wave close sạch tự nhiên (không ép test_result).
+**Deferred-scope:** đọc `## Deferred to later waves` của `docs/plans/wave-{N}.md` (+ review-findings wontfix) → TC cho AC/feature deferred tag `@deferred` + `note: deferred wave-N`. test-execute sẽ skip(deferred) → end-wave close sạch tự nhiên (không ép test_result).
 
 ## Build prompt + spawn
 
@@ -26,7 +26,7 @@ py scripts/harness.py test-plan complete '{"docker_compose_ok": true, "connectiv
 # infra_proof  = parse tracking/{wave}/docker-ps.json → mọi wave_boundaries container State=running.
 # health_proof = parse tracking/{wave}/health-proof.json → mọi wave service trả 2xx ở /health/ready
 #                (re-verify stack vẫn UP từ dev-handoff sang test). Env-block → force.
-# contract_test_present (G4/G6) = mỗi consumer (boundary có depends_on trong wave) phải có ≥1 auto-TC
+# contract_test_present = mỗi consumer (boundary có depends_on trong wave) phải có ≥1 auto-TC
 #                group=contract|integration|e2e nối tới nó → chống "thiếu liên kết BE-FE" lọt test. force-able.
 ```
 

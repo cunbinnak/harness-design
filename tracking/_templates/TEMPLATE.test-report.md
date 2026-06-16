@@ -28,7 +28,7 @@
 
 ---
 
-> **Gate `test_evidence` (G12):** mỗi auto-TC in-scope phải có log thật `test-logs/{TC}.log`; group integration/e2e/perf/security khi pass|fail phải có dòng network-call `METHOD path -> status` (vd `POST /v1/holds -> 200`); skip phải nêu lý do service-down. Deferred-TC (`@deferred`, khai báo wave plan) → skip, không tính.
+> **Gate `test_evidence`:** mỗi auto-TC in-scope phải có log thật `test-logs/{TC}.log`; group integration/e2e/perf/security khi pass|fail phải có dòng network-call `METHOD path -> status` (vd `POST /v1/holds -> 200`); skip phải nêu lý do service-down. Deferred-TC (`@deferred`, khai báo wave plan) → skip, không tính.
 
 ## Per-TC Results (cross-ref logs)
 

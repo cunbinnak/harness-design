@@ -10,14 +10,14 @@ description: Sinh test-case-registry.md cho wave — TC per AC + enterprise cove
 
 > **Vai trò: THIẾT KẾ test case** (viết spec vào registry) — KHÔNG viết code test, KHÔNG chạy. Code test do **dev** viết khi code (mỗi AC có test, `rules §N`); `/test-execute` chạy + bổ sung test còn thiếu so với registry.
 
-## Deferred-scope (G1 — để end-wave close sạch tự nhiên)
+## Deferred-scope (để end-wave close sạch tự nhiên)
 Đọc `## Deferred to later waves` trong `docs/plans/wave-{N}.md` + `tracking/wave-{N}/review-findings.md` (status wontfix/accepted có lý do defer). Mọi AC/feature **đã chủ động hoãn sang wave sau** (vd auth/idempotency/event ở wave-1 chỉ-CRUD):
 - TC tương ứng VẪN viết (để wave sau reuse) nhưng đánh **tag `@deferred`** + `note: deferred wave-N` + KHÔNG đặt `pri P0`.
 - Defer **chỉ có hiệu lực khi feature/AC đó được khai báo trong `## Deferred to later waves` của wave plan** — tag `@deferred` đơn lẻ (không khai báo) sẽ bị test-execute coi in-scope và vẫn phải chạy (chống lạm dụng tag để né test).
 - Hệ quả: test-execute `skip(deferred)` không log bug; `test_result` (harness derive) chỉ tính in-scope → đạt `pass` tự nhiên khi in-scope xanh, KHÔNG cần ép `test_result=pass` thủ công.
 
 ## Output: `tracking/wave-{N}/test-case-registry.md` (format BẢNG — mỗi TC = 1 HÀNG)
-Theo `TEMPLATE.test-case-registry.md`. Cột: `TC | group | type | boundary | feature | AC | BR | pri | pre-condition | test-data | steps | expected | tags | note` + bảng **Coverage matrix** (AC → TC).
+**Template ở `tracking/_templates/TEMPLATE.test-case-registry.md`** (đường dẫn ĐÚNG — đọc + copy cấu trúc, KHÔNG tự chế format / KHÔNG tìm chỗ khác). Cột: `TC | group | type | boundary | feature | AC | BR | pri | pre-condition | test-data | steps | expected | tags | note` + bảng **Coverage matrix** (AC → TC). (Template test-report + bugs cũng ở `tracking/_templates/`.)
 - `group` = test_type bản chất (functional/integration/e2e/performance/security/accessibility + alias smoke/regression/uat) — enum + khi-nào-dùng ở `SEVERITY-TEST-TAXONOMY §4`.
 - `type`: `auto` (test-execute chạy được bằng tool) | `manual` (UAT/QA tay) — TRỤC KHÁC với `group`.
 - `AC`: `FEAT-N:AC-M` (mọi TC trace ≥1 AC, trừ smoke infra). `BR`: `BR-N` nếu TC enforce 1 business rule (optional).
@@ -75,11 +75,11 @@ Mỗi AC sinh TC cho các nhánh sau (bỏ nhánh không áp dụng):
 - **Decision table**: BR nhiều điều kiện → bảng tổ hợp điều kiện → kết quả kỳ vọng (phủ tổ hợp quan trọng).
 - **State-transition**: entity có `status` → test MỌI chuyển hợp lệ + ≥1 chuyển bị cấm (khớp state machine `data-model`).
 - **Edge data**: null/empty · unicode/ký tự đặc biệt · số âm/0 · precision tiền tệ · timezone/DST · chuỗi cực dài.
-- **Dữ liệu test** (cột `test-data`): deterministic (seed cố định, inject Clock) · độc lập per TC (không phụ thuộc TC khác) · tự cleanup · KHÔNG dùng data prod.
+- **Dữ liệu test** (cột `test-data` + `pre-condition`): deterministic (seed cố định, inject Clock) · độc lập per TC · tự cleanup · KHÔNG dùng data prod. **Ghi ĐỦ CỤ THỂ để test-execute SEED được** (entity nào + field gì, tạo qua API nào) — không để mơ hồ; reference/sample data dùng chung ghi rõ "seed ở infra/init".
 
 ## Quy ước
 1. Mỗi AC có ≥ 1 TC happy + TC cho error path/tenant/idempotency áp dụng được.
-2. Smoke test cross-boundary cho mọi integration điểm (login + create + read). **Gate `contract_test_present` (G4/G6):** mỗi consumer boundary (có `depends_on` trong wave) PHẢI có ≥1 auto-TC group=contract|integration|e2e nối tới nó (boundary cell hoặc tags chứa consumer-id) — chống "thiếu liên kết BE-FE" lọt test (BUG-010/011/012).
+2. Smoke test cross-boundary cho mọi integration điểm (login + create + read). **Gate `contract_test_present`:** mỗi consumer boundary (có `depends_on` trong wave) PHẢI có ≥1 auto-TC group=contract|integration|e2e nối tới nó (boundary cell hoặc tags chứa consumer-id) — chống "thiếu liên kết BE-FE" lọt test (BUG-010/011/012).
 3. P0 = blocker release · P1 = must-have · P2 = nice-to-have (`SEVERITY-TEST-TAXONOMY §3`).
 4. Contract TC: response/enum/error code khớp `api-{boundary}.md` (deep → `specialist-testing`).
 5. **Traceability 2 chiều**: mọi AC `Must` → ≥1 TC (không AC mồ côi); mọi TC → đúng 1 AC (không TC thừa không trace).

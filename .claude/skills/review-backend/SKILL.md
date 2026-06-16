@@ -12,7 +12,7 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 
 ## Harness integration
 - Invoke bởi `review-backend-agent` ở `/review-dev` (state REVIEW_DEV). Đây là **source of truth**.
-- Quy trình: chạy build/test scoped (`mvn -q test`, `jacoco:report`, `checkstyle/spotbugs`, `git diff --name-only main...HEAD`) → đi qua **Review Checklist** bên dưới → phân loại severity.
+- Quy trình: chạy build/test scoped (**Gradle default**: `./gradlew test jacocoTestReport checkstyleMain`; Maven `mvn -q test jacoco:report` nếu ADR chọn Maven) + `git diff --name-only main...HEAD` → đi qua **Review Checklist** bên dưới → phân loại severity.
 - **Coverage** theo kind (backend ≥ 80%) — dưới ngưỡng = BLOCKER.
 - Có **BLOCKER/MAJOR** hoặc build/test/coverage fail → **GHI row vào `tracking/{wave}/review-findings.md`** (KHÔNG tự spawn fix). **MAIN** đọc findings → spawn `fix-{prefix}-{boundary}-agent` (Mode B) → re-review. Review chỉ đánh giá + ghi findings + trả `open_findings`.
 - Kết thúc: `review_result = pass` chỉ khi `open_findings == 0` (không còn BLOCKER/MAJOR), gate (coverage/build/test) pass, và verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}. (Field JSON trả về theo `RETURN_SCHEMA_TEMPLATE` ở `build_prompt.py` + task_list `/review-dev` — skill KHÔNG định nghĩa schema.)
@@ -102,13 +102,22 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 
 ### L. Architecture / layer & validation
 - [ ] **Cấu trúc code KHỚP kiến trúc đã chốt (HLD §4) + layout `ref-backend-pattern`**: Layered (`controller/service/repository/mapper/...`) HOẶC Hexagonal (`domain/ · application[port.in,out]+service/ · adapter[in.web,in.messaging,out.persistence,out.client,...]`). KHÔNG trộn 2 kiểu; KHÔNG tự đặt package ngoài pattern (BLOCKER nếu lệch kiến trúc).
-- [ ] **Package đúng vị trí (mỗi class nằm đúng package theo role của layout đã chốt)**: KHÔNG class lạc chỗ (vd repository nằm trong package service, DTO nằm trong package controller, entity nằm ngoài package domain/model). Tên package đúng convention `rules-backend`.
+- [ ] **Package đúng vị trí (mỗi class nằm đúng package theo role của layout đã chốt)**: KHÔNG class lạc chỗ (vd repository trong package service, DTO trong package controller). **JPA `@Entity` PHẢI ở package `entities/` (Layered) / `adapter/out/persistence/entities/` (Hexagonal) + tên `{Resource}Entity`** (vd `OrderEntity`) — KHÔNG để `model/` hay tên trần `Order` (MAJOR). Tên package/class đúng convention `rules-backend`.
 - [ ] **Không thừa package (đã dọn)**: KHÔNG còn package rỗng; KHÔNG còn class/package scaffold mẫu chưa dùng (`Example*`, `Demo*`, `Sample*`, `HelloController`, file generator để lại); KHÔNG package tạo "phòng khi cần" mà không có class thật. Thừa/rỗng/dead-package → MAJOR (yêu cầu xóa); để scaffold mẫu lẫn business code → BLOCKER.
 - [ ] Code đúng trách nhiệm layer theo layout đã chốt: inbound (map+validate+gọi business), business+transaction ở tầng service/application, query ở repository/persistence, convert ở mapper.
 - [ ] Không business logic trong controller/repository/mapper/config/migration.
 - [ ] Bean Validation cho input; business validation ở service; status-transition validation.
 - [ ] **Null-safety & exception (BLOCKER nếu lọt 500)**: KHÔNG `Optional.get()` trần → dùng `orElseThrow(...)`; mọi lỗi map qua `GlobalExceptionHandler` → typed error code (KHÔNG để exception lọt ra HTTP **500**); KHÔNG nuốt exception (catch phải log + rethrow/map). Input null/rỗng/payload thiếu → **400 typed**, KHÔNG NPE/500.
 - [ ] Theo convention package/class của `rules-backend` (không tự thêm pattern mới).
+
+### L2. Tuân thủ skill `rules-backend` + REF KHUNG BE (load skill rồi đối chiếu — BLOCKER nếu lệch)
+> Reviewer **PHẢI invoke** skill liên quan + soi code khớp — KHÔNG review chay. Dev hay miss skill → đây là chốt bắt.
+- [ ] **`rules-backend`**: @Entity (no @Data; tên `{Resource}Entity`; package `entities/`); service **interface/impl split** (controller inject interface, không `*ServiceImpl`); no-business-in-controller/repo/mapper/config; **error-code từ enum** (không hardcode code/message tại throw); **no-hardcode** secret/URL/credential (externalize `@ConfigurationProperties`); `Instant`/timezone đúng layer; id/tenant **boxed**; **MapStruct** mapper interface (không map tay trong controller/service); JPQL/Specification (không `nativeQuery` vô cớ).
+- [ ] **`ref-backend-config`**: base `application.yml` + **profile files** `application-<dev|sit|prod>.yml` (gate `code_compliance` chặn nếu thiếu); config externalize; Dockerfile multi-stage **Gradle `bootJar`**.
+- [ ] **`ref-backend-logging`**: SLF4J structured (JSON) + **MDC** correlation (traceId/tenantId) + **mask PII** + level đúng (ERROR/WARN/INFO/DEBUG).
+- [ ] **`ref-backend-restclient`** (nếu gọi downstream): `@HttpExchange` + RestClient proxy + error handler (4xx→BusinessException, 5xx/timeout→EXTERNAL_SERVICE_ERROR) + header propagation (Authorization/X-Tenant-ID/X-Correlation-ID). KHÔNG RestTemplate/WebClient rải rác tay.
+- [ ] **`ref-backend-redis` / `ref-backend-kafka`** (nếu dùng): theo pattern skill (Redis qua service interface + TTL config; Kafka consumer idempotent + publish after-commit).
+- [ ] **FQCN**: KHÔNG dùng Fully-Qualified Class Name inline (`com.foo.Bar x`, `new com.foo.Bar()`) — phải `import` (trừ khi tránh trùng tên class thật sự). → MINOR (style) trừ khi che lỗi → cao hơn.
 
 ### M. Observability
 - [ ] Structured log + correlation id (traceId/eventId); error log đủ context; không log nhạy cảm; job có summary log.
@@ -117,6 +126,7 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 - [ ] Cover: success / validation fail / not found / permission denied / tenant boundary / invalid state transition / duplicate-idempotency / external fail / event publish / transaction rollback / edge.
 - [ ] **Unit**: AAA (given-when-then); tên test mô tả hành vi+điều kiện+kỳ vọng; **assert behavior** (không assert implementation detail); mock external đúng ranh giới (không mock class đang test, không over-mock); assert đúng exception + error code; **deterministic** (inject Clock/seed, không time/random/network thật); branch coverage có nghĩa.
 - [ ] **Integration**: DB/cache thật (Testcontainers); contract API (status + envelope) + tenant isolation.
+- [ ] **Schema-drift (BLOCKER — chống lộ ở handoff):** có ≥1 integration test **BOOT Spring context trên Testcontainers Postgres + migration + `ddl-auto: validate`**; **entity ↔ migration nhất quán** (tên cột, kiểu: `varchar(n)`↔`CHAR(n)`, `TIMESTAMPTZ`↔`Instant`, nullable). Thiếu test boot-context hoặc lệch entity↔migration → BLOCKER (đây là lỗi escape dev+review tới `/dev-handoff` connect DB mới lộ).
 - [ ] Đổi business logic → có thêm/cập nhật test; KHÔNG xoá test có ý nghĩa; không test rỗng / chỉ `assertDoesNotThrow`.
 
 ### O. Maintainability

@@ -13,8 +13,7 @@
     "DISC_D0": {
       "description": "D0 hypothesis-log. /discovery-start D0 spawn hypothesis agent; /discovery-end D0 gate → D1.",
       "allowed_commands": [
-        "discovery-start",
-        "discovery-end"
+        "discovery-start"
       ],
       "allowed_spawn": true,
       "read_only_spawn_always": true
@@ -22,8 +21,7 @@
     "DISC_D1": {
       "description": "D1 capability-map+persona-pool. /discovery-start D1 spawn capability-mapper; /discovery-end D1 → D2.",
       "allowed_commands": [
-        "discovery-start",
-        "discovery-end"
+        "discovery-start"
       ],
       "allowed_spawn": true,
       "read_only_spawn_always": true
@@ -31,8 +29,7 @@
     "DISC_D2": {
       "description": "D2 event-storming. /discovery-start D2 spawn event-stormer (per domain); /discovery-end D2 → D3.",
       "allowed_commands": [
-        "discovery-start",
-        "discovery-end"
+        "discovery-start"
       ],
       "allowed_spawn": true,
       "read_only_spawn_always": true
@@ -49,7 +46,10 @@
     "DOMAIN_AUTHORING": {
       "description": "DOMAIN authoring (continuous) — po-author (EPIC/FEATURE/JOURNEY) + ba-author (BR/PERSONA) author product THẲNG vào docs/architecture/{epics,feat,journeys,business-rules,personas}/ (single-repo, KHÔNG translate). /domain-start <mode> spawn; /domain-end gate (≥1 epic+feat+BR) → DESIGN.",
       "allowed_commands": [
-        "domain-start",
+        "domain-po",
+        "domain-ba",
+        "domain-approve",
+        "domain-translate",
         "domain-end"
       ],
       "allowed_spawn": true,
@@ -60,7 +60,8 @@
       "allowed_commands": [
         "design",
         "design-end",
-        "domain-start"
+        "domain-po",
+        "domain-ba"
       ],
       "allowed_spawn": true,
       "read_only_spawn_always": true
@@ -305,15 +306,6 @@
       "note": "CR amendment re-enter DOMAIN_AUTHORING: feature mới → /domain-start author epic/feat/BR; CR chỉ kiến trúc → /domain-end qua thẳng → /design → /design-end → /plan → REVIEW → /start-wave."
     },
     {
-      "from": "DOMAIN_AUTHORING",
-      "to": "DOMAIN_AUTHORING",
-      "trigger": "domain-start",
-      "evidence_required": {
-        "mode": "any"
-      },
-      "note": "spawn po/ba author theo mode (EPIC/FEATURE/JOURNEY/BR/PERSONA)"
-    },
-    {
       "from": "DESIGN",
       "to": "DESIGN",
       "trigger": "design",
@@ -387,33 +379,6 @@
       "note": "spawn charter-author"
     },
     {
-      "from": "DISC_D0",
-      "to": "DISC_D1",
-      "trigger": "discovery-end",
-      "evidence_required": {
-        "wave": "D0"
-      },
-      "note": "gate D0 → D1"
-    },
-    {
-      "from": "DISC_D1",
-      "to": "DISC_D2",
-      "trigger": "discovery-end",
-      "evidence_required": {
-        "wave": "D1"
-      },
-      "note": "gate D1 → D2"
-    },
-    {
-      "from": "DISC_D2",
-      "to": "DISC_D3",
-      "trigger": "discovery-end",
-      "evidence_required": {
-        "wave": "D2"
-      },
-      "note": "gate D2 → D3"
-    },
-    {
       "from": "DISC_D3",
       "to": "DOMAIN_AUTHORING",
       "trigger": "discovery-end",
@@ -430,13 +395,81 @@
       "note": "back-edge: lui sua design doc (HLD/API/UX/ADR); tien lai /design-end re-gate"
     },
     {
-      "from": "DESIGN",
+      "from": "DISC_D0",
+      "to": "DISC_D1",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D1"
+      },
+      "note": "advance DISC_D0->DISC_D1: gate wave hien tai (discovery_advance) roi vao D1"
+    },
+    {
+      "from": "DISC_D1",
+      "to": "DISC_D2",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D2"
+      },
+      "note": "advance DISC_D1->DISC_D2: gate wave hien tai (discovery_advance) roi vao D2"
+    },
+    {
+      "from": "DISC_D2",
+      "to": "DISC_D3",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D3"
+      },
+      "note": "advance DISC_D2->DISC_D3: gate wave hien tai (discovery_advance) roi vao D3"
+    },
+    {
+      "from": "DOMAIN_AUTHORING",
       "to": "DOMAIN_AUTHORING",
-      "trigger": "domain-start",
+      "trigger": "domain-po",
       "evidence_required": {
         "mode": "any"
       },
-      "note": "back-edge: lui sua product (epic/feat/BR/journey/persona); tien lai /domain-end re-gate"
+      "note": "author EPIC/FEATURE/JOURNEY business -> docs/domain/"
+    },
+    {
+      "from": "DOMAIN_AUTHORING",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-ba",
+      "evidence_required": {
+        "mode": "any"
+      },
+      "note": "author BR/PERSONA business -> docs/domain/"
+    },
+    {
+      "from": "DOMAIN_AUTHORING",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-approve",
+      "evidence_required": {},
+      "note": "ky business doc (target rong=all); stamp approved:true"
+    },
+    {
+      "from": "DOMAIN_AUTHORING",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-translate",
+      "evidence_required": {},
+      "note": "dich docs/domain (da ky) -> docs/architecture eng (gate domain_signed)"
+    },
+    {
+      "from": "DESIGN",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-po",
+      "evidence_required": {
+        "mode": "any"
+      },
+      "note": "back-edge: lui sua product qua domain-po; tien lai /domain-end re-gate"
+    },
+    {
+      "from": "DESIGN",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-ba",
+      "evidence_required": {
+        "mode": "any"
+      },
+      "note": "back-edge: lui sua product qua domain-ba; tien lai /domain-end re-gate"
     }
   ]
 }

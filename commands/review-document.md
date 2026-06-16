@@ -30,13 +30,13 @@ User truyền feedback sau slash command:
 /review-document "Cần thêm endpoint POST /orders/{id}/cancel" --file docs/architecture/api/api-order-mgmt.md
 ```
 
-**Không argument** (sanity check mode):
+**Không argument** (sanity-check mode — gap/mâu thuẫn/độ-phủ):
 ```
 /review-document
 ```
-- Agent đọc TẤT cả artifact intake, trả về issues list cho user xem.
-- Không sửa file.
-- User dùng kết quả để quyết định feedback gì.
+- Agent soi TOÀN BỘ doc (discovery + domain + design + plan) tìm **gap / mâu thuẫn / thiếu độ phủ năng lực** → ghi `tracking/doc-review-findings.md` (DR-NNN + severity).
+- KHÔNG sửa doc nguồn.
+- Gate `/approve-document` chặn nếu file còn gap **BLOCKER/MAJOR** open → ép vá trước khi start-wave.
 
 ## Workflow
 
@@ -72,18 +72,18 @@ User truyền feedback sau slash command:
 - Spawn sub-sub-agent (recurse).
 - Skip verify sửa đúng — phải re-read file sau Edit.
 
-## Sanity check mode (no argument)
+## Sanity-check mode (no argument) — gap / mâu thuẫn / thiếu độ phủ
 
-Khi user gọi `/review-document` không argument:
-- Agent đóng vai reviewer, check toàn bộ intake artifacts theo checklist:
-  - PROJECT.md scope + NFR + glossary
-  - FEAT-*.md AC testable + BR rules
-  - ADR ≥ 3 với rationale
-  - HLD/API/data-model per boundary đầy đủ
-  - WAVE-SEQUENCE + wave-001 có boundaries + features
-  - MATRIX có metadata đủ
-- Return list issues (KHÔNG sửa file).
-- User dùng kết quả này để quyết định feedback gì cho call tiếp theo.
+Khi user gọi `/review-document` không argument, agent soi TOÀN BỘ doc theo **5 lens** (chi tiết build_prompt §SANITY-CHECK TASK):
+1. **Độ phủ năng lực (chính):** `capability-map` + nhu cầu persona + journey → mọi năng lực có FEAT phủ. Năng lực NỀN đương nhiên cần (auth/đăng nhập/cấp token, phân quyền, multi-tenant, xử-lý-lỗi) mà KHÔNG có FEAT → **BLOCKER** (bắt 'thiếu luồng login' trước khi vào build).
+2. **Mâu thuẫn cross-doc** — FEAT vs BR · AC vs api/data-model · HLD vs PROJECT · MATRIX vs BOUNDARY-MAP.
+3. **AC testable** — Cho/Khi/Thì đo được, có non-happy-path.
+4. **Cross-ref integrity** — epic↔feat↔BR↔journey↔persona không dangling.
+5. **Câu hỏi cho Author chưa chốt**.
+
+Output → `tracking/doc-review-findings.md` (DR-NNN + severity + status; **LUÔN ghi kể cả 0 gap**). KHÔNG sửa doc nguồn.
+
+> **Gate `doc_review` @ `/approve-document`:** thiếu file (review chưa chạy) hoặc còn gap BLOCKER/MAJOR open → **chặn approve**. Vá qua revision mode (`/review-document "<feedback>"`) hoặc lùi `/domain-start` author bổ sung; set row `status=resolved`. Edge → `force:true,reason` (audit).
 
 ## Output
 

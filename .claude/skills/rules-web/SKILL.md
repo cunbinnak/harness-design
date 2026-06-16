@@ -87,7 +87,7 @@ Sub-agent `kind=web` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
 
 ### Styling & responsive
 43. **Responsive theo breakpoint chuẩn của project**; không hardcode media query rải rác nếu design system đã có token.
-44. **Dùng design token/theme** cho spacing, color, typography; không dùng màu/spacing tùy tiện. Import/consume **shared `docs/architecture/ux/design-tokens.css`** (SoT) — style plain-CSS qua `var(--color-/--font-/--space-...)`, KHÔNG hardcode hex/px. Gate `web_styling` (dev-handoff) chặn nếu plain-CSS không dùng `var(--...)` (G15).
+44. **Dùng design token/theme** cho spacing, color, typography; không dùng màu/spacing tùy tiện. Import/consume **shared `docs/architecture/ux/design-tokens.css`** (SoT) — style plain-CSS qua `var(--color-/--font-/--space-...)`, KHÔNG hardcode hex/px. Gate `web_styling` (dev-handoff) chặn nếu plain-CSS không dùng `var(--...)`.
 45. **Không inline style phức tạp** trừ case rất nhỏ hoặc dynamic style có lý do.
 46. **Không phá layout khi text dài**: handle overflow, ellipsis, wrap, empty label.
 47. **Dark mode/theme**: nếu project hỗ trợ thì component mới không được hardcode màu làm vỡ theme.

@@ -162,7 +162,7 @@ test_scope:
 
 > Chi tiết TC sinh ở TEST_PLAN (`/test-plan` → `tracking/wave-{{NNN}}/test-case-registry.md`). Enterprise coverage (error path, tenant isolation, idempotency, rate-limit, concurrency) thêm ở test-plan.
 
-### Deferred to later waves (G1 — SoT cho test-plan đánh `@deferred`)
+### Deferred to later waves (SoT cho test-plan đánh `@deferred`)
 
 > Liệt kê AC/feature/BR **chủ động hoãn** sang wave sau (vd wave-1 chỉ CRUD: auth/idempotency/event để wave-2). test-plan đọc mục này → TC tương ứng tag `@deferred` → test-execute `skip(deferred)` (không bug, không chặn end-wave). **Chỉ token liệt kê ở ĐÂY mới được defer** (tag đơn lẻ vô tác dụng — chống né test). Token: `FEAT-{{NNN}}` · `FEAT-{{NNN}}:AC-{{M}}` · `BR-{{NNN}}`.
 

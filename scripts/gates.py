@@ -75,11 +75,15 @@ def _active_boundary_kind(state: dict, root: Path | None = None) -> str | None:
     return _kind_of(state.get("active_boundary"), root)
 
 
-def check_all_boundaries_reviewed(state: dict, root: Path | None = None) -> tuple[bool, str]:
+def check_all_boundaries_reviewed(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
     """Mọi boundary trong wave_boundaries phải có review_result=pass + coverage đạt ngưỡng theo kind.
 
     Nguồn: STATE.review_results (lưu bởi apply_effects khi /review-dev complete) — wave-scoped.
+    force=true → bypass (đồng bộ họ force-bypass dev-handoff: env-block, audit decisions.md ở apply_effects).
     """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
     wave_boundaries = state.get("wave_boundaries") or []
     if not wave_boundaries:
         return False, "wave_boundaries rỗng — chưa /start-wave?"
@@ -361,9 +365,10 @@ _FINDING_CLOSED_STATUSES = ("resolved", "accepted", "wontfix", "closed", "fixed"
 _FINDING_BLOCKING_SEV = ("blocker", "major")
 
 
-def _findings_open_from_table(text: str) -> list[str] | None:
-    """Format BẢNG review-findings: header có cột 'finding'(/'id') + 'status' + 'severity'.
-    Trả list finding-id `severity ∈ {blocker, major}` và `status` chưa đóng; None nếu không thấy bảng."""
+def _findings_open_from_table(text: str, id_pattern: str = r"rf-\d+") -> list[str] | None:
+    """Format BẢNG findings: header có cột 'finding'(/'id') + 'status' + 'severity'.
+    Trả list finding-id (khớp `id_pattern`) `severity ∈ {blocker, major}` và `status` chưa đóng;
+    None nếu không thấy bảng. `id_pattern` mặc định `rf-\\d+` (review-dev); doc-review dùng `dr-\\d+`."""
     fid_idx = status_idx = sev_idx = None
     open_findings: list[str] = []
     for line in text.splitlines():
@@ -383,12 +388,50 @@ def _findings_open_from_table(text: str) -> list[str] | None:
         if len(cells) > max(fid_idx, status_idx, sev_idx):
             fid, st, sev = cells[fid_idx], cells[status_idx].lower(), cells[sev_idx].lower()
             if (
-                re.fullmatch(r"rf-\d+", fid, re.IGNORECASE)
+                re.fullmatch(id_pattern, fid, re.IGNORECASE)
                 and sev in _FINDING_BLOCKING_SEV
                 and st not in _FINDING_CLOSED_STATUSES
             ):
                 open_findings.append(fid)
     return open_findings if status_idx is not None else None
+
+
+def check_doc_review(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /approve-document: doc-review sanity-check phải ĐÃ chạy + KHÔNG còn gap BLOCKER/MAJOR open.
+
+    Mode sanity-check của /review-document (gọi KHÔNG argument) quét toàn bộ doc đã author
+    (discovery + domain + design + plan): mâu thuẫn cross-doc · thiếu độ phủ (capability-map +
+    persona + journey phải có FEAT phủ → bắt thiếu năng lực nền như auth/login) · AC không testable ·
+    cross-ref gãy · "Câu hỏi cho Author" chưa chốt → ghi tracking/doc-review-findings.md
+    (DR-NNN + severity + status). Gate này ép vá gap BLOCKER/MAJOR trước khi approve → start-wave
+    (mirror review-dev no_open_findings, nhưng cho TÀI LIỆU thay vì code).
+
+    Thiếu file → review CHƯA chạy → chặn (ép chạy /review-document no-arg trước approve).
+    force=true → bypass (audit decisions.md ở apply_effects)."""
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    base = root or REPO_ROOT
+    findings_file = base / "tracking" / "doc-review-findings.md"
+    if not findings_file.exists():
+        return False, (
+            "chưa chạy doc-review: thiếu `tracking/doc-review-findings.md` — chạy `/review-document` "
+            "(KHÔNG argument) để quét gap/mâu thuẫn/thiếu-độ-phủ trước khi approve"
+        )
+    open_findings = _findings_open_from_table(
+        findings_file.read_text(encoding="utf-8"), id_pattern=r"dr-\d+"
+    )
+    if open_findings is None:
+        return False, (
+            "doc-review-findings.md không có bảng findings hợp lệ (cần cột finding/severity/status) — "
+            "re-run `/review-document` no-arg"
+        )
+    if open_findings:
+        return False, (
+            f"còn {len(open_findings)} gap tài liệu BLOCKER/MAJOR chưa xử: {open_findings} — sửa qua "
+            "`/review-document \"<feedback>\"` (hoặc lùi `/domain-start` author bổ sung) tới sạch rồi approve"
+        )
+    return True, ""
 
 
 def check_test_passed(state: dict) -> tuple[bool, str]:
@@ -438,6 +481,24 @@ def check_discovery_wave(evidence: dict, state: dict) -> tuple[bool, str]:
     return False, f"discovery gate {wave} fail: " + "; ".join(errors)
 
 
+def check_discovery_advance(evidence: dict, state: dict) -> tuple[bool, str]:
+    """Gate /discovery-start (cơ chế mới start D0→Dn): khi NHẢY TIẾN sang wave kế → gate wave hiện tại.
+
+    arg (evidence.wave) > wave hiện tại (state.stage) = advancing → verify gate wave đang rời.
+    arg == wave hiện tại = refine (không gate). BOOTSTRAP→D0 = first-entry (không gate). force bypass.
+    """
+    if evidence.get("force") is True:
+        return True, ""
+    cur = discovery_gate.STAGE_TO_GATE.get(state.get("stage"))  # None nếu BOOTSTRAP
+    arg = (evidence.get("wave") or "").upper()
+    if not cur or arg == cur:
+        return True, ""  # first-entry D0 / refine cùng wave → không gate
+    passed, errors = discovery_gate.check_gate(str(cur))
+    if passed:
+        return True, ""
+    return False, f"discovery gate {cur} fail (phải đạt trước khi sang {arg}): " + "; ".join(errors)
+
+
 def _phase_gate(evidence: dict, checks: list[dict], label: str) -> tuple[bool, str]:
     """Gate theo artifact disk (artifact_glob/file_exists). evidence.force=true → bypass (audit decisions.md)."""
     if evidence.get("force") is True:
@@ -454,15 +515,108 @@ def _phase_gate(evidence: dict, checks: list[dict], label: str) -> tuple[bool, s
 
 
 def check_domain_gate(evidence: dict) -> tuple[bool, str]:
-    """Gate /domain-end (DOMAIN_AUTHORING → DESIGN): product chia nhỏ ở docs/architecture/.
+    """Gate /domain-end (DOMAIN_AUTHORING → DESIGN): ENG product chia nhỏ ở docs/architecture/.
 
-    Như ZIP (Epic/Feature/BR) nhưng author thẳng docs/architecture/ (single-repo, no translate, no docs/domain).
+    docs/architecture/ là ĐẦU RA eng (do /domain-translate sinh từ business docs/domain/ đã ký).
     """
     return _phase_gate(evidence, [
         {"kind": "artifact_glob", "pattern": "docs/architecture/epics/EP-*.md", "min_count": 1},
         {"kind": "artifact_glob", "pattern": "docs/architecture/feat/FEAT-*.md", "min_count": 1},
         {"kind": "artifact_glob", "pattern": "docs/architecture/business-rules/BR-*.md", "min_count": 1},
     ], "domain")
+
+
+# ========================================================================
+# #2/#3 — DOMAIN business layer (docs/domain/) + ký (approve) + translate + no-jargon
+# ========================================================================
+# A1: business plain-VN ở docs/domain/{epics,feat,journeys,business-rules,personas}/ (PO/BA viết + KÝ)
+# → /domain-translate dịch sang docs/architecture/ (eng). Ký TRƯỚC, dịch SAU.
+
+_DOMAIN_BUSINESS_GLOBS = (
+    "docs/domain/epics/EP-*.md",
+    "docs/domain/feat/FEAT-*.md",
+    "docs/domain/business-rules/BR-*.md",
+    "docs/domain/journeys/JOURNEY-*.md",
+    "docs/domain/personas/PERSONA-*.md",
+)
+# Jargon kỹ thuật KHÔNG được lọt vào lớp business (giữ chủ-nghiệp-vụ đọc/ký được). Bảo thủ:
+# chỉ token RÕ-RÀNG-kỹ-thuật để tránh false-positive với văn xuôi nghiệp vụ.
+_JARGON_RES = [
+    re.compile(r"```"),                                  # code fence
+    re.compile(r"\b(SELECT|INSERT|UPDATE|DELETE|JOIN|WHERE|FROM)\b\s", re.IGNORECASE),  # SQL
+    re.compile(r"/api/|/v\d+/"),                          # API path
+    re.compile(r"@\w+\("),                                # annotation @Valid(...)
+    re.compile(r"\b\w+(Entity|Repository|Controller|DTO|Service|Dao)\b"),  # class suffix kỹ thuật
+    re.compile(r"\b(varchar|bpchar|uuid|jsonb|bigint|timestamptz)\b", re.IGNORECASE),  # SQL type
+    re.compile(r"\bHTTP\s*\d{3}\b|\b[2-5]\d{2}\s+(OK|Created|Bad|Unauthorized|Forbidden|Not Found)"),  # status code
+]
+
+
+def _frontmatter_signed(text: str) -> bool:
+    """True nếu business doc đã KÝ — frontmatter `status: APPROVED` (ZIP-faithful sign-off)."""
+    if not text.startswith("---"):
+        return False
+    end = text.find("\n---", 3)
+    fm = text[:end] if end > 0 else text[:400]
+    return re.search(r"^\s*status\s*:\s*[\"']?APPROVED[\"']?\s*$", fm, re.MULTILINE) is not None
+
+
+def _domain_business_files(root: Path) -> list[Path]:
+    out: list[Path] = []
+    for g in _DOMAIN_BUSINESS_GLOBS:
+        out.extend(root.glob(g))
+    return [p for p in out if p.is_file()]
+
+
+def check_domain_signed(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /domain-translate: MỌI business doc ở docs/domain/ phải `approved: true` (ký TRƯỚC, dịch SAU).
+
+    Chưa author business doc nào → fail. Còn doc chưa ký → fail (liệt kê). force bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    files = _domain_business_files(root)
+    if not files:
+        return False, "chưa có business doc nào ở docs/domain/ — /domain-po · /domain-ba author trước"
+    unsigned = [str(p.relative_to(root)).replace("\\", "/") for p in files
+                if not _frontmatter_signed(p.read_text(encoding="utf-8", errors="ignore"))]
+    if unsigned:
+        return False, ("còn business doc CHƯA KÝ (status!=APPROVED): " + ", ".join(sorted(unsigned))
+                       + " — /domain-approve <id|all> rồi mới /domain-translate")
+    return True, ""
+
+
+def check_domain_no_jargon(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /domain-approve: doc business KHÔNG được chứa jargon kỹ thuật (giữ chủ-nghiệp-vụ ký được).
+
+    evidence.target = id doc (vd EP-x) hoặc 'all'/rỗng = mọi business doc. Quét token kỹ thuật rõ ràng.
+    force bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    target = (evidence.get("target") or "all").strip()
+    files = _domain_business_files(root)
+    if target.lower() != "all":
+        files = [p for p in files if p.stem == target or p.stem.startswith(target)]
+        if not files:
+            return False, f"không thấy business doc '{target}' ở docs/domain/"
+    problems: list[str] = []
+    for p in files:
+        txt = p.read_text(encoding="utf-8", errors="ignore")
+        # bỏ frontmatter khỏi phạm vi quét (frontmatter có thể có field kỹ thuật hợp lệ)
+        body = txt.split("\n---", 1)[1] if txt.startswith("---") and "\n---" in txt else txt
+        hits = [rx.pattern for rx in _JARGON_RES if rx.search(body)]
+        if hits:
+            rel = str(p.relative_to(root)).replace("\\", "/")
+            problems.append(f"{rel}: jargon kỹ thuật ({len(hits)} loại)")
+    if problems:
+        return False, ("business doc CÓ jargon kỹ thuật (phải plain nghiệp vụ để ký): " + "; ".join(problems)
+                       + " — bỏ code/SQL/API/class-name; chi tiết kỹ thuật để /domain-translate sinh ở eng layer")
+    return True, ""
 
 
 def _boundaries_from_boundary_map(root: Path | None = None) -> list[tuple[str, str]]:
@@ -1097,14 +1251,22 @@ def check_code_compliance(state: dict, evidence: dict | None = None, root: Path 
                 txt = p.read_text(encoding="utf-8", errors="ignore")
                 if any(m in txt for m in _H2_BUILD_MARKERS):
                     problems.append(f"{bid}: {bf} khai H2 (`com.h2database`) — dùng Postgres + Testcontainers (H2 che bug prod)")
-        # (c)(d) config main
+        # (c)(d) config main + profile (ref-backend-config: base + per-env profile file)
         cfg_dir = svc / "src" / "main" / "resources"
-        cfgs = [cfg_dir / n for n in _APP_CONFIG_NAMES if (cfg_dir / n).is_file()]
-        # cũng quét profile config application-*.yml
+        base_cfgs = [cfg_dir / n for n in _APP_CONFIG_NAMES if (cfg_dir / n).is_file()]
+        profile_cfgs = []
         if cfg_dir.is_dir():
-            cfgs += [p for p in cfg_dir.glob("application-*.*") if p.suffix.lower() in (".yml", ".yaml", ".properties")]
-        if not cfgs:
-            problems.append(f"{bid}: thiếu application.yml/properties trong src/main/resources (config không tách env)")
+            profile_cfgs = [p for p in cfg_dir.glob("application-*.*")
+                            if p.suffix.lower() in (".yml", ".yaml", ".properties")]
+        if not base_cfgs:
+            problems.append(f"{bid}: thiếu application.yml/properties base trong src/main/resources")
+        # ref-backend-config: mỗi env 1 file (KHÔNG để all trong base + env var). Tối thiểu ≥1 profile file.
+        if base_cfgs and not profile_cfgs:
+            problems.append(
+                f"{bid}: thiếu file PROFILE `application-<dev|sit|prod>.{{yml,properties}}` "
+                f"(ref-backend-config: mỗi env 1 file riêng, không chỉ base + env var)"
+            )
+        cfgs = base_cfgs + profile_cfgs
         for cfg in cfgs:
             ctxt = cfg.read_text(encoding="utf-8", errors="ignore")
             if _JDBC_H2_RE.search(ctxt):
@@ -1251,15 +1413,25 @@ def check_api_transport_consistency(evidence: dict | None = None, root: Path | N
 GATE_RULES: dict[str, list[dict]] = {
     "discovery-start": [
         {"kind": "non_empty", "field": "wave"},
+        {"kind": "discovery_advance"},  # nhảy tiến D{N}→D{N+1} → gate wave hiện tại (refine/first-entry: bỏ qua)
     ],
     "discovery-end": [
-        {"kind": "discovery_wave"},  # đọc evidence.wave (D0..D3) → discovery_gate.check_gate
+        {"kind": "discovery_wave"},  # chốt D3 → DOMAIN: gate D3 (chỉ còn 1 transition từ DISC_D3)
     ],
-    "domain-start": [
-        {"kind": "non_empty", "field": "mode"},
+    "domain-po": [
+        {"kind": "non_empty", "field": "mode"},   # EPIC|FEATURE|JOURNEY — viết business doc ở docs/domain/
+    ],
+    "domain-ba": [
+        {"kind": "non_empty", "field": "mode"},   # BR|PERSONA — viết business doc ở docs/domain/
+    ],
+    "domain-approve": [
+        {"kind": "domain_no_jargon"},   # ký doc business: phải plain nghiệp vụ (no jargon). Target rỗng = all
+    ],
+    "domain-translate": [
+        {"kind": "domain_signed"},      # mọi business doc đã ký → dịch sang docs/architecture/ eng
     ],
     "domain-end": [
-        {"kind": "domain_gate"},     # epic+feat+BR ở docs/architecture/ (force bypass + audit)
+        {"kind": "domain_gate"},     # ENG epic+feat+BR ở docs/architecture/ (đầu ra translate) (force bypass + audit)
         {"kind": "planning_lint"},   # epic feature_refs≥2 / feat epic_ref+feat_type / BR related_features≥1 (force bypass)
     ],
     "design": [],   # self-loop re-spawn solution-architect (refine) — KHÔNG gate, KHÔNG advance
@@ -1278,6 +1450,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "flag", "field": "feedback_processed", "expected": True},
     ],
     "approve-document": [
+        {"kind": "doc_review"},  # doc-review sanity-check đã chạy + no open BLOCKER/MAJOR gap (force bypass + audit)
         {"kind": "flag", "field": "approved", "expected": True},
     ],
     "start-wave": [
@@ -1290,6 +1463,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "in_state_list", "field": "boundary", "state_field": "wave_boundaries"},
     ],
     "review-dev": [
+        {"kind": "non_empty", "field": "review_results"},  # ép kèm review_results — chống `complete {}` làm STATE rỗng rồi kẹt dev-handoff (#10)
         {"kind": "no_open_findings"},  # complete bị chặn tới khi findings BLOCKER/MAJOR fix sạch
     ],
     "dev-handoff": [
@@ -1337,7 +1511,7 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
         if kind == "flag":
             return check_flag(evidence, rule["field"], rule["expected"])
         if kind == "all_boundaries_reviewed":
-            return check_all_boundaries_reviewed(state)
+            return check_all_boundaries_reviewed(state, evidence)
         if kind == "int_min":
             return check_int_min(evidence, rule["field"], rule["min"])
         if kind == "non_empty":
@@ -1354,6 +1528,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_no_open_bugs(state)
         if kind == "no_open_findings":
             return check_no_open_findings(state)
+        if kind == "doc_review":
+            return check_doc_review(state, evidence)
         if kind == "test_passed":
             return check_test_passed(state)
         if kind == "infra_proof":
@@ -1374,8 +1550,14 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_web_styling(state, evidence)
         if kind == "discovery_wave":
             return check_discovery_wave(evidence, state)
+        if kind == "discovery_advance":
+            return check_discovery_advance(evidence, state)
         if kind == "domain_gate":
             return check_domain_gate(evidence)
+        if kind == "domain_signed":
+            return check_domain_signed(evidence)
+        if kind == "domain_no_jargon":
+            return check_domain_no_jargon(evidence)
         if kind == "design_gate":
             return check_design_gate(evidence)
         if kind == "plan_gate":
@@ -1448,6 +1630,16 @@ def _selftest() -> int:
     ok, errs = check_for_command("dev-handoff", state=st_low, evidence={})
     assert not ok and "coverage" in errs[0], errs
 
+    # #10: all_boundaries_reviewed force-bypass (env-block) → pass dù thiếu review
+    assert check_all_boundaries_reviewed(st_missing, {"force": True})[0] is True
+    # #10: review-dev `complete {}` (thiếu review_results) → reject (chống tạo STATE rỗng rồi kẹt)
+    ok, errs = check_for_command("review-dev", state={"wave_boundaries": ["order"]}, evidence={})
+    assert (not ok) and any("review_results" in e for e in errs), errs
+    # có review_results → qua rule non_empty (no_open_findings tuỳ file findings)
+    ok, errs = check_for_command("review-dev", state={"wave": {"id": "wave-zzz-none"}},
+                                 evidence={"review_results": [{"boundary": "order", "review_result": "pass"}]})
+    assert ok or all("review_results" not in e for e in errs), errs
+
     # per-kind coverage thresholds (BE80 / BFF70 / web60 / mobile60)
     assert check_coverage_per_kind({"coverage_pct": 65, "kind": "web"}, {})[0] is True
     assert check_coverage_per_kind({"coverage_pct": 72, "kind": "bff"}, {})[0] is True
@@ -1502,6 +1694,39 @@ def _selftest() -> int:
     )
     assert _findings_open_from_table(ftbl) == ["RF-002", "RF-004"], _findings_open_from_table(ftbl)
     assert _findings_open_from_table("no table") is None
+    # parser tái dùng cho doc-review (id_pattern dr-\d+)
+    dtbl = (
+        "| finding | severity | concern | file | status |\n|---|---|---|---|---|\n"
+        "| DR-001 | BLOCKER | thiếu FEAT auth/login | capability-map.md | open |\n"
+        "| DR-002 | MAJOR | FEAT-003 mâu thuẫn BR-002 | FEAT-003 | resolved |\n"
+    )
+    assert _findings_open_from_table(dtbl, id_pattern=r"dr-\d+") == ["DR-001"], _findings_open_from_table(dtbl, id_pattern=r"dr-\d+")
+
+    # doc_review (approve-document gate): hermetic — file findings tạm trong tmp root.
+    import tempfile as _tf_dr
+    _droot = Path(_tf_dr.mkdtemp(prefix="gates_dr_"))
+    try:
+        # (a) thiếu file → review chưa chạy → chặn
+        assert check_doc_review({}, {}, root=_droot)[0] is False, "doc_review phải chặn khi thiếu findings file"
+        _dr_dir = _droot / "tracking"
+        _dr_dir.mkdir(parents=True, exist_ok=True)
+        _dr_file = _dr_dir / "doc-review-findings.md"
+        # (b) còn gap BLOCKER open → chặn
+        _dr_file.write_text(dtbl, encoding="utf-8")
+        ok, msg = check_doc_review({}, {}, root=_droot)
+        assert ok is False and "DR-001" in msg, f"doc_review phải chặn khi còn BLOCKER open: {msg}"
+        # (c) force bypass dù còn gap
+        assert check_doc_review({}, {"force": True}, root=_droot)[0] is True, "doc_review force phải bypass"
+        # (d) findings đều closed → pass
+        _dr_file.write_text(
+            "| finding | severity | concern | file | status |\n|---|---|---|---|---|\n"
+            "| DR-001 | BLOCKER | thiếu FEAT auth | capability-map.md | resolved |\n",
+            encoding="utf-8",
+        )
+        assert check_doc_review({}, {}, root=_droot)[0] is True, "doc_review pass khi mọi gap đã resolved"
+    finally:
+        import shutil as _sh_dr
+        _sh_dr.rmtree(_droot, ignore_errors=True)
 
     # test_passed: end-wave cần STATE.test_result == pass
     assert check_test_passed({"test_result": "pass"})[0] is True
@@ -1769,13 +1994,16 @@ def _selftest() -> int:
         (_res / "application.yml").write_text("spring:\n  datasource:\n    url: jdbc:h2:mem:test\n  jpa:\n    hibernate:\n      ddl-auto: create-drop\n", encoding="utf-8")
         ok, msg = check_code_compliance(_cc_state, root=_croot)
         assert (not ok) and "Dockerfile" in msg and "H2" in msg and "jdbc:h2" in msg and "create-drop" in msg, msg
-        # (b) sửa hết → pass: Dockerfile + pom Postgres + config postgres + flyway
+        # (b) Dockerfile + Postgres + base config NHƯNG thiếu PROFILE file → vẫn fail (thiếu profile)
         (_svc / "Dockerfile").write_text("FROM eclipse-temurin:21-jre\n", encoding="utf-8")
         (_svc / "pom.xml").write_text("<project><dependency><groupId>org.postgresql</groupId></dependency></project>", encoding="utf-8")
         (_res / "application.yml").write_text("spring:\n  datasource:\n    url: jdbc:postgresql://db:5432/app\n  jpa:\n    hibernate:\n      ddl-auto: validate\n", encoding="utf-8")
-        assert check_code_compliance(_cc_state, root=_croot)[0] is True, "code_compliance phải pass khi Postgres + Dockerfile + config"
-        # (c) web boundary bỏ qua (chỉ backend); chưa scaffold → bỏ qua (không double-fail)
-        # (d) force bypass
+        ok, msg = check_code_compliance(_cc_state, root=_croot)
+        assert (not ok) and "PROFILE" in msg, f"thiếu profile file phải fail: {msg}"
+        # (c) thêm profile file → pass
+        (_res / "application-dev.yml").write_text("spring:\n  datasource:\n    url: jdbc:postgresql://dev-db:5432/app\n", encoding="utf-8")
+        assert check_code_compliance(_cc_state, root=_croot)[0] is True, "code_compliance pass khi Postgres + Dockerfile + base + profile"
+        # (d) web boundary bỏ qua (chỉ backend); chưa scaffold → bỏ qua. force bypass
         (_res / "application.yml").write_text("url: jdbc:h2:mem:x\n", encoding="utf-8")
         assert check_code_compliance(_cc_state, {"force": True}, root=_croot)[0] is True
     finally:
@@ -1835,6 +2063,46 @@ def _selftest() -> int:
         assert check_api_transport_consistency({"force": True}, root=_aroot)[0] is True
     finally:
         _shutil.rmtree(_aroot, ignore_errors=True)
+
+    # domain_signed + domain_no_jargon (#2/#3): business layer docs/domain/ ký + no-jargon
+    _droot = Path(_tf_hp.mkdtemp(prefix="gates_dom_"))
+    try:
+        for sub in ("epics", "feat", "business-rules"):
+            (_droot / "docs" / "domain" / sub).mkdir(parents=True, exist_ok=True)
+        ep = _droot / "docs" / "domain" / "epics" / "EP-1.md"
+        ft = _droot / "docs" / "domain" / "feat" / "FEAT-1.md"
+        br = _droot / "docs" / "domain" / "business-rules" / "BR-1.md"
+        # (a) chưa có file → signed fail
+        ok, msg = check_domain_signed(root=_droot)
+        assert (not ok) and "chưa có business doc" in msg, msg
+        # author 3 business doc plain, chỉ EP ký (status APPROVED)
+        ep.write_text("---\nstatus: APPROVED\n---\n# Epic\nKhách đặt lịch khám.\n", encoding="utf-8")
+        ft.write_text("---\nstatus: DRAFT\n---\n# Feature\nĐặt lịch trong 24h.\n", encoding="utf-8")
+        br.write_text("# BR\nKhông cho đặt trùng giờ.\n", encoding="utf-8")
+        ok, msg = check_domain_signed(root=_droot)
+        assert (not ok) and ("FEAT-1" in msg and "BR-1" in msg), f"còn doc chưa ký phải fail: {msg}"
+        # ký hết → pass
+        ft.write_text("---\nstatus: APPROVED\n---\n# Feature\nĐặt lịch trong 24h.\n", encoding="utf-8")
+        br.write_text("---\nstatus: APPROVED\n---\n# BR\nKhông cho đặt trùng giờ.\n", encoding="utf-8")
+        assert check_domain_signed(root=_droot)[0] is True, "ký hết → signed pass"
+        assert check_domain_signed({"force": True}, root=_droot)[0] is True
+        # no-jargon: doc có SQL/class → fail
+        ep.write_text("---\nstatus: APPROVED\n---\n# Epic\nDùng bảng SELECT * FROM appointment.\n", encoding="utf-8")
+        ok, msg = check_domain_no_jargon(root=_droot)
+        assert (not ok) and "EP-1" in msg, f"jargon SQL phải fail: {msg}"
+        # target filter: chỉ check FEAT-1 (sạch) → pass dù EP-1 bẩn
+        assert check_domain_no_jargon({"target": "FEAT-1"}, root=_droot)[0] is True
+        # clean lại → pass
+        ep.write_text("---\nstatus: APPROVED\n---\n# Epic\nKhách đặt lịch khám.\n", encoding="utf-8")
+        assert check_domain_no_jargon(root=_droot)[0] is True
+        assert check_domain_no_jargon({"force": True}, root=_droot)[0] is True
+    finally:
+        _shutil.rmtree(_droot, ignore_errors=True)
+
+    # discovery_advance (cơ chế start D0→Dn): force/refine/first-entry không gate (advance-gate đọc disk → smoke force)
+    assert check_discovery_advance({"force": True}, {"stage": "DISC_D0"}) == (True, "")
+    assert check_discovery_advance({"wave": "D1"}, {"stage": "DISC_D1"}) == (True, "")   # refine cùng wave
+    assert check_discovery_advance({"wave": "D0"}, {"stage": "BOOTSTRAP"}) == (True, "")  # first-entry D0
 
     # wave_sequence_lint (G16): wiring + force-bypass (logic test đầy đủ ở wave_sequence_lint._selftest)
     assert check_wave_sequence_lint({"force": True}) == (True, "")

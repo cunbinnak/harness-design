@@ -1,6 +1,6 @@
 ---
 name: ref-backend-pattern
-description: Cấu trúc backend boundary — Layered (classic Spring 3-tier) hoặc Hexagonal (Ports & Adapters) theo ADR. Layout artifact, layer responsibilities, interface/impl, response & error shape, forbidden patterns.
+description: Cấu trúc backend boundary — DEFAULT Layered (classic Spring 3-tier); Hexagonal (Ports & Adapters) chỉ opt-in qua ADR khi domain phức tạp. JPA @Entity ở package entities/ tên {Resource}Entity. Layout artifact, layer responsibilities, interface/impl, response & error shape, forbidden patterns.
 ---
 
 # Reference: Backend Structure (Layered | Hexagonal)
@@ -12,12 +12,14 @@ description: Cấu trúc backend boundary — Layered (classic Spring 3-tier) ho
 > **Tuning:** mô hình + layer/package của boundary **đã chốt ở HLD §4** (theo ADR backend-architecture). File này KHÔNG quyết lại — chỉ cung cấp layout chuẩn cho mô hình mà HLD đã chốt. Cây thư mục dưới là khung tối thiểu — package tùy chọn (`event/`, `scheduler/`, `util/`…) chỉ thêm khi boundary cần.
 > **Cache/Redis:** có ref skill riêng (pattern interface + impl adapter), KHÔNG mô tả ở file này.
 
-## 1. Chọn mô hình (chốt ở HLD §4, theo ADR backend-architecture)
+## 1. Chọn mô hình — **DEFAULT = Layered**
+
+> **Mặc định LUÔN dùng Layered.** Chỉ dùng Hexagonal khi ADR backend-architecture giải trình rõ domain đủ phức tạp (nhiều inbound/outbound, cần tách domain khỏi framework). Không chắc → Layered.
 
 | Mô hình | Khi dùng | Luồng |
 |---|---|---|
-| **Layered** (classic Spring) | CRUD, domain ít phức tạp — mặc định | `controller → service → repository` |
-| **Hexagonal** (Ports & Adapters) | Nghiệp vụ phức tạp, cần tách domain khỏi framework, nhiều inbound/outbound | `adapter.in → application (use case) → domain`; outbound qua port, `adapter.out` impl |
+| **Layered** (classic Spring) — **DEFAULT** | CRUD, domain ít/vừa phức tạp (đa số boundary) | `controller → service → repository` |
+| **Hexagonal** (Ports & Adapters) — opt-in qua ADR | Nghiệp vụ phức tạp rõ rệt, cần tách domain khỏi framework | `adapter.in → application (use case) → domain`; outbound qua port, `adapter.out` impl |
 
 Một boundary = một repo polyrepo, root `services/{prefix}-{boundary}/` (prefix = `project.service_prefix`).
 
@@ -32,8 +34,8 @@ services/{prefix}-{boundary}/src/main/java/.../{boundary}/
 │   └── impl/{Resource}ServiceImpl.java     # @Service, @Transactional, business logic, constructor injection
 ├── repository/
 │   └── {Resource}Repository.java           # Spring Data JPA interface (JPQL/Specification, no nativeQuery)
-├── model/                                  # (hoặc entity/)
-│   └── {Resource}.java                     # @Entity: no @Data, no FK (liên kết qua id column)
+├── entities/                               # JPA @Entity (KHÔNG để 'model')
+│   └── {Resource}Entity.java               # @Entity: tên {Resource}Entity, no @Data, no FK (liên kết qua id column)
 ├── dto/
 │   ├── request/{Resource}Request.java      # request DTO + Bean Validation
 │   └── response/{Resource}Response.java    # response DTO (KHÔNG expose entity)
@@ -81,7 +83,7 @@ services/{prefix}-{boundary}/src/main/java/.../{boundary}/
 │   │   ├── messaging/           # Inbound adapter (Kafka consumer): {Topic}Consumer — idempotent
 │   │   └── scheduler/           # Inbound adapter (job định kỳ @Scheduled) — thêm khi cần
 │   └── out/
-│       ├── persistence/         # Outbound adapter: JPA entity + repository, impl outbound port
+│       ├── persistence/         # Outbound adapter: repository + entities/{Resource}Entity.java (JPA @Entity), impl outbound port
 │       ├── client/              # Outbound adapter: external HTTP client, impl outbound port
 │       └── messaging/           # Outbound adapter (Kafka producer): {Resource}EventPublisher — publish after-commit
 ├── constant/                   # constants class theo domain
@@ -101,7 +103,7 @@ tests/{unit,integration}
 | `controller/` | Map request/response, validation annotation, gọi service. KHÔNG business logic. |
 | `service/` (+`impl/`) | Business logic, transaction boundary, business validation, orchestration, quyết định publish event. |
 | `repository/` | Persistence/query (Spring Data, JPQL/Specification). |
-| `model/` | JPA entity (no @Data, no FK). |
+| `entities/` | JPA `@Entity` class tên `{Resource}Entity` (no @Data, no FK). KHÔNG để 'model'. |
 | `dto/request` · `dto/response` | Schema vào/ra ở biên API. |
 | `mapper/` | Convert DTO ↔ entity. KHÔNG gọi service/repository/client. |
 | `event/` | Kafka: producer (publish after-commit) + consumer (idempotent) + payload DTO. Topic name từ config. |
@@ -258,4 +260,4 @@ public class GlobalExceptionHandler {
 ## 8. Done
 - Cấu trúc khớp mô hình chốt trong ADR backend-architecture + `hld-{boundary}.md`.
 - API khớp `api-{boundary}.md`; schema khớp `data-model-{boundary}.md`.
-- Build chạy được (`./mvnw` / `./gradlew`).
+- Build chạy được (`./gradlew` — default; `./mvnw` nếu ADR chọn Maven).

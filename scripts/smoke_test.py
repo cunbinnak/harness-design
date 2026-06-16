@@ -111,22 +111,29 @@ def main() -> int:
         FB = {"force": True, "reason": "smoke-test transition walk"}  # bypass disk-gate
 
         # BOOTSTRAP -> DISC_D0 (discovery-start)
-        ok = step("BOOTSTRAP -> DISC_D0", "discovery-start", {"wave": "D0"}, "DISC_D0")
+        ok = step("BOOTSTRAP -> DISC_D0 (start D0)", "discovery-start", {"wave": "D0"}, "DISC_D0")
         passed.append(ok) if ok else failed.append("BOOTSTRAP->DISC_D0")
 
-        # Discovery D0->D1->D2->D3 (discovery-end, gate disk → force bypass)
-        for frm, to in [("D0", "DISC_D1"), ("D1", "DISC_D2"), ("D2", "DISC_D3")]:
-            ok = step(f"DISC_{frm} -> {to}", "discovery-end", {"wave": frm, **FB}, to)
-            passed.append(ok) if ok else failed.append(f"discovery-end {frm}")
+        # Cơ chế mới: discovery-start TIẾN D0->D1->D2->D3 (gate wave trước qua discovery_advance → force bypass)
+        for w, to in [("D1", "DISC_D1"), ("D2", "DISC_D2"), ("D3", "DISC_D3")]:
+            ok = step(f"start {w} -> {to}", "discovery-start", {"wave": w, **FB}, to)
+            passed.append(ok) if ok else failed.append(f"discovery-start advance {w}")
 
-        # DISC_D3 -> DOMAIN_AUTHORING (chốt service_prefix)
-        ok = step("DISC_D3 -> DOMAIN_AUTHORING", "discovery-end",
-                  {"wave": "D3", "service_prefix": "demo", **FB}, "DOMAIN_AUTHORING")
-        passed.append(ok) if ok else failed.append("discovery-end D3")
+        # DISC_D3 -> DOMAIN_AUTHORING (discovery-end chốt, gate D3 → force bypass + service_prefix)
+        ok = step("DISC_D3 -> DOMAIN_AUTHORING (end)", "discovery-end",
+                  {"service_prefix": "demo", **FB}, "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("discovery-end -> DOMAIN")
 
-        # DOMAIN_AUTHORING self-loop (domain-start) + -> DESIGN (domain-end)
-        ok = step("DOMAIN self (domain-start FEATURE)", "domain-start", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
-        passed.append(ok) if ok else failed.append("domain-start")
+        # DOMAIN: po/ba author business (self) → approve (ký) → translate (dịch eng) → domain-end → DESIGN
+        ok = step("DOMAIN po (author FEATURE)", "domain-po", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("domain-po")
+        ok = step("DOMAIN ba (author BR)", "domain-ba", {"mode": "BR"}, "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("domain-ba")
+        ok = step("DOMAIN approve (ký all)", "domain-approve", {}, "DOMAIN_AUTHORING")  # no docs/domain → no-jargon vacuous pass
+        passed.append(ok) if ok else failed.append("domain-approve")
+        ok = step("DOMAIN translate (dịch eng)", "domain-translate",
+                  {"force": True, "reason": "smoke (chưa author business docs/domain → domain_signed bypass)"}, "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("domain-translate")
         ok = step("DOMAIN_AUTHORING -> DESIGN", "domain-end", FB, "DESIGN")
         passed.append(ok) if ok else failed.append("domain-end")
 
@@ -142,8 +149,8 @@ def main() -> int:
         ok = step("review-document feedback", "review-document", {"feedback_processed": True}, "REVIEW")
         passed.append(ok) if ok else failed.append("review-document")
 
-        # REVIEW -> REVIEW (approve-document, set approved flag)
-        ok = step("approve-document", "approve-document", {"approved": True}, "REVIEW")
+        # REVIEW -> REVIEW (approve-document, set approved flag) — gate doc_review (findings sanity-check) → force bypass
+        ok = step("approve-document", "approve-document", {"approved": True, **FB}, "REVIEW")
         passed.append(ok) if ok else failed.append("approve-document")
 
         # REVIEW -> WAVE_OPEN (start-wave) — derive wave_boundaries/features từ MATRIX
@@ -284,12 +291,13 @@ def main() -> int:
         # Đưa nhanh về WAVE_OPEN qua force-bypass front-half rồi start-wave.
         FB = {"force": True, "reason": "smoke negative-case setup"}
         state_mod.complete("discovery-start", {"wave": "D0"})
-        for frm in ["D0", "D1", "D2", "D3"]:
-            state_mod.complete("discovery-end", {"wave": frm, "service_prefix": "demo", **FB})
+        for w in ["D1", "D2", "D3"]:
+            state_mod.complete("discovery-start", {"wave": w, **FB})
+        state_mod.complete("discovery-end", {"service_prefix": "demo", **FB})
         state_mod.complete("domain-end", FB)
         state_mod.complete("design-end", FB)
         state_mod.complete("plan", FB)
-        state_mod.complete("approve-document", {"approved": True})
+        state_mod.complete("approve-document", {"approved": True, "force": True, "reason": "smoke setup"})
         state_mod.complete("start-wave", {"approved": True, "wave_n": 1})
         patch_state({"wave_boundaries": ["x"], "wave": {"id": "wave-001", "number": 1}})
         state_mod.complete("start-dev", {"boundary": "x"})
@@ -313,12 +321,13 @@ def main() -> int:
         reset_state()
         FB2 = {"force": True, "reason": "smoke unknown-wave setup"}
         state_mod.complete("discovery-start", {"wave": "D0"})
-        for frm in ["D0", "D1", "D2", "D3"]:
-            state_mod.complete("discovery-end", {"wave": frm, "service_prefix": "demo", **FB2})
+        for w in ["D1", "D2", "D3"]:
+            state_mod.complete("discovery-start", {"wave": w, **FB2})
+        state_mod.complete("discovery-end", {"service_prefix": "demo", **FB2})
         state_mod.complete("domain-end", FB2)
         state_mod.complete("design-end", FB2)
         state_mod.complete("plan", FB2)
-        state_mod.complete("approve-document", {"approved": True})
+        state_mod.complete("approve-document", {"approved": True, "force": True, "reason": "smoke setup"})
         result = state_mod.complete("start-wave", {"approved": True, "wave_n": 99})
         ok = not result["ok"] and "wave 99" in result.get("error", "")
         print(f"  [{'OK  ' if ok else 'FAIL'}] reject start-wave unknown wave {result.get('error', '')[:50]}")
@@ -331,13 +340,14 @@ def main() -> int:
         reset_state()
         FB3 = {"force": True, "reason": "smoke back-edge setup"}
         state_mod.complete("discovery-start", {"wave": "D0"})
-        for frm in ["D0", "D1", "D2", "D3"]:
-            state_mod.complete("discovery-end", {"wave": frm, "service_prefix": "demo", **FB3})
+        for w in ["D1", "D2", "D3"]:
+            state_mod.complete("discovery-start", {"wave": w, **FB3})
+        state_mod.complete("discovery-end", {"service_prefix": "demo", **FB3})
         state_mod.complete("domain-end", FB3)
         state_mod.complete("design-end", FB3)  # giờ ở PLAN
         ok = step("PLAN -> DESIGN (lùi /design)", "design", {}, "DESIGN")
         passed.append(ok) if ok else failed.append("back-edge PLAN->DESIGN")
-        ok = step("DESIGN -> DOMAIN (lùi /domain-start)", "domain-start", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
+        ok = step("DESIGN -> DOMAIN (lùi /domain-po)", "domain-po", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
         passed.append(ok) if ok else failed.append("back-edge DESIGN->DOMAIN")
 
     finally:

@@ -85,15 +85,30 @@ def can_run(command: str, state: dict | None = None, machine: dict | None = None
 
 
 def find_transition(
-    command: str, state: dict | None = None, machine: dict | None = None
+    command: str, state: dict | None = None, machine: dict | None = None,
+    evidence: dict | None = None,
 ) -> dict | None:
+    """Tìm transition (from==stage, trigger==command).
+
+    Nếu nhiều transition cùng (from,trigger) — vd `discovery-start` từ DISC_D0 vừa self-loop
+    (wave=D0) vừa tiến (wave=D1) — disambiguate bằng `evidence_required` khớp `evidence`.
+    Single match / evidence None → trả cái đầu (backward-compat).
+    """
     state = state if state is not None else load_state()
     machine = machine if machine is not None else load_machine()
     stage = state.get("stage")
-    for t in machine.get("transitions", []):
-        if t.get("from") == stage and t.get("trigger") == command:
+    candidates = [
+        t for t in machine.get("transitions", [])
+        if t.get("from") == stage and t.get("trigger") == command
+    ]
+    if not candidates:
+        return None
+    if len(candidates) == 1 or evidence is None:
+        return candidates[0]
+    for t in candidates:
+        if _evidence_matches(evidence, t.get("evidence_required", {})):
             return t
-    return None
+    return candidates[0]
 
 
 # ========================================================================
@@ -127,8 +142,8 @@ def complete(command: str, evidence_str: str | dict) -> dict:
             f"Allowed: {allowed_commands(state, machine)}"
         )
 
-    # 2. Transition exists?
-    transition = find_transition(command, state, machine)
+    # 2. Transition exists? (evidence-aware: phân biệt refine vs advance cùng (from,trigger))
+    transition = find_transition(command, state, machine, evidence)
     if transition is None:
         return _err(
             f"Không tìm thấy transition cho '{command}' từ stage '{state['stage']}'"
@@ -287,11 +302,21 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
                 evidence.get("reason") or "(no reason given)",
             )
 
-    elif command == "domain-start":
-        # Ghi nhận spawn active theo mode (EPIC/FEATURE/JOURNEY/BR/PERSONA).
+    elif command in ("domain-po", "domain-ba"):
+        # Author business doc (plain VN) ở docs/domain/. spawn po (EPIC/FEATURE/JOURNEY) | ba (BR/PERSONA).
         mode = evidence.get("mode")
         if mode:
-            state.setdefault("spawn", {})["active"] = f"domain-{mode}"
+            state.setdefault("spawn", {})["active"] = f"{command}-{mode}"
+
+    elif command == "domain-approve":
+        # Ký business doc (target rỗng = all). Stamp `approved:true` do scripts/domain_approve.py lo.
+        if evidence.get("force") is True:
+            _append_decision("domain-approve --force", evidence.get("reason") or "(no reason given)")
+
+    elif command == "domain-translate":
+        # Dịch docs/domain/ (đã ký) → docs/architecture/ eng. Audit force (bỏ qua gate domain_signed).
+        if evidence.get("force") is True:
+            _append_decision("domain-translate --force", evidence.get("reason") or "(no reason given)")
 
     elif command == "domain-end":
         # Audit force override gate DOMAIN.
@@ -300,6 +325,11 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
                 f"domain-end ({state.get('stage','?')}) --force",
                 evidence.get("reason") or "(no reason given)",
             )
+
+    elif command == "approve-document":
+        # Audit force override gate doc_review (vd doc-review chưa chạy nhưng user chủ động approve).
+        if evidence.get("force") is True:
+            _append_decision("approve-document --force", evidence.get("reason") or "(no reason given)")
 
     elif command == "start-wave":
         try:

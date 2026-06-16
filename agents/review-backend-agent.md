@@ -27,7 +27,7 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 
 1. Invoke skill `review-backend` để load checklist.
 2. **Read `FEAT-*` boundary đảm nhận** (+ HLD/API/data-model) → verify code trong `services/{prefix}-{active_boundary}/` theo checklist, gồm **§A: MỌI AC implement + MỌI BR enforce** (thiếu AC = BLOCKER).
-3. Run scoped commands (Java/Spring): `mvn test`, `mvn checkstyleMain`, `mvn jacoco:report`.
+3. Run scoped commands (Java/Spring, **Gradle default**): `./gradlew test`, `./gradlew checkstyleMain`, `./gradlew jacocoTestReport` (Maven `mvn ...` chỉ nếu ADR chọn Maven).
 4. Phát hiện issue → **GHI ra `tracking/{wave}/review-findings.md`** (theo `TEMPLATE.review-findings.md`): mỗi issue = 1 row `RF-NNN` (`severity/status=open/boundary/file path:line/type(rule|BR|AC|arch|security|test)/description/suggested_fix`). Row đã fix vòng trước (`status=resolved`) → re-review xác nhận, KHÔNG xoá.
 5. **KHÔNG spawn fix, KHÔNG tự loop** — MAIN orchestrator đọc findings rồi spawn fix Mode B + re-review tới `open_findings==0`.
 7. (CHỈ khi phát hiện anti-pattern/gotcha/learning MỚI) append vào KG `learnings`. Review sạch / không có gì mới → KHÔNG ghi KG (tránh phình). KHÔNG đụng phần design (entities/BR/events — đã seed ở start-wave).

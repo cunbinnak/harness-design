@@ -80,8 +80,9 @@ Service fail → `docker compose logs <svc> --tail=50` → diagnose → sửa co
 ## Migrations (sau khi infra healthy)
 Chạy migration của mỗi backend boundary từ `services/{prefix}-{boundary}/`, theo stack:
 ```bash
-# Java/Flyway
-mvn -q flyway:migrate -Dflyway.url="jdbc:postgresql://localhost:5432/app_dev" -Dflyway.user=postgres -Dflyway.password=postgres
+# Java/Flyway (Gradle default; hoặc Flyway tự chạy lúc app boot qua spring-boot-flyway)
+./gradlew flywayMigrate -Pflyway.url="jdbc:postgresql://localhost:5432/app_dev" -Pflyway.user=postgres -Pflyway.password=postgres
+#   (Maven: mvn -q flyway:migrate -Dflyway.url=... — chỉ khi ADR chọn Maven)
 # Liquibase / Prisma (npx prisma migrate deploy) / Alembic (alembic upgrade head) / raw: psql ... -f schema.sql
 ```
 Verify schema thật:

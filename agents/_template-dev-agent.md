@@ -52,7 +52,7 @@ matrix_revision: {{matrix_revision}}
 3. Sub-agent:
    - Invoke skill `rules-{{kind}}` ngay (load convention checklist).
    - Read HẾT tài liệu ở §Tài liệu BẮT BUỘC đọc (đã liệt kê cụ thể theo boundary) trước khi code.
-   - Lần đầu cho boundary: scaffold `services/{{prefix}}-{{boundary}}/` (pom.xml/package.json/pubspec.yaml theo kind).
+   - Lần đầu cho boundary: scaffold `services/{{prefix}}-{{boundary}}/` (**build.gradle**/package.json/pubspec.yaml theo kind — backend default Gradle, Maven chỉ khi ADR chọn).
    - Lần đầu cho boundary — **emit guardrail repo con** (create-if-missing): từ `docs/architecture/infra/TEMPLATE.service-repo-{CLAUDE.md,settings.json,gitignore}` → `services/{{prefix}}-{{boundary}}/{CLAUDE.md,.claude/settings.json,.gitignore}`. Substitute placeholder ({{prefix}}/{{boundary}}/{{kind}}/{{stack}}/{{repo_url}}/{{owned_paths_md}}/{{build_cmds}}) từ MATRIX entry + STATE.project; settings.json giữ block `allow` theo kind (xoá block kind khác). File đã tồn tại → SKIP (team customize sau).
    - Implement AC, run test, ensure coverage ≥ 80.
    - Append KG.

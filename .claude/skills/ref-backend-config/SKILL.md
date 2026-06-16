@@ -81,6 +81,8 @@ src/main/resources/
 
 Mỗi profile file override env-specific values: DB URL, secrets ref, log level, feature flags, Kafka bootstrap, cache TTL. KHÔNG để tất cả config trong `application.yml` base rồi chỉ dùng env var — mỗi môi trường phải có file riêng để dễ review và audit.
 
+> **GATE (bắt buộc, không bỏ qua):** `code_compliance` @dev-handoff đòi backend boundary có **base `application.yml` + ≥1 file `application-<dev|sit|prod>.{yml,properties}`**. Scaffold chỉ base (thiếu profile) → BLOCK. Đây là enforcement máy (chống "config luôn thiếu profile") — KHÔNG còn honor-system.
+
 Default profile resolution:
 - Local developer: fallback to `local` (base `application.yml` đủ cho local dev)
 - CI/dev: env var `SPRING_PROFILES_ACTIVE=dev`

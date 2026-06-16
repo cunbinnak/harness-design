@@ -30,7 +30,7 @@ py scripts/build_prompt.py start-dev --boundary order-management
 ## Agent behavior
 
 - Đọc DOCS IN SCOPE inline trong prompt
-- Lần đầu: tạo `services/{project.service_prefix}-{boundary}/` skeleton (pom.xml / package.json / pubspec.yaml theo kind)
+- Lần đầu: tạo `services/{project.service_prefix}-{boundary}/` skeleton (**`build.gradle`** / package.json / pubspec.yaml theo kind — backend DEFAULT Gradle, Maven chỉ khi ADR tech-stack chọn)
 - Lần đầu: emit guardrail repo con — `CLAUDE.md` + `.claude/settings.json` + `.gitignore` từ `docs/architecture/infra/TEMPLATE.service-repo-*` (create-if-missing, substitute placeholder từ MATRIX + STATE.project)
 - Implement AC trong FEAT
 - Append KG, return RETURN SCHEMA
@@ -41,7 +41,7 @@ py scripts/build_prompt.py start-dev --boundary order-management
 
 | kind | primary (invoke ngay) | review | scaffold ref (bắt buộc khi scaffold) | situational ref | build file |
 |---|---|---|---|---|---|
-| `backend` | `rules-backend` | `review-backend` | `ref-backend-pattern`, `ref-backend-config`, `ref-backend-logging` | từ MATRIX `ref_skills` | `pom.xml` / `build.gradle` |
+| `backend` | `rules-backend` | `review-backend` | `ref-backend-pattern`, `ref-backend-config`, `ref-backend-logging` | từ MATRIX `ref_skills` | **`build.gradle`** (Gradle default; `pom.xml` chỉ khi ADR chọn Maven) |
 | `bff` | `rules-bff` | `review-bff` | — (convention trong `rules-bff`) | từ MATRIX `ref_skills` | `package.json` (Apollo) |
 | `web` | `rules-web` | `review-web` | `ref-frontend-pattern`, `ref-frontend-config` | từ MATRIX `ref_skills` | `package.json` (Vite) |
 | `mobile` | `rules-mobile` | `review-mobile` | — (convention trong `rules-mobile`) | từ MATRIX `ref_skills` | `pubspec.yaml` (Flutter) |

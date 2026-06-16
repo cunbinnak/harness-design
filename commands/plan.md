@@ -25,8 +25,8 @@ gates: [{type: plan_gate}, {type: planning_lint}, {type: plan_integrity}, {type:
 ## Gate
 - `plan_gate`: `docs/plans/WAVE-SEQUENCE.md` + `harness/SERVICE-BOUNDARY-MATRIX.json` + ≥1 `docs/plans/wave-*.md` + ≥1 `knowledge-base/*.knowledge-graph.yaml`.
 - `planning_lint` + `plan_integrity` + `matrix_coherence`: ref-integrity epic↔feat↔BR + FEAT-id backing + MATRIX phủ đủ boundary đúng kind.
-- `api_transport` (G6): `docs/architecture/api/api-*.md` KHÔNG truyền tenant-id qua query string — phải `X-Tenant-ID` header/JWT claim (api template §2), nhất quán mọi endpoint (chống drift kiểu BUG-012 chỗ body chỗ query). Env/ngoại lệ → `force:true,reason`.
-- `wave_sequence_lint` (G16): validate `docs/plans/WAVE-SEQUENCE.md` §wave-NNN YAML (port ZIP `wave-sequence-validate.py`): `wave_class`/`wave_strategy` enum · `target_count_per_layer ≤ 3` · strategy layer-purity (horizontal-be cấm FE target, horizontal-fe cấm boundary target) · vertical → FEAT có `parent_epic` · `inherited_active` trỏ file tồn tại. Warning (rare-combo/exit_signal/test_scope coherence) KHÔNG chặn. `force:true,reason` bypass.
+- `api_transport`: `docs/architecture/api/api-*.md` KHÔNG truyền tenant-id qua query string — phải `X-Tenant-ID` header/JWT claim (api template §2), nhất quán mọi endpoint (chống drift kiểu BUG-012 chỗ body chỗ query). Env/ngoại lệ → `force:true,reason`.
+- `wave_sequence_lint`: validate `docs/plans/WAVE-SEQUENCE.md` §wave-NNN YAML (port ZIP `wave-sequence-validate.py`): `wave_class`/`wave_strategy` enum · `target_count_per_layer ≤ 3` · strategy layer-purity (horizontal-be cấm FE target, horizontal-fe cấm boundary target) · vertical → FEAT có `parent_epic` · `inherited_active` trỏ file tồn tại. Warning (rare-combo/exit_signal/test_scope coherence) KHÔNG chặn. `force:true,reason` bypass.
 
 ## Sau PLAN (vào REVIEW)
 Stage → REVIEW. `/review-document` (chỉnh nếu cần) → `/approve-document` → `/start-wave 1`.

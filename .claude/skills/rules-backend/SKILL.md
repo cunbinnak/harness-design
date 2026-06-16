@@ -29,6 +29,7 @@ Sub-agent `kind=backend` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
 1. **KHÔNG `@Data` / `@EqualsAndHashCode` / `@ToString` (all-field) trên `@Entity`** — equals/hashCode all-field break trong `Set`/`Map` (hashCode đổi sau persist) + StackOverflow ở quan hệ bidirectional; toString all-field trigger lazy-load oan + log lộ dữ liệu.
 2. **Dùng `@Getter @Setter @NoArgsConstructor @AllArgsConstructor`** — constructor do annotation sinh, KHÔNG tự viết. KHÔNG `@Data`.
 3. KHÔNG cần tự viết `toString`/`equals`/`hashCode`; nếu thật sự cần override `equals`/`hashCode` → theo business/natural key (hoặc id sau persist + `@NaturalId`), KHÔNG all-field.
+4. **Tên class = `{Resource}Entity`** (vd `OrderEntity`, `AppointmentEntity`) — KHÔNG để trần `Order`. Đặt ở package **`entities/`** (Layered) / `adapter/out/persistence/entities/` (Hexagonal) — KHÔNG để `model/`. (Service/repo/DTO/mapper/controller giữ `{Resource}`: `OrderService`/`OrderRepository`/`OrderResponse`, KHÔNG `OrderEntityService`.)
 
 ```java
 // Nên
@@ -37,7 +38,7 @@ Sub-agent `kind=backend` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-class Order {
+class OrderEntity {
     @Id @GeneratedValue Long id;
     @Column(nullable = false) String code;
     @Column(nullable = false) Long customerId;   // liên kết qua id (no FK) — nhớ add index
@@ -115,7 +116,7 @@ payment:
 ```
 
 ### Layering & injection
-- **Framework annotation đúng package**: `@Entity` ở `model`/`domain`, `@Service` ở `service/impl`, `@Repository` ở `repository`/adapter, `@RestController` ở `controller`/`adapter.in.web`.
+- **Framework annotation đúng package**: `@Entity` ở `entities/` (Layered, **KHÔNG `model/`**) hoặc `adapter/out/persistence/entities/` (Hexagonal), `@Service` ở `service/impl`, `@Repository` ở `repository`/adapter, `@RestController` ở `controller`/`adapter.in.web`.
 - **Controller**: map request + validation annotation + gọi **service (interface)** + map response. **KHÔNG gọi repository trực tiếp** — phải qua service layer.
 - **Service interface/impl split bắt buộc**: `service/{Entity}Service.java` = interface (KHÔNG annotation); `service/impl/{Entity}ServiceImpl.java` = `@Service` impl chứa business logic + transaction boundary + business validation + orchestration + quyết định publish event. Controller/caller inject **interface** — KHÔNG inject `*ServiceImpl`.
 - **Repository**: chỉ persistence/query. **Mapper**: chỉ convert Entity/DTO/Command/Event/Response; KHÔNG gọi service/repository/external client. **Config class**: chỉ define bean + bind config.
@@ -225,11 +226,12 @@ payment:
 - Thêm/cập nhật test khi đổi business logic; coverage ≥ **80%**. KHÔNG xoá test cũ trừ khi được yêu cầu rõ; test wave trước PHẢI pass (regression). KHÔNG `@Disabled` thiếu blocker ref.
 - **Unit** (logic thuần: service/guard/validator/handler): `@ExtendWith(MockitoExtension.class)`, mock mọi dependency ngoài class test. KHÔNG DB/Redis/Kafka/HTTP, KHÔNG Spring context, **KHÔNG H2**.
 - **Integration**: **TestContainers PostgreSQL** (DB thật) — **KHÔNG H2** (H2 thiếu JSONB, dialect khác ẩn migration/schema bug); Kafka container; REST qua MockMvc.
+- **BẮT BUỘC ≥1 integration test BOOT Spring context trên Testcontainers Postgres + chạy MIGRATION + `ddl-auto: validate`** → Hibernate validate **entity ↔ schema** lúc boot: **sai tên cột / kiểu cột (vd `varchar(3)` ↔ `CHAR(3)`, `TIMESTAMPTZ` ↔ `Instant`) = test ĐỎ NGAY ở DEV** (không để lộ tới `/dev-handoff` lúc connect DB). Đây là chốt bắt schema-drift mà unit/mock + review tĩnh không thấy.
 - Naming `should_{expected}_when_{condition}`. Cover: success / validation fail / not found / permission fail / tenant boundary / idempotency / edge.
 
 ## Coding checklist — verify trước khi báo done
 - [ ] Coverage ≥ 80%; không `@Disabled` thiếu blocker ref; **không H2** trong test.
-- [ ] **Gate `code_compliance` (dev-handoff)** sẽ HARD-FAIL nếu: thiếu `Dockerfile`; build file khai `com.h2database`; `application.{yml,properties}` có `jdbc:h2:` hoặc `ddl-auto: create-drop`; hoặc không có file config. → scaffold Dockerfile (multi-stage maven→JRE) + config Postgres + migration (Flyway/Liquibase) NGAY khi dev (không để handoff mới sửa).
+- [ ] **Gate `code_compliance` (dev-handoff)** sẽ HARD-FAIL nếu: thiếu `Dockerfile`; build file khai `com.h2database`; `application.{yml,properties}` có `jdbc:h2:` hoặc `ddl-auto: create-drop`; hoặc không có file config. → scaffold Dockerfile (multi-stage **Gradle `bootJar`→JRE** — default) + config Postgres + migration (Flyway/Liquibase) NGAY khi dev (không để handoff mới sửa).
 - [ ] Không hardcode secret/URL/credential; configurable value externalize qua `@ConfigurationProperties` (không `private (static) final` literal); không rải `@Value` khi ≥ 2 props cùng prefix.
 - [ ] Error code chỉ từ `api-{boundary}.md`; exception dùng enum/descriptor typed (không hardcode code/message tại throw site).
 - [ ] **springdoc-openapi wired** (`/v3/api-docs` + `/swagger-ui`) khi scaffold, contract khớp `api-{boundary}.md`.

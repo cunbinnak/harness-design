@@ -25,10 +25,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 # Gồm cả back-edge (lùi về stage sở hữu để sửa doc đã frozen).
 STAGE_NEXT_GUIDE = {
     "BOOTSTRAP": "/discovery-start D0 (bắt đầu Discovery)",
-    "DISC_D0": "/discovery-end D0 → D1 · hoặc /discovery-start D0 (refine hypothesis)",
-    "DISC_D1": "/discovery-end D1 → D2 · hoặc /discovery-start D1 (refine capability/persona)",
-    "DISC_D2": "/discovery-end D2 → D3 · hoặc /discovery-start D2 (refine event-storming)",
-    "DISC_D3": "/discovery-end D3 → DOMAIN · hoặc /discovery-start D3 (refine charter/PROJECT)",
+    "DISC_D0": "/discovery-start D1 (gate D0 → sang D1) · hoặc /discovery-start D0 (refine hypothesis)",
+    "DISC_D1": "/discovery-start D2 (gate D1 → sang D2) · hoặc /discovery-start D1 (refine capability/persona)",
+    "DISC_D2": "/discovery-start D3 (gate D2 → sang D3) · hoặc /discovery-start D2 (refine event-storming)",
+    "DISC_D3": "/discovery-end (gate D3 → DOMAIN) · hoặc /discovery-start D3 (refine charter/PROJECT)",
     "DOMAIN_AUTHORING": "/domain-start <EPIC|FEATURE|JOURNEY|BR|PERSONA> (author) · /domain-end → DESIGN",
     "DESIGN": "/design (refine) · /design-end → PLAN · LÙI sửa product: /domain-start <mode> → DOMAIN",
     "PLAN": "/plan → REVIEW · LÙI sửa design: /design → DESIGN",
@@ -118,7 +118,7 @@ PHASE_LOCK_CLASSES = [
     ("discovery", _DISC_STAGES | {_REVIEW},
      re.compile(r"^docs/discovery/|^docs/architecture/PROJECT\.md$")),
     ("domain", {"DOMAIN_AUTHORING", _REVIEW},
-     re.compile(r"^docs/architecture/(epics|feat|journeys|business-rules|personas)/")),
+     re.compile(r"^docs/domain/|^docs/architecture/(epics|feat|journeys|business-rules|personas)/")),
     ("design", {"DESIGN", _REVIEW},
      re.compile(r"^docs/architecture/(adr|hld|api|data-model|ux|events|integrations)/")),
     ("plan", {"PLAN", _REVIEW},
@@ -257,13 +257,19 @@ def validate_return_schema(parsed: dict) -> tuple[bool, list[str]]:
 # Task spawn analysis (PreToolUse Task)
 # ========================================================================
 
-DEV_SPAWN_KEYWORDS = ("start-dev", "fix-bugs", "review-dev")
+# Command spawn agent PHẢI dùng prompt từ build_prompt.py (E-6). Chỉ token ĐẶC THÙ (hyphen, không
+# trùng từ tiếng Anh thường) — KHÔNG thêm "design"/"plan" (false-positive). domain-po/ba/translate
+# thêm theo yêu cầu "ép MAIN dùng build_prompt cho spawn domain".
+DEV_SPAWN_KEYWORDS = (
+    "start-dev", "fix-bugs", "review-dev",
+    "domain-po", "domain-ba", "domain-translate",
+)
 
 
 def detect_dev_spawn(task_prompt: str) -> str | None:
-    """Detect if a Task spawn looks like a dev-related sub-agent.
+    """Detect Task spawn của command-agent (dev/fix/review + domain-po/ba/translate).
 
-    Returns the matched command name or None.
+    Trả command khớp hoặc None. Khớp = phải spawn bằng build_prompt.py output (E-6).
     """
     if not task_prompt:
         return None
@@ -271,6 +277,23 @@ def detect_dev_spawn(task_prompt: str) -> str | None:
     for kw in DEV_SPAWN_KEYWORDS:
         if kw in low or kw.replace("-", "") in low.replace("-", ""):
             return kw
+    return None
+
+
+def detect_harness_agent_spawn(task_prompt: str, agent_names: list[str]) -> str | None:
+    """E-6 chặt: Task spawn nhắc TÊN AGENT harness (registry từ agents/) → phải dùng build_prompt.
+
+    Bao MỌI workflow spawn (dev/fix/review/domain/discovery/design/plan/test) không kẹt từ-thường,
+    ít false-positive (chỉ tên agent THẬT). Explore/research không nhắc tên agent → không khớp.
+    Trả tên agent khớp hoặc None.
+    """
+    if not task_prompt or not agent_names:
+        return None
+    low = task_prompt.lower()
+    for name in agent_names:
+        n = name.lower()
+        if n and n in low:
+            return name
     return None
 
 
@@ -327,11 +350,15 @@ def _selftest() -> int:
     assert phase_lock_violation("services/demo-x/src/A.java", "DEV") is None
     assert phase_lock_violation("docs/architecture/ARCHITECTURE-PRINCIPLES.md", "PLAN") is None
     # next-step hint contextual (arg + back-edge)
-    assert "discovery-end D1" in next_step_hint({"stage": "DISC_D1"})
+    assert "discovery-start D2" in next_step_hint({"stage": "DISC_D1"})  # advance qua start (cơ chế mới)
     assert "/design" in next_step_hint({"stage": "PLAN"})          # back-edge
     assert "domain-start" in next_step_hint({"stage": "DESIGN"})    # back-edge
     assert "header" not in state_header_line({"stage": "PLAN"}, []).lower() or True
     assert "next:" in state_header_line({"stage": "DISC_D0"}, [])
+    # E-6 chặt: detect theo tên agent (registry) — khớp tên thật, không khớp prompt research
+    assert detect_harness_agent_spawn("spawn domain-po-agent author epic", ["domain-po-agent", "dev-x-agent"]) == "domain-po-agent"
+    assert detect_harness_agent_spawn("explore codebase for X", ["domain-po-agent"]) is None
+    assert detect_harness_agent_spawn("anything", []) is None
     print("OK: policies.py selftest passed")
     return 0
 

@@ -52,7 +52,7 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 - [ ] Mỗi wave có goal + boundaries + features + **dependencies từ wave trước** + exit criteria.
 - [ ] **MỌI wave điền đủ `wave_class` + `wave_strategy` + `targets` + §2 block YAML** (gate `wave_sequence_lint` parse: enum + `target_count_per_layer ≤ 3` + strategy layer-purity + vertical `parent_epic` + `inherited_active` file tồn tại — sai field này chặn `/plan`).
 - [ ] Wave 1 mỏng, chạy được **E2E** (foundation + 1 lát core).
-- [ ] **Deferred-scope khai báo tường minh** (G1): AC/feature chủ động hoãn sang wave sau (auth/idempotency/event ở wave CRUD…) ghi vào `## 6 → Deferred to later waves` của `wave-{N}.md` (token `FEAT-NNN[:AC-M]`/`BR-NNN`). Đây là SoT để test-plan tag `@deferred` → test-execute skip → end-wave close sạch (không cần ép `test_result`).
+- [ ] **Deferred-scope khai báo tường minh**: AC/feature chủ động hoãn sang wave sau (auth/idempotency/event ở wave CRUD…) ghi vào `## 6 → Deferred to later waves` của `wave-{N}.md` (token `FEAT-NNN[:AC-M]`/`BR-NNN`). Đây là SoT để test-plan tag `@deferred` → test-execute skip → end-wave close sạch (không cần ép `test_result`).
 - [ ] MATRIX mỗi boundary đủ `kind/prefix/tech/wave/features/depends_on`; `ref_skills[]` suy từ design (event/cache/extra → ref tương ứng; CRUD thuần để rỗng); KG skeleton mọi boundary.
 - [ ] **Không có `TBD` / section trống mơ hồ** — chỗ chưa chốt ghi `Open question` (cần ai quyết + vì sao).
 

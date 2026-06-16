@@ -21,7 +21,10 @@ import state as state_mod  # noqa: E402
 COMMANDS = [
     "discovery-start",
     "discovery-end",
-    "domain-start",
+    "domain-po",
+    "domain-ba",
+    "domain-approve",
+    "domain-translate",
     "domain-end",
     "design",
     "design-end",

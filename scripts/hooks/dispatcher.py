@@ -137,7 +137,20 @@ def _last_assistant_text(payload: dict) -> str:
 # Handlers
 # ========================================================================
 
+# #11: MAIN KHÔNG tự nối lệnh — chỉ 1 `harness <cmd> complete` mỗi user-turn. Marker reset ở
+# UserPromptSubmit/SessionStart (fresh turn); _pre_bash set khi cho qua complete đầu, chặn complete kế.
+TURN_ADVANCE_FLAG = REPO_ROOT / "harness" / ".turn-advance.flag"
+
+
+def _clear_turn_flag() -> None:
+    try:
+        TURN_ADVANCE_FLAG.unlink()
+    except OSError:
+        pass
+
+
 def handle_session_start(payload: dict) -> int:
+    _clear_turn_flag()  # fresh session → reset turn-advance
     state = state_mod.load_state()
     allowed = state_mod.allowed_commands(state)
     brief = policies.format_state_brief(state, allowed)
@@ -145,6 +158,7 @@ def handle_session_start(payload: dict) -> int:
 
 
 def handle_user_prompt_submit(payload: dict) -> int:
+    _clear_turn_flag()  # user gõ → mở 1 lượt mới (1 stage-command)
     state = state_mod.load_state()
     allowed = state_mod.allowed_commands(state)
     return inject_context(policies.state_header_line(state, allowed))
@@ -211,6 +225,17 @@ def _pre_bash(payload: dict) -> int:
     if not ok:
         return pre_tool_deny("Gate sẽ fail:\n  - " + "\n  - ".join(errors))
 
+    # #11: chống MAIN tự nối lệnh — 1 stage-command/user-turn. Gate-fail KHÔNG tiêu cờ (return ở trên).
+    if TURN_ADVANCE_FLAG.exists():
+        return pre_tool_deny(
+            f"MAIN tự nối lệnh — đã chạy 1 stage-command (harness complete) trong lượt này. "
+            f"DỪNG: báo user kết quả + bước kế, CHỜ user gõ lệnh. (Mỗi prompt = 1 stage-command; "
+            f"user muốn đi tiếp thì invoke lệnh kế. Lệnh đang chặn: '{command_id}'.)"
+        )
+    try:
+        TURN_ADVANCE_FLAG.write_text("used", encoding="utf-8")
+    except OSError:
+        pass
     return allow_silent()
 
 
@@ -222,14 +247,38 @@ def _pre_write_edit(payload: dict) -> int:
         )
     # Phase-lock: doc upstream đã qua stage sở hữu → frozen (port ZIP readonly-inputs cho single-repo).
     try:
-        stage = state_mod.load_state().get("stage")
+        st = state_mod.load_state()
     except Exception:
-        stage = None
+        st = {}
+    stage = st.get("stage")
     if stage:
         violation = policies.phase_lock_violation(path, stage)
         if violation:
             return pre_tool_deny(violation)
+    # #12: dev-handoff-agent (infra-only) KHÔNG được sửa services/** — lỗi code/migration/Dockerfile
+    # của boundary → STOP, báo MAIN spawn fix-{boundary}-agent (Mode B). dev-handoff chỉ sửa docker-compose.yml.
+    norm = path.replace("\\", "/").lstrip("./")
+    if (st.get("spawn") or {}).get("active") == "dev-handoff-agent" and norm.startswith("services/"):
+        return pre_tool_deny(
+            f"FM-HANDOFF-NO-CODE-FIX: dev-handoff INFRA-ONLY — KHÔNG sửa '{norm}' (code/migration/config/Dockerfile "
+            "của boundary). Container chết do lỗi này → STOP, đọc `docker compose logs`, báo root-cause + "
+            "spawn `fix-{boundary}-agent` (Mode B) để fix → re-run /dev-handoff. dev-handoff chỉ chỉnh docker-compose.yml."
+        )
     return allow_silent()
+
+
+def _harness_agent_names() -> list[str]:
+    """Registry tên agent harness từ agents/*.md (trừ _template-*/README) — cho E-6 detect."""
+    out: list[str] = []
+    agents_dir = REPO_ROOT / "agents"
+    if not agents_dir.is_dir():
+        return out
+    for p in agents_dir.glob("*-agent.md"):
+        stem = p.stem
+        if stem.startswith("_") or stem.lower().startswith("readme"):
+            continue
+        out.append(stem)
+    return out
 
 
 def _pre_task(payload: dict) -> int:
@@ -243,16 +292,25 @@ def _pre_task(payload: dict) -> int:
     state = state_mod.load_state()
     # Inject reminder via additionalContext (non-blocking)
     prompt = _task_prompt(payload)
-    matched = policies.detect_dev_spawn(prompt)
+    # E-6 chặt: keyword (dev/fix/review/domain) HOẶC tên agent harness (registry agents/).
+    matched = policies.detect_dev_spawn(prompt) or policies.detect_harness_agent_spawn(prompt, _harness_agent_names())
     if matched:
         # E-6: dev/fix/review sub-agent PHẢI spawn bằng prompt từ build_prompt.py (chứa STATE
         # BUNDLE frozen + owned_paths + RETURN SCHEMA). MAIN tự viết tay → dễ sai boundary → block.
         if not policies.looks_like_build_prompt(prompt):
             return pre_tool_deny(
                 f"Spawn '{matched}' sub-agent bằng prompt tự viết tay — PHẢI chạy "
-                f"`py scripts/build_prompt.py {matched} [--boundary ...]` rồi spawn với output đó "
-                "(STATE BUNDLE frozen + owned_paths + RETURN SCHEMA chuẩn). Tránh truyền sai assumption (E-6)."
+                f"`py scripts/build_prompt.py {matched} [--mode/--boundary/...]` rồi spawn với output đó "
+                "(STATE BUNDLE frozen + owned_paths/boot + RETURN SCHEMA chuẩn). MAIN KHÔNG tự build prompt (E-6)."
             )
+        # #12: dev-handoff-agent = infra-only → đánh dấu spawn.active để PreToolUse(Write|Edit) chặn
+        # sửa services/** (lỗi code boundary phải để fix-agent, KHÔNG dev-handoff tự vá).
+        if "dev-handoff-agent" in prompt.lower():
+            try:
+                state.setdefault("spawn", {})["active"] = "dev-handoff-agent"
+                state_mod.save_state(state, updated_by="pre_task:dev-handoff")
+            except Exception:
+                pass
         boundary = state.get("active_boundary")
         reminder = policies.boundary_reminder(boundary)
         # PreToolUse can also use additionalContext for inject without deny
@@ -354,10 +412,12 @@ def _service_hash(folder: Path) -> str:
 def _build_test_cmd(kind: str, folder: Path) -> list[str] | None:
     """Lệnh build+test theo kind, detect build tool. None = không nhận diện được."""
     if kind == "backend":
+        # Gradle = default harness → ưu tiên; Maven chỉ khi ADR chọn (pom.xml).
+        if (folder / "build.gradle").is_file() or (folder / "build.gradle.kts").is_file():
+            gradlew = folder / "gradlew"
+            return [str(gradlew) if gradlew.is_file() else "gradle", "test"]
         if (folder / "pom.xml").is_file():
             return ["mvn", "-q", "-B", "test"]
-        if (folder / "build.gradle").is_file() or (folder / "build.gradle.kts").is_file():
-            return ["./gradlew", "test"]
     elif kind in ("bff", "web"):
         if (folder / "package.json").is_file():
             return ["npm", "test", "--silent"]
