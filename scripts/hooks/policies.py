@@ -258,11 +258,12 @@ def validate_return_schema(parsed: dict) -> tuple[bool, list[str]]:
 # ========================================================================
 
 # Command spawn agent PHẢI dùng prompt từ build_prompt.py (E-6). Chỉ token ĐẶC THÙ (hyphen, không
-# trùng từ tiếng Anh thường) — KHÔNG thêm "design"/"plan" (false-positive). domain-po/ba/translate
-# thêm theo yêu cầu "ép MAIN dùng build_prompt cho spawn domain".
+# trùng từ tiếng Anh thường) — KHÔNG thêm "design"/"plan" bare (false-positive). domain-po/ba/translate
+# + test-plan/test-execute thêm theo yêu cầu "ép MAIN dùng build_prompt, KHÔNG tự build prompt spawn".
 DEV_SPAWN_KEYWORDS = (
     "start-dev", "fix-bugs", "review-dev",
     "domain-po", "domain-ba", "domain-translate",
+    "test-plan", "test-execute",
 )
 
 
@@ -359,6 +360,12 @@ def _selftest() -> int:
     assert detect_harness_agent_spawn("spawn domain-po-agent author epic", ["domain-po-agent", "dev-x-agent"]) == "domain-po-agent"
     assert detect_harness_agent_spawn("explore codebase for X", ["domain-po-agent"]) is None
     assert detect_harness_agent_spawn("anything", []) is None
+    # E-6 keyword: test-plan/test-execute ép build_prompt (chống MAIN tự build prompt spawn test)
+    assert detect_dev_spawn("spawn agent tạo test-plan cho wave") == "test-plan"
+    assert detect_dev_spawn("run test-execute black-box trên hệ thống") == "test-execute"
+    assert detect_dev_spawn("review the test plan document") is None  # space-form KHÔNG khớp (không false-positive)
+    # build_prompt-signed output cho test PHẢI pass (không bị block)
+    assert looks_like_build_prompt("# SPAWN PROMPT — /test-execute\n...") is True
     print("OK: policies.py selftest passed")
     return 0
 
