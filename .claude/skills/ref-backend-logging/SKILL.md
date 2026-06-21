@@ -46,18 +46,19 @@ logging:
     org.hibernate.SQL: ${SQL_LOG_LEVEL:WARN}
 ```
 
-## 2. Logger usage (SLF4J)
+## 2. Logger usage (SLF4J qua `@Slf4j`)
 
 ```java
-public class OrderService {
-    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
-
+@Slf4j                       // Lombok tạo field `log` — KHÔNG tự khai LoggerFactory.getLogger(...)
+@Service
+class OrderServiceImpl implements OrderService {
     void create(...) {
         log.info("order created id={} tenant={}", orderId, tenantId);   // parameterized, KHÔNG concat chuỗi
         log.debug("order payload size={}", lines.size());               // chi tiết dev -> DEBUG
     }
 }
 ```
+- **Logger BẮT BUỘC qua `@Slf4j`** (Lombok) — KHÔNG `private static final Logger log = LoggerFactory.getLogger(...)` thủ công (đồng bộ `rules-backend`: DI dùng `@RequiredArgsConstructor`, logger dùng `@Slf4j`).
 - **Levels:** `ERROR` (cần can thiệp) · `WARN` (bất thường có thể chịu được) · `INFO` (mốc nghiệp vụ) · `DEBUG` (chi tiết dev).
 - Dùng placeholder `{}`, KHÔNG `"... " + var` (tránh tạo chuỗi khi level tắt).
 - KHÔNG `System.out.println` / `printStackTrace()`.
@@ -104,9 +105,9 @@ log.info("notify email={}", Masks.email(email)); // mask khi buộc phải log: 
 - Lỗi hệ thống ngoài dự kiến → `ERROR` + stacktrace (exception là tham số CUỐI, không nhét vào `{}`).
 
 ```java
+@Slf4j                       // KHÔNG LoggerFactory.getLogger(...) thủ công
 @RestControllerAdvice
 class GlobalExceptionHandler {
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(BusinessException.class)
     ResponseEntity<ErrorResponse> handleBusiness(BusinessException e) {

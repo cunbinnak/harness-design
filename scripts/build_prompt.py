@@ -854,7 +854,7 @@ def build_dev_handoff(state: dict, matrix: list[dict], opts: dict) -> str:
             "Invoke skill `infra-local-dev`.",
             "**dev-handoff = INFRA-ONLY:** CHỈ sửa `docs/architecture/infra/docker-compose.yml`. **TUYỆT ĐỐI KHÔNG sửa `services/{boundary}/**`** (Dockerfile/src/config/migration) — hook chặn. Dockerfile do dev scaffold (gate code_compliance); thiếu/sai → STOP + fix-agent.",
             "Update docs/architecture/infra/docker-compose.yml thêm service mới (nếu chưa có) + env khớp app đọc.",
-            f"`docker-compose up -d --build` → services healthy + **verify cross-boundary connectivity** (caller→callee qua service name theo INTEG-INT/depends_on).",
+            f"`docker-compose up -d --build` → services healthy + **verify cross-boundary connectivity** (caller→callee qua service name theo INTEG-INT/depends_on). **Tận dụng lại service wave trước:** `up -d` idempotent — service đã có (wave trước `end-wave` chỉ `stop`, GIỮ image+volume) → khởi động lại NHANH từ image+volume cũ; chỉ boundary MỚI/đổi mới build+tạo. KHÔNG `down` trước (giữ data wave trước).",
             f"**MAIN/orchestrator chạy `py scripts/capture_infra_proof.py`** (HARNESS đo) → `tracking/{wave_id}/docker-ps.json` (infra_proof) + `health-proof.json` (health_proof: curl /health/ready 2xx). Service chưa UP → exit !=0.",
             "**Service chưa healthy → `docker compose logs <svc>` chẩn ROOT-CAUSE:** (a) lỗi compose/env → sửa docker-compose.yml + up lại; (b) **lỗi code/migration/config/Dockerfile trong `services/{boundary}/`** (tên/kiểu cột migration sai, thiếu HealthController, healthcheck curl trên image không có curl…) → **STOP, báo MAIN spawn `fix-{boundary}-agent` (Mode B)** kèm root-cause → fix → re-run /dev-handoff. KHÔNG tự sửa code.",
             f"Verify build local boundary `{boundary_id}` pass (đọc kết quả, KHÔNG sửa source).",
@@ -932,17 +932,21 @@ def build_end_wave(state: dict, matrix: list[dict], opts: dict) -> str:
         "\nAgent: **end-wave-agent** · Soft close wave sau UAT signed.",
         state_bundle(state),
         NON_NEGOTIABLES,
-        skills_block([]),
+        skills_block(["infra-local-dev"]),
         docs_to_read([
             ("Bugs", f"tracking/{wave_id}/bugs.md"),
             ("Test report", f"tracking/{wave_id}/test-report.md"),
             ("QC signoff", f"tracking/{wave_id}/qc-signoff.md"),
+            ("docker-compose", "docs/architecture/infra/docker-compose.yml"),
         ]),
         tasks_block([
             f"Verify `tracking/{wave_id}/bugs.md` không còn bug status != closed.",
             f"Write `tracking/{wave_id}/qc-signoff.md` với checklist + UAT signoff.",
             "Update KG execution_history per boundary: status=COMPLETED + end_date + deliverables.",
-            "Return RETURN SCHEMA với `uat_signed: true`.",
+            "**Tắt service (UAT đã xong ở MANUAL_TEST):** `docker compose -f docs/architecture/infra/docker-compose.yml stop` "
+            "— dừng container nhưng **GIỮ image + volume** (data) để wave kế `dev-handoff` `up -d` khởi động lại NHANH (reuse). "
+            "KHÔNG `down --volumes` (đó là `/done-wave` hard-close). Infra-dep (postgres/redis/kafka) cũng stop cùng.",
+            "Return RETURN SCHEMA với `uat_signed: true` + `infra_stopped: true`.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
     ]

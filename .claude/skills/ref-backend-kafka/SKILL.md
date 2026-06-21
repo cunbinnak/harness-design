@@ -84,12 +84,10 @@ public interface EventPublisher {
 
 // impl
 @Service
+@RequiredArgsConstructor                            // KHÔNG viết constructor tay
 class KafkaEventPublisher implements EventPublisher {
     private final KafkaTemplate<String, Object> template;
     private final KafkaTopics topics;
-    KafkaEventPublisher(KafkaTemplate<String, Object> template, KafkaTopics topics) {
-        this.template = template; this.topics = topics;
-    }
     @Override
     public void publish(String topicKey, String partitionKey, Object event) {
         template.send(topics.of(topicKey), partitionKey, event);   // partitionKey giữ ordering theo entity
@@ -100,6 +98,7 @@ class KafkaEventPublisher implements EventPublisher {
 ```java
 // PUBLISH AFTER-COMMIT: service phát domain event; chỉ gửi Kafka khi DB đã commit
 @Service
+@RequiredArgsConstructor
 class OrderCommandService {
     private final OrderRepository repository;
     private final ApplicationEventPublisher domainEvents;   // Spring in-process
@@ -112,9 +111,9 @@ class OrderCommandService {
 }
 
 @Component
+@RequiredArgsConstructor
 class OrderEventRelay {
     private final EventPublisher publisher;
-    OrderEventRelay(EventPublisher publisher) { this.publisher = publisher; }
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)   // chỉ gửi sau commit
     void on(OrderCreatedEvent e) {
         publisher.publish("order-created", String.valueOf(e.orderId()), e);
@@ -126,14 +125,11 @@ class OrderEventRelay {
 
 ```java
 @Component
+@RequiredArgsConstructor
 class OrderEventConsumer {
 
     private final ProcessedEventStore processed;   // dedup store (DB/Redis)
     private final OrderProjectionService projection;
-
-    OrderEventConsumer(ProcessedEventStore processed, OrderProjectionService projection) {
-        this.processed = processed; this.projection = projection;
-    }
 
     @KafkaListener(topics = "#{@kafkaTopics.of('order-created')}", groupId = "${spring.kafka.consumer.group-id}")
     void onOrderCreated(OrderCreatedEvent event, Acknowledgment ack) {

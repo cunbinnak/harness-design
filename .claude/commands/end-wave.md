@@ -13,7 +13,7 @@ gates: [{type: flag, field: uat_signed, expected: true}, {type: test_passed}, {t
 
 ## Mục đích
 
-UAT đã signed off, không còn open bug, **test-execute cuối xanh**. Soft close: wave kết thúc logic, infra vẫn UP cho post-mortem.
+UAT đã signed off, không còn open bug, **test-execute cuối xanh**. Soft close: wave kết thúc logic + **tắt service** (`docker compose stop` — giữ image+volume cho wave kế reuse nhanh). KHÔNG `down --volumes` (đó là `/done-wave` hard-close).
 
 ## Build prompt + spawn
 

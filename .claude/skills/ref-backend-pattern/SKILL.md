@@ -31,7 +31,7 @@ services/{prefix}-{boundary}/src/main/java/.../{boundary}/
 │   └── {Resource}Controller.java           # map request/response, validation annotation, gọi service
 ├── service/
 │   ├── {Resource}Service.java              # interface use case
-│   └── impl/{Resource}ServiceImpl.java     # @Service, @Transactional, business logic, constructor injection
+│   └── impl/{Resource}ServiceImpl.java     # @Service, @Transactional, business logic, @RequiredArgsConstructor injection
 ├── repository/
 │   └── {Resource}Repository.java           # Spring Data JPA interface (JPQL/Specification, no nativeQuery)
 ├── entities/                               # JPA @Entity (KHÔNG để 'model')
@@ -131,19 +131,18 @@ tests/{unit,integration}
 - **Repository**:
   - Layered: Spring Data interface `{Resource}Repository extends JpaRepository<…>` — auto-impl (custom query phức tạp → `{Resource}RepositoryCustom` + impl đi kèm).
   - Hexagonal: outbound port `application/port/out/{X}Port` impl bởi adapter `adapter/out/persistence/{X}PersistenceAdapter` (DIP).
-- **Injection**: constructor (`final` field), KHÔNG `@Autowired` trên field/setter.
+- **Injection**: `@RequiredArgsConstructor` + `private final` — **Lombok sinh constructor, KHÔNG tự viết constructor tay**, KHÔNG `@Autowired` trên field/setter.
 
 ```java
 // service/{Resource}Service.java + service/impl/{Resource}ServiceImpl.java  (Layered)
 public interface OrderService { OrderResponse create(OrderRequest req); }
 
 @Service
+@RequiredArgsConstructor                     // Lombok sinh constructor từ field `final` — KHÔNG viết constructor tay
 class OrderServiceImpl implements OrderService {
     private final OrderRepository repository;
     private final OrderMapper mapper;
-    OrderServiceImpl(OrderRepository repository, OrderMapper mapper) {   // constructor injection
-        this.repository = repository; this.mapper = mapper;
-    }
+    // KHÔNG khai constructor tay, KHÔNG @Autowired field/setter
 }
 
 // repository/OrderRepository.java  (Spring Data — auto-impl, JPQL khi cần)

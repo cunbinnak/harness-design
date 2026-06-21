@@ -1,7 +1,7 @@
 # Dev Handoff — {wave-id}
 
 > **Purpose:** Bàn giao wave từ dev → QA → stakeholder UAT. Chứa thông tin **runtime/operational** để vận hành + test.
-> **Owner:** §1-§4 `dev-handoff` agent; §5 `end-wave` agent (UAT guide); §6 `done-wave` agent (final sign-off).
+> **Owner:** §1-§5 `dev-handoff` agent (§5 = UAT guide cho stakeholder chạy ở MANUAL_TEST); §8 `end-wave` (Wave Shipped + tắt service); §8 `done-wave` (Wave Done, teardown).
 > **Audience:** `test-execute`, stakeholder UAT, `done-wave`.
 > **Out of scope:**
 > - Architecture → `docs/architecture/hld/`
@@ -54,7 +54,7 @@ curl http://localhost:{PORT}/health   # expect 200
 
 Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
 
-## 5. UAT Instructions (sau `end-wave`)
+## 5. UAT Instructions (ở MANUAL_TEST — TRƯỚC `end-wave`)
 
 > Stakeholder/QA verify ở stage MANUAL_TEST. Bug log → `tracking/wave-{N}/bugs.md` với `origin: manual`.
 
@@ -93,8 +93,8 @@ Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
 
 - **Date:** {date}
 - **Released by:** dev team
-- **Manual test ready:** yes
-- **Infra status:** Running (do NOT stop until done-wave)
+- **Manual test ready:** yes (UAT chạy ở MANUAL_TEST, TRƯỚC end-wave)
+- **Infra status:** Stopped via `docker compose stop` (container dừng; image+volume GIỮ → wave kế `dev-handoff` reuse khởi động nhanh). Cần inspect lại → `docker compose start`. `done-wave` mới `down --volumes`.
 
 ### Wave Done (sau `done-wave`)
 

@@ -23,7 +23,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "SessionStart"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "SessionStart"
+            ]
           }
         ]
       }
@@ -34,7 +38,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "UserPromptSubmit"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "UserPromptSubmit"
+            ]
           }
         ]
       }
@@ -45,7 +53,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "Notification"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "Notification"
+            ]
           }
         ]
       }
@@ -56,7 +68,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "PreCompact"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "PreCompact"
+            ]
           }
         ]
       }
@@ -68,7 +84,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "PreToolUse"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "PreToolUse"
+            ]
           }
         ]
       },
@@ -78,7 +98,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "PreToolUse"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "PreToolUse"
+            ]
           }
         ]
       },
@@ -88,7 +112,25 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "PreToolUse"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "PreToolUse"
+            ]
+          }
+        ]
+      },
+      {
+        "matcher": "Skill|SlashCommand",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py",
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "PreToolUse"
+            ]
           }
         ]
       }
@@ -100,7 +142,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "PostToolUse"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "PostToolUse"
+            ]
           }
         ]
       }
@@ -111,7 +157,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "SubagentStop"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "SubagentStop"
+            ]
           }
         ]
       }
@@ -122,7 +172,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "Stop"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "Stop"
+            ]
           }
         ]
       }
@@ -133,7 +187,11 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["scripts/hooks/dispatcher.py", "--event", "SessionEnd"]
+            "args": [
+              "scripts/hooks/dispatcher.py",
+              "--event",
+              "SessionEnd"
+            ]
           }
         ]
       }

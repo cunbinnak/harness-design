@@ -135,15 +135,12 @@ public interface RedisService {
 
 ```java
 @Service
+@RequiredArgsConstructor                                   // KHÔNG viết constructor tay
 class RedisServiceImpl implements RedisService {
 
     private final RedisTemplate<String, Object> redis;     // Object → JSON (serializer ở RedisConfig)
     private final StringRedisTemplate stringRedis;         // counter / lock (raw)
     private final CacheProperties props;
-
-    RedisServiceImpl(RedisTemplate<String, Object> redis, StringRedisTemplate stringRedis, CacheProperties props) {
-        this.redis = redis; this.stringRedis = stringRedis; this.props = props;
-    }
 
     // ---- Value (serialize Object tự động) ----
     public void set(String key, Object value) { redis.opsForValue().set(key, value); }

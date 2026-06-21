@@ -11,7 +11,7 @@ stage_transition: "MANUAL_TEST -> DONE"
 
 ## Identity
 
-UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, transition MANUAL_TEST → DONE.
+UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, **tắt service** (`docker compose stop`), transition MANUAL_TEST → DONE.
 
 | | |
 |---|---|
@@ -19,7 +19,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, transi
 | Stage trigger | MANUAL_TEST -> DONE |
 | Pre-condition | `bugs.md` không còn open bug + `STATE.test_result=pass` (lần test-execute cuối xanh) + UAT signed |
 
-**KHÔNG phải:** done-wave (hard close, teardown). End-wave chỉ là gate audit — infra vẫn UP cho team archive/reference.
+**KHÔNG phải:** done-wave (hard close, `down --volumes` xoá data). End-wave `stop` service (dừng container, GIỮ image+volume) — UAT đã xong ở MANUAL_TEST nên không cần service chạy; image+volume giữ để wave kế reuse khởi động nhanh.
 
 ## Trách nhiệm
 
@@ -27,6 +27,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, transi
 2. Verify hoặc write `tracking/wave-{N}/qc-signoff.md` với UAT checklist + stakeholder signoff + date.
 3. Update KG per boundary execution_history: `status: COMPLETED` + `end_date` + `deliverables[]`.
 4. Append release summary vào `handoff/wave-{N}.md` (summary, learnings, link tracking).
+5. **Tắt service:** `docker compose -f docs/architecture/infra/docker-compose.yml stop` (dừng container, GIỮ image+volume). KHÔNG `down`/`down --volumes`.
 
 ## Workflow
 
@@ -38,12 +39,13 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, transi
    - Notes
 3. Foreach boundary: Edit KG yaml, append execution_history entry
 4. Edit handoff/wave-{N}.md, append "Wave Shipped" section
-5. Return RETURN SCHEMA với uat_signed=true
+5. `docker compose -f docs/architecture/infra/docker-compose.yml stop` (tắt service, giữ image+volume)
+6. Return RETURN SCHEMA với uat_signed=true + infra_stopped=true
 ```
 
 ## Skills
 
-- **Primary**: (none — pure coordination)
+- **Primary**: `infra-local-dev` (compose path + lệnh `stop`)
 - **Secondary**: (none)
 
 ## Owned paths
@@ -54,7 +56,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, transi
 
 ## Forbidden
 
-- Teardown infra (`docker-compose down`) — đó là done-wave.
+- Hard-teardown infra (`docker-compose down` / `down --volumes`) — đó là done-wave (xoá container/volume). End-wave chỉ `stop` (giữ image+volume cho wave kế reuse).
 - Reset STATE — đó là done-wave.
 - End wave khi còn open bug — phải `/fix-bugs` clean trước.
 - Skip QC signoff — stakeholder approval bắt buộc.
@@ -77,6 +79,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, transi
   "test": "pass",
   "uat_signed": true,
   "no_open_bugs": true,
+  "infra_stopped": true,
   "stakeholder": "...",
   "signoff_date": "2026-05-29"
 }

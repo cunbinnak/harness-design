@@ -6,7 +6,7 @@ Dispatcher routes to handlers in policies.py, formats output per Claude Code spe
 
 Events handled:
   SessionStart, UserPromptSubmit, Notification, PreCompact, SessionEnd
-  PreToolUse (Bash | Write|Edit|MultiEdit | Task)
+  PreToolUse (Bash | Write|Edit|MultiEdit | Task | Skill|SlashCommand)
   PostToolUse (Bash)
   SubagentStop, Stop
 
@@ -119,6 +119,21 @@ def _task_prompt(payload: dict) -> str:
     return str(ti.get("prompt") or ti.get("description") or "")
 
 
+def _skill_name(payload: dict) -> str:
+    """Tên skill/slash-command MAIN gọi qua Skill/SlashCommand tool.
+
+    Skill tool input: `skill`. SlashCommand tool input: `command` (vd '/dev-handoff arg').
+    Chuẩn hoá: bỏ '/' đầu, bỏ namespace 'plugin:', lấy token đầu (tên lệnh, bỏ arg)."""
+    ti = _tool_input(payload)
+    raw = str(ti.get("skill") or ti.get("command") or ti.get("name") or "").strip()
+    if not raw:
+        return ""
+    raw = raw.lstrip("/")
+    raw = raw.split()[0] if raw.split() else ""   # bỏ arg sau khoảng trắng
+    raw = raw.split(":")[-1]                        # 'plugin:skill' → 'skill'
+    return raw
+
+
 def _last_assistant_text(payload: dict) -> str:
     for key in (
         "last_assistant_message",
@@ -199,6 +214,34 @@ def handle_pre_tool_use(payload: dict) -> int:
         return _pre_write_edit(payload)
     if tool in ("Task", "Agent", "Subagent"):
         return _pre_task(payload)
+    if tool in ("Skill", "SlashCommand"):
+        return _pre_skill(payload)
+    return allow_silent()
+
+
+def _pre_skill(payload: dict) -> int:
+    """Chặn MAIN TỰ chạy harness slash-command (auto-nối pipeline ở auto mode).
+
+    Harness slash-command = HÀNH ĐỘNG CỦA USER: user GÕ `/test-plan` → pre-loaded (MAIN KHÔNG gọi
+    Skill tool). MAIN gọi Skill/SlashCommand tool để chạy `/dev-handoff`,`/test-plan`,`/test-execute`…
+    = TỰ NỐI LỆNH → deny. (Lỗ hổng cũ: invoke slash-command fire UserPromptSubmit → reset turn-flag →
+    `harness complete` kế lọt. Chặn NGAY tại nguồn, trước khi slash-command kịp reset cờ.)
+    Skill ngoài-harness (research/code-review/…) KHÔNG trong GATE_RULES → cho qua.
+    """
+    name = _skill_name(payload)
+    if not name:
+        return allow_silent()
+    try:
+        import gates
+        harness_cmds = set(gates.GATE_RULES)
+    except Exception:
+        return allow_silent()  # fail-open
+    if name in harness_cmds:
+        return pre_tool_deny(
+            f"MAIN tự chạy slash-command '/{name}' — KHÔNG được (NON-NEGOTIABLE: MAIN KHÔNG TỰ NỐI LỆNH). "
+            f"Harness slash-command là hành động USER GÕ (pre-loaded). MAIN chỉ chạy `harness <cmd> complete` "
+            f"cho lệnh user đã gõ rồi DỪNG, báo bước kế, CHỜ user gõ lệnh tiếp. Muốn '/{name}' chạy → bảo user gõ."
+        )
     return allow_silent()
 
 
@@ -533,6 +576,39 @@ HANDLERS = {
 }
 
 
+def _selftest() -> int:
+    """Hermetic test cho _pre_skill (chặn MAIN tự chạy harness slash-command) + _skill_name."""
+    import io, contextlib
+    import gates
+    # _skill_name parsing
+    assert _skill_name({"tool_input": {"skill": "test-plan"}}) == "test-plan"
+    assert _skill_name({"tool_input": {"command": "/dev-handoff order-mgmt"}}) == "dev-handoff"
+    assert _skill_name({"tool_input": {"skill": "plugin:test-execute"}}) == "test-execute"
+    assert _skill_name({"tool_input": {}}) == ""
+
+    def _cap(payload):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _pre_skill(payload)
+        return buf.getvalue()
+
+    # harness slash-command MAIN tự gọi → deny
+    for cmd in ("test-plan", "test-execute", "dev-handoff", "start-wave"):
+        out = _cap({"tool_name": "Skill", "tool_input": {"skill": cmd}})
+        assert '"permissionDecision": "deny"' in out and cmd in out, f"{cmd}: {out!r}"
+    out = _cap({"tool_name": "SlashCommand", "tool_input": {"command": "/test-plan"}})
+    assert '"permissionDecision": "deny"' in out, out
+    # skill ngoài-harness → allow (no output)
+    for other in ("deep-research", "code-review", "verify"):
+        assert _cap({"tool_name": "Skill", "tool_input": {"skill": other}}) == "", other
+    # empty → allow
+    assert _cap({"tool_name": "Skill", "tool_input": {}}) == ""
+    # sanity: GATE_RULES chứa harness cmds
+    assert {"dev-handoff", "test-plan", "test-execute"} <= set(gates.GATE_RULES)
+    print("OK: dispatcher.py selftest passed")
+    return 0
+
+
 def main() -> int:
     # UTF-8 console on Windows
     if hasattr(sys.stdout, "reconfigure"):
@@ -543,8 +619,13 @@ def main() -> int:
             pass
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("--event", required=True, choices=sorted(HANDLERS))
+    ap.add_argument("--event", choices=sorted(HANDLERS))
+    ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
+    if args.selftest:
+        return _selftest()
+    if not args.event:
+        ap.error("--event is required (or --selftest)")
 
     payload = _read_payload()
     handler = HANDLERS[args.event]
