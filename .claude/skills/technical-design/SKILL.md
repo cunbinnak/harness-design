@@ -56,6 +56,8 @@ Mỗi concern ghi rõ ở ADR / HLD / API (không để hở):
 - [ ] Backend boundary có data-model **theo TEMPLATE.data-model** (mỗi bảng có mục đích; no FK — liên kết qua id; state machine cho entity có status); FE boundary có UX.
 - [ ] Boundary phát/nhận event có `{boundary}-events.md`.
 - [ ] Ref FEAT/EP/BR/persona bằng id canonical ĐẦY ĐỦ (`FEAT-{prefix}-NNN`, `PERSONA-{prefix}-NNN`…), KHÔNG rút gọn (`FEAT-NNN`) — tránh ID drift, giữ traceability resolve được.
+- [ ] **Trả nợ TODO-engineer (gate `todo_resolved` @/design-end):** mọi `TODO engineer` / `TBD (DESIGN)` translator để lại trong eng feat/BR đã ĐIỀN — BR `enforcement_location` chỉ đúng nơi enforce (api/data-model/event handler), FEAT `consumes_contracts` trỏ contract thật. Chưa chốt → Open question có chủ, KHÔNG để TBD.
+- [ ] **Contract frontmatter khớp topology (gate `contract_graph_parity` @/plan):** api-*.md `producer`/`consumers[]`, INTEG-INT `consumer`/`producer`, events subscriber dùng đúng `boundary_id` — sẽ bị đối chiếu MATRIX depends_on 2 chiều.
 - [ ] ≥ 1 integration thật (INTEG-INT / INTEG-EXT).
 - [ ] Enterprise concerns đều addressed: auth · observability · resilience · caching · rate limit · idempotency · health check.
 - [ ] `infra/docker-compose.yml` skeleton có service cho boundary trong scope.

@@ -100,6 +100,20 @@ def is_protected_file(rel_path: str) -> bool:
     return normalized in PROTECTED_PATHS
 
 
+# Proof file do capture_infra_proof.py (HARNESS đo) sinh — agent KHÔNG được Write/Edit tay.
+# tracking/** nói chung ghi tự do (report/bugs/registry), nhưng 3 file này là BẰNG CHỨNG máy đo
+# cho gate infra_proof/health_proof/api_contract_proof — ghi tay được thì cả tầng harness-đo
+# đứng trên thư mục ghi-tự-do (agent fake proof sau khi script chạy).
+PROOF_FILE_RE = re.compile(r"^tracking/[^/]+/(docker-ps|health-proof|api-proof)\.json$")
+
+
+def is_proof_file(rel_path: str) -> bool:
+    """True nếu path là proof file harness-đo (chỉ capture_infra_proof.py được sinh)."""
+    if not rel_path:
+        return False
+    return bool(PROOF_FILE_RE.match(rel_path.replace("\\", "/").lstrip("./")))
+
+
 # ------------------------------------------------------------------------
 # Doc phase-lock (single-repo port của ZIP `pretooluse-readonly-inputs.py`)
 # ------------------------------------------------------------------------
@@ -350,6 +364,15 @@ def _selftest() -> int:
     assert phase_lock_violation("tracking/wave-001/bugs.md", "TEST_EXECUTE") is None
     assert phase_lock_violation("services/demo-x/src/A.java", "DEV") is None
     assert phase_lock_violation("docs/architecture/ARCHITECTURE-PRINCIPLES.md", "PLAN") is None
+    # proof file harness-đo: agent KHÔNG được ghi tay (FM-PROOF-FORGE); tracking khác vẫn tự do
+    assert is_proof_file("tracking/wave-001/health-proof.json") is True
+    assert is_proof_file("tracking/wave-001/docker-ps.json") is True
+    assert is_proof_file("tracking/wave-012/api-proof.json") is True
+    assert is_proof_file("tracking\\wave-001\\health-proof.json") is True  # path Windows
+    assert is_proof_file("tracking/wave-001/test-report.md") is False
+    assert is_proof_file("tracking/wave-001/bugs.md") is False
+    assert is_proof_file("tracking/doc-review-findings.md") is False
+    assert is_proof_file("docs/health-proof.json") is False
     # next-step hint contextual (arg + back-edge)
     assert "discovery-start D2" in next_step_hint({"stage": "DISC_D1"})  # advance qua start (cơ chế mới)
     assert "/design" in next_step_hint({"stage": "PLAN"})          # back-edge

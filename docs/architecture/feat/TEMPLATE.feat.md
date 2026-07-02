@@ -17,7 +17,8 @@ outcome_persona: "PERSONA-{{PREFIX}}-{{NNN}}"   # persona CHÍNH nhận outcome
 demo_signature: "{{1 câu: demo gì để CHỨNG MINH feature đạt (anti-gaming) — nguồn cho wave demo_target}}"
 target_boundary_hint: "{{boundary name (kind backend/web/mobile) hoặc TBD}}"
 has_ui_touchpoint: true
-source: domain-author
+source: "docs/domain/feat/FEAT-{{PREFIX}}-{{NNN}}.md"   # file business nguồn (translator điền — gate translation_parity @domain-end đối chiếu 1-1)
+domain_source_id: "FEAT-{{PREFIX}}-{{NNN}}"
 last_reviewed: "{{YYYY-MM-DD}}"
 ---
 

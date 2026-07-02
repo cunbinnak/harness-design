@@ -9,7 +9,8 @@ owner_authority: business
 owner: "{{người chịu trách nhiệm persona — single-person: chính bạn}}"
 persona_kind: "primary | secondary | beneficiary | anti-persona"
 persona_pool_ref: "docs/discovery/persona-pool.md#{{persona-row-anchor}}"   # gốc D1
-source: domain-author
+source: "docs/domain/personas/PERSONA-{{PREFIX}}-{{NNN}}.md"   # file business nguồn (translator điền — gate translation_parity @domain-end đối chiếu 1-1)
+domain_source_id: "PERSONA-{{PREFIX}}-{{NNN}}"
 last_reviewed: "{{YYYY-MM-DD}}"
 ---
 

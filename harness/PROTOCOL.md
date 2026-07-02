@@ -90,26 +90,31 @@ py scripts/harness.py <command> complete '<evidence-json>'
 
 Evidence là input cho gates.py check tại moment complete. Pass → state transition (cập nhật stage + last_completed).
 
+> **SoT = `scripts/gates.py` `GATE_RULES`** — bảng dưới là bản tóm tắt đọc-cho-người; lệch → GATE_RULES thắng. Mọi content-gate force-bypass được (`force:true,reason` → audit `tracking/decisions.md`).
+
 | Command | Gate chính (gates.py) |
 |---------|----------------------|
-| `discovery-start` | `wave` non-empty (D0..D3) |
-| `discovery-end` | `discovery_wave` — `discovery_gate.py <wave>` check artifact disk (force-bypass + reason) |
-| `domain-start` | `mode` non-empty (EPIC/FEATURE/JOURNEY/BR/PERSONA) |
-| `domain-end` | `domain_gate` — ≥1 epic + ≥1 feat + ≥1 BR ở docs/architecture/ |
-| `design` | `design_gate` — ADR≥3 + HLD + API + INTEG |
-| `plan` | `plan_gate` — WAVE-SEQUENCE + MATRIX + wave-*.md + KG skeleton |
-| `review-document` | `feedback_processed: true` |
-| `approve-document` | `approved: true` |
-| `start-wave` | `approved: true` + `wave_n >= 1` + MATRIX file tồn tại |
+| `discovery-start` | `wave` non-empty (D0..D3) + `discovery_advance` (nhảy tiến → gate wave đang rời; refine/first-entry miễn) |
+| `discovery-end` | `discovery_wave` — `discovery_gate.py D3` check artifact disk |
+| `domain-po` / `domain-ba` | `mode` non-empty (EPIC/FEATURE/JOURNEY · BR/PERSONA) |
+| `domain-approve` | `domain_no_jargon` — business doc plain nghiệp vụ (no code/SQL/API/class) mới ký được |
+| `domain-translate` | `domain_signed` — MỌI business doc docs/domain/ đã `status: APPROVED` (ký TRƯỚC dịch SAU) |
+| `domain-end` | `domain_gate` (≥1 eng epic+feat+BR) + `planning_lint` (field bắt buộc + ref-integrity) + `translation_parity` (business đã ký ↔ eng doc 1-1 qua `source`/`domain_source_id`; eng epics/feat/BR không nguồn = mồ côi) |
+| `design` | (self-loop refine — KHÔNG gate, KHÔNG advance) |
+| `design-end` | `design_gate` (ADR≥3 + INTEG≥1 + per-boundary completeness: backend/bff→hld+api, web/mobile→hld+ux + design-tokens.css khi có web) + `todo_resolved` (marker `TODO engineer`/`TBD (DESIGN)` trong eng feat/BR đã điền hết) |
+| `plan` | `plan_gate` (WAVE-SEQUENCE + MATRIX + wave-*.md + KG) + `planning_lint` + `plan_integrity` (FEAT-id MATRIX có file + **FEAT mồ côi**: FEAT-*.md phải vào features[] boundary nào đó + depends_on no-cycle) + `matrix_coherence` (MATRIX phủ đủ BOUNDARY-MAP đúng kind) + `api_transport` (tenant-id qua header/JWT, không query) + `wave_sequence_lint` (§wave-NNN enum/cap/purity) + `contract_graph_parity` (api consumers[]/INTEG/events subscribers ↔ MATRIX depends_on 2 chiều) |
+| `review-document` | `feedback_processed: true` (revision mode; no-arg = sanity-check ghi doc-review-findings.md) |
+| `approve-document` | `doc_review` (sanity-check đã chạy + không gap BLOCKER/MAJOR open) + `approved: true` |
+| `start-wave` | `approved: true` + `wave_n ≥ 1` + MATRIX tồn tại + `wave_in_matrix` (wave có boundary) |
 | `start-dev` | `boundary` ∈ `wave_boundaries` |
-| `review-dev` | `no_open_findings` — reject complete nếu review-findings.md còn row BLOCKER/MAJOR status=open (review_results vẫn ghi vào STATE cho gate dev-handoff) |
-| `dev-handoff` | `all_boundaries_reviewed` — mọi `wave_boundaries` review pass + coverage theo kind (BE80/BFF70/web60/mobile60) đọc từ STATE.review_results (KHÔNG check infra — infra-proof là gate test-plan) |
-| `test-plan` | `docker_compose_ok: true` + `connectivity_ok` + infra proof |
-| `test-execute` | `test_cases_count >= 1` |
+| `review-dev` | `review_results` non-empty (chống complete `{}` làm STATE rỗng) + `no_open_findings` (review-findings.md hết row BLOCKER/MAJOR open) |
+| `dev-handoff` | `all_boundaries_reviewed` (mọi wave boundary pass + coverage BE80/BFF70/web·mobile60 — **harness derive từ coverage report thật** khi service đã scaffold, không tin số tự khai) + `infra_proof` (docker-ps.json: State=running content-validated) + `health_proof` (health-proof.json HARNESS curl /health/ready 2xx) + `code_compliance` (backend: cấm H2/create-drop, bắt Dockerfile + base config + ≥1 profile) + `web_styling` (FE có styling thật; plain-CSS dùng `var(--...)` VÀ token được định nghĩa/import trong bundle) + `api_contract_proof` (endpoint khai api-{b}.md tồn tại trong runtime OpenAPI — api-proof.json) |
+| `test-plan` | `docker_compose_ok` + `connectivity_ok` + `infra_proof` + `health_proof` (stack còn UP) + `contract_test_present` (consumer có depends_on → ≥1 TC contract/integration/e2e) + `ui_test_present` (mỗi web boundary ≥1 auto-TC UI in-scope) + `registry_scope` (TC chỉ trace FEAT ≤ wave hiện tại; deferred phải tag) + `ac_coverage` (FEAT.AC ↔ TC 2 chiều: AC mồ côi + TC stale) |
+| `test-execute` | `test_cases_count ≥ 1` + `test_evidence` (report+log+bugs+screenshots+health-proof: network-call thật cho group mạng; skip phải service-down thật + không mâu thuẫn health-proof; TC web boundary phải có screenshot PNG thật; FAIL phải có bug ref; harness DERIVE test_result từ report) |
 | `_auto` (TEST_EXECUTE → MANUAL_TEST) | `test_result` (any — pass HAY fail) |
 | `log-bug` | `bug_id` non-empty (log-bug-agent trả về sau khi append row) |
 | `fix-bugs` | `bug_id` non-empty (đơn lẻ); sweep no-arg = MAIN orchestrate, complete per-bug |
-| `end-wave` | `uat_signed: true` + `test_result: pass` (STATE — lần test-execute cuối xanh, ép re-run sau fix) + `no_open_bugs` (parse `tracking/wave-{N}/bugs.md`) |
+| `end-wave` | `uat_signed: true` + `test_result: pass` (STATE — harness derive từ report, ép re-run sau fix) + `no_open_bugs` (parse `tracking/wave-{N}/bugs.md`) |
 | `done-wave` | `teardown_ok: true` |
 | `apply-cr` | `cr_id` non-empty |
 
@@ -134,8 +139,9 @@ Tất cả route qua `scripts/hooks/dispatcher.py --event <name>`:
 | Notification | * | Inject state header |
 | PreCompact | * | Pin STATE summary hiện tại (stage + wave + boundary) |
 | PreToolUse | Bash | Check `harness <X> complete` gate; deny nếu sai |
-| PreToolUse | Write\|Edit\|MultiEdit\|NotebookEdit | Block 4 kernel files (STATE.json, STATE-MACHINE.json, SERVICE-BOUNDARY-MATRIX.json, settings.json) |
-| PreToolUse | Task | KHÔNG block theo stage (Explore free); inject boundary reminder + block dev/fix/review spawn bằng prompt tự viết tay (E-6) |
+| PreToolUse | Write\|Edit\|MultiEdit\|NotebookEdit | Block 4 kernel files (STATE.json, STATE-MACHINE.json, SERVICE-BOUNDARY-MATRIX.json, settings.json) + **3 proof file harness-đo** (`tracking/*/{docker-ps,health-proof,api-proof}.json` — chỉ capture_infra_proof.py được sinh, FM-PROOF-FORGE) + **phase-lock doc upstream** (doc lớp discovery/domain/design/plan chỉ sửa ở stage sở hữu +REVIEW) + block `services/**` khi spawn.active=dev-handoff-agent |
+| PreToolUse | Task | KHÔNG block theo stage (Explore free); inject boundary reminder + block spawn MỌI command-agent bằng prompt tự viết tay (E-6: keyword + tên-agent registry; thiếu chữ ký `# SPAWN PROMPT`/`STATE BUNDLE` = block) |
+| PreToolUse | Skill\|SlashCommand | Chặn MAIN TỰ invoke harness slash-command ∈ GATE_RULES (chống auto-nối pipeline; user gõ tay = pre-loaded, không qua tool → không ảnh hưởng) |
 | PostToolUse | Bash | no-op (STATE.json chỉ giữ trạng thái hiện tại) |
 | SubagentStop | * | Parse RETURN SCHEMA, validate 7 field bắt buộc |
 | Stop | * | Build/lint/test **wave-scoped** per kind khi stage ∈ {DEV, REVIEW_DEV, TEST_EXECUTE} + có sửa services/; đỏ→block 40 dòng cuối; cache git-hash |

@@ -75,15 +75,69 @@ def _active_boundary_kind(state: dict, root: Path | None = None) -> str | None:
     return _kind_of(state.get("active_boundary"), root)
 
 
+# Coverage report parse — số ĐO THẬT thắng số tự khai (mirror derive test_result).
+_JACOCO_LINE_RE = re.compile(r'<counter[^>]*type="LINE"[^>]*missed="(\d+)"[^>]*covered="(\d+)"')
+
+
+def derive_coverage_pct(boundary_id: str, state: dict, root: Path | None = None) -> float | None:
+    """Đọc coverage report THẬT của boundary → pct; None nếu service chưa scaffold / không có report.
+
+    Nguồn theo stack: jacoco XML (Gradle `build/reports/jacoco/**` / Maven `target/site/jacoco/`),
+    vitest/jest `coverage/coverage-summary.json`, lcov `coverage/lcov.info` (web/mobile).
+    """
+    root = root or REPO_ROOT
+    b = _matrix_boundary(boundary_id, root) or {}
+    prefix = b.get("prefix") or ((state.get("project") or {}).get("service_prefix")) or ""
+    svc = root / "services" / f"{prefix}-{boundary_id}"
+    if not svc.is_dir():
+        return None
+    # jacoco XML — counter LINE cuối cùng = tổng report-level
+    candidates = sorted(svc.glob("build/reports/jacoco/**/*.xml")) + [svc / "target" / "site" / "jacoco" / "jacoco.xml"]
+    for p in candidates:
+        if not p.is_file():
+            continue
+        matches = _JACOCO_LINE_RE.findall(p.read_text(encoding="utf-8", errors="ignore"))
+        if matches:
+            missed, covered = (int(x) for x in matches[-1])
+            total = missed + covered
+            if total:
+                return round(100.0 * covered / total, 1)
+    # vitest/jest coverage-summary.json
+    cs = svc / "coverage" / "coverage-summary.json"
+    if cs.is_file():
+        try:
+            pct = (json.loads(cs.read_text(encoding="utf-8")).get("total") or {}).get("lines", {}).get("pct")
+            if isinstance(pct, (int, float)):
+                return float(pct)
+        except (ValueError, OSError):
+            pass
+    # lcov.info (flutter/web fallback)
+    lc = svc / "coverage" / "lcov.info"
+    if lc.is_file():
+        lf = lh = 0
+        for line in lc.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("LF:"):
+                lf += int(line[3:] or 0)
+            elif line.startswith("LH:"):
+                lh += int(line[3:] or 0)
+        if lf:
+            return round(100.0 * lh / lf, 1)
+    return None
+
+
 def check_all_boundaries_reviewed(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
     """Mọi boundary trong wave_boundaries phải có review_result=pass + coverage đạt ngưỡng theo kind.
 
-    Nguồn: STATE.review_results (lưu bởi apply_effects khi /review-dev complete) — wave-scoped.
+    Nguồn review: STATE.review_results (lưu bởi apply_effects khi /review-dev complete) — wave-scoped.
+    Coverage KHÔNG tin số tự khai: service đã scaffold → HARNESS derive từ coverage report thật
+    (jacoco/coverage-summary/lcov); có report → số đo thắng số khai; scaffold rồi mà KHÔNG có report
+    → fail (chạy test với coverage rồi review lại). Chưa scaffold → fallback số khai (hermetic/smoke).
     force=true → bypass (đồng bộ họ force-bypass dev-handoff: env-block, audit decisions.md ở apply_effects).
     """
     evidence = evidence or {}
     if evidence.get("force") is True:
         return True, ""
+    base = root or REPO_ROOT
     wave_boundaries = state.get("wave_boundaries") or []
     if not wave_boundaries:
         return False, "wave_boundaries rỗng — chưa /start-wave?"
@@ -92,7 +146,8 @@ def check_all_boundaries_reviewed(state: dict, evidence: dict | None = None, roo
         for r in (state.get("review_results") or [])
         if isinstance(r, dict)
     }
-    missing, failed, low_cov = [], [], []
+    proj_prefix = ((state.get("project") or {}).get("service_prefix")) or ""
+    missing, failed, low_cov, no_report = [], [], [], []
     for bid in wave_boundaries:
         r = results.get(bid)
         if not r:
@@ -104,8 +159,22 @@ def check_all_boundaries_reviewed(state: dict, evidence: dict | None = None, roo
         kind = _kind_of(bid, root) or r.get("kind")
         min_pct = COVERAGE_THRESHOLD_PER_KIND.get(kind, DEFAULT_COVERAGE_MIN)
         cov = r.get("coverage_pct", 0)
+        derived = derive_coverage_pct(bid, state, base)
+        src = "tự khai"
+        if derived is not None:
+            cov, src = derived, "đo từ report"
+        else:
+            b = _matrix_boundary(bid, base) or {}
+            svc = base / "services" / f"{(b.get('prefix') or proj_prefix)}-{bid}"
+            if svc.is_dir():
+                no_report.append(
+                    f"{bid}: service đã scaffold nhưng KHÔNG có coverage report "
+                    f"(jacoco XML / coverage-summary.json / lcov.info) — số tự khai không được tin; "
+                    f"chạy test kèm coverage rồi /review-dev lại"
+                )
+                continue
         if not (isinstance(cov, (int, float)) and cov >= min_pct):
-            low_cov.append(f"{bid}({kind}):{cov}<{min_pct}")
+            low_cov.append(f"{bid}({kind}):{cov}<{min_pct} ({src})")
     problems = []
     if missing:
         problems.append(f"chưa review: {missing}")
@@ -113,6 +182,8 @@ def check_all_boundaries_reviewed(state: dict, evidence: dict | None = None, roo
         problems.append(f"review fail: {failed}")
     if low_cov:
         problems.append(f"coverage thiếu: {low_cov}")
+    if no_report:
+        problems.append("; ".join(no_report))
     if problems:
         return False, "; ".join(problems)
     return True, ""
@@ -141,10 +212,14 @@ _WEB_STYLE_EXTS = (".css", ".scss", ".sass", ".less")
 _CSS_IN_JS_MARKERS = ("styled.", "styled(", "@emotion", "makeStyles", "createUseStyles", "css`", "sx={")
 
 
+_TOKEN_DEF_RE = re.compile(r"--[\w-]+\s*:")  # định nghĩa CSS custom property (`--color-x: #...`)
+
+
 def _web_styling_signals(src_dir: Path) -> dict:
-    """Quét src của 1 web boundary → tín hiệu styling: file CSS, tailwind, CSS-in-JS, className, dùng design-token."""
+    """Quét src của 1 web boundary → tín hiệu styling: file CSS, tailwind, CSS-in-JS, className,
+    dùng design-token (`var(--...)`), và ĐỊNH NGHĨA token (`:root { --x: ... }` / import design-tokens)."""
     sig = {"css_files": 0, "has_className": False, "has_css_in_js": False,
-           "has_tailwind": False, "uses_token": False}
+           "has_tailwind": False, "uses_token": False, "defines_token": False}
     if not src_dir.is_dir():
         return sig
     for p in src_dir.rglob("*"):
@@ -160,6 +235,10 @@ def _web_styling_signals(src_dir: Path) -> dict:
             # G15: dùng design token (CSS var) thay vì hardcode; hoặc import shared design-tokens.
             if "var(--" in ctxt or "@import" in ctxt and "design-tokens" in ctxt:
                 sig["uses_token"] = True
+            # token phải ĐƯỢC ĐỊNH NGHĨA trong bundle (copy :root hoặc @import design-tokens.css)
+            # — dùng var(--...) mà không định nghĩa → resolve rỗng → UI vẫn unstyled.
+            if _TOKEN_DEF_RE.search(ctxt) or "design-tokens" in ctxt:
+                sig["defines_token"] = True
             continue
         if suf in (".tsx", ".ts", ".jsx", ".js"):
             try:
@@ -174,6 +253,8 @@ def _web_styling_signals(src_dir: Path) -> dict:
                 sig["has_tailwind"] = True
             if "var(--" in txt or "design-tokens" in txt:
                 sig["uses_token"] = True
+            if "design-tokens" in txt:  # import 'design-tokens.css' ở entry = định nghĩa token vào bundle
+                sig["defines_token"] = True
     boundary_root = src_dir.parent
     for tw in ("tailwind.config.js", "tailwind.config.ts", "tailwind.config.cjs", "tailwind.config.mjs"):
         if (boundary_root / tw).is_file():
@@ -219,6 +300,15 @@ def check_web_styling(state: dict, evidence: dict | None = None, root: Path | No
             problems.append(
                 f"{bid}: CSS không dùng design token `var(--color-/--font-/--space-...)` (hardcode hex/px) "
                 f"→ không theo `docs/architecture/ux/design-tokens.css` (G15). Import token + style qua var(--...)"
+            )
+            continue
+        # var(--...) mà token KHÔNG được định nghĩa/import trong bundle → resolve rỗng → UI vẫn
+        # unstyled (browser default) dù gate uses_token xanh. Bắt buộc copy/import design-tokens.css.
+        if styled and plain_css_only and sig["uses_token"] and not sig["defines_token"]:
+            problems.append(
+                f"{bid}: CSS dùng var(--...) nhưng KHÔNG định nghĩa/import token nào (thiếu "
+                f"`design-tokens.css` copy vào src hoặc `@import`) → var() resolve rỗng, UI vẫn unstyled "
+                f"— copy `docs/architecture/ux/design-tokens.css` vào src + import ở entry (main.tsx/index.css)"
             )
     if problems:
         return False, "; ".join(problems) + " — implement CSS theo ux §4 / design-tokens.css (token → CSS var) rồi rebuild"
@@ -697,6 +787,15 @@ def check_design_gate(evidence: dict) -> tuple[bool, str]:
         for rel in _required_design_files(bid, kind):
             if not (REPO_ROOT / rel).is_file():
                 errs.append(f"boundary {bid!r} (kind={kind}) thiếu {rel}")
+    # Có web boundary → shared design tokens (SoT) phải tồn tại — mọi web FE consume chung 1 palette,
+    # không boundary nào tự bịa màu/spacing (gate web_styling downstream enforce việc DÙNG token).
+    if any(k == "web" for _, k in boundaries) and not (
+        REPO_ROOT / "docs" / "architecture" / "ux" / "design-tokens.css"
+    ).is_file():
+        errs.append(
+            "có web boundary nhưng thiếu docs/architecture/ux/design-tokens.css "
+            "(SoT design token — skill ux-design tạo theo TEMPLATE.design-tokens.css)"
+        )
     return (not errs), ("; ".join(errs) if errs else "")
 
 
@@ -998,10 +1097,14 @@ _NETWORK_CALL_RE = re.compile(
     r"\b(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b\s+\S+\s*(?:->|→|=>)\s*\d{3}"
 )
 _NETWORK_GROUPS = ("integration", "e2e", "performance", "perf", "security")
+# Marker skip-vì-service-down phải CỤ THỂ (cụm từ, không phải từ đơn): trước đây "down"/"unavailable"
+# match cả "dropdown"/"markdown"/"Playwright unavailable" → skip khống lọt như service-down hợp lệ.
 _SKIP_DOWN_MARKERS = (
-    "service chưa up", "chưa up", "service down", "down", "unreachable",
-    "connection refused", "econnrefused", "not running", "unavailable", "no such host",
+    "service chưa up", "chưa up", "service down", "unreachable",
+    "connection refused", "econnrefused", "not running", "no such host",
 )
+_SCREENSHOT_EXTS = (".png", ".jpg", ".jpeg")
+_IMG_MAGIC = (b"\x89PNG", b"\xff\xd8\xff")  # PNG / JPEG
 
 
 def _parse_md_table_rows(text: str, required_cols: tuple[str, ...]) -> list[dict]:
@@ -1080,17 +1183,61 @@ def _wave_deferred_tokens(wave_id: str, root: Path) -> set[str]:
     return tokens
 
 
+def _row_matches_deferred(row: dict, deferred: set[str]) -> bool:
+    """Feature/AC của row có nằm trong deferred-scope wave plan không (bất kể tag)."""
+    if not deferred:
+        return False
+    feat = (row.get("feature") or "").strip().upper()
+    ac = (row.get("ac") or "").strip().upper()
+    combo = f"{feat}:{ac}" if feat and ac else ""
+    return bool(({feat, ac, combo} - {""}) & deferred)
+
+
 def _row_is_deferred(row: dict, deferred: set[str]) -> bool:
     """Row deferred khi tag/note có 'deferred' VÀ feature/AC khớp wave-plan deferred-scope."""
     blob = ((row.get("tags") or "") + " " + (row.get("note") or "")).lower()
     if "deferred" not in blob:
         return False
-    if not deferred:
-        return False  # wave plan không khai báo deferred-scope → KHÔNG cho defer
-    feat = (row.get("feature") or "").strip().upper()
-    ac = (row.get("ac") or "").strip().upper()
-    combo = f"{feat}:{ac}" if feat and ac else ""
-    return bool(({feat, ac, combo} - {""}) & deferred)
+    return _row_matches_deferred(row, deferred)
+
+
+def _health_ok_boundaries(wave_id: str, root: Path) -> set[str]:
+    """Boundary có probe ok=true trong health-proof.json (bằng chứng service UP lần capture gần nhất).
+
+    Dùng để đối chiếu skip-vì-service-down: proof nói UP mà TC skip 'service down' = mâu thuẫn
+    → hoặc chạy TC thật, hoặc re-run capture_infra_proof.py chứng minh service chết thật.
+    """
+    f = root / "tracking" / wave_id / "health-proof.json"
+    if not f.is_file():
+        return set()
+    try:
+        data = json.loads(f.read_text(encoding="utf-8").lstrip("﻿"))
+    except (ValueError, OSError):
+        return set()
+    probes = data.get("probes", data) if isinstance(data, dict) else data
+    return {
+        p.get("boundary") for p in (probes or [])
+        if isinstance(p, dict) and p.get("boundary") and p.get("ok") is True
+    }
+
+
+def _screenshot_for_tc(wave_id: str, tc: str, root: Path) -> bool:
+    """Có screenshot THẬT (PNG/JPEG magic bytes, ≥1KB) cho TC ở tracking/{wave}/screenshots/{TC}*?"""
+    d = root / "tracking" / wave_id / "screenshots"
+    if not d.is_dir():
+        return False
+    tcl = tc.lower()
+    for p in d.iterdir():
+        if not p.is_file() or p.suffix.lower() not in _SCREENSHOT_EXTS:
+            continue
+        if not p.name.lower().startswith(tcl):
+            continue
+        try:
+            if p.stat().st_size >= 1024 and p.read_bytes()[:4].startswith(_IMG_MAGIC):
+                return True
+        except OSError:
+            continue
+    return False
 
 
 def _test_log_text(wave_id: str, tc: str, root: Path) -> str:
@@ -1123,8 +1270,11 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
     Đọc registry (auto TC + group + deferred) + test-report.md (result) + test-logs/. Mỗi auto-TC
     in-scope: phải có result trong report; group mạng (integration/e2e/perf/security) khi pass|fail
     phải có network-call `METHOD path -> sts` trong log; skip phải nêu lý do service-down trong log
-    (cấm silent-skip). Deferred-TC (khai báo ở wave plan + tag @deferred) → bỏ qua. KHÔNG fail vì
-    TC=fail (đó là bug hợp lệ) — chỉ fail khi THIẾU bằng chứng đã chạy. force=true → bypass (audit).
+    (cấm silent-skip) VÀ không mâu thuẫn health-proof (proof nói service UP → skip service-down bị
+    chặn); TC trên WEB boundary khi pass|fail phải có screenshot thật (PNG/JPEG) ở
+    tracking/{wave}/screenshots/ — bằng chứng UI thật render, chống UI-test khống. Deferred-TC
+    (khai báo ở wave plan + tag @deferred) → bỏ qua. KHÔNG fail vì TC=fail (đó là bug hợp lệ) —
+    chỉ fail khi THIẾU bằng chứng đã chạy. force=true → bypass (audit).
     """
     evidence = evidence or {}
     if evidence.get("force") is True:
@@ -1145,6 +1295,7 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
     results = _report_results(rep.read_text(encoding="utf-8", errors="ignore"))
     deferred = _wave_deferred_tokens(wave_id, root)
     bug_refs = _bugs_tc_refs(wave_id, root)
+    health_ok = _health_ok_boundaries(wave_id, root)
     problems: list[str] = []
     inscope = ran = 0
     for r in auto_rows:
@@ -1153,6 +1304,7 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
         inscope += 1
         tc = (r.get("tc") or "").strip().upper()
         group = (r.get("group") or "").strip().lower()
+        boundary = (r.get("boundary") or "").strip()
         res = results.get(tc)
         if res is None:
             problems.append(f"{tc}: KHÔNG có trong test-report (chưa chạy?)")
@@ -1160,6 +1312,12 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
         if res == "skip":
             if not any(m in _test_log_text(wave_id, tc, root).lower() for m in _SKIP_DOWN_MARKERS):
                 problems.append(f"{tc}: skip nhưng log không nêu lý do service-down (silent-skip bị cấm)")
+            elif boundary in health_ok:
+                problems.append(
+                    f"{tc}: skip 'service-down' MÂU THUẪN health-proof ({boundary} UP ở lần capture gần nhất) "
+                    f"— service chết thật thì re-run `py scripts/capture_infra_proof.py` cập nhật proof, "
+                    f"còn UP thì phải chạy TC thật"
+                )
             continue
         ran += 1
         if group in _NETWORK_GROUPS:
@@ -1169,6 +1327,12 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
                 )
         elif not _test_log_text(wave_id, tc, root).strip():
             problems.append(f"{tc} (group={group}): {res} nhưng log rỗng/không có (thiếu bằng chứng đã chạy)")
+        # TC trên WEB boundary → bắt buộc screenshot thật (UI được MỞ thật, không chỉ log text tự viết)
+        if _kind_of(boundary, root) == "web" and not _screenshot_for_tc(wave_id, tc, root):
+            problems.append(
+                f"{tc} (boundary={boundary}, web): {res} nhưng thiếu screenshot "
+                f"`tracking/{wave_id}/screenshots/{tc}*.png` (Playwright page.screenshot — bằng chứng UI thật render)"
+            )
         # ZIP lint_execution invariant: FAIL phải log bug (chống "fail mà không log = miss bug")
         if res == "fail" and tc not in bug_refs:
             problems.append(f"{tc}: FAIL nhưng KHÔNG có bug nào reference (cột TC) trong bugs.md → miss bug")
@@ -1205,6 +1369,539 @@ def derive_test_result(state: dict, root: Path | None = None) -> str | None:
         if results.get((r.get("tc") or "").strip().upper()) != "pass":
             return "fail"
     return "pass"
+
+
+# ========================================================================
+# ui_test_present + registry_scope (test-plan) — UI phải được test thật + TC không over-scope
+# ========================================================================
+
+def check_ui_test_present(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """test-plan: MỖI web boundary trong wave phải có ≥1 auto-TC UI in-scope (boundary = web boundary).
+
+    Đóng gap "UI test luôn manual/vắng → giao diện không bao giờ được mở thật → lỗi visual lọt":
+    registry toàn API-TC vẫn đạt test_result=pass dù FE chưa từng render. TC UI này chạy bằng
+    Playwright ở test-execute (load màn hình chính + assert style token áp dụng + screenshot —
+    test_evidence enforce bằng chứng). TC tag @deferred KHÔNG được tính (chống né bằng tag).
+    force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    wave_id = (state.get("wave") or {}).get("id")
+    if not wave_id:
+        return False, "chưa có wave"
+    webs = [b for b in (state.get("wave_boundaries") or []) if _kind_of(b, root) == "web"]
+    if not webs:
+        return True, ""  # wave không có web boundary → không áp dụng
+    reg = root / "tracking" / wave_id / "test-case-registry.md"
+    if not reg.is_file():
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — /test-plan phải sinh trước"
+    rows = _registry_auto_rows(reg.read_text(encoding="utf-8", errors="ignore"))
+    deferred = _wave_deferred_tokens(wave_id, root)
+    missing: list[str] = []
+    for w in webs:
+        has = any(
+            (r.get("boundary") or "").strip().lower() == w.lower() and not _row_is_deferred(r, deferred)
+            for r in rows
+        )
+        if not has:
+            missing.append(w)
+    if missing:
+        return False, (
+            "web boundary KHÔNG có auto-TC UI nào (giao diện không bao giờ được mở thật → lỗi visual lọt): "
+            + ", ".join(sorted(missing))
+            + " — thêm ≥1 TC type=auto group=e2e boundary=<web> (Playwright: load màn hình chính "
+            "+ assert style token áp dụng + screenshot)"
+        )
+    return True, ""
+
+
+_FEAT_TOKEN_RE = re.compile(r"\bFEAT-[\w-]+\b", re.IGNORECASE)
+_WAVE_NUM_RE = re.compile(r"wave-0*(\d+)", re.IGNORECASE)
+
+
+def _wave_number(wave_id: str) -> int | None:
+    m = _WAVE_NUM_RE.search(wave_id or "")
+    return int(m.group(1)) if m else None
+
+
+def _feats_planned_upto(wave_id: str, root: Path) -> set[str]:
+    """FEAT token từ MỌI wave plan có số wave ≤ wave hiện tại (registry tích luỹ: FEAT wave trước
+    đã ship vẫn hợp lệ để regression-test). FEAT chỉ xuất hiện ở wave TƯƠNG LAI = over-scope."""
+    cur = _wave_number(wave_id)
+    out: set[str] = set()
+    for p in (root / "docs" / "plans").glob("wave-*.md"):
+        if p.name.startswith("TEMPLATE"):
+            continue
+        n = _wave_number(p.stem)
+        if n is None or (cur is not None and n > cur):
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        out.update(m.group(0).upper() for m in _FEAT_TOKEN_RE.finditer(text))
+    return out
+
+
+def check_registry_scope(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """test-plan: auto-TC chỉ được trace FEAT thuộc scope tới wave hiện tại; FEAT deferred phải tag @deferred.
+
+    Đóng gap "registry over-scope": test-plan sinh TC cho feature CHƯA build (wave sau / chưa plan)
+    → test-execute chạy vào feature không tồn tại → bug rác chặn end-wave. 2 luật:
+    (a) FEAT của TC phải xuất hiện trong wave plan nào đó số ≤ wave hiện tại (không phải tương lai/phantom);
+    (b) feature/AC nằm trong `## Deferred to later waves` của wave plan mà row KHÔNG tag @deferred
+        → fail (test-execute sẽ coi in-scope và chạy vào feature chưa build).
+    Smoke TC không trace FEAT → miễn. force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    wave_id = (state.get("wave") or {}).get("id")
+    if not wave_id:
+        return False, "chưa có wave"
+    reg = root / "tracking" / wave_id / "test-case-registry.md"
+    if not reg.is_file():
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — /test-plan phải sinh trước"
+    planned = _feats_planned_upto(wave_id, root)
+    if not planned:
+        return True, ""  # không đọc được scope từ wave plans → không kiểm được (không chặn bừa)
+    deferred = _wave_deferred_tokens(wave_id, root)
+    problems: list[str] = []
+    for r in _registry_auto_rows(reg.read_text(encoding="utf-8", errors="ignore")):
+        tc = (r.get("tc") or "").strip().upper()
+        feat_cell = (r.get("feature") or "").strip()
+        feat_ids = {m.group(0).upper() for m in _FEAT_TOKEN_RE.finditer(feat_cell)}
+        if not feat_ids:
+            continue  # smoke TC (TC-S*) không trace FEAT → miễn
+        for fid in feat_ids:
+            if fid not in planned:
+                problems.append(
+                    f"{tc}: trace {fid} KHÔNG thuộc wave plan nào ≤ {wave_id} (over-scope — feature "
+                    f"chưa build) → xoá TC hoặc chuyển sang wave sở hữu feature"
+                )
+        if _row_matches_deferred(r, deferred) and not _row_is_deferred(r, deferred):
+            problems.append(
+                f"{tc}: feature/AC nằm trong `## Deferred to later waves` của wave plan nhưng row "
+                f"THIẾU tag @deferred → test-execute sẽ chạy vào feature chưa build (bug rác). "
+                f"Tag @deferred + note deferred wave-N"
+            )
+    if problems:
+        return False, "registry-scope fail: " + "; ".join(problems)
+    return True, ""
+
+
+# ========================================================================
+# Khớp-nối tài liệu (P0): translation_parity + todo_resolved + ac_coverage
+# ========================================================================
+
+_ENG_PRODUCT_KINDS = ("epics", "feat", "business-rules", "journeys", "personas")
+_ENG_ORPHAN_KINDS = ("epics", "feat", "business-rules")  # lớp product bắt buộc có nguồn business
+
+
+def _eng_docs_by_kind(root: Path) -> dict[str, list[tuple[Path, dict]]]:
+    """docs/architecture/{kind}/*.md (bỏ TEMPLATE) → {kind: [(path, frontmatter)]}."""
+    out: dict[str, list[tuple[Path, dict]]] = {}
+    for kind in _ENG_PRODUCT_KINDS:
+        d = root / "docs" / "architecture" / kind
+        if not d.is_dir():
+            continue
+        for p in sorted(d.glob("*.md")):
+            if p.name.startswith("TEMPLATE") or p.name.startswith("_TEMPLATE"):
+                continue
+            fm = planning_lint.parse_frontmatter(p.read_text(encoding="utf-8", errors="ignore"))
+            out.setdefault(kind, []).append((p, fm))
+    return out
+
+
+def check_translation_parity(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /domain-end: business đã KÝ ↔ eng doc phải 1-1 (translate không được bỏ sót im lặng).
+
+    Chiều 1: MỖI business doc APPROVED (docs/domain/) phải có eng doc cùng kind ở docs/architecture/
+    khớp qua frontmatter `source` (chứa tên file business) / `domain_source_id` / trùng stem.
+    Chiều 2: eng doc lớp product (epics/feat/business-rules) KHÔNG có `source: docs/domain/...` và
+    KHÔNG khớp business doc nào = MỒ CÔI (tự author né vòng ký) → fail. force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    all_biz = _domain_business_files(root)
+    signed = [p for p in all_biz if _frontmatter_signed(p.read_text(encoding="utf-8", errors="ignore"))]
+    eng = _eng_docs_by_kind(root)
+    if not all_biz and not any(eng.values()):
+        return True, ""  # chưa author gì → domain_gate lo
+    problems: list[str] = []
+    for bp in signed:
+        kind = bp.parent.name
+        bfm = planning_lint.parse_frontmatter(bp.read_text(encoding="utf-8", errors="ignore"))
+        bid = str(bfm.get("id") or bp.stem)
+        hit = False
+        for ep, efm in eng.get(kind, []):
+            src = str(efm.get("source") or "")
+            dsid = str(efm.get("domain_source_id") or "")
+            if (bp.name in src) or (dsid and dsid in (bid, bp.stem)) or ep.stem == bp.stem:
+                hit = True
+                break
+        if not hit:
+            problems.append(
+                f"{kind}/{bp.name}: business doc ĐÃ KÝ nhưng KHÔNG có eng doc tương ứng ở "
+                f"docs/architecture/{kind}/ (translate bỏ sót — chạy lại /domain-translate)"
+            )
+    biz_stems = {p.stem for p in all_biz}
+    for kind in _ENG_ORPHAN_KINDS:
+        for ep, efm in eng.get(kind, []):
+            src = str(efm.get("source") or "")
+            if "docs/domain" in src:
+                continue
+            if ep.stem in biz_stems or any(ep.stem.startswith(s) or s.startswith(ep.stem) for s in biz_stems):
+                continue
+            problems.append(
+                f"{kind}/{ep.name}: eng doc MỒ CÔI — không có `source: docs/domain/...` và không khớp "
+                f"business doc nào (product phải author ở docs/domain/ + ký + translate, không author thẳng eng)"
+            )
+    if problems:
+        return False, "translation-parity fail: " + "; ".join(problems)
+    return True, ""
+
+
+# Nợ kỹ thuật translator cố ý để lại cho DESIGN — design-end phải trả hết.
+_TODO_ENGINEER_RES = [
+    re.compile(r"TODO[ -]engineer", re.IGNORECASE),
+    re.compile(r"TBD \(DESIGN\)", re.IGNORECASE),
+    re.compile(r"^\s*(enforcement_location|scope|consumes_contracts)\s*:.*\bTBD\b", re.IGNORECASE | re.MULTILINE),
+]
+
+
+def check_todo_resolved(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /design-end: field kỹ thuật translator để TODO/TBD phải được DESIGN điền hết.
+
+    `enforcement_location: TBD (DESIGN)` sống sót qua design-end = BR không có nơi enforce
+    → rule không bao giờ được implement, chỉ lộ ở UAT. Quét docs/architecture/{epics,feat,
+    business-rules}. Chưa chốt thật sự → chuyển thành `Open question` có chủ (không phải TBD).
+    force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    problems: list[str] = []
+    for kind in _ENG_ORPHAN_KINDS:
+        d = root / "docs" / "architecture" / kind
+        if not d.is_dir():
+            continue
+        for p in sorted(d.glob("*.md")):
+            if p.name.startswith("TEMPLATE") or p.name.startswith("_TEMPLATE"):
+                continue
+            text = p.read_text(encoding="utf-8", errors="ignore")
+            hits = sum(len(rx.findall(text)) for rx in _TODO_ENGINEER_RES)
+            if hits:
+                problems.append(f"{kind}/{p.name}: {hits} marker TODO-engineer/TBD(DESIGN) chưa điền")
+    if problems:
+        return False, (
+            "todo-resolved fail: " + "; ".join(problems)
+            + " — DESIGN phải điền enforcement_location/consumes_contracts/scope (hoặc ghi Open question có chủ)"
+        )
+    return True, ""
+
+
+_AC_HEADING_RE = re.compile(r"^###\s*(AC-\d+)\b", re.MULTILINE | re.IGNORECASE)
+_AC_TOKEN_RE = re.compile(r"\bAC-\d+\b", re.IGNORECASE)
+
+
+def _feat_file_for(fid: str, root: Path) -> Path | None:
+    d = root / "docs" / "architecture" / "feat"
+    exact = d / f"{fid}.md"
+    if exact.is_file():
+        return exact
+    if d.is_dir():
+        for p in sorted(d.glob(f"{fid}-*.md")):
+            return p
+    return None
+
+
+def check_ac_coverage(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """test-plan: traceability FEAT.AC ↔ TC 2 CHIỀU (trước đây chỉ là lời hứa trong skill).
+
+    Chiều 1 (AC mồ côi): mỗi `### AC-n` của FEAT in-scope wave (STATE.wave_features / MATRIX)
+    phải có ≥1 TC (auto hoặc manual) trace nó — trừ token đã khai deferred ở wave plan.
+    Chiều 2 (TC stale): TC trace `FEAT:AC-m` mà FEAT file không còn AC đó → stale (bắt case
+    /apply-cr đổi AC mà quên remap TC). FEAT chưa có file → bỏ qua (plan_integrity lo).
+    force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    wave_id = (state.get("wave") or {}).get("id")
+    if not wave_id:
+        return False, "chưa có wave"
+    reg = root / "tracking" / wave_id / "test-case-registry.md"
+    if not reg.is_file():
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — /test-plan phải sinh trước"
+    feats = list(state.get("wave_features") or [])
+    if not feats:
+        for b in (state.get("wave_boundaries") or []):
+            feats += list((_matrix_boundary(b, root) or {}).get("features") or [])
+    deferred = _wave_deferred_tokens(wave_id, root)
+    rows = _parse_md_table_rows(reg.read_text(encoding="utf-8", errors="ignore"), ("tc", "feature", "ac"))
+    covered: set[tuple[str, str]] = set()
+    for r in rows:
+        fids = {m.group(0).upper() for m in _FEAT_TOKEN_RE.finditer(r.get("feature") or "")}
+        acs = {m.group(0).upper() for m in _AC_TOKEN_RE.finditer(r.get("ac") or "")}
+        for f in fids:
+            for a in acs:
+                covered.add((f, a))
+    problems: list[str] = []
+    file_acs_cache: dict[str, set[str] | None] = {}
+
+    def _file_acs(fid: str) -> set[str] | None:
+        if fid not in file_acs_cache:
+            fp = _feat_file_for(fid, root)
+            file_acs_cache[fid] = (
+                {a.upper() for a in _AC_HEADING_RE.findall(fp.read_text(encoding="utf-8", errors="ignore"))}
+                if fp else None
+            )
+        return file_acs_cache[fid]
+
+    for fid in feats:
+        fidU = str(fid).upper()
+        acs = _file_acs(fidU)
+        if not acs:
+            continue  # FEAT chưa có file (plan_integrity bắt) / file không đánh số AC
+        for ac in sorted(acs):
+            if fidU in deferred or f"{fidU}:{ac}" in deferred or ac in deferred:
+                continue
+            if (fidU, ac) not in covered:
+                problems.append(f"{fidU}:{ac} KHÔNG có TC nào trace (AC mồ côi — coverage matrix hụt)")
+    for r in rows:
+        tc = (r.get("tc") or "").strip().upper()
+        if not re.fullmatch(r"tc-[\w-]+", tc, re.IGNORECASE):
+            continue
+        acs_ref = {m.group(0).upper() for m in _AC_TOKEN_RE.finditer(r.get("ac") or "")}
+        for fid in {m.group(0).upper() for m in _FEAT_TOKEN_RE.finditer(r.get("feature") or "")}:
+            facs = _file_acs(fid)
+            if not facs:
+                continue
+            for ac in acs_ref:
+                if ac not in facs:
+                    problems.append(f"{tc}: trace {fid}:{ac} nhưng FEAT không có AC đó (TC stale — remap sau khi AC đổi)")
+    if problems:
+        return False, "ac-coverage fail: " + "; ".join(sorted(set(problems)))
+    return True, ""
+
+
+# ========================================================================
+# Contract graph (K1) + contract runtime proof (K2) — khớp nối contract
+# ========================================================================
+
+def _md_col_values(text: str, col_contains: str) -> list[str]:
+    """Giá trị cột (backtick-id hoặc raw token đầu) của MỌI bảng có header chứa `col_contains`."""
+    out: list[str] = []
+    header_idx: int | None = None
+    for line in text.splitlines():
+        s = line.strip()
+        if not s.startswith("|"):
+            header_idx = None
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if all(set(c) <= set("-: ") for c in cells if c):
+            continue
+        low = [c.lower() for c in cells]
+        if header_idx is None:
+            for i, c in enumerate(low):
+                if col_contains in c:
+                    header_idx = i
+                    break
+            continue
+        if header_idx < len(cells):
+            cell = cells[header_idx]
+            m = re.search(r"`([a-z0-9][a-z0-9-]*)`", cell)
+            val = m.group(1) if m else cell.split()[0] if cell.split() else ""
+            if val and "{{" not in val:
+                out.append(val.strip("`"))
+    return out
+
+
+def _contract_edges(root: Path) -> list[tuple[str, str, str]]:
+    """Đồ thị contract từ docs: [(consumer, producer, source-doc)]. Bỏ placeholder {{...}}."""
+    arch = root / "docs" / "architecture"
+    edges: list[tuple[str, str, str]] = []
+
+    def _clean(v: object) -> str:
+        v = str(v or "").strip()
+        return "" if "{{" in v else v
+
+    api_dir = arch / "api"
+    if api_dir.is_dir():
+        for p in sorted(api_dir.glob("api-*.md")):
+            if p.name.startswith("TEMPLATE"):
+                continue
+            fm = planning_lint.parse_frontmatter(p.read_text(encoding="utf-8", errors="ignore"))
+            producer = _clean(fm.get("producer")) or p.stem[len("api-"):]
+            for c in (fm.get("consumers") or []) if isinstance(fm.get("consumers"), list) else []:
+                c = _clean(c)
+                if c:
+                    edges.append((c, producer, p.name))
+    integ_dir = arch / "integrations"
+    if integ_dir.is_dir():
+        for p in sorted(integ_dir.glob("INTEG-INT-*.md")):
+            if p.name.startswith("TEMPLATE"):
+                continue
+            fm = planning_lint.parse_frontmatter(p.read_text(encoding="utf-8", errors="ignore"))
+            c, pr = _clean(fm.get("consumer")), _clean(fm.get("producer"))
+            if c and pr:
+                edges.append((c, pr, p.name))
+    ev_dir = arch / "events"
+    if ev_dir.is_dir():
+        for p in sorted(ev_dir.glob("*-events.md")):
+            if p.name.startswith("TEMPLATE"):
+                continue
+            text = p.read_text(encoding="utf-8", errors="ignore")
+            fm = planning_lint.parse_frontmatter(text)
+            producer = _clean(fm.get("boundary")) or p.stem[: -len("-events")]
+            for sub in _md_col_values(text, "subscriber"):
+                edges.append((sub, producer, p.name))
+            # §9 events nhận: boundary này subscribe topic của producer khác
+            for up in _md_col_values(text, "producer (boundary_id)"):
+                if up != producer:
+                    edges.append((producer, up, p.name))
+    return edges
+
+
+def check_contract_graph_parity(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /plan: đồ thị contract (api consumers[] + INTEG-INT + events subscribers) ↔ MATRIX depends_on.
+
+    3 nguồn khai cùng 1 sự thật mà không ai đối chiếu: (a) id trong contract phải là boundary MATRIX;
+    (b) cạnh contract (consumer→producer) phải có trong MATRIX (`depends_on`/`consumed_by`);
+    (c) cạnh MATRIX depends_on phải được document bởi ≥1 contract doc (api consumers[]/INTEG/event)
+    — cạnh không doc = FE/BE gọi nhau ngoài contract. force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    boundaries = _matrix_boundaries(root)
+    if not boundaries:
+        return True, ""  # MATRIX chưa có → plan_gate lo
+    mf = root / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
+    try:
+        data = json.loads(mf.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return True, ""
+    blist = data.get("boundaries", []) if isinstance(data, dict) else data
+    dep: dict[str, set[str]] = {}
+    consumed_by: dict[str, set[str]] = {}
+    for b in blist:
+        bid = b.get("boundary_id")
+        if not bid:
+            continue
+        dep[bid] = {d for d in (b.get("depends_on") or []) if isinstance(d, str)}
+        consumed_by[bid] = {c for c in (b.get("consumed_by") or []) if isinstance(c, str)}
+    ids = set(dep)
+    edges = _contract_edges(root)
+    problems: list[str] = []
+    doc_edges: set[tuple[str, str]] = set()
+    for c, p, src in edges:
+        if c not in ids or p not in ids:
+            bad = [x for x in (c, p) if x not in ids]
+            problems.append(f"{src}: boundary {bad} không tồn tại trong MATRIX")
+            continue
+        doc_edges.add((c, p))
+        if p not in dep.get(c, ()) and c not in consumed_by.get(p, ()):
+            problems.append(
+                f"{src}: khai {c} consume {p} nhưng MATRIX không có cạnh này "
+                f"(thêm depends_on/consumed_by hoặc sửa contract doc)"
+            )
+    for c in ids:
+        for p in dep.get(c, ()):
+            if p in ids and (c, p) not in doc_edges:
+                problems.append(
+                    f"MATRIX: {c} depends_on {p} nhưng KHÔNG contract doc nào ghi nhận "
+                    f"(api-{p}.md consumers[] / INTEG-INT-*.md / events subscriber) — cạnh gọi nhau ngoài contract"
+                )
+    if problems:
+        return False, "contract-graph fail: " + "; ".join(sorted(set(problems)))
+    return True, ""
+
+
+_API_ENDPOINT_RE = re.compile(r"`(GET|POST|PUT|PATCH|DELETE)\s+(/[^\s`?]+)")
+
+
+def _normalize_api_path(path: str) -> str:
+    p = re.sub(r"\{[^}]*\}", "{}", path.strip())
+    p = re.sub(r"/:[\w-]+", "/{}", p)
+    return (p.rstrip("/") or "/")
+
+
+def _doc_endpoints(api_file: Path) -> set[tuple[str, str]]:
+    """Endpoint khai trong api-*.md (bảng `Method · Path`) → {(METHOD, path-normalized)}."""
+    text = api_file.read_text(encoding="utf-8", errors="ignore")
+    return {(m.group(1).upper(), _normalize_api_path(m.group(2))) for m in _API_ENDPOINT_RE.finditer(text)}
+
+
+def check_api_contract_proof(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /dev-handoff: endpoint khai trong api-{boundary}.md phải TỒN TẠI trong runtime OpenAPI.
+
+    Bắt contract↔implementation drift (endpoint thiếu/rename) TRƯỚC khi test — đọc
+    tracking/{wave}/api-proof.json do capture_infra_proof.py fetch `/v3/api-docs` (HARNESS đo,
+    không agent tự khai). Boundary không có api doc / api doc không có endpoint REST parse được
+    (GraphQL) → bỏ qua. Shape field sâu → contract TC (test-execute). force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    wave_id = (state.get("wave") or {}).get("id")
+    if not wave_id:
+        return False, "chưa có wave"
+    targets: list[tuple[str, set[tuple[str, str]]]] = []
+    for b in (state.get("wave_boundaries") or []):
+        if _kind_of(b, root) != "backend":
+            continue
+        doc = root / "docs" / "architecture" / "api" / f"api-{b}.md"
+        if not doc.is_file():
+            continue
+        eps = _doc_endpoints(doc)
+        if eps:
+            targets.append((b, eps))
+    if not targets:
+        return True, ""
+    proof = root / "tracking" / wave_id / "api-proof.json"
+    if not proof.is_file():
+        return False, (
+            f"thiếu 'tracking/{wave_id}/api-proof.json' — chạy `py scripts/capture_infra_proof.py` "
+            "(đã capture OpenAPI runtime cùng health-proof)"
+        )
+    try:
+        specs = (json.loads(proof.read_text(encoding="utf-8").lstrip("﻿")) or {}).get("specs") or {}
+    except (ValueError, OSError):
+        return False, f"'tracking/{wave_id}/api-proof.json' parse lỗi — capture lại"
+    problems: list[str] = []
+    for b, eps in targets:
+        spec = specs.get(b)
+        if not isinstance(spec, dict) or not isinstance(spec.get("paths"), dict):
+            problems.append(
+                f"{b}: runtime OpenAPI không fetch được ({(spec or {}).get('error', 'không có entry')}) "
+                f"— bật springdoc `/v3/api-docs` (ref-backend-config) rồi capture lại"
+            )
+            continue
+        runtime = {
+            (m.upper(), _normalize_api_path(pth))
+            for pth, methods in spec["paths"].items()
+            for m in (methods or [])
+        }
+        missing = sorted(f"{m} {p}" for (m, p) in eps if (m, p) not in runtime)
+        if missing:
+            problems.append(
+                f"{b}: endpoint khai trong api-{b}.md KHÔNG có trong runtime OpenAPI (contract drift): "
+                + ", ".join(missing)
+            )
+    if problems:
+        return False, "api-contract-proof fail: " + "; ".join(problems)
+    return True, ""
 
 
 # ========================================================================
@@ -1407,7 +2104,8 @@ def check_api_transport_consistency(evidence: dict | None = None, root: Path | N
 # Per-command gate rules. Each rule = {kind, ...params}.
 # kind ∈ {flag, all_boundaries_reviewed, int_min, non_empty, artifact_glob, in_state_list,
 #         file_exists, wave_in_matrix, no_open_bugs, no_open_findings, infra_proof, test_passed,
-#         discovery_wave, domain_gate, design_gate, plan_gate, matrix_coherence}.
+#         discovery_wave, domain_gate, design_gate, plan_gate, matrix_coherence,
+#         ui_test_present, registry_scope, test_evidence, web_styling, ...}.
 # (coverage per-kind nay gộp trong all_boundaries_reviewed — check_coverage* giữ làm helper unit-tested.)
 
 GATE_RULES: dict[str, list[dict]] = {
@@ -1433,18 +2131,21 @@ GATE_RULES: dict[str, list[dict]] = {
     "domain-end": [
         {"kind": "domain_gate"},     # ENG epic+feat+BR ở docs/architecture/ (đầu ra translate) (force bypass + audit)
         {"kind": "planning_lint"},   # epic feature_refs≥2 / feat epic_ref+feat_type / BR related_features≥1 (force bypass)
+        {"kind": "translation_parity"},  # business đã KÝ ↔ eng doc 1-1 (translate không bỏ sót; eng không mồ côi) (force bypass)
     ],
     "design": [],   # self-loop re-spawn solution-architect (refine) — KHÔNG gate, KHÔNG advance
     "design-end": [
         {"kind": "design_gate"},   # ADR≥3 + INTEG + per-boundary completeness (force bypass + audit). Advance DESIGN→PLAN
+        {"kind": "todo_resolved"},  # TODO-engineer/TBD(DESIGN) translator để lại phải điền hết (BR có nơi enforce) (force bypass)
     ],
     "plan": [
         {"kind": "plan_gate"},       # WAVE-SEQUENCE + MATRIX + wave files + KG (force bypass + audit)
         {"kind": "planning_lint"},   # re-check + ADR ≥2 alternatives (ADR có sau DESIGN) (force bypass)
-        {"kind": "plan_integrity"},  # MATRIX FEAT-id backing + depends_on no-cycle/no-dangling (force bypass)
+        {"kind": "plan_integrity"},  # MATRIX FEAT-id backing + FEAT mồ côi + depends_on no-cycle/no-dangling (force bypass)
         {"kind": "matrix_coherence"},  # MATRIX phủ mọi boundary BOUNDARY-MAP đúng kind (force bypass)
         {"kind": "api_transport"},   # tenant-id qua header/JWT, KHÔNG query (G6 — chống drift BUG-012) (force bypass)
         {"kind": "wave_sequence_lint"},  # WAVE-SEQUENCE §wave-NNN: enum/cap≤3/strategy-invariant (G16) (force bypass)
+        {"kind": "contract_graph_parity"},  # đồ thị contract (api consumers/INTEG/events) ↔ MATRIX depends_on (force bypass)
     ],
     "review-document": [
         {"kind": "flag", "field": "feedback_processed", "expected": True},
@@ -1472,6 +2173,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "health_proof"},  # app PHẢI trả 2xx ở /health/ready (health-proof.json HARNESS capture) — State=running chưa đủ
         {"kind": "code_compliance"},  # backend boundary: cấm H2 + bắt Dockerfile/config (G11) — chặn 'test xanh nhờ H2'
         {"kind": "web_styling"},   # web boundary PHẢI có styling thật (CSS/tailwind/CSS-in-JS) — chặn FE unstyled (0 CSS) không theo ux §4
+        {"kind": "api_contract_proof"},  # endpoint khai api-{b}.md phải có trong runtime OpenAPI (api-proof.json) — chặn contract drift
     ],
     "test-plan": [
         {"kind": "flag", "field": "docker_compose_ok", "expected": True},
@@ -1479,6 +2181,9 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "infra_proof"},
         {"kind": "health_proof"},  # stack còn UP + app reachable (kế thừa từ /dev-handoff)
         {"kind": "contract_test_present"},  # consumer cross-boundary phải có TC contract/integration (G4/G6)
+        {"kind": "ui_test_present"},  # mỗi web boundary phải có ≥1 auto-TC UI (chống UI không bao giờ được test thật)
+        {"kind": "registry_scope"},   # TC chỉ trace FEAT thuộc scope ≤ wave hiện tại; deferred phải tag (chống over-scope → bug rác)
+        {"kind": "ac_coverage"},      # FEAT.AC ↔ TC 2 chiều: AC in-scope phải có TC; TC trace AC không tồn tại = stale
     ],
     "test-execute": [
         {"kind": "int_min", "field": "test_cases_count", "min": 1},
@@ -1542,6 +2247,20 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_code_compliance(state, evidence)
         if kind == "contract_test_present":
             return check_contract_test_present(state, evidence)
+        if kind == "ui_test_present":
+            return check_ui_test_present(state, evidence)
+        if kind == "registry_scope":
+            return check_registry_scope(state, evidence)
+        if kind == "ac_coverage":
+            return check_ac_coverage(state, evidence)
+        if kind == "translation_parity":
+            return check_translation_parity(evidence)
+        if kind == "todo_resolved":
+            return check_todo_resolved(evidence)
+        if kind == "contract_graph_parity":
+            return check_contract_graph_parity(evidence)
+        if kind == "api_contract_proof":
+            return check_api_contract_proof(state, evidence)
         if kind == "api_transport":
             return check_api_transport_consistency(evidence)
         if kind == "wave_sequence_lint":
@@ -1799,9 +2518,13 @@ def _selftest() -> int:
         (_wsrc / "App.css").write_text(".x{color:red}", encoding="utf-8")
         ok, msg = check_web_styling(_ws_state, root=_wroot)
         assert (not ok) and "design token" in msg, f"web_styling phải chặn CSS hardcode không token: {msg}"
-        # CSS dùng var(--...) token → PASS
+        # var(--...) nhưng KHÔNG định nghĩa/import token → FAIL (var resolve rỗng = vẫn unstyled)
         (_wsrc / "App.css").write_text(".x{color:var(--color-primary);padding:var(--space-md)}", encoding="utf-8")
-        assert check_web_styling(_ws_state, root=_wroot)[0] is True, "web_styling phải pass khi CSS dùng design token"
+        ok, msg = check_web_styling(_ws_state, root=_wroot)
+        assert (not ok) and "định nghĩa" in msg, f"web_styling phải chặn var() không có token definition: {msg}"
+        # thêm định nghĩa token (copy design-tokens vào src) → PASS
+        (_wsrc / "design-tokens.css").write_text(":root{--color-primary:#1d4ed8;--space-md:16px}", encoding="utf-8")
+        assert check_web_styling(_ws_state, root=_wroot)[0] is True, "web_styling phải pass khi CSS dùng + định nghĩa token"
         assert check_web_styling(_ws_state, {"force": True}, root=_wroot)[0] is True
     finally:
         _sh_ws.rmtree(_wroot, ignore_errors=True)
@@ -1974,8 +2697,132 @@ def _selftest() -> int:
         assert (not ok) and "TC-I01" in msg, f"defer-không-khai-báo phải bị coi in-scope: {msg}"
         # (f) force → bypass
         assert check_test_evidence(_te_state, {"force": True}, root=_troot)[0] is True
+        # (g) TC trên WEB boundary: pass mà thiếu screenshot → fail; PNG giả (text) → fail; PNG thật → pass
+        (_troot / "harness").mkdir(parents=True, exist_ok=True)
+        (_troot / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(json.dumps({"version": 1, "boundaries": [
+            {"boundary_id": "webapp", "kind": "web", "prefix": "demo"}]}), encoding="utf-8")
+        (_tw / "test-case-registry.md").write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-W01 | e2e | auto | webapp | FEAT-001 | AC-1 | @FEAT-001 |\n", encoding="utf-8")
+        (_tw / "test-report.md").write_text(
+            "| TC | Result |\n|----|--------|\n| TC-W01 | PASS |\n", encoding="utf-8")
+        (_tlogs / "TC-W01.log").write_text("GET http://localhost:5173/ -> 200\nrendered\n", encoding="utf-8")
+        ok, msg = check_test_evidence(_te_state, root=_troot)
+        assert (not ok) and "screenshot" in msg, f"web TC pass không screenshot phải fail: {msg}"
+        _shots = _tw / "screenshots"
+        _shots.mkdir(parents=True, exist_ok=True)
+        (_shots / "TC-W01.png").write_text("fake text pretending to be png" + "x" * 1100, encoding="utf-8")
+        ok, msg = check_test_evidence(_te_state, root=_troot)
+        assert (not ok) and "screenshot" in msg, f"PNG giả (text) phải fail magic-check: {msg}"
+        (_shots / "TC-W01.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 1200)
+        assert check_test_evidence(_te_state, root=_troot)[0] is True, "web TC pass + screenshot PNG thật → pass"
+        # (h) skip 'service-down' mâu thuẫn health-proof (service UP) → fail
+        (_tw / "test-report.md").write_text(
+            "| TC | Result |\n|----|--------|\n| TC-W01 | SKIP |\n", encoding="utf-8")
+        (_tlogs / "TC-W01.log").write_text("connection refused khi mở UI\n", encoding="utf-8")
+        assert check_test_evidence(_te_state, root=_troot)[0] is False  # 0 in-scope chạy → vẫn fail
+        (_tw / "health-proof.json").write_text(json.dumps({"probes": [
+            {"boundary": "webapp", "http_status": 200, "ok": True}]}), encoding="utf-8")
+        ok, msg = check_test_evidence(_te_state, root=_troot)
+        assert (not ok) and "MÂU THUẪN" in msg, f"skip down khi proof nói UP phải fail: {msg}"
+        # (i) marker lỏng cũ: log chứa 'dropdown' KHÔNG được tính là service-down
+        (_tw / "health-proof.json").unlink()
+        (_tlogs / "TC-W01.log").write_text("mở dropdown rồi skip\n", encoding="utf-8")
+        ok, msg = check_test_evidence(_te_state, root=_troot)
+        assert (not ok) and "silent-skip" in msg, f"'dropdown' không phải lý do service-down: {msg}"
     finally:
         _shutil.rmtree(_troot, ignore_errors=True)
+
+    # ui_test_present: web boundary phải có ≥1 auto-TC UI in-scope (deferred không tính).
+    _uroot = Path(_tf_hp.mkdtemp(prefix="gates_ui_"))
+    try:
+        (_uroot / "harness").mkdir(parents=True, exist_ok=True)
+        (_uroot / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(json.dumps({"version": 1, "boundaries": [
+            {"boundary_id": "scheduling", "kind": "backend", "prefix": "demo"},
+            {"boundary_id": "patient-web", "kind": "web", "prefix": "demo"}]}), encoding="utf-8")
+        _ui_state = {"wave": {"id": "wave-001"}, "wave_boundaries": ["scheduling", "patient-web"]}
+        _uw = _uroot / "tracking" / "wave-001"
+        _uw.mkdir(parents=True, exist_ok=True)
+        (_uroot / "docs" / "plans").mkdir(parents=True, exist_ok=True)
+        (_uroot / "docs" / "plans" / "wave-001.md").write_text(
+            "# Wave 1\nFEAT-001\n\n## Deferred to later waves\n\n- FEAT-005\n", encoding="utf-8")
+        # (a) registry chỉ TC backend → fail cite patient-web
+        (_uw / "test-case-registry.md").write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-I01 | integration | auto | scheduling | FEAT-001 | AC-1 | @FEAT-001 |\n", encoding="utf-8")
+        ok, msg = check_ui_test_present(_ui_state, root=_uroot)
+        assert (not ok) and "patient-web" in msg, msg
+        # (b) UI TC duy nhất bị tag @deferred (khai báo hợp lệ) → vẫn fail (né bằng tag không được)
+        (_uw / "test-case-registry.md").write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-I01 | integration | auto | scheduling | FEAT-001 | AC-1 | @FEAT-001 |\n"
+            "| TC-U01 | e2e | auto | patient-web | FEAT-005 | AC-1 | @FEAT-005 @deferred |\n", encoding="utf-8")
+        ok, msg = check_ui_test_present(_ui_state, root=_uroot)
+        assert (not ok) and "patient-web" in msg, f"UI TC deferred-only phải vẫn fail: {msg}"
+        # (c) có auto UI TC in-scope → pass
+        (_uw / "test-case-registry.md").write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-U01 | e2e | auto | patient-web | FEAT-001 | AC-1 | @FEAT-001 |\n", encoding="utf-8")
+        assert check_ui_test_present(_ui_state, root=_uroot)[0] is True, "có UI TC in-scope → pass"
+        # (d) wave không có web boundary → không áp dụng; force bypass
+        assert check_ui_test_present({"wave": {"id": "wave-001"}, "wave_boundaries": ["scheduling"]}, root=_uroot)[0] is True
+        assert check_ui_test_present(_ui_state, {"force": True}, root=_uroot)[0] is True
+    finally:
+        _shutil.rmtree(_uroot, ignore_errors=True)
+
+    # registry_scope: TC chỉ trace FEAT ≤ wave hiện tại; deferred phải tag @deferred.
+    _sroot = Path(_tf_hp.mkdtemp(prefix="gates_rs_"))
+    try:
+        (_sroot / "docs" / "plans").mkdir(parents=True, exist_ok=True)
+        (_sroot / "docs" / "plans" / "wave-001.md").write_text(
+            "# Wave 1\n| FEAT-001 | boundaries/api | Must |\n\n"
+            "## Deferred to later waves\n\n| FEAT-002:AC-3 | auth wave sau | wave-002 |\n", encoding="utf-8")
+        (_sroot / "docs" / "plans" / "wave-002.md").write_text(
+            "# Wave 2\n| FEAT-003 | boundaries/api | Must |\n", encoding="utf-8")
+        _rs_state = {"wave": {"id": "wave-001"}}
+        _sw = _sroot / "tracking" / "wave-001"
+        _sw.mkdir(parents=True, exist_ok=True)
+        _rs_reg = _sw / "test-case-registry.md"
+        # (a) TC trace FEAT-003 (chỉ có ở wave-002 tương lai) → over-scope fail
+        _rs_reg.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-A | functional | auto | api | FEAT-001 | AC-1 | @FEAT-001 |\n"
+            "| TC-B | functional | auto | api | FEAT-003 | AC-1 | @FEAT-003 |\n", encoding="utf-8")
+        ok, msg = check_registry_scope(_rs_state, root=_sroot)
+        assert (not ok) and "TC-B" in msg and "over-scope" in msg, msg
+        # (b) TC cho token deferred nhưng KHÔNG tag @deferred → fail (chính là gap bug-rác)
+        _rs_reg.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-C | security | auto | api | FEAT-002 | AC-3 | @FEAT-002 |\n", encoding="utf-8")
+        ok, msg = check_registry_scope(_rs_state, root=_sroot)
+        assert (not ok) and "TC-C" in msg and "@deferred" in msg, msg
+        # (c) tag @deferred đúng + TC in-scope + smoke không trace FEAT → pass
+        _rs_reg.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-A | functional | auto | api | FEAT-001 | AC-1 | @FEAT-001 |\n"
+            "| TC-C | security | auto | api | FEAT-002 | AC-3 | @FEAT-002 @deferred |\n"
+            "| TC-S01 | smoke | auto | api | — | — | @smoke |\n", encoding="utf-8")
+        assert check_registry_scope(_rs_state, root=_sroot)[0] is True, "in-scope + deferred-tagged + smoke → pass"
+        # (d) sang wave-002: FEAT-003 thành hợp lệ (registry tích luỹ)
+        _sw2 = _sroot / "tracking" / "wave-002"
+        _sw2.mkdir(parents=True, exist_ok=True)
+        (_sw2 / "test-case-registry.md").write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-B | functional | auto | api | FEAT-003 | AC-1 | @FEAT-003 |\n", encoding="utf-8")
+        assert check_registry_scope({"wave": {"id": "wave-002"}}, root=_sroot)[0] is True, "FEAT wave hiện tại hợp lệ"
+        # (e) force bypass
+        _rs_reg.write_text("| TC | group | type | feature |\n|--|--|--|--|\n| TC-X | e2e | auto | FEAT-099 |\n", encoding="utf-8")
+        assert check_registry_scope(_rs_state, {"force": True}, root=_sroot)[0] is True
+    finally:
+        _shutil.rmtree(_sroot, ignore_errors=True)
 
     # code_compliance (G11): backend cấm H2 + bắt Dockerfile/config.
     _croot = Path(_tf_hp.mkdtemp(prefix="gates_cc_"))
@@ -2109,6 +2956,218 @@ def _selftest() -> int:
     assert isinstance(check_wave_sequence_lint()[0], bool)
     import wave_sequence_lint as _wsl
     assert _wsl._selftest() == 0
+
+    # translation_parity: business đã ký ↔ eng doc 1-1; eng mồ côi bị flag.
+    _tproot = Path(_tf_hp.mkdtemp(prefix="gates_tp_"))
+    try:
+        (_tproot / "docs" / "domain" / "feat").mkdir(parents=True, exist_ok=True)
+        (_tproot / "docs" / "architecture" / "feat").mkdir(parents=True, exist_ok=True)
+        _bizf = _tproot / "docs" / "domain" / "feat" / "FEAT-001.md"
+        _bizf.write_text('---\nid: "FEAT-001"\nstatus: APPROVED\n---\n# F\nKhách đặt lịch.\n', encoding="utf-8")
+        # (a) ký rồi nhưng chưa có eng doc → fail (translate bỏ sót)
+        ok, msg = check_translation_parity(root=_tproot)
+        assert (not ok) and "FEAT-001" in msg and "bỏ sót" in msg, msg
+        # (b) eng doc có source trỏ về business → pass
+        (_tproot / "docs" / "architecture" / "feat" / "FEAT-001.md").write_text(
+            '---\nid: "FEAT-001"\nsource: docs/domain/feat/FEAT-001.md\n---\n# F eng\n', encoding="utf-8")
+        assert check_translation_parity(root=_tproot)[0] is True, "eng doc khớp source → pass"
+        # (c) eng doc MỒ CÔI (không source, không khớp business nào) → fail
+        (_tproot / "docs" / "architecture" / "feat" / "FEAT-999.md").write_text(
+            '---\nid: "FEAT-999"\n---\n# tự author thẳng eng\n', encoding="utf-8")
+        ok, msg = check_translation_parity(root=_tproot)
+        assert (not ok) and "FEAT-999" in msg and "MỒ CÔI" in msg, msg
+        # (d) force bypass
+        assert check_translation_parity({"force": True}, root=_tproot)[0] is True
+    finally:
+        _shutil.rmtree(_tproot, ignore_errors=True)
+
+    # todo_resolved: marker TODO-engineer/TBD(DESIGN) phải được DESIGN điền hết.
+    _tdroot = Path(_tf_hp.mkdtemp(prefix="gates_td_"))
+    try:
+        _brd = _tdroot / "docs" / "architecture" / "business-rules"
+        _brd.mkdir(parents=True, exist_ok=True)
+        (_brd / "BR-001.md").write_text(
+            '---\nid: "BR-001"\nenforcement_location: TBD (DESIGN)\n---\n# BR\nconsumes_contracts: [] # TODO engineer\n',
+            encoding="utf-8")
+        ok, msg = check_todo_resolved(root=_tdroot)
+        assert (not ok) and "BR-001" in msg, msg
+        (_brd / "BR-001.md").write_text(
+            '---\nid: "BR-001"\nenforcement_location: "api (scheduling POST /appointments)"\n---\n# BR\n',
+            encoding="utf-8")
+        assert check_todo_resolved(root=_tdroot)[0] is True, "đã điền hết TBD → pass"
+        assert check_todo_resolved({"force": True}, root=_tdroot)[0] is True
+    finally:
+        _shutil.rmtree(_tdroot, ignore_errors=True)
+
+    # ac_coverage: AC in-scope phải có TC (2 chiều: AC mồ côi + TC stale); deferred token bỏ qua.
+    _acroot = Path(_tf_hp.mkdtemp(prefix="gates_ac_"))
+    try:
+        (_acroot / "docs" / "architecture" / "feat").mkdir(parents=True, exist_ok=True)
+        (_acroot / "docs" / "plans").mkdir(parents=True, exist_ok=True)
+        _acw = _acroot / "tracking" / "wave-001"
+        _acw.mkdir(parents=True, exist_ok=True)
+        (_acroot / "docs" / "architecture" / "feat" / "FEAT-T01.md").write_text(
+            "# F\n### AC-1: happy\n...\n### AC-2: validation\n...\n### AC-3: auth\n...\n", encoding="utf-8")
+        (_acroot / "docs" / "plans" / "wave-001.md").write_text(
+            "# W1\nFEAT-T01\n\n## Deferred to later waves\n\n- FEAT-T01:AC-3\n", encoding="utf-8")
+        _ac_state = {"wave": {"id": "wave-001"}, "wave_features": ["FEAT-T01"]}
+        _acreg = _acw / "test-case-registry.md"
+        # (a) chỉ phủ AC-1 → fail cite AC-2 (AC-3 deferred nên bỏ qua)
+        _acreg.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-1 | functional | auto | api | FEAT-T01 | FEAT-T01:AC-1 | @FEAT-T01 |\n", encoding="utf-8")
+        ok, msg = check_ac_coverage(_ac_state, root=_acroot)
+        assert (not ok) and "AC-2" in msg and "AC-3" not in msg, msg
+        # (b) phủ đủ AC-1+AC-2 (manual cũng tính) → pass
+        _acreg.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-1 | functional | auto | api | FEAT-T01 | FEAT-T01:AC-1 | @FEAT-T01 |\n"
+            "| TC-2 | uat | manual | api | FEAT-T01 | AC-2 | @FEAT-T01 |\n", encoding="utf-8")
+        assert check_ac_coverage(_ac_state, root=_acroot)[0] is True, "phủ đủ AC in-scope → pass"
+        # (c) TC stale: trace AC-9 không tồn tại trong FEAT → fail
+        _acreg.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-1 | functional | auto | api | FEAT-T01 | FEAT-T01:AC-1 | @FEAT-T01 |\n"
+            "| TC-2 | uat | manual | api | FEAT-T01 | AC-2 | @FEAT-T01 |\n"
+            "| TC-9 | functional | auto | api | FEAT-T01 | FEAT-T01:AC-9 | @FEAT-T01 |\n", encoding="utf-8")
+        ok, msg = check_ac_coverage(_ac_state, root=_acroot)
+        assert (not ok) and "TC-9" in msg and "stale" in msg, msg
+        # (d) FEAT không có file → bỏ qua (plan_integrity lo); force bypass
+        _ac_state2 = {"wave": {"id": "wave-001"}, "wave_features": ["FEAT-NOFILE"]}
+        _acreg.write_text("| TC | group | type | feature | AC |\n|--|--|--|--|--|\n", encoding="utf-8")
+        assert check_ac_coverage(_ac_state2, root=_acroot)[0] is True
+        assert check_ac_coverage(_ac_state, {"force": True}, root=_acroot)[0] is True
+    finally:
+        _shutil.rmtree(_acroot, ignore_errors=True)
+
+    # contract_graph_parity: đồ thị contract ↔ MATRIX depends_on (3 nguồn 1 sự thật).
+    _cgroot = Path(_tf_hp.mkdtemp(prefix="gates_cg_"))
+    try:
+        (_cgroot / "harness").mkdir(parents=True, exist_ok=True)
+        _api_d = _cgroot / "docs" / "architecture" / "api"
+        _api_d.mkdir(parents=True, exist_ok=True)
+        _mx = _cgroot / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
+        _mx.write_text(json.dumps({"boundaries": [
+            {"boundary_id": "scheduling", "kind": "backend", "depends_on": []},
+            {"boundary_id": "patient-web", "kind": "web", "depends_on": ["scheduling"]},
+        ]}), encoding="utf-8")
+        # (a) khớp: api-scheduling consumers có patient-web = cạnh MATRIX → pass
+        (_api_d / "api-scheduling.md").write_text(
+            '---\nproducer: "scheduling"\nconsumers: ["patient-web"]\n---\n# API\n', encoding="utf-8")
+        assert check_contract_graph_parity(root=_cgroot)[0] is True, "đồ thị khớp → pass"
+        # (b) contract khai consumer không có cạnh MATRIX → fail
+        (_api_d / "api-scheduling.md").write_text(
+            '---\nproducer: "scheduling"\nconsumers: ["patient-web", "billing"]\n---\n# API\n', encoding="utf-8")
+        ok, msg = check_contract_graph_parity(root=_cgroot)
+        assert (not ok) and "billing" in msg, msg
+        # (c) cạnh MATRIX không được contract doc nào ghi nhận → fail
+        (_api_d / "api-scheduling.md").write_text(
+            '---\nproducer: "scheduling"\nconsumers: []\n---\n# API\n', encoding="utf-8")
+        ok, msg = check_contract_graph_parity(root=_cgroot)
+        assert (not ok) and "depends_on" in msg and "scheduling" in msg, msg
+        # (d) INTEG-INT doc cũng ghi nhận được cạnh → pass; force bypass
+        _integ_d = _cgroot / "docs" / "architecture" / "integrations"
+        _integ_d.mkdir(parents=True, exist_ok=True)
+        (_integ_d / "INTEG-INT-patient-web-to-scheduling.md").write_text(
+            '---\nconsumer: "patient-web"\nproducer: "scheduling"\nmode: "sync"\n---\n# I\n', encoding="utf-8")
+        assert check_contract_graph_parity(root=_cgroot)[0] is True, "INTEG doc ghi nhận cạnh → pass"
+        _mx.write_text(json.dumps({"boundaries": []}), encoding="utf-8")
+        assert check_contract_graph_parity(root=_cgroot)[0] is True  # MATRIX rỗng → skip
+        assert check_contract_graph_parity({"force": True}, root=_cgroot)[0] is True
+    finally:
+        _shutil.rmtree(_cgroot, ignore_errors=True)
+
+    # api_contract_proof: endpoint khai api doc phải có trong runtime OpenAPI (api-proof.json).
+    _aproot = Path(_tf_hp.mkdtemp(prefix="gates_ap_"))
+    try:
+        (_aproot / "harness").mkdir(parents=True, exist_ok=True)
+        (_aproot / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(json.dumps({"boundaries": [
+            {"boundary_id": "scheduling", "kind": "backend", "prefix": "demo"}]}), encoding="utf-8")
+        _ap_state = {"wave": {"id": "wave-001"}, "wave_boundaries": ["scheduling"]}
+        _apd = _aproot / "docs" / "architecture" / "api"
+        _apd.mkdir(parents=True, exist_ok=True)
+        _apw = _aproot / "tracking" / "wave-001"
+        _apw.mkdir(parents=True, exist_ok=True)
+        # api doc không tồn tại → skip → pass
+        assert check_api_contract_proof(_ap_state, root=_aproot)[0] is True
+        (_apd / "api-scheduling.md").write_text(
+            "## 3.1\n| Method · Path | `POST /api/v1/appointments` |\n"
+            "## 3.2\n| Method · Path | `GET /api/v1/appointments/{id}` |\n", encoding="utf-8")
+        # (a) có api doc + endpoint nhưng thiếu proof → fail
+        ok, msg = check_api_contract_proof(_ap_state, root=_aproot)
+        assert (not ok) and "api-proof.json" in msg, msg
+        # (b) proof đủ endpoint (param name khác vẫn khớp nhờ normalize {}) → pass
+        (_apw / "api-proof.json").write_text(json.dumps({"specs": {"scheduling": {
+            "source_url": "http://localhost:8081/v3/api-docs",
+            "paths": {"/api/v1/appointments": ["GET", "POST"],
+                      "/api/v1/appointments/{appointmentId}": ["GET", "PUT"]}}}}), encoding="utf-8")
+        assert check_api_contract_proof(_ap_state, root=_aproot)[0] is True, "endpoint đủ → pass"
+        # (c) runtime thiếu endpoint đã khai → fail (contract drift)
+        (_apw / "api-proof.json").write_text(json.dumps({"specs": {"scheduling": {
+            "paths": {"/api/v1/appointments": ["GET"]}}}}), encoding="utf-8")
+        ok, msg = check_api_contract_proof(_ap_state, root=_aproot)
+        assert (not ok) and "POST /api/v1/appointments" in msg and "drift" in msg, msg
+        # (d) fetch error entry → fail nêu springdoc; force bypass
+        (_apw / "api-proof.json").write_text(json.dumps({"specs": {"scheduling": {
+            "error": "không fetch được OpenAPI"}}}), encoding="utf-8")
+        ok, msg = check_api_contract_proof(_ap_state, root=_aproot)
+        assert (not ok) and "springdoc" in msg, msg
+        assert check_api_contract_proof(_ap_state, {"force": True}, root=_aproot)[0] is True
+    finally:
+        _shutil.rmtree(_aproot, ignore_errors=True)
+
+    # derive_coverage_pct + all_boundaries_reviewed: số đo từ report thắng số tự khai.
+    _cvroot = Path(_tf_hp.mkdtemp(prefix="gates_cv_"))
+    try:
+        (_cvroot / "harness").mkdir(parents=True, exist_ok=True)
+        (_cvroot / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(json.dumps({"boundaries": [
+            {"boundary_id": "order", "kind": "backend", "prefix": "demo"},
+            {"boundary_id": "web1", "kind": "web", "prefix": "demo"},
+        ]}), encoding="utf-8")
+        _cv_state = {
+            "wave_boundaries": ["order"],
+            "project": {"service_prefix": "demo"},
+            "review_results": [{"boundary": "order", "kind": "backend", "review_result": "pass", "coverage_pct": 95}],
+        }
+        _svc = _cvroot / "services" / "demo-order"
+        _svc.mkdir(parents=True, exist_ok=True)
+        # (a) service đã scaffold nhưng KHÔNG có report → fail dù tự khai 95
+        ok, msg = check_all_boundaries_reviewed(_cv_state, root=_cvroot)
+        assert (not ok) and "coverage report" in msg, f"scaffold không report phải fail: {msg}"
+        # (b) jacoco nói 70% (< BE 80) → fail dù tự khai 95 (đo thắng khai); counter LINE cuối = tổng
+        _jx = _svc / "build" / "reports" / "jacoco" / "test"
+        _jx.mkdir(parents=True, exist_ok=True)
+        (_jx / "jacocoTestReport.xml").write_text(
+            '<report><package><counter type="LINE" missed="5" covered="5"/></package>'
+            '<counter type="INSTRUCTION" missed="1" covered="9"/>'
+            '<counter type="LINE" missed="30" covered="70"/></report>', encoding="utf-8")
+        assert derive_coverage_pct("order", _cv_state, _cvroot) == 70.0
+        ok, msg = check_all_boundaries_reviewed(_cv_state, root=_cvroot)
+        assert (not ok) and "đo từ report" in msg, f"derived 70 < 80 phải fail: {msg}"
+        # (c) jacoco 90% → pass kể cả khi tự khai 0 (số đo thắng)
+        (_jx / "jacocoTestReport.xml").write_text(
+            '<report><counter type="LINE" missed="10" covered="90"/></report>', encoding="utf-8")
+        _cv_state["review_results"][0]["coverage_pct"] = 0
+        assert check_all_boundaries_reviewed(_cv_state, root=_cvroot)[0] is True, "derived 90 ≥ 80 → pass"
+        # (d) web boundary: coverage-summary.json 65% ≥ 60 → pass; lcov parse đúng
+        _web = _cvroot / "services" / "demo-web1"
+        (_web / "coverage").mkdir(parents=True, exist_ok=True)
+        (_web / "coverage" / "coverage-summary.json").write_text(
+            json.dumps({"total": {"lines": {"pct": 65.2}}}), encoding="utf-8")
+        assert derive_coverage_pct("web1", _cv_state, _cvroot) == 65.2
+        (_web / "coverage" / "coverage-summary.json").unlink()
+        (_web / "coverage" / "lcov.info").write_text("LF:100\nLH:58\nLF:100\nLH:60\n", encoding="utf-8")
+        assert derive_coverage_pct("web1", _cv_state, _cvroot) == 59.0
+        # (e) chưa scaffold → None (fallback số khai — hermetic/smoke giữ hành vi cũ)
+        assert derive_coverage_pct("ghost", _cv_state, _cvroot) is None
+        # (f) force bypass
+        _cv_state["review_results"] = []
+        assert check_all_boundaries_reviewed(_cv_state, {"force": True}, root=_cvroot)[0] is True
+    finally:
+        _shutil.rmtree(_cvroot, ignore_errors=True)
 
     print("OK: gates.py selftest passed")
     return 0

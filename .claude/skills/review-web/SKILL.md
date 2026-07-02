@@ -18,6 +18,7 @@ git diff --name-only main...HEAD
 find src -name "*.css" -o -name "*.scss" | wc -l        # phải > 0 (hoặc tailwind/CSS-in-JS)
 grep -rl "className=" src | wc -l                        # số file dùng className
 grep -rE -- "--color-|--font-|--space-|theme\." src      # design token (CSS var) theo ux §4 có được dùng?
+grep -rE -- "--[a-z-]+:\s" src; grep -rl "design-tokens" src   # token có được ĐỊNH NGHĨA/import trong bundle? (var không định nghĩa = resolve rỗng)
 ls tailwind.config.* 2>/dev/null; grep -rl "styled\.\|@emotion\|makeStyles" src   # cơ chế styling khác
 ```
 
@@ -33,6 +34,8 @@ ls tailwind.config.* 2>/dev/null; grep -rl "styled\.\|@emotion\|makeStyles" src 
 6. **Design fidelity (BLOCKER — verify được, KHÔNG đánh giá bằng mắt suông)**: FE phải THỰC SỰ được style theo `ux-{boundary}.md §4 design tokens`, không chỉ markup:
    - **Có cơ chế styling**: tồn tại ≥1 file `.css/.scss` HOẶC tailwind config HOẶC CSS-in-JS (`styled`/`@emotion`/`makeStyles`). **`className` dùng khắp nơi mà 0 stylesheet = FE unstyled (không định dạng) = BLOCKER** (gate `web_styling` ở dev-handoff cũng chặn cứng).
    - **Design token thật**: màu/spacing/typography từ `ux §4` được map thành CSS var (`--color-primary` …) / theme config — KHÔNG hardcode hex/px rải rác, KHÔNG bỏ trống.
+   - **Token được ĐỊNH NGHĨA trong bundle**: `design-tokens.css` được copy vào src / `@import` ở entry (main.tsx/index.css) — dùng `var(--...)` mà token không định nghĩa = var resolve rỗng = UI vẫn unstyled dù grep thấy var (gate `web_styling` chặn) = **BLOCKER**.
+   - **Trạng thái visual đủ**: hover/focus cho element tương tác, loading/empty/error có style riêng (không chỉ text trần) — grep `:hover`/`:focus-visible` + component state.
    - **className có backing style**: mỗi class BEM trong markup phải có rule CSS định nghĩa (grep class ↔ CSS); class "mồ côi" (khai báo trong JSX nhưng không có CSS) = MAJOR.
    - **Render proof (khuyến nghị)**: build + serve (hoặc screenshot 1 screen chính) xác nhận trang KHÔNG trắng/không-style; lý tưởng có 1 visual/e2e TC ở registry.
    - Layout/screen khớp wireframe `ux §3` (SCR/screen), responsive breakpoint `ux §3.*`, theming `ux §4.6` nếu spec yêu cầu.

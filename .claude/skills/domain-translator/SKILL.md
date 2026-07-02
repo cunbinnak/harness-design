@@ -47,4 +47,5 @@ description: DỊCH business doc (docs/domain/, đã ký) → engineering artifa
 - Bỏ field `source` (engineer cần biết origin).
 
 ## Done
-- Mỗi business doc đã ký có eng doc tương ứng `docs/architecture/` (giữ id + `source` + TODO-engineer). translation-log có row. Gate `/domain-end` (`domain_gate`) → DESIGN.
+- Mỗi business doc đã ký có eng doc tương ứng `docs/architecture/` (giữ id + `source` + `domain_source_id` + TODO-engineer). translation-log có row.
+- **Gate `translation_parity` (@/domain-end) đối chiếu 1-1 bằng máy:** business đã ký thiếu eng doc = bỏ sót (chặn); eng doc epics/feat/BR không có `source: docs/domain/...` = mồ côi (chặn) — dịch ĐỦ 100%, không bỏ sót. Gate `/domain-end` (`domain_gate`) → DESIGN.

@@ -288,6 +288,12 @@ def _pre_write_edit(payload: dict) -> int:
         return pre_tool_deny(
             f"'{path}' là kernel file. KHÔNG sửa tay — dùng `py scripts/harness.py <cmd> complete '...'` để transition state."
         )
+    if policies.is_proof_file(path):
+        return pre_tool_deny(
+            f"FM-PROOF-FORGE: '{path}' là PROOF FILE harness-đo — CHỈ `py scripts/capture_infra_proof.py` được sinh, "
+            "KHÔNG ghi/sửa tay (ghi tay = fake bằng chứng infra/health/api). Service chưa UP → start thật rồi "
+            "chạy lại capture; env không Docker → gate force:true,reason (audit decisions.md)."
+        )
     # Phase-lock: doc upstream đã qua stage sở hữu → frozen (port ZIP readonly-inputs cho single-repo).
     try:
         st = state_mod.load_state()

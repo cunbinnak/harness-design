@@ -7,7 +7,7 @@ sets_stage: DESIGN
 spawn:
   agent: "none (instant action — verify gate + transition)"
   skills: []
-gates: [{type: domain_gate}]
+gates: [{type: domain_gate}, {type: planning_lint}, {type: translation_parity}]
 ---
 
 # /domain-end
@@ -16,7 +16,7 @@ gates: [{type: domain_gate}]
 
 ## Workflow
 1. Run `py scripts/build_prompt.py domain-end`.
-2. Gate (`domain_gate`): ≥1 `docs/architecture/epics/EP-*.md` + ≥1 `docs/architecture/feat/FEAT-*.md` + ≥1 `docs/architecture/business-rules/BR-*.md`.
+2. Gate (`domain_gate`): ≥1 `docs/architecture/epics/EP-*.md` + ≥1 `docs/architecture/feat/FEAT-*.md` + ≥1 `docs/architecture/business-rules/BR-*.md`. Kèm `planning_lint` (field bắt buộc + ref-integrity) và **`translation_parity`**: mỗi business doc ĐÃ KÝ (docs/domain/) phải có eng doc tương ứng (khớp frontmatter `source`/`domain_source_id`/stem) — translate bỏ sót = chặn; eng doc lớp product (epics/feat/BR) không có `source: docs/domain/...` = MỒ CÔI (tự author né vòng ký) = chặn.
 3. PASS → `py scripts/harness.py domain-end complete '{}'` → DOMAIN_AUTHORING → DESIGN.
 4. FAIL → KHÔNG complete; author thêm (`/domain-start EPIC|FEATURE|BR`) rồi `/domain-end` lại.
 5. Override (user đồng ý): `complete '{"force":true,"reason":"<lý do>"}'` → ghi audit `tracking/decisions.md`.

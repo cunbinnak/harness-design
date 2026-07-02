@@ -6,7 +6,7 @@ sets_stage: TEST_PLAN
 spawn:
   agent: "test-plan-agent"
   skills: [test-plan]
-gates: [{type: flag, field: docker_compose_ok, expected: true}, {type: flag, field: connectivity_ok, expected: true}, {type: infra_proof}, {type: health_proof}, {type: contract_test_present}]
+gates: [{type: flag, field: docker_compose_ok, expected: true}, {type: flag, field: connectivity_ok, expected: true}, {type: infra_proof}, {type: health_proof}, {type: contract_test_present}, {type: ui_test_present}, {type: registry_scope}, {type: ac_coverage}]
 ---
 
 # /test-plan
@@ -28,5 +28,12 @@ py scripts/harness.py test-plan complete '{"docker_compose_ok": true, "connectiv
 #                (re-verify stack vẫn UP từ dev-handoff sang test). Env-block → force.
 # contract_test_present = mỗi consumer (boundary có depends_on trong wave) phải có ≥1 auto-TC
 #                group=contract|integration|e2e nối tới nó → chống "thiếu liên kết BE-FE" lọt test. force-able.
+# ui_test_present = mỗi WEB boundary trong wave phải có ≥1 auto-TC UI in-scope (boundary=<web>)
+#                → chống "UI toàn manual/vắng → giao diện không bao giờ được mở thật". force-able.
+# registry_scope = auto-TC chỉ trace FEAT thuộc wave plan ≤ wave hiện tại; FEAT/AC deferred phải
+#                tag @deferred → chống over-scope sinh TC cho feature chưa build (bug rác chặn end-wave). force-able.
+# ac_coverage = traceability FEAT.AC ↔ TC 2 CHIỀU (parse `### AC-n` trong FEAT-*.md vs cột AC registry):
+#                AC in-scope không có TC = mồ côi (chặn); TC trace AC không tồn tại = stale (sau /apply-cr
+#                đổi AC mà quên remap). Deferred token bỏ qua. force-able.
 ```
 

@@ -10,11 +10,21 @@ description: Sinh test-case-registry.md cho wave — TC per AC + enterprise cove
 
 > **Vai trò: THIẾT KẾ test case** (viết spec vào registry) — KHÔNG viết code test, KHÔNG chạy. Code test do **dev** viết khi code (mỗi AC có test, `rules §N`); `/test-execute` chạy + bổ sung test còn thiếu so với registry.
 
+## Scope = wave plan (gate `registry_scope` — chống over-scope sinh bug rác)
+Auto-TC **chỉ được trace FEAT thuộc wave plan ≤ wave hiện tại** (`docs/plans/wave-*.md` — registry tích luỹ nên FEAT wave trước vẫn hợp lệ để regression). FEAT chỉ xuất hiện ở wave TƯƠNG LAI / chưa plan → **KHÔNG sinh TC** (test-execute sẽ chạy vào feature chưa build → fail → bug rác chặn end-wave). FEAT/AC nằm trong `## Deferred to later waves` → TC **bắt buộc tag `@deferred`** (thiếu tag = gate chặn).
+
 ## Deferred-scope (để end-wave close sạch tự nhiên)
 Đọc `## Deferred to later waves` trong `docs/plans/wave-{N}.md` + `tracking/wave-{N}/review-findings.md` (status wontfix/accepted có lý do defer). Mọi AC/feature **đã chủ động hoãn sang wave sau** (vd auth/idempotency/event ở wave-1 chỉ-CRUD):
 - TC tương ứng VẪN viết (để wave sau reuse) nhưng đánh **tag `@deferred`** + `note: deferred wave-N` + KHÔNG đặt `pri P0`.
 - Defer **chỉ có hiệu lực khi feature/AC đó được khai báo trong `## Deferred to later waves` của wave plan** — tag `@deferred` đơn lẻ (không khai báo) sẽ bị test-execute coi in-scope và vẫn phải chạy (chống lạm dụng tag để né test).
 - Hệ quả: test-execute `skip(deferred)` không log bug; `test_result` (harness derive) chỉ tính in-scope → đạt `pass` tự nhiên khi in-scope xanh, KHÔNG cần ép `test_result=pass` thủ công.
+
+## UI coverage bắt buộc (gate `ui_test_present` — web boundary phải được MỞ thật)
+Mỗi **web boundary trong wave** phải có **≥1 auto-TC UI in-scope** (`type=auto`, `boundary=<web-boundary>`, group `e2e`; thêm `accessibility` nếu wave full-stack FE). Nội dung tối thiểu của TC UI:
+- Playwright mở màn hình chính (route theo `ux-{boundary}.md §screens`), assert luồng chính render + action chạy.
+- **Assert style thật** (chống unstyled): computed style của element chính phải khớp design token (background/font/spacing từ `design-tokens.css`), KHÔNG phải browser default.
+- **Screenshot** mỗi TC (pass hay fail) → `tracking/wave-{N}/screenshots/{TC}.png` (test-execute chụp; gate `test_evidence` đòi file thật).
+UI TC để `type=manual` hết / tag `@deferred` để né → gate chặn (registry toàn API-TC vẫn pass là loophole đã đóng).
 
 ## Output: `tracking/wave-{N}/test-case-registry.md` (format BẢNG — mỗi TC = 1 HÀNG)
 **Template ở `tracking/_templates/TEMPLATE.test-case-registry.md`** (đường dẫn ĐÚNG — đọc + copy cấu trúc, KHÔNG tự chế format / KHÔNG tìm chỗ khác). Cột: `TC | group | type | boundary | feature | AC | BR | pri | pre-condition | test-data | steps | expected | tags | note` + bảng **Coverage matrix** (AC → TC). (Template test-report + bugs cũng ở `tracking/_templates/`.)
@@ -24,10 +34,11 @@ description: Sinh test-case-registry.md cho wave — TC per AC + enterprise cove
 - `pri`: P0|P1|P2 — quy tắc gán ở `SEVERITY-TEST-TAXONOMY §3`. `tags`: ≥1 `@FEAT-<id>` + ≥1 suite tag (`SEVERITY-TEST-TAXONOMY §5`).
 - `test-data`/Steps/Expected giữ ngắn 1 cell; chi tiết dài (selector, payload, SQL fixture) → UAT script riêng / `test-execute` automation.
 
-## Traceability TC↔AC (rigor bắt buộc — hai chiều)
+## Traceability TC↔AC (rigor bắt buộc — hai chiều, gate `ac_coverage` enforce bằng máy)
 - Mỗi TC trace ≥1 `FEAT-N:AC-M` (+ `BR-N` nếu enforce rule). KHÔNG TC mồ côi (không trace AC nào — trừ `TC-S*` smoke infra).
-- Mọi AC `Must` của FEAT in-scope → ≥1 TC (không AC mồ côi). Bảng **Coverage matrix** chứng minh: AC → TC list + count.
-- Đọc FEAT § "Tiêu chí chấp nhận" (BDD Cho/Khi/Thì) → mỗi dòng AC ánh xạ ≥1 TC. Parse `## Tiêu chí chấp nhận` đếm AC, so với count TC linked → assert phủ 100%.
+- Mọi AC của FEAT in-scope → ≥1 TC (không AC mồ côi). Bảng **Coverage matrix** chứng minh: AC → TC list + count.
+- Đọc FEAT § "Tiêu chí chấp nhận" (heading `### AC-n`, BDD Cho/Khi/Thì) → mỗi AC ánh xạ ≥1 TC. Parse đếm AC, so với count TC linked → assert phủ 100%.
+- **Gate `ac_coverage` parse `### AC-n` trong FEAT-*.md vs cột feature+AC registry:** AC in-scope (trừ token deferred) không có TC = chặn; TC trace AC không tồn tại trong FEAT (sau `/apply-cr` đổi AC) = stale = chặn — coverage matrix không còn là lời hứa.
 
 ## Cumulative registry + DEDUPE (registry sống qua wave)
 - Registry là **pool tích luỹ** — TC từ wave trước GIỮ NGUYÊN, wave mới chỉ thêm/reuse.

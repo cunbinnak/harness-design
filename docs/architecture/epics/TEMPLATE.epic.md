@@ -13,7 +13,8 @@ target_persona: "PERSONA-{{PREFIX}}-{{NNN}}"   # persona CHÍNH epic phục vụ
 target_boundary_hint: "{{boundary name (kind backend/web/mobile) hoặc TBD}}"   # gợi ý, DESIGN/PLAN chốt
 hypothesis_refs: ["H-{{NNN}}"]   # giả thuyết D0 epic kiểm chứng
 feature_refs: ["FEAT-{{PREFIX}}-{{NNN}}", "FEAT-{{PREFIX}}-{{NNN}}"]   # ≥2 FEAT (gate planning_lint), trỏ file thật
-source: domain-author
+source: "docs/domain/epics/EP-{{PREFIX}}-{{NNN}}.md"   # file business nguồn (translator điền — gate translation_parity @domain-end đối chiếu 1-1)
+domain_source_id: "EP-{{PREFIX}}-{{NNN}}"
 last_reviewed: "{{YYYY-MM-DD}}"
 ---
 

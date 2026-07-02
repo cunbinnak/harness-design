@@ -263,7 +263,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'  // OpenAPI/Swagger UI
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'  // OpenAPI — BẮT BUỘC: /v3/api-docs là nguồn gate api_contract_proof (dev-handoff so endpoint runtime vs api-{boundary}.md); KHÔNG disable ở profile local/dev
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'org.flywaydb:flyway-core'

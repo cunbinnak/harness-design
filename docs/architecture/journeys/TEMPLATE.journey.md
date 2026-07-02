@@ -11,7 +11,8 @@ journey_type: "core | onboarding | recovery | administrative"
 persona_refs: ["PERSONA-{{PREFIX}}-{{NNN}}"]   # persona thực hiện (đầu trùng persona chính), trỏ file thật
 related_capabilities: ["CAP-{{NNN}}"]   # capability D1 journey hiện thực
 related_boundary_hint: "{{FE boundary (kind web/mobile) hoặc TBD}}"
-source: domain-author
+source: "docs/domain/journeys/JOURNEY-{{PREFIX}}-{{NNN}}.md"   # file business nguồn (translator điền — gate translation_parity @domain-end đối chiếu 1-1)
+domain_source_id: "JOURNEY-{{PREFIX}}-{{NNN}}"
 last_reviewed: "{{YYYY-MM-DD}}"
 ---
 

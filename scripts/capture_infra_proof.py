@@ -6,6 +6,11 @@ Chạy ở `/dev-handoff` (sau khi `docker compose up -d --build` wave services)
   2. curl /health/ready (qua urllib, stdlib) MỖI wave service → ghi `tracking/{wave}/health-proof.json`
      (gate `health_proof`). Đây là điểm khác cốt lõi với loophole cũ: bằng chứng app THỰC SỰ trả
      2xx do HARNESS đo, không phải shape của file agent viết tay.
+  3. fetch OpenAPI runtime (`/v3/api-docs` springdoc) MỖI backend service → ghi
+     `tracking/{wave}/api-proof.json` (gate `api_contract_proof`): endpoint khai trong
+     `api-{boundary}.md` phải tồn tại trong spec runtime — bắt contract↔implementation drift
+     (endpoint thiếu/rename) TRƯỚC khi test. Fetch fail chỉ ghi error (gate quyết định chặn hay
+     bỏ qua — boundary GraphQL/không REST được miễn), KHÔNG đổi exit code.
 
 Vì sao HARNESS chạy (không phải dev/handoff sub-agent tự ghi): agent có thể up tạm rồi capture, hoặc
 ghi JSON shape-hợp-lệ mà service chưa UP. Script này deterministic — orchestrator (MAIN) chạy bằng Bash.
@@ -134,6 +139,46 @@ def probe_url(url: str, timeout: int = PROBE_TIMEOUT_SEC) -> int:
         return 0
 
 
+OPENAPI_PATHS = ["/v3/api-docs", "/openapi.json", "/api-docs"]
+_HTTP_METHODS = ("get", "post", "put", "patch", "delete", "head", "options")
+
+
+def fetch_json(url: str, timeout: int = PROBE_TIMEOUT_SEC) -> dict | None:
+    """GET url → parsed JSON dict; None nếu không kết nối được / không phải JSON object."""
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="ignore"))
+            return data if isinstance(data, dict) else None
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError, ValueError):
+        return None
+
+
+def openapi_paths(spec: dict) -> dict[str, list[str]]:
+    """OpenAPI spec → {path: [METHOD,...]} (chỉ HTTP method thật, bỏ parameters/summary...)."""
+    out: dict[str, list[str]] = {}
+    for path, ops in (spec.get("paths") or {}).items():
+        if not isinstance(ops, dict):
+            continue
+        methods = sorted(m.upper() for m in ops if isinstance(m, str) and m.lower() in _HTTP_METHODS)
+        if methods:
+            out[path] = methods
+    return out
+
+
+def capture_api_spec(boundary: str, port: int) -> dict:
+    """Fetch OpenAPI runtime của 1 backend service → {source_url, paths} hoặc {error}."""
+    for path in OPENAPI_PATHS:
+        url = f"http://localhost:{port}{path}"
+        spec = fetch_json(url)
+        if spec and spec.get("paths"):
+            return {"boundary": boundary, "source_url": url, "paths": openapi_paths(spec)}
+    return {
+        "boundary": boundary,
+        "error": f"không fetch được OpenAPI (thử {', '.join(OPENAPI_PATHS)}) — bật springdoc (ref-backend-config)",
+    }
+
+
 def probe_boundary(boundary: str, kind: str, port: int) -> dict:
     """Thử các health path theo kind, trả probe dict {boundary, kind, url, http_status, ok}."""
     if kind == "mobile":
@@ -200,6 +245,21 @@ def capture(wave_id: str) -> int:
     (out_dir / "health-proof.json").write_text(
         json.dumps(health, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    # 3. OpenAPI runtime mỗi backend service → api-proof.json (gate api_contract_proof)
+    specs: dict[str, dict] = {}
+    for b in wave_boundaries:
+        meta = bmap.get(b, {})
+        if meta.get("kind", "backend") != "backend":
+            continue
+        port = meta.get("host_port")
+        if not port:
+            svc_ports = ports.get(b) or ports.get(f"{meta.get('prefix','')}-{b}") or []
+            port = svc_ports[0] if svc_ports else DEFAULT_PORT.get("backend", 8080)
+        specs[b] = capture_api_spec(b, int(port))
+    (out_dir / "api-proof.json").write_text(
+        json.dumps({"captured_by": "capture_infra_proof.py", "wave": wave_id, "specs": specs},
+                   indent=2, ensure_ascii=False), encoding="utf-8")
+
     ok_all = all(p.get("ok") for p in probes) if probes else False
     print(json.dumps(health, indent=2, ensure_ascii=False))
     if not probes:
@@ -242,6 +302,16 @@ volumes:
     # probe_boundary mobile → ok không cần http
     p = probe_boundary("mobile-app", "mobile", 0)
     assert p["ok"] is True and p["url"] is None, p
+    # openapi_paths: lọc HTTP method thật, bỏ key phụ (parameters/summary)
+    spec = {"openapi": "3.0", "paths": {
+        "/api/v1/refunds": {"get": {}, "post": {}, "parameters": []},
+        "/api/v1/refunds/{id}": {"get": {}},
+        "/bogus": {"summary": "no ops"},
+    }}
+    paths = openapi_paths(spec)
+    assert paths["/api/v1/refunds"] == ["GET", "POST"], paths
+    assert paths["/api/v1/refunds/{id}"] == ["GET"], paths
+    assert "/bogus" not in paths, paths
     print("OK: capture_infra_proof.py selftest passed")
     return 0
 

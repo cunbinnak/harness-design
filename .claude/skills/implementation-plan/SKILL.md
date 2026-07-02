@@ -45,7 +45,8 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 - Sau user confirm: return RETURN SCHEMA với `user_confirmed: true` → main chạy `py scripts/harness.py plan complete '{}'` (gate plan_gate: WAVE-SEQUENCE + MATRIX + wave files + KG) → transition PLAN → REVIEW.
 
 ## Quality checklist
-- [ ] WAVE-SEQUENCE phủ **100% boundary + FEAT** (không sót, KHÔNG gom hết vào 1 wave).
+- [ ] WAVE-SEQUENCE phủ **100% boundary + FEAT** (không sót, KHÔNG gom hết vào 1 wave). **Gate `plan_integrity` enforce chiều ngược:** FEAT-*.md không nằm trong `features[]` boundary nào = MỒ CÔI = chặn (chủ động hoãn/bỏ → frontmatter `status: deferred|dropped`).
+- [ ] **Contract graph khớp MATRIX (gate `contract_graph_parity`):** `depends_on`/`consumed_by` trong MATRIX khớp 2 chiều với api-*.md `consumers[]` + INTEG-INT consumer/producer + events subscribers — cạnh gọi nhau phải có contract doc ghi nhận, contract không được khai cạnh MATRIX không có.
 - [ ] **No orphan capability** — mỗi wave cover ≥1 capability từ CHARTER §3; mọi capability có wave (ZIP planning-rules).
 - [ ] Chia **≥ 2 wave** khi có phụ thuộc; thứ tự topological (không phụ thuộc ngược/vòng).
 - [ ] **Mỗi wave trong WAVE-SEQUENCE có file `wave-{N}.md` detail tương ứng** (full plan).

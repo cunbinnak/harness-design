@@ -13,7 +13,8 @@ severity: "CORNERSTONE | NORMAL"
 source_type: "legal | company-policy | partner-contract | business-decision"
 related_journeys: ["JOURNEY-{{PREFIX}}-{{NNN}}"]
 related_features: ["FEAT-{{PREFIX}}-{{NNN}}"]   # ≥1 FEAT (gate planning_lint, trỏ file thật)
-source: domain-author
+source: "docs/domain/business-rules/BR-{{PREFIX}}-{{NNN}}.md"   # file business nguồn (translator điền — gate translation_parity @domain-end đối chiếu 1-1)
+domain_source_id: "BR-{{PREFIX}}-{{NNN}}"
 last_reviewed: "{{YYYY-MM-DD}}"
 ---
 

@@ -6,7 +6,7 @@ sets_stage: DEV_HANDOFF
 spawn:
   agent: "dev-handoff-agent"
   skills: [infra-local-dev]
-gates: [{type: all_boundaries_reviewed}, {type: infra_proof}, {type: health_proof}, {type: code_compliance}, {type: web_styling}]
+gates: [{type: all_boundaries_reviewed}, {type: infra_proof}, {type: health_proof}, {type: code_compliance}, {type: web_styling}, {type: api_contract_proof}]
 ---
 
 # /dev-handoff
@@ -18,7 +18,7 @@ gates: [{type: all_boundaries_reviewed}, {type: infra_proof}, {type: health_proo
 1. Mỗi wave boundary PHẢI có **Dockerfile** (do **dev scaffold** — gate `code_compliance`; backend multi-stage Gradle `bootJar`→JRE). **dev-handoff KHÔNG tạo/sửa Dockerfile** (đó là deliverable boundary). Thiếu/sai → STOP + `fix-{boundary}-agent`.
 2. Reconcile **`docs/architecture/infra/docker-compose.yml`** (infra dùng chung — file DUY NHẤT dev-handoff được sửa): env khớp cái app đọc (vd `SPRING_DATASOURCE_URL`), bỏ `depends_on` service chưa có ở wave, web `VITE_*` qua **build arg**.
 3. `docker compose up -d --build <wave services>` → đợi healthy.
-4. **MAIN chạy `py scripts/capture_infra_proof.py`** → `tracking/wave-{N}/docker-ps.json` (infra_proof) + `health-proof.json` (curl /health/ready). Service chưa UP → exit !=0.
+4. **MAIN chạy `py scripts/capture_infra_proof.py`** → `tracking/wave-{N}/docker-ps.json` (infra_proof) + `health-proof.json` (curl /health/ready) + `api-proof.json` (fetch OpenAPI runtime `/v3/api-docs` mỗi backend — gate `api_contract_proof`). Service chưa UP → exit !=0.
 5. **Service chưa healthy → `docker compose logs <svc>` chẩn ROOT-CAUSE → phân loại:** (a) lỗi **compose/env** → sửa docker-compose.yml + up lại; (b) lỗi **code/migration/config/Dockerfile trong `services/{boundary}/`** (vd tên cột/kiểu cột migration sai, thiếu HealthController, healthcheck dùng curl mà image không có) → **STOP, KHÔNG tự sửa**, báo MAIN spawn **`fix-{boundary}-agent` (Mode B)** kèm root-cause → fix → re-run `/dev-handoff`. (Lỗi schema lẽ ra đã bị bắt ở DEV qua integration-test Testcontainers `ddl-auto: validate` — xem rules/review-backend.)
 
 ## Gates
@@ -32,6 +32,8 @@ gates: [{type: all_boundaries_reviewed}, {type: infra_proof}, {type: health_proo
 | bff | 70% |
 | web / mobile | 60% |
 
+> **Coverage KHÔNG tin số tự khai:** service đã scaffold → harness **derive từ coverage report thật** (jacoco XML `build/reports/jacoco/**` / `coverage/coverage-summary.json` / `coverage/lcov.info`) — có report thì số đo THẮNG số khai; scaffold rồi mà không có report → fail (chạy test kèm coverage rồi `/review-dev` lại). Chưa scaffold → fallback số khai (hermetic).
+>
 > `review-dev` đã ép kèm `review_results` (gate `non_empty`) nên STATE không rỗng. **force-bypass:** `dev-handoff` `force:true,reason` bypass được gate này (đồng bộ họ force-bypass, audit decisions.md) — lưới an toàn env/edge.
 
 ### `infra_proof` (content-validated — KHÔNG chỉ file tồn tại)
@@ -51,8 +53,12 @@ gates: [{type: all_boundaries_reviewed}, {type: infra_proof}, {type: health_proo
 `scripts/gates.py check_web_styling`: mỗi web boundary trong wave:
 1. dùng `className=` mà KHÔNG có cơ chế styling nào (0 file `.css/.scss`, không tailwind, không CSS-in-JS) → **FAIL** (FE unstyled, render không màu/layout).
 2. Style bằng **plain CSS** (không tailwind/CSS-in-JS) mà KHÔNG dùng design token `var(--...)` → **FAIL** (hardcode hex/px, lệch `docs/architecture/ux/design-tokens.css`). Tailwind/CSS-in-JS có cơ chế token riêng → miễn.
+3. Dùng `var(--...)` mà token KHÔNG được **định nghĩa/import** trong bundle (không copy `design-tokens.css` vào src, không `@import`, không `:root{--...}`) → **FAIL** (var resolve rỗng → UI vẫn unstyled dù "dùng token").
 
 Bắt đúng defect "FE thiếu CSS / bịa style rời design system" — lỗi mà test (query role/text) + review tĩnh đều mù. Env-block → `force:true,reason` (audit). Reviewer cũng verify (skill `review-web` §6 Design fidelity = BLOCKER).
+
+### `api_contract_proof` (contract ↔ implementation — HARNESS đo)
+`scripts/gates.py check_api_contract_proof`: mỗi **backend** boundary trong wave có `api-{b}.md` với endpoint REST khai (`Method · Path`) → endpoint đó PHẢI tồn tại trong runtime OpenAPI (`tracking/wave-{N}/api-proof.json`, do `capture_infra_proof.py` fetch `/v3/api-docs`). Path param normalize (`{id}` vs `{appointmentId}` vẫn khớp). Bắt **contract drift** (endpoint thiếu/rename) TRƯỚC khi test — gốc BUG-006. Boundary không có api doc / không endpoint REST (GraphQL) → miễn. Backend phải bật springdoc (xem `ref-backend-config`). Env-block → `force:true,reason` (audit).
 
 ## Build prompt + spawn
 

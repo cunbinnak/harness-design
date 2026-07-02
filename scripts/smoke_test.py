@@ -88,9 +88,11 @@ def main() -> int:
     proof_dir = REPO / "tracking" / "wave-001"
     proof_file = proof_dir / "docker-ps.json"
     health_file = proof_dir / "health-proof.json"
+    registry_file = proof_dir / "test-case-registry.md"
     proof_dir_existed = proof_dir.exists()
     proof_existed = proof_file.exists()
     health_existed = health_file.exists()
+    registry_existed = registry_file.exists()
     passed = []
     failed = []
 
@@ -217,6 +219,16 @@ def main() -> int:
         # REVIEW_DEV -> DEV_HANDOFF (gate: all_boundaries_reviewed + infra_proof + health_proof content-validated)
         ok = step("REVIEW_DEV -> DEV_HANDOFF", "dev-handoff", {}, "DEV_HANDOFF")
         passed.append(ok) if ok else failed.append("dev-handoff")
+
+        # registry fixture: test-plan gate ui_test_present (web boundary storefront phải có auto UI TC)
+        # + registry_scope (repo design không có docs/plans/wave-*.md → scope vacuous pass).
+        registry_file.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-I01 | integration | auto | order-management | FEAT-001 | AC-1 | @FEAT-001 |\n"
+            "| TC-U01 | e2e | auto | storefront | FEAT-003 | AC-1 | @FEAT-003 |\n",
+            encoding="utf-8",
+        )
 
         # DEV_HANDOFF -> TEST_PLAN
         ok = step(
@@ -363,6 +375,8 @@ def main() -> int:
             proof_file.unlink()
         if not health_existed and health_file.exists():
             health_file.unlink()
+        if not registry_existed and registry_file.exists():
+            registry_file.unlink()
         if not proof_dir_existed and proof_dir.exists():
             try:
                 proof_dir.rmdir()

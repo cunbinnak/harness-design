@@ -345,12 +345,19 @@ def _detect_cycle(graph: dict[str, list[str]]) -> list[str]:
     return []
 
 
+# Frontmatter status opt-out khỏi yêu cầu FEAT-phải-vào-MATRIX (chủ động không làm).
+_FEAT_OPTOUT_STATUSES = ("deferred", "dropped", "out-of-scope", "out of scope")
+
+
 def run_plan_integrity(root: Path | None = None) -> tuple[bool, list[str]]:
     """PLAN-stage referential integrity (single-repo). Trả (ok, errors).
 
     1. Mọi FEAT-id trong MATRIX `features[]` phải có backing docs/architecture/feat/<id>.md
        (catch phantom FEAT-id planner bịa khi DOMAIN chưa author đủ — bug e2e thật).
     2. MATRIX depends_on: target phải là boundary tồn tại + không tạo chu trình.
+    3. Chiều NGƯỢC (FEAT mồ côi): mọi docs/architecture/feat/FEAT-*.md phải nằm trong `features[]`
+       của ≥1 boundary — file tồn tại mà không boundary nào nhận = KHÔNG BAO GIỜ được build/test
+       (silent drop). Opt-out: frontmatter `status: deferred|dropped|out-of-scope`.
     """
     global REPO_ROOT
     if root is not None:
@@ -362,6 +369,7 @@ def run_plan_integrity(root: Path | None = None) -> tuple[bool, list[str]]:
 
     ids = {b.get("boundary_id") for b in boundaries if b.get("boundary_id")}
     graph: dict[str, list[str]] = {}
+    matrix_feats: set[str] = set()
     for b in boundaries:
         bid = b.get("boundary_id")
         if not bid:
@@ -370,6 +378,7 @@ def run_plan_integrity(root: Path | None = None) -> tuple[bool, list[str]]:
         # 1. FEAT-id backing
         for fid in (b.get("features") or []):
             if isinstance(fid, str) and fid.strip() and "{{" not in fid:
+                matrix_feats.add(fid.strip())
                 if not _ref_has_file(f"{ARCH}/feat", fid):
                     errors.append(
                         f"MATRIX boundary {bid!r}: features liệt kê {fid!r} nhưng không có "
@@ -383,6 +392,21 @@ def run_plan_integrity(root: Path | None = None) -> tuple[bool, list[str]]:
     cycle = _detect_cycle(graph)
     if cycle:
         errors.append("MATRIX depends_on có chu trình: " + " -> ".join(cycle))
+
+    # 3. FEAT mồ côi: file tồn tại nhưng không boundary nào nhận → không bao giờ được build/test.
+    for fp in _iter_artifacts(f"{ARCH}/feat", "FEAT-"):
+        fm = parse_frontmatter(fp.read_text(encoding="utf-8", errors="ignore"))
+        status = str(fm.get("status") or "").strip().lower()
+        if status in _FEAT_OPTOUT_STATUSES:
+            continue
+        fid = str(fm.get("id") or "").strip()
+        if fp.stem in matrix_feats or (fid and fid in matrix_feats):
+            continue
+        errors.append(
+            f"{fp.name}: FEAT MỒ CÔI — không nằm trong `features[]` của boundary nào trong MATRIX "
+            f"(sẽ không bao giờ được build/test). Gắn vào boundary+wave, hoặc frontmatter "
+            f"`status: deferred|dropped` nếu chủ động hoãn/bỏ."
+        )
 
     return len(errors) == 0, errors
 
@@ -555,6 +579,23 @@ def _selftest() -> int:
         assert "FEAT-X-PHANTOM" in blobp, errsp2
         assert "chu trình" in blobp, errsp2
         assert "ghost" in blobp, errsp2
+        # FEAT mồ côi: file tồn tại nhưng không boundary nào nhận → fail; opt-out qua status
+        (root / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(_json.dumps({"boundaries": [
+            {"boundary_id": "a", "kind": "backend", "features": [], "depends_on": []},
+        ]}), encoding="utf-8")
+        oko, errso = run_plan_integrity(root)
+        blobo = " ".join(errso)
+        assert (not oko) and "FEAT-X-001" in blobo and "MỒ CÔI" in blobo, errso
+        # opt-out: status deferred → bỏ qua
+        (root / ARCH / "feat" / "FEAT-X-001.md").write_text(
+            '---\nid: "FEAT-X-001"\nstatus: "deferred"\n---\n# F\n', encoding="utf-8")
+        assert run_plan_integrity(root)[0], "FEAT status=deferred phải được opt-out khỏi orphan check"
+        # gắn vào MATRIX → pass
+        (root / ARCH / "feat" / "FEAT-X-001.md").write_text("# F\n", encoding="utf-8")
+        (root / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(_json.dumps({"boundaries": [
+            {"boundary_id": "a", "kind": "backend", "features": ["FEAT-X-001"], "depends_on": []},
+        ]}), encoding="utf-8")
+        assert run_plan_integrity(root)[0], "FEAT trong MATRIX → không mồ côi"
         # no MATRIX → vacuously ok
         (root / "harness" / "SERVICE-BOUNDARY-MATRIX.json").unlink()
         assert run_plan_integrity(root) == (True, []), "no MATRIX → ok"
