@@ -16,33 +16,30 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
 
+import json  # noqa: E402
+
 import state as state_mod  # noqa: E402
 
-COMMANDS = [
-    "discovery-start",
-    "discovery-end",
-    "domain-po",
-    "domain-ba",
-    "domain-approve",
-    "domain-translate",
-    "domain-end",
-    "design",
-    "design-end",
-    "plan",
-    "review-document",
-    "approve-document",
-    "start-wave",
-    "start-dev",
-    "review-dev",
-    "dev-handoff",
-    "test-plan",
-    "test-execute",
-    "log-bug",
-    "fix-bugs",
-    "end-wave",
-    "done-wave",
-    "apply-cr",
-]
+MACHINE_FILE = SCRIPTS.parent / "harness" / "STATE-MACHINE.json"
+
+
+def _load_commands() -> list[str]:
+    """Command hợp lệ = mọi trigger trong STATE-MACHINE.json — DERIVE, không hardcode.
+
+    Trước đây list hardcode → thêm command mới vào STATE-MACHINE mà quên chỗ này = CLI báo
+    'Unknown' dù transition hợp lệ (bug design-ux bắt được khi chạy thử; tệ hơn: hook turn-flag
+    đã tiêu lượt trước khi CLI fail → user phí 1 turn). Trigger `_*` (vd `_auto`) là internal,
+    không phải CLI command.
+    """
+    try:
+        data = json.loads(MACHINE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    triggers = {t.get("trigger") for t in data.get("transitions", []) if isinstance(t, dict)}
+    return sorted(t for t in triggers if isinstance(t, str) and t and not t.startswith("_"))
+
+
+COMMANDS = _load_commands()
 
 
 def main() -> int:
