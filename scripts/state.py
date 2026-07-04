@@ -309,7 +309,8 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
             state.setdefault("spawn", {})["active"] = f"{command}-{mode}"
 
     elif command == "domain-approve":
-        # Ký business doc (target rỗng = all). Stamp `approved:true` do scripts/domain_approve.py lo.
+        # Ký business doc (target rỗng = all). Stamp `status: APPROVED` do scripts/domain_approve.py lo
+        # (gate domain_stamped verify stamp đã xảy ra trên disk — chặn complete chay).
         if evidence.get("force") is True:
             _append_decision("domain-approve --force", evidence.get("reason") or "(no reason given)")
 

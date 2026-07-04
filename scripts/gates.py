@@ -660,7 +660,7 @@ def _domain_business_files(root: Path) -> list[Path]:
 
 
 def check_domain_signed(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /domain-translate: MỌI business doc ở docs/domain/ phải `approved: true` (ký TRƯỚC, dịch SAU).
+    """Gate /domain-translate: MỌI business doc ở docs/domain/ phải `status: APPROVED` (ký TRƯỚC, dịch SAU).
 
     Chưa author business doc nào → fail. Còn doc chưa ký → fail (liệt kê). force bypass (audit).
     """
@@ -676,6 +676,32 @@ def check_domain_signed(evidence: dict | None = None, root: Path | None = None) 
     if unsigned:
         return False, ("còn business doc CHƯA KÝ (status!=APPROVED): " + ", ".join(sorted(unsigned))
                        + " — /domain-approve <id|all> rồi mới /domain-translate")
+    return True, ""
+
+
+def check_domain_stamped(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /domain-approve: doc thuộc target phải ĐÃ stamp `status: APPROVED` trên disk lúc complete.
+
+    Chặn "approve chay": MAIN chạy `complete` mà quên chạy `scripts/domain_approve.py` → state nói đã
+    ký nhưng file vẫn DRAFT (về sau `domain_signed` fail khó hiểu ở /domain-translate). Không có doc
+    nào khớp target → vacuous pass (chưa author gì — hermetic/smoke). force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    target = (evidence.get("target") or "all").strip()
+    files = _domain_business_files(root)
+    if target.lower() != "all":
+        files = [p for p in files if p.stem == target or p.stem.startswith(target)]
+    unsigned = [str(p.relative_to(root)).replace("\\", "/") for p in files
+                if not _frontmatter_signed(p.read_text(encoding="utf-8", errors="ignore"))]
+    if unsigned:
+        return False, (
+            "doc CHƯA được stamp `status: APPROVED`: " + ", ".join(sorted(unsigned))
+            + f" — chạy `py scripts/domain_approve.py {target}` (script stamp) TRƯỚC khi complete; "
+            "KHÔNG complete chay (state nói đã ký mà file vẫn DRAFT)"
+        )
     return True, ""
 
 
@@ -2125,6 +2151,7 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "domain-approve": [
         {"kind": "domain_no_jargon"},   # ký doc business: phải plain nghiệp vụ (no jargon). Target rỗng = all
+        {"kind": "domain_stamped"},     # stamp `status: APPROVED` PHẢI đã xảy ra trên disk (chạy domain_approve.py) — chặn complete chay
     ],
     "domain-translate": [
         {"kind": "domain_signed"},      # mọi business doc đã ký → dịch sang docs/architecture/ eng
@@ -2279,6 +2306,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_domain_signed(evidence)
         if kind == "domain_no_jargon":
             return check_domain_no_jargon(evidence)
+        if kind == "domain_stamped":
+            return check_domain_stamped(evidence)
         if kind == "design_gate":
             return check_design_gate(evidence)
         if kind == "plan_gate":
@@ -2945,6 +2974,15 @@ def _selftest() -> int:
         ep.write_text("---\nstatus: APPROVED\n---\n# Epic\nKhách đặt lịch khám.\n", encoding="utf-8")
         assert check_domain_no_jargon(root=_droot)[0] is True
         assert check_domain_no_jargon({"force": True}, root=_droot)[0] is True
+        # domain_stamped (chặn approve chay): doc chưa stamp → fail nêu script; stamp rồi → pass
+        ft.write_text("---\nstatus: DRAFT\n---\n# Feature\nĐặt lịch trong 24h.\n", encoding="utf-8")
+        ok, msg = check_domain_stamped({"target": "all"}, root=_droot)
+        assert (not ok) and "FEAT-1" in msg and "domain_approve.py" in msg, msg
+        # target lẻ: chỉ check doc đó (EP-1 đã APPROVED → pass dù FEAT-1 còn DRAFT)
+        assert check_domain_stamped({"target": "EP-1"}, root=_droot)[0] is True
+        ft.write_text("---\nstatus: APPROVED\n---\n# Feature\nĐặt lịch trong 24h.\n", encoding="utf-8")
+        assert check_domain_stamped({"target": "all"}, root=_droot)[0] is True, "stamp đủ → pass"
+        assert check_domain_stamped({"force": True}, root=_droot)[0] is True
     finally:
         _shutil.rmtree(_droot, ignore_errors=True)
 

@@ -460,7 +460,7 @@
       "to": "DOMAIN_AUTHORING",
       "trigger": "domain-approve",
       "evidence_required": {},
-      "note": "ky business doc (target rong=all); stamp approved:true"
+      "note": "ky business doc (target rong=all); stamp status: APPROVED (domain_approve.py; gate domain_stamped verify tren disk)"
     },
     {
       "from": "DOMAIN_AUTHORING",

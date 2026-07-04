@@ -32,13 +32,13 @@ Vai **Translator** ở DOMAIN. Spawn bởi `/domain-translate` (sau khi mọi bu
 ## Boot sequence (targeted, < 20 KB)
 
 1. STATE + skill `domain-translator` + verify gate `domain_signed`
-2. Source `docs/domain/**` (đã `approved: true`)
+2. Source `docs/domain/**` (đã `status: APPROVED`)
 3. Eng template `docs/architecture/<kind>/TEMPLATE.*.md` (read-only)
 4. `tracking/translation-log.md`
 
 ## Workflow
 
-1. Verify mọi business doc `approved: true`. Chưa đủ → STOP, báo `/domain-approve`.
+1. Verify mọi business doc `status: APPROVED`. Chưa đủ → STOP, báo `/domain-approve`.
 2. Foreach business doc → dịch (clone + map eng format + TODO-engineer + `source`). KHÔNG sáng tác AC/scope.
 3. Mơ hồ → AskUserQuestion (≤3); KHÔNG tự quyết scope nghiệp vụ.
 4. Append row `tracking/translation-log.md`. `py scripts/harness.py domain-translate complete '{}'`.

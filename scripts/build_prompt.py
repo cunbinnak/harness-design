@@ -484,7 +484,7 @@ def build_domain_end(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_domain_approve(state: dict, matrix: list[dict], opts: dict) -> str:
-    """KÝ business doc (target rỗng = all). Instant action: jargon-check + stamp approved:true."""
+    """KÝ business doc (target rỗng = all). Instant action: jargon-check + stamp `status: APPROVED`."""
     target = opts.get("target") or "all"
     parts = [
         f"# SPAWN PROMPT — /domain-approve {target}",
@@ -493,8 +493,8 @@ def build_domain_approve(state: dict, matrix: list[dict], opts: dict) -> str:
         NON_NEGOTIABLES,
         "## TASK — ký business doc\n\n"
         f"1. `py scripts/domain_approve.py {target}` — jargon-check `docs/domain/` ({'mọi doc' if target=='all' else target}); "
-        "sạch → stamp `approved: true` vào frontmatter; còn jargon → refuse + báo doc/đoạn (sửa cho plain rồi ký lại).\n"
-        f"2. PASS → `py scripts/harness.py domain-approve complete '{{\"target\":\"{target}\"}}'` (gate `domain_no_jargon`) → ở lại DOMAIN_AUTHORING.\n"
+        "sạch → stamp **`status: APPROVED`** vào frontmatter; còn jargon → refuse + báo doc/đoạn (sửa cho plain rồi ký lại). BẮT BUỘC chạy script — KHÔNG stamp tay, KHÔNG bỏ qua.\n"
+        f"2. PASS → `py scripts/harness.py domain-approve complete '{{\"target\":\"{target}\"}}'` (gate `domain_no_jargon` + `domain_stamped` — complete mà file chưa stamp sẽ bị CHẶN) → ở lại DOMAIN_AUTHORING.\n"
         "3. Ký lẻ: `/domain-approve EP-<...>` · ký hết: `/domain-approve` (không arg = all).\n"
         "4. Override (user đồng ý): thêm `\"force\":true,\"reason\":\"...\"` → ghi audit.\n"
         "→ Khi MỌI business doc đã ký → `/domain-translate` (gate `domain_signed`).",
@@ -518,7 +518,7 @@ def build_domain_translate(state: dict, matrix: list[dict], opts: dict) -> str:
             ("Eng templates (giữ cấu trúc)", "docs/architecture/{epics,feat,business-rules,journeys,personas}/TEMPLATE.*.md"),
         ]),
         tasks_block([
-            "Invoke skill `domain-translator`. CHỈ dịch khi gate `domain_signed` pass (mọi business doc `approved:true`).",
+            "Invoke skill `domain-translator`. CHỈ dịch khi gate `domain_signed` pass (mọi business doc `status: APPROVED`).",
             "Foreach business doc ở `docs/domain/` → DỊCH sang eng artifact tương ứng `docs/architecture/{epics,feat,business-rules,journeys,personas}/` "
             "theo eng template: GIỮ NGUYÊN Ý nghiệp vụ, THÊM độ chính xác kỹ thuật (BDD AC chuẩn, field/enum/error code, ref-id). KHÔNG bịa scope mới.",
             "Truy vết: eng doc frontmatter `source: docs/domain/<file>` + `domain_source_id: <id>` — BẮT BUỘC (gate `translation_parity` @/domain-end đối chiếu 1-1: business đã ký thiếu eng doc = bỏ sót; eng doc không source = mồ côi). Giữ id (FEAT-x business → FEAT-x eng). DỊCH ĐỦ 100% doc đã ký, không bỏ sót cái nào.",

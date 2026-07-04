@@ -23,7 +23,7 @@ description: DỊCH business doc (docs/domain/, đã ký) → engineering artifa
 
 ## Boot sequence (targeted, < 20 KB)
 1. STATE + verify gate `domain_signed`.
-2. Source business doc(s) `docs/domain/**` (đã `approved: true`).
+2. Source business doc(s) `docs/domain/**` (đã `status: APPROVED`).
 3. Eng template tương ứng `docs/architecture/<kind>/TEMPLATE.*.md` (read-only — hiểu structure).
 4. `tracking/translation-log.md` (tránh dịch trùng).
 
@@ -34,7 +34,7 @@ description: DỊCH business doc (docs/domain/, đã ký) → engineering artifa
 - Giữ NGUYÊN id (FEAT-x business → FEAT-x eng).
 
 ## Workflow
-1. Verify mọi business doc `approved: true` (gate `domain_signed`) — chưa đủ → STOP, về `/domain-approve`.
+1. Verify mọi business doc `status: APPROVED` (gate `domain_signed`) — chưa đủ → STOP, về `/domain-approve`.
 2. Foreach business doc → dịch sang eng artifact tương ứng (clone + add TODO-engineer + source). KHÔNG sáng tác.
 3. Mơ hồ / thiếu thông tin nghiệp vụ để dịch đúng → **AskUserQuestion (≤3)**, KHÔNG tự quyết scope.
 4. Append row `tracking/translation-log.md`: `| date | TR-<n> | <source-id> | <target-paths> | translator-v1 | <decisions> |`.

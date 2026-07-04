@@ -1,5 +1,5 @@
 """
-domain_approve.py — KÝ business doc ở docs/domain/ (#2/#3): jargon-check + stamp `approved: true`.
+domain_approve.py — KÝ business doc ở docs/domain/: jargon-check + stamp `status: APPROVED` vào frontmatter.
 
 Ký TRƯỚC, dịch SAU. Ký lẻ 1 doc hoặc toàn bộ (không arg = all). Doc còn jargon kỹ thuật → REFUSE
 (không stamp) để chủ-nghiệp-vụ sửa cho plain rồi ký lại. Stamp ghi thẳng frontmatter (không qua Edit

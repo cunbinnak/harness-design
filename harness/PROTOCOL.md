@@ -99,7 +99,7 @@ Evidence là input cho gates.py check tại moment complete. Pass → state tran
 | `discovery-start` | `wave` non-empty (D0..D3) + `discovery_advance` (nhảy tiến → gate wave đang rời; refine/first-entry miễn) |
 | `discovery-end` | `discovery_wave` — `discovery_gate.py D3` check artifact disk |
 | `domain-po` / `domain-ba` | `mode` non-empty (EPIC/FEATURE/JOURNEY · BR/PERSONA) |
-| `domain-approve` | `domain_no_jargon` — business doc plain nghiệp vụ (no code/SQL/API/class) mới ký được |
+| `domain-approve` | `domain_no_jargon` (business doc plain nghiệp vụ mới ký được) + `domain_stamped` (file target phải ĐÃ `status: APPROVED` trên disk — chứng minh domain_approve.py đã chạy, chặn complete chay) |
 | `domain-translate` | `domain_signed` — MỌI business doc docs/domain/ đã `status: APPROVED` (ký TRƯỚC dịch SAU) |
 | `domain-end` | `domain_gate` (≥1 eng epic+feat+BR) + `planning_lint` (field bắt buộc + ref-integrity) + `translation_parity` (business đã ký ↔ eng doc 1-1 qua `source`/`domain_source_id`; eng epics/feat/BR không nguồn = mồ côi) |
 | `design` | (self-loop refine hệ thống/contract — solution-architect. KHÔNG gate, KHÔNG advance) |
