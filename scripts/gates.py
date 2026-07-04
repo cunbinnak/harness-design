@@ -525,6 +525,55 @@ def check_doc_review(state: dict, evidence: dict | None = None, root: Path | Non
     return True, ""
 
 
+# Doc design/contract sau /approve-document phải mang status đã duyệt (stamp bởi approve_document.py).
+_DOC_STAMP_PLAN = [
+    ("docs/architecture/adr", ("APPROVED",)),
+    ("docs/architecture/hld", ("APPROVED",)),
+    ("docs/architecture/data-model", ("APPROVED",)),
+    ("docs/architecture/ux", ("APPROVED",)),
+    ("docs/architecture/integrations", ("APPROVED",)),
+    ("docs/architecture/api", ("ACTIVE", "DEPRECATED")),
+    ("docs/architecture/events", ("ACTIVE", "DEPRECATED")),
+]
+_FM_STATUS_RE = re.compile(r"^\s*status\s*:\s*[\"']?([A-Za-z-]+)", re.MULTILINE)
+
+
+def check_doc_stamped(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /approve-document: doc design/contract phải ĐÃ stamp status duyệt trên disk lúc complete.
+
+    Chặn "approve chay" cho lớp DESIGN (mirror domain_stamped của lớp business): approve xong mà
+    frontmatter vẫn DRAFT = script `scripts/approve_document.py` chưa chạy. adr/hld/data-model/ux/
+    integrations → APPROVED; api/events (contract) → ACTIVE (DEPRECATED giữ nguyên hợp lệ).
+    Doc không frontmatter / thư mục rỗng → bỏ qua. force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    problems: list[str] = []
+    for rel, accepted in _DOC_STAMP_PLAN:
+        d = root / rel
+        if not d.is_dir():
+            continue
+        for p in sorted(d.glob("*.md")):
+            if p.name.startswith("TEMPLATE") or p.name.startswith("_TEMPLATE") or p.name == "README.md":
+                continue
+            text = p.read_text(encoding="utf-8", errors="ignore")
+            if not text.startswith("---"):
+                continue
+            end = text.find("\n---", 3)
+            m = _FM_STATUS_RE.search(text[:end] if end > 0 else text[:400])
+            status = (m.group(1).upper() if m else "")
+            if status not in accepted:
+                problems.append(f"{rel}/{p.name}: status={status or '(thiếu)'} (cần {'/'.join(accepted)})")
+    if problems:
+        return False, (
+            "doc chưa stamp trạng thái duyệt: " + "; ".join(problems)
+            + " — chạy `py scripts/approve_document.py` TRƯỚC khi complete (không approve chay)"
+        )
+    return True, ""
+
+
 def check_test_passed(state: dict) -> tuple[bool, str]:
     """end-wave: lần /test-execute cuối phải `pass` (đọc `STATE.test_result`).
 
@@ -2181,6 +2230,7 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "approve-document": [
         {"kind": "doc_review"},  # doc-review sanity-check đã chạy + no open BLOCKER/MAJOR gap (force bypass + audit)
+        {"kind": "doc_stamped"},  # design/contract doc phải ĐÃ stamp APPROVED/ACTIVE (approve_document.py) — chặn approve chay
         {"kind": "flag", "field": "approved", "expected": True},
     ],
     "start-wave": [
@@ -2264,6 +2314,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_no_open_findings(state)
         if kind == "doc_review":
             return check_doc_review(state, evidence)
+        if kind == "doc_stamped":
+            return check_doc_stamped(evidence)
         if kind == "test_passed":
             return check_test_passed(state)
         if kind == "infra_proof":
@@ -2477,6 +2529,37 @@ def _selftest() -> int:
     finally:
         import shutil as _sh_dr
         _sh_dr.rmtree(_droot, ignore_errors=True)
+
+    # doc_stamped: design/contract doc phải APPROVED/ACTIVE (stamp bởi approve_document.py) — chặn approve chay
+    import tempfile as _tf_ds, shutil as _sh_ds
+    _dsroot = Path(_tf_ds.mkdtemp(prefix="gates_ds_"))
+    try:
+        (_dsroot / "docs" / "architecture" / "hld").mkdir(parents=True, exist_ok=True)
+        (_dsroot / "docs" / "architecture" / "api").mkdir(parents=True, exist_ok=True)
+        (_dsroot / "docs" / "architecture" / "hld" / "hld-x.md").write_text(
+            "---\nstatus: DRAFT\n---\n# H\n", encoding="utf-8")
+        (_dsroot / "docs" / "architecture" / "api" / "TEMPLATE.api.md").write_text(
+            "---\nstatus: DRAFT\n---\n", encoding="utf-8")  # TEMPLATE bỏ qua
+        ok, msg = check_doc_stamped(root=_dsroot)
+        assert (not ok) and "hld-x.md" in msg and "approve_document.py" in msg, msg
+        (_dsroot / "docs" / "architecture" / "hld" / "hld-x.md").write_text(
+            "---\nstatus: APPROVED\n---\n# H\n", encoding="utf-8")
+        assert check_doc_stamped(root=_dsroot)[0] is True, "hld APPROVED → pass"
+        # contract: DRAFT fail (cần ACTIVE); DEPRECATED hợp lệ
+        (_dsroot / "docs" / "architecture" / "api" / "api-x.md").write_text(
+            "---\nstatus: DRAFT\n---\n# A\n", encoding="utf-8")
+        ok, msg = check_doc_stamped(root=_dsroot)
+        assert (not ok) and "api-x.md" in msg and "ACTIVE" in msg, msg
+        (_dsroot / "docs" / "architecture" / "api" / "api-x.md").write_text(
+            "---\nstatus: ACTIVE\n---\n# A\n", encoding="utf-8")
+        (_dsroot / "docs" / "architecture" / "api" / "api-old.md").write_text(
+            "---\nstatus: DEPRECATED\n---\n# old\n", encoding="utf-8")
+        assert check_doc_stamped(root=_dsroot)[0] is True, "ACTIVE + DEPRECATED → pass"
+        assert check_doc_stamped({"force": True}, root=_dsroot)[0] is True
+        import approve_document as _apdoc
+        assert _apdoc._selftest() == 0
+    finally:
+        _sh_ds.rmtree(_dsroot, ignore_errors=True)
 
     # test_passed: end-wave cần STATE.test_result == pass
     assert check_test_passed({"test_result": "pass"})[0] is True

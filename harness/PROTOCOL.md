@@ -107,7 +107,7 @@ Evidence là input cho gates.py check tại moment complete. Pass → state tran
 | `design-end` | `design_gate` (ADR≥3 + INTEG≥1 + per-boundary completeness: backend/bff→hld+api, web/mobile→hld+ux + design-tokens.css khi có web) + `todo_resolved` (marker `TODO engineer`/`TBD (DESIGN)` trong eng feat/BR đã điền hết) |
 | `plan` | `plan_gate` (WAVE-SEQUENCE + MATRIX + wave-*.md + KG) + `planning_lint` + `plan_integrity` (FEAT-id MATRIX có file + **FEAT mồ côi**: FEAT-*.md phải vào features[] boundary nào đó + depends_on no-cycle) + `matrix_coherence` (MATRIX phủ đủ BOUNDARY-MAP đúng kind) + `api_transport` (tenant-id qua header/JWT, không query) + `wave_sequence_lint` (§wave-NNN enum/cap/purity) + `contract_graph_parity` (api consumers[]/INTEG/events subscribers ↔ MATRIX depends_on 2 chiều) |
 | `review-document` | `feedback_processed: true` (revision mode; no-arg = sanity-check ghi doc-review-findings.md) |
-| `approve-document` | `doc_review` (sanity-check đã chạy + không gap BLOCKER/MAJOR open) + `approved: true` |
+| `approve-document` | `doc_review` (sanity-check đã chạy + không gap BLOCKER/MAJOR open) + `doc_stamped` (doc design/contract phải ĐÃ stamp APPROVED/ACTIVE bởi `approve_document.py` — chặn approve chay) + `approved: true` |
 | `start-wave` | `approved: true` + `wave_n ≥ 1` + MATRIX tồn tại + `wave_in_matrix` (wave có boundary) |
 | `start-dev` | `boundary` ∈ `wave_boundaries` |
 | `review-dev` | `review_results` non-empty (chống complete `{}` làm STATE rỗng) + `no_open_findings` (review-findings.md hết row BLOCKER/MAJOR open) |

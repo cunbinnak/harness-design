@@ -730,7 +730,7 @@ def build_approve_document(state: dict, matrix: list[dict], opts: dict) -> str:
         "\n**Instant action** — KHÔNG spawn sub-agent. Pure CLI complete.",
         state_bundle(state),
         NON_NEGOTIABLES,
-        "## TASK\n\n1. Ask user explicit confirm.\n2. User reply 'yes' → run `py scripts/harness.py approve-document complete '{\"approved\":true}'`.\n3. User reply 'no' → cancel, suggest /review-document.\n4. Sau approve: report 'Approved. Run /start-wave 1 để mở wave đầu tiên.'\n\n"
+        "## TASK\n\n1. Ask user explicit confirm.\n2. User reply 'yes' → run `py scripts/approve_document.py` (stamp `status: APPROVED` vào adr/hld/data-model/ux/integrations; `status: ACTIVE` vào api/events — KHÔNG stamp tay) RỒI `py scripts/harness.py approve-document complete '{\"approved\":true}'` (gate `doc_stamped` verify stamp đã xảy ra).\n3. User reply 'no' → cancel, suggest /review-document.\n4. Sau approve: report 'Approved. Run /start-wave 1 để mở wave đầu tiên.'\n\n"
         "> **Gate `doc_review`:** lệnh này bị CHẶN nếu `/review-document` (no-arg, sanity-check) chưa chạy "
         "(thiếu `tracking/doc-review-findings.md`) hoặc còn gap **BLOCKER/MAJOR** open. Vá gap (revision loop "
         "hoặc lùi `/domain-po`·`/domain-ba` → ký → translate) tới sạch. Edge thật → `'{\"approved\":true,\"force\":true,\"reason\":\"<lý do>\"}'` "

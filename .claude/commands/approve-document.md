@@ -1,22 +1,24 @@
 ---
 name: approve-document
-description: "User mark doc OK (approved=true). KHÔNG đổi state. Cho phép /start-wave"
+description: "User mark doc OK (approved=true) + stamp status APPROVED/ACTIVE vào doc design/contract (approve_document.py). KHÔNG đổi state. Cho phép /start-wave"
 argument-hint: "(no arguments)"
 when_state: [REVIEW]
 sets_stage: REVIEW
 spawn:
   agent: null
   skills: []
-gates: [{type: doc_review}, {type: flag, field: approved, expected: true}]
+gates: [{type: doc_review}, {type: doc_stamped}, {type: flag, field: approved, expected: true}]
 ---
 
 # /approve-document
 
 ## Mục đích
 
-User explicit approve toàn bộ intake artifacts sau khi đã review (qua `/review-document` revision loop) và happy. Command này KHÔNG spawn sub-agent (instant action), chỉ set `approved=true` trong STATE.
+User explicit approve toàn bộ intake artifacts sau khi đã review (qua `/review-document` revision loop) và happy. Command này KHÔNG spawn sub-agent (instant action): set `approved=true` trong STATE **và stamp trạng thái duyệt vào frontmatter doc** qua `py scripts/approve_document.py` — adr/hld/data-model/ux/integrations → `status: APPROVED`; api/events (contract) → `status: ACTIVE` (DEPRECATED giữ nguyên). Không chạy script = gate `doc_stamped` chặn (doc duyệt rồi mà vẫn hiện DRAFT = approve chay).
 
 Sau khi approved → có thể chạy `/start-wave` (gate check `approved=true`).
+
+> Lifecycle status theo lớp: business `docs/domain` ký ở `/domain-approve` (`APPROVED`); eng product (epics/feat/BR) = `TRANSLATED→ENRICHED`; design/contract = stamp ở ĐÂY; plans giữ `PLANNED` (lifecycle wave: IN_PROGRESS/COMPLETED do wave chạy).
 
 ## Gate `doc_review` (ép sanity-check trước approve)
 
@@ -50,7 +52,8 @@ Không argument.
    Sau approve, /start-wave sẽ được phép. Gõ 'yes' để confirm, 'no' để cancel."
 3. Đợi user reply.
 4. Nếu user "yes":
-   - Run: py scripts/harness.py approve-document complete '{"approved":true}'
+   - Run: py scripts/approve_document.py        (stamp status APPROVED/ACTIVE vào doc design/contract)
+   - Run: py scripts/harness.py approve-document complete '{"approved":true}'   (gate doc_stamped verify stamp)
    - Báo user: "Approved. Run /start-wave 1 để mở wave đầu tiên."
 5. Nếu user "no":
    - Báo: "Cancelled. Tiếp tục /review-document nếu cần chỉnh."
@@ -65,7 +68,7 @@ Không argument.
 ## Forbidden
 
 - Spawn sub-agent — command này là pure action.
-- Sửa file — không sửa gì, chỉ set flag.
+- Stamp tay frontmatter — dùng `scripts/approve_document.py` (idempotent, re-run sau mỗi vòng revision).
 - Auto approve without user confirm — phải explicit "yes".
 
 ## Sau approve
