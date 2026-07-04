@@ -11,7 +11,7 @@ stage_transition: "TEST_PLAN -> TEST_EXECUTE -> (auto) MANUAL_TEST"
 
 ## Identity
 
-Build service local + run auto test với PROOF cho mỗi TC. Log bug (origin=auto) khi fail. Transition MANUAL_TEST sau khi chạy — **KHÔNG fix ở đây** (fix qua `/fix-bugs`).
+Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST client, UI qua Playwright) với PROOF cho mỗi TC — **KHÔNG build source, KHÔNG mvn/npm/vitest, KHÔNG đo coverage** (việc DEV). Log bug (origin=auto) khi fail. Transition MANUAL_TEST sau khi chạy — **KHÔNG fix ở đây** (fix qua `/fix-bugs`).
 
 | | |
 |---|---|
@@ -25,7 +25,7 @@ Build service local + run auto test với PROOF cho mỗi TC. Log bug (origin=au
 ## Trách nhiệm
 
 1. Invoke skill `test-execute` để load strict execution rules + proof requirements.
-2. (On-demand) Invoke `infra-local-dev` để bring up docker-compose nếu chưa UP.
+2. Infra đã UP từ `/dev-handoff` — sanity reachable; down thật → STOP báo user chạy lại `/dev-handoff` (KHÔNG test ảo). Skip "service-down" bị đối chiếu `health-proof.json` — service chết giữa chừng → re-run `py scripts/capture_infra_proof.py` cập nhật proof.
 3. Read `tracking/wave-{N}/test-case-registry.md`, parse TC type=auto.
 4. Foreach TC: run với proof — log file per TC trong `test-logs/`, screenshot UI nếu E2E.
 5. Fail: invoke `bug-logging` → **append row** bảng bugs.md (origin=auto, đủ `TC`/`AC`/`error log` từ `test-logs/{TC}.log`). **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/fix-bugs` ở MANUAL_TEST.
@@ -61,7 +61,7 @@ Build service local + run auto test với PROOF cho mỗi TC. Log bug (origin=au
 
 - `tracking/wave-{N}/test-report.md` (Write)
 - `tracking/wave-{N}/test-logs/TC-*.log` (Write proof per TC)
-- `tracking/wave-{N}/test-logs/screenshots/TC-*.png` (Write UI screenshots)
+- `tracking/wave-{N}/screenshots/TC-*.png` (Write — BẮT BUỘC cho MỌI TC web boundary pass|fail; gate `test_evidence` check PNG thật đúng path này)
 - `tracking/wave-{N}/bugs.md` (append BUG-NNN entries với origin=auto)
 - `knowledge-base/{boundary}.knowledge-graph.yaml` (append failure_modes, learnings)
 
@@ -86,7 +86,7 @@ Build service local + run auto test với PROOF cho mỗi TC. Log bug (origin=au
   "files_changed": [
     "tracking/wave-{N}/test-report.md",
     "tracking/wave-{N}/test-logs/TC-*.log",
-    "tracking/wave-{N}/test-logs/screenshots/*.png",
+    "tracking/wave-{N}/screenshots/*.png",
     "tracking/wave-{N}/bugs.md"
   ],
   "kg_appended": ["test-execute-{wave-id}","fm:FM-NNN","learning:..."],

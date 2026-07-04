@@ -1,8 +1,8 @@
 # Agents
 
-Source of truth: 24 file trong `agents/` (21 singleton command + 2 templates + README). Per-boundary dev/fix agent **materialize từ MATRIX** ở `/start-wave` (không commit sample).
+Source of truth: 26 file trong `agents/` (23 singleton command + 2 templates + README). Per-boundary dev/fix agent **materialize từ MATRIX** ở `/start-wave` (không commit sample).
 
-State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (17 states, 19 commands).
+State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (17 states, 24 commands).
 
 ## Agent inventory
 
@@ -10,7 +10,7 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (17 s
 
 ### Discovery (4 specialists)
 
-`/discovery-start <D>` spawn agent per wave (self-loop re-spawn); `/discovery-end <D>` verify gate → wave kế.
+`/discovery-start <D>` spawn agent per wave (cùng wave = refine; D kế = tiến wave, gate wave đang rời); `/discovery-end` (không arg, chỉ ở D3) chốt Discovery → DOMAIN_AUTHORING.
 
 | Wave | Agent | Skill primary | Output chính |
 |------|-------|---------------|--------------|
@@ -19,20 +19,22 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (17 s
 | D2 | [event-stormer-agent](event-stormer-agent.md) | `event-storming` | `event-storming/ES-*.md` |
 | D3 | [charter-author-agent](charter-author-agent.md) | `boundary-charter` | `BOUNDARY-MAP.md` + `boundaries/*/CHARTER.md` + derive `PROJECT.md` + chốt `service_prefix` |
 
-### Domain (2 specialists)
+### Domain (3 specialists — 2 lớp business ↔ eng)
 
-`/domain-start <EPIC\|FEATURE\|JOURNEY\|BR\|PERSONA>` (self-loop) → `/domain-end` (gate → DESIGN). Author **thẳng vào `docs/architecture/`**.
+`/domain-po <EPIC\|FEATURE\|JOURNEY>` · `/domain-ba <BR\|PERSONA>` author **BUSINESS plain VN vào `docs/domain/`** (self-loop, status DRAFT) → `/domain-approve` **KÝ** (`status: APPROVED`, jargon-check — instant, không spawn) → `/domain-translate` **DỊCH sang eng `docs/architecture/`** → `/domain-end` (gate `domain_gate` + `planning_lint` + `translation_parity` → DESIGN).
 
 | Agent | Mode | Skill primary | Output chính |
 |-------|------|---------------|--------------|
-| [domain-po-agent](domain-po-agent.md) | EPIC / FEATURE / JOURNEY | `domain-po` | `epics/` + `feat/` (AC BDD) + `journeys/` |
-| [domain-ba-agent](domain-ba-agent.md) | BR / PERSONA | `domain-ba` | `business-rules/` + `personas/` |
+| [domain-po-agent](domain-po-agent.md) | EPIC / FEATURE / JOURNEY | `domain-po` | `docs/domain/{epics,feat,journeys}/` (business, plain VN) |
+| [domain-ba-agent](domain-ba-agent.md) | BR / PERSONA | `domain-ba` | `docs/domain/{business-rules,personas}/` (business, plain VN) |
+| [domain-translator-agent](domain-translator-agent.md) | dịch toàn bộ doc đã ký | `domain-translator` | `docs/architecture/{epics,feat,business-rules,journeys,personas}/` (eng, frontmatter `source`+`domain_source_id`) |
 
-### Design + Plan (2 specialists)
+### Design + Plan (3 specialists — UX tách vai riêng)
 
 | Command | Agent | Skill primary | Output chính |
 |---------|-------|---------------|--------------|
-| `/design` | [solution-architect-agent](solution-architect-agent.md) | `technical-design` | ADR + HLD + API + data-model + UX + events + integrations + infra/docker-compose |
+| `/design` | [solution-architect-agent](solution-architect-agent.md) | `technical-design` | ADR + HLD + API + data-model + events + integrations + infra/docker-compose (KHÔNG UX) |
+| `/design-ux` | [ux-designer-agent](ux-designer-agent.md) | `ux-design` | `ux/ux-{boundary}.md` + `ux/design-tokens.css` (FE boundary — chạy SAU /design, consume api-{be}.md) |
 | `/plan` | [program-planner-agent](program-planner-agent.md) | `implementation-plan` | WAVE-SEQUENCE + wave-*.md + MATRIX + materialize per-boundary dev/fix/KG |
 
 ### Review (5 singletons)
@@ -64,7 +66,7 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (17 s
 
 | Agent | Command | Skill primary | Stage transition |
 |-------|---------|---------------|------------------|
-| [apply-cr-agent](apply-cr-agent.md) | `/apply-cr <CR-ID>` | `business-analysis` | DONE → DESIGN (amendment) |
+| [apply-cr-agent](apply-cr-agent.md) | `/apply-cr <CR-ID>` | `business-analysis` | DONE → DOMAIN_AUTHORING (CR feature → po/ba → ký → translate; kiến trúc-only → /domain-end thẳng) |
 
 ## Materialize per-boundary (after /plan)
 

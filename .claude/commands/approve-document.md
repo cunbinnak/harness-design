@@ -22,7 +22,7 @@ Sau khi approved → có thể chạy `/start-wave` (gate check `approved=true`)
 
 `scripts/gates.py check_doc_review` đọc `tracking/doc-review-findings.md` (do `/review-document` no-arg ghi):
 - **Thiếu file** → doc-review sanity-check CHƯA chạy → **chặn** (chạy `/review-document` no-arg trước).
-- Còn gap **BLOCKER/MAJOR** `status` open → **chặn** (vá qua revision loop hoặc lùi `/domain-start`).
+- Còn gap **BLOCKER/MAJOR** `status` open → **chặn** (vá qua revision loop hoặc lùi `/domain-po`·`/domain-ba` → ký → translate).
 - Mọi gap đóng / chỉ MINOR open → pass.
 
 > Mirror `review-dev` `no_open_findings` (cho code) — nhưng cho TÀI LIỆU: bắt **thiếu năng lực nền (vd auth/login)** trước khi commit-to-build. Edge thật → `'{"approved":true,"force":true,"reason":"<lý do>"}'` (bypass + audit `tracking/decisions.md`).

@@ -32,6 +32,8 @@ gates: [{type: all_boundaries_reviewed}, {type: infra_proof}, {type: health_proo
 | bff | 70% |
 | web / mobile | 60% |
 
+> **Coverage KHÔNG tin số tự khai:** service đã scaffold → harness **derive từ coverage report thật** (jacoco XML `build/reports/jacoco/**` / `coverage/coverage-summary.json` / `coverage/lcov.info`) — có report thì số đo THẮNG số khai; scaffold rồi mà không có report → fail (chạy test kèm coverage rồi `/review-dev` lại). Chưa scaffold → fallback số khai (hermetic).
+>
 > `review-dev` đã ép kèm `review_results` (gate `non_empty`) nên STATE không rỗng. **force-bypass:** `dev-handoff` `force:true,reason` bypass được gate này (đồng bộ họ force-bypass, audit decisions.md) — lưới an toàn env/edge.
 
 ### `infra_proof` (content-validated — KHÔNG chỉ file tồn tại)

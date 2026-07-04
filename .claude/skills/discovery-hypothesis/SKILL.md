@@ -37,4 +37,4 @@ Input: mô tả project user truyền (`$ARGUMENTS`). Không có → hỏi user 
 - [ ] Không bịa metric/nguồn.
 
 ## Done
-- `docs/discovery/hypothesis-log.md` pass gate D0; user confirm → `/discovery-end D0`.
+- `docs/discovery/hypothesis-log.md` pass gate D0; user confirm → `/discovery-start D1` (tiến wave, gate D0 verify lúc đó).

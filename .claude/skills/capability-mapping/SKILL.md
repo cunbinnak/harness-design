@@ -44,4 +44,4 @@ Input: `docs/discovery/hypothesis-log.md` (D0).
 - [ ] Anti-capability listed.
 
 ## Done
-- persona-pool + capability-map pass gate D1; user confirm → `/discovery-end D1`.
+- persona-pool + capability-map pass gate D1; user confirm → `/discovery-start D2` (tiến wave, gate D1 verify lúc đó).

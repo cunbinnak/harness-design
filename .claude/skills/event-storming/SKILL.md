@@ -46,4 +46,4 @@ Mỗi ES file:
 - [ ] ≥1 aggregate (§5) + ≥1 external (§6) + hot-spots flagged (§7) + open-questions cho Authority (§9).
 
 ## Done
-- Mọi candidate domain có ES file pass gate D2; user confirm → `/discovery-end D2`.
+- Mọi candidate domain có ES file pass gate D2; user confirm → `/discovery-start D3` (tiến wave, gate D2 verify lúc đó).

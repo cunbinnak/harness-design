@@ -10,7 +10,7 @@ description: Discovery D3 (charter-author) — identify boundary từ event-stor
 1. **Identify boundary** từ aggregates/domains ở D2 → `BOUNDARY-MAP.md` + `CHARTER.md` per boundary.
 2. **Derive PROJECT.md** (PRD) → sang DOMAIN_AUTHORING.
 
-> **KHÔNG sinh FEAT/Epic/BR ở D3**: DOMAIN (stage sau) sở hữu product, author THẲNG vào `docs/architecture/{epics,feat,business-rules}/` qua `/domain-start` (single-repo, KHÔNG translate). D3 chỉ charter + BOUNDARY-MAP + PROJECT.md.
+> **KHÔNG sinh FEAT/Epic/BR ở D3**: DOMAIN (stage sau) sở hữu product — po/ba author BUSINESS vào `docs/domain/` (`/domain-po`·`/domain-ba`) → ký (`/domain-approve`) → `/domain-translate` dịch sang eng `docs/architecture/`. D3 chỉ charter + BOUNDARY-MAP + PROJECT.md.
 
 Input: `hypothesis-log.md` + `capability-map.md` + `persona-pool.md` + `event-storming/ES-*.md`.
 
@@ -36,7 +36,7 @@ Input: `hypothesis-log.md` + `capability-map.md` + `persona-pool.md` + `event-st
 - Idempotent re-run.
 
 ## Sang DOMAIN authoring
-Sau D3 + `/discovery-end D3` (gate pass → DOMAIN_AUTHORING): PROJECT.md + charter boundaries đã có → user chạy `/domain-start <EPIC|FEATURE|JOURNEY|BR|PERSONA>` (self-loop author product THẲNG vào `docs/architecture/`) → `/domain-end` (gate ≥1 epic+feat+BR) → `/design` → `/plan` → `/approve-document` → `/start-wave 1`.
+Sau D3 + `/discovery-end` (gate pass → DOMAIN_AUTHORING): PROJECT.md + charter boundaries đã có → user chạy `/domain-po <EPIC|FEATURE|JOURNEY>` · `/domain-ba <BR|PERSONA>` (author business `docs/domain/`, self-loop) → `/domain-approve` (ký) → `/domain-translate` (dịch eng) → `/domain-end` (gate ≥1 eng epic+feat+BR + translation_parity) → `/design` → `/design-end` → `/plan` → `/approve-document` → `/start-wave 1`.
 
 ## Quality checklist
 - [ ] BOUNDARY-MAP ≥1 row non-placeholder.
@@ -46,4 +46,4 @@ Sau D3 + `/discovery-end D3` (gate pass → DOMAIN_AUTHORING): PROJECT.md + char
 - [ ] KHÔNG sinh FEAT/Epic/BR (để DOMAIN).
 
 ## Done
-- BOUNDARY-MAP + CHARTER + PROJECT.md pass gate D3; user confirm → `/discovery-end D3` → DOMAIN_AUTHORING.
+- BOUNDARY-MAP + CHARTER + PROJECT.md pass gate D3; user confirm → `/discovery-end` (không arg) → DOMAIN_AUTHORING.

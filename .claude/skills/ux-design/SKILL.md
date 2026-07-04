@@ -1,13 +1,13 @@
 ---
 name: ux-design
-description: UX/UI cho FE boundary (DESIGN, invoke từ technical-design) — user flow, wireframe, UI states đầy đủ, design tokens, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md.
+description: UX/UI cho FE boundary (stage DESIGN, /design-ux, ux-designer-agent — tách vai khỏi solution-architect) — user flow, wireframe, UI states đầy đủ, design tokens + Visual polish, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md + design-tokens.css.
 ---
 
 # UX Design Skill
 
 ## Khi load
-Stage **DESIGN** (`/design`, `solution-architect`) khi thiết kế UX cho **FE boundary** (kind `web`/`mobile`). Là **sub-skill** — `technical-design` invoke khi làm UX cho FE boundary (không phải stage riêng).
-Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md` (user story + AC) + `api-{be}.md` (contract boundary phục vụ).
+Command **`/design-ux`** (stage DESIGN, self-loop) — agent chuyên môn **`ux-designer-agent`**, tách vai khỏi solution-architect (`/design` lo hệ thống/contract). Chạy SAU khi `/design` đã chốt boundary + `api-{be}.md` (UX consume contract, không bịa endpoint).
+Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md` (user story + AC) + `JOURNEY/PERSONA` + `api-{be}.md` (contract boundary phục vụ).
 
 ## Deliverable
 `docs/architecture/ux/ux-{boundary}.md` theo `TEMPLATE.ux.md` — mỗi FE boundary 1 file:

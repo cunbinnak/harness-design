@@ -62,7 +62,7 @@ Sinh test-case-registry.md cho wave. Bao gồm smoke + integration + E2E + manua
 - Sửa source code trong `services/`.
 - Bỏ trống AC mapping — mỗi TC phải trace.
 - Quên cột `Type=auto|manual` — test-execute không phân biệt được.
-- Sửa FEAT/AC content — đó là DOMAIN (`/domain-start FEATURE`).
+- Sửa FEAT/AC content — đó là DOMAIN (`/domain-po FEATURE` → ký → translate; phase-lock hook cũng chặn).
 
 ## RETURN SCHEMA
 

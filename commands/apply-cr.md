@@ -14,7 +14,7 @@ gates: [{type: non_empty, field: cr_id}]
 ## Mục đích
 
 Sau khi wave done, có scope change → tạo CR file → `/apply-cr` → STATE re-enter **DOMAIN_AUTHORING** (đầu pipeline authoring, sau discovery). apply-cr-agent phân tích impact CR; rồi:
-- **CR thêm/đổi feature** (product): `/domain-start <EPIC|FEATURE|BR|...>` author artifact mới → `/domain-end`.
+- **CR thêm/đổi feature** (product): `/domain-po <EPIC|FEATURE|JOURNEY>` · `/domain-ba <BR|PERSONA>` author business mới (docs/domain) → `/domain-approve` (ký) → `/domain-translate` (dịch eng) → `/domain-end`.
 - **CR chỉ đổi kiến trúc/contract** (không feature mới): `/domain-end` qua thẳng (epic/feat/BR cũ đã đủ gate) → DESIGN.
 - Tiếp: `/design` → `/design-end` → `/plan` → `/review-document` → `/approve-document` → `/start-wave`.
 
@@ -31,4 +31,4 @@ py scripts/harness.py apply-cr complete '{"cr_id": "CR-001"}'
 
 ## Sau khi vào DOMAIN_AUTHORING
 
-CR feature → `/domain-start` author epic/feat/BR vùng CR → `/domain-end` → `/design` → `/design-end` → `/plan` → REVIEW → `/start-wave`. CR kiến trúc-only → `/domain-end` ngay → `/design`...
+CR feature → `/domain-po`·`/domain-ba` author business vùng CR → `/domain-approve` → `/domain-translate` → `/domain-end` → `/design` → `/design-end` → `/plan` → REVIEW → `/start-wave`. CR kiến trúc-only → `/domain-end` ngay → `/design`...

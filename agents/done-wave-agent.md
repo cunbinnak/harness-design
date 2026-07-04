@@ -77,10 +77,11 @@ Hard close wave: teardown infra docker-compose, archive wave artifacts vào hand
 - `wave_boundaries = []`
 - `active_boundary = null`
 
-Allowed next:
-- `/apply-cr <CR-ID>` (nếu có CR pending → DESIGN amendment: /design → /plan → REVIEW)
-- `/start-wave <N+1>` (nếu wave kế đã plan ở /plan và không cần CR)
-- `/discovery-start D0` (nếu mở rộng scope lớn, bootstrap lại front-half)
+Allowed next (từ BOOTSTRAP):
+- `/discovery-start <D>` — re-run idempotent (docs giữ nguyên nên gate pass nhanh) → `/discovery-end` → `/domain-end` (không đổi product thì qua thẳng) → `/design-end` → `/plan` → approve → `/start-wave <N+1>`.
+- Boundary MỚI / mở rộng scope lớn → `/discovery-start D3` (charter boundary mới) hoặc `D0` (bootstrap lại front-half).
+
+> LƯU Ý: `/apply-cr <CR-ID>` chạy **TỪ DONE (TRƯỚC done-wave)** → DOMAIN_AUTHORING (po/ba → ký → translate). Đã done-wave rồi thì đi đường discovery re-run ở trên.
 
 ## RETURN SCHEMA
 

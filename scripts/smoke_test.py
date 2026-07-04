@@ -1,6 +1,6 @@
 """
 End-to-end smoke test for state machine.
-Walks through 17 states + 19 commands with mock evidence.
+Walks through 17 states + 23 commands with mock evidence.
 
 Front-half (Discovery D0-D3 → Domain → Design → Plan → Review) gate check artifact
 trên disk; smoke test verify TRANSITION nên dùng force-bypass (nội dung gate test riêng
@@ -142,6 +142,8 @@ def main() -> int:
         # DESIGN self-loop (design refine) ; DESIGN -> PLAN (design-end) ; PLAN -> REVIEW (plan)
         ok = step("DESIGN self (design refine)", "design", {}, "DESIGN")
         passed.append(ok) if ok else failed.append("design self-loop")
+        ok = step("DESIGN self (design-ux refine)", "design-ux", {}, "DESIGN")
+        passed.append(ok) if ok else failed.append("design-ux self-loop")
         ok = step("DESIGN -> PLAN", "design-end", FB, "PLAN")
         passed.append(ok) if ok else failed.append("design-end")
         ok = step("PLAN -> REVIEW", "plan", FB, "REVIEW")

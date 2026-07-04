@@ -32,9 +32,10 @@ Verify exit gate D3 (charter + BOUNDARY-MAP + PROJECT.md + service_prefix) rồi
 Báo user:
 ```
 Discovery xong (D0-D3). Stage = DOMAIN_AUTHORING.
-PROJECT.md + charter boundaries đã có → author product:
-  /domain-start <EPIC|FEATURE|JOURNEY|BR|PERSONA>  (self-loop) → /domain-end
-→ /design → /plan → /approve-document → /start-wave 1
+PROJECT.md + charter boundaries đã có → author product (2 lớp business↔eng):
+  /domain-po <EPIC|FEATURE|JOURNEY> · /domain-ba <BR|PERSONA>  (author business, self-loop)
+  → /domain-approve (ký) → /domain-translate (dịch eng) → /domain-end
+→ /design → /design-end → /plan → /review-document → /approve-document → /start-wave 1
 ```
 
 ## Forbidden

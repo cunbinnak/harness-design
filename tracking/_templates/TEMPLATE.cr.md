@@ -35,7 +35,7 @@ _(apply-cr agent điền — sau `apply-cr complete`: STATE → DESIGN; user ch�
 ## Phạm vi implement
 
 - Boundary:
-- Có cần `/design` (amendment) → `/plan` không: yes / no (CR đổi product → `/domain-start` trước)
+- Có cần `/design` (amendment) → `/plan` không: yes / no (CR đổi product → `/domain-po`·`/domain-ba` → ký → `/domain-translate` trước)
 
 ## Quyết định
 

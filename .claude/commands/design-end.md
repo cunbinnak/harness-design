@@ -12,7 +12,7 @@ gates: [{type: design_gate}, {type: todo_resolved}]
 > Advance DESIGN → PLAN. Chỉ chạy khi user đã vừa ý toàn bộ technical design (đã refine qua `/design` self-loop). KHÔNG spawn agent author mới — chỉ verify gate + transition.
 
 ## Workflow
-1. Xác nhận user OK toàn bộ design (ADR/HLD/API/data-model/UX/events/integrations). Chưa OK → quay lại `/design` refine.
+1. Xác nhận user OK toàn bộ design: hệ thống/contract (`/design`) VÀ UX (`/design-ux` — nếu có FE boundary). Chưa OK → quay lại `/design` hoặc `/design-ux` refine.
 2. (Optional) Run `py scripts/build_prompt.py design-end` để xem checklist gate.
 3. `py scripts/harness.py design-end complete '{}'` → DESIGN→PLAN.
 4. Override (user đồng ý): `complete '{"force":true,"reason":"<lý do>"}'` → ghi audit decisions.md.

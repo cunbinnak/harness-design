@@ -15,7 +15,8 @@ Exit codes:
 Strictness: file-exists + minimum-count check (regex), KHÔNG parse YAML sâu (tránh false-positive).
 Path harness: docs/discovery/* (ZIP dùng _discovery/*). Root = repo root (parent của scripts/).
 
-Dùng bởi gates.py (kind=discovery_wave): khi /discovery-end <D>, gọi check_gate(D); fail → block transition.
+Dùng bởi gates.py: kind=discovery_advance (/discovery-start tiến wave → gate wave đang rời) +
+kind=discovery_wave (/discovery-end chốt D3 → check_gate('D3')); fail → block transition.
 """
 
 from __future__ import annotations
@@ -242,7 +243,8 @@ def gate_d3() -> tuple[bool, list[str]]:
 
     Bỏ check ADR-D3/SYSTEM-TOPOLOGY (stack decision thuộc technical-design/DESIGN sau).
     D3 derive PROJECT.md (PRD) → DOMAIN_AUTHORING. **KHÔNG sinh FEAT** ở đây: DOMAIN sở hữu
-    product, author THẲNG vào docs/architecture/{epics,feat,business-rules}/ (single-repo, KHÔNG translate).
+    product — po/ba author BUSINESS vào docs/domain/ → ký (/domain-approve) → /domain-translate
+    dịch sang eng docs/architecture/{epics,feat,business-rules}/.
     """
     errors: list[str] = []
 

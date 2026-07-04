@@ -37,7 +37,7 @@ Thiết kế kỹ thuật phủ TẤT CẢ boundary của dự án (không chỉ
 4. `docs/discovery/BOUNDARY-MAP.md` — topology + quan hệ boundary (D3).
 5. `docs/discovery/boundaries/*/CHARTER.md` — mission/owned-data/capabilities/deps per boundary (D3).
 6. `docs/architecture/epics/EP-*.md` — capability grouping (DOMAIN).
-7. `docs/architecture/feat/FEAT-*.md` — AC + `business_rule_refs` (DOMAIN author thẳng — KHÔNG translate).
+7. `docs/architecture/feat/FEAT-*.md` — AC + `business_rule_refs` (eng — dịch từ business docs/domain qua /domain-translate; TODO-engineer trong đây DESIGN phải điền, gate todo_resolved).
 8. `docs/architecture/business-rules/BR-*.md` — domain invariant → API error catalog + data-model state machine.
 9. `docs/architecture/journeys/JOURNEY-*.md` + `personas/PERSONA-*.md` — UX context cho FE boundary.
 10. `docs/discovery/event-storming/ES-*.md` — domain events → events design + data-model (D2).
@@ -59,12 +59,12 @@ Thiết kế kỹ thuật phủ TẤT CẢ boundary của dự án (không chỉ
 1. Read PROJECT.md (Discovery D3) + tất cả FEAT-*.md (DOMAIN) + charter boundaries (`docs/discovery/boundaries/*/CHARTER.md`).
 2. Viết 3-5 ADR ngắn: tech-stack chọn (BE/FE/DB/broker), backend architecture (Layered vs DDD - chọn 1), auth/security model, api-error-convention (envelope + generic codes chung mọi boundary), UI kit + i18n, integrations strategy.
 3. Cho MỖI boundary: HLD **theo `docs/architecture/hld/TEMPLATE.hld.md`** (design goals + responsibilities/non-responsibilities, data ownership, C4 context/container/component, **chốt kiến trúc Layered/Hexagonal + layer/package — HLD là source cho dev**, key flows happy+error, auth & permission, consistency/failure khi áp dụng, deployment & scaling, observability, NFR refine; chi tiết folder theo ref-pattern), API **theo `TEMPLATE.api.md`** (contract + **Domain error catalog** → `{Domain}ErrorEnum`; envelope + generic codes chuẩn chung mọi boundary; per-endpoint chỉ ref code), data-model (cho backend, **theo `TEMPLATE.data-model.md`**: mục đích từng bảng + schema no-FK liên kết qua id + state machine).
-4. Cho MỖI FE boundary: UX spec (flows, screens, FEAT mapping).
+4. Cho MỖI FE boundary: HLD + đảm bảo BE contract (`api-{be}.md`) đủ cho UX consume. **UX spec KHÔNG làm ở đây** — user chạy `/design-ux` (ux-designer-agent) sau bước này.
 5. Cho MỖI event-producing boundary: events schema **theo `TEMPLATE.events.md`** (topic, payload, consumers, idempotency key).
 6. Integrations **theo `TEMPLATE.integration-external.md` / `TEMPLATE.integration-internal.md`**: INTEG-EXT-{provider}.md cho external (Stripe, Twilio, ...). INTEG-INT-{caller}-to-{callee}.md cho cross-boundary internal sync.
 7. docker-compose.yml: 1 entry per boundary trong scope (kể cả wave 2+), DB/Redis/broker services, healthcheck. KHÔNG để skeleton trống.
 8. Traceability: trong HLD hoặc integrations: bảng FEAT -> boundary mapping. Mọi FEAT 'Must' phải map ≥ 1 boundary.
-9. Cuối: nhắc user review architecture docs. **Chưa vừa ý → user chạy lại `/design`** (self-loop re-spawn refine, KHÔNG advance). Khi OK toàn bộ → return `user_confirmed: true` → main chạy **`/design-end`** (`py scripts/harness.py design-end complete '{}'`, gate design_gate: ADR≥3 + INTEG + per-boundary completeness backend→hld+api/web→hld+ux) → DESIGN→PLAN, rồi `/plan`.
+9. Cuối: nhắc user review architecture docs. **Chưa vừa ý → user chạy lại `/design`** (self-loop re-spawn refine, KHÔNG advance). Khi OK toàn bộ → return `user_confirmed: true` → nhắc user chạy **`/design-ux`** (nếu có FE boundary) rồi **`/design-end`** (`py scripts/harness.py design-end complete '{}'`, gate design_gate: ADR≥3 + INTEG + per-boundary completeness backend→hld+api/web→hld+ux + design-tokens.css khi có web) → DESIGN→PLAN, rồi `/plan`.
 
 ## Skills
 
@@ -76,11 +76,13 @@ Thiết kế kỹ thuật phủ TẤT CẢ boundary của dự án (không chỉ
 - docs/architecture/adr/ADR-*.md
 - docs/architecture/hld/hld-*.md
 - docs/architecture/api/api-*.md
+- docs/architecture/api/bff-aggregation-*.md (khi có bff aggregate ≥2 backend)
 - docs/architecture/data-model/data-model-*.md
-- docs/architecture/ux/ux-*.md
 - docs/architecture/events/*-events.md
 - docs/architecture/integrations/INTEG-*.md
 - docs/architecture/infra/docker-compose.yml
+
+> **KHÔNG own `docs/architecture/ux/**`** (ux-*.md + design-tokens.css) — đó là `/design-ux` (ux-designer-agent, skill ux-design). Architect đảm bảo FE boundary có HLD + BE contract đủ cho UX consume.
 
 ## Forbidden
 
@@ -88,6 +90,7 @@ Thiết kế kỹ thuật phủ TẤT CẢ boundary của dự án (không chỉ
 - Sửa docs/plans/ - đó là `/plan`.
 - Code trong services/.
 - Quyết MoSCoW của FEAT (DOMAIN đã chốt). Author product (epic/feat/BR) - đó là DOMAIN.
+- Design UX/UI (ux-*.md, design-tokens.css, wireframe, visual) — đó là `/design-ux` (ux-designer-agent). Cần UX → báo user chạy `/design-ux`.
 
 ## RETURN SCHEMA
 

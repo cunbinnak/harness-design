@@ -107,7 +107,7 @@ def collect_targets() -> dict[str, list[Path]]:
             if f.is_file():
                 targets["remove"].append(f)
         for sub, prefix in [
-            # DOMAIN artifacts (author thẳng vào docs/architecture/)
+            # DOMAIN eng artifacts (bản dịch từ docs/domain qua /domain-translate)
             ("epics", "EP-"),
             ("feat", "FEAT-"),
             ("journeys", "JOURNEY-"),
@@ -132,12 +132,32 @@ def collect_targets() -> dict[str, list[Path]]:
             for f in events.glob("*-events.md"):
                 if not f.name.startswith("TEMPLATE"):
                     targets["remove"].append(f)
+        # design tokens dùng chung (sinh ở DESIGN theo TEMPLATE.design-tokens.css — project-specific)
+        tokens = arch / "ux" / "design-tokens.css"
+        if tokens.is_file():
+            targets["remove"].append(tokens)
         infra = arch / "infra"
         if infra.is_dir():
             for name in ("docker-compose.yml", "local-dev.md"):
                 f = infra / name
                 if f.is_file():
                     targets["remove"].append(f)
+
+    # docs/domain (lớp BUSINESS plain VN — /domain-po·/domain-ba author + ký; giữ TEMPLATE.*)
+    dom = root / "docs/domain"
+    if dom.is_dir():
+        for sub, prefix in [
+            ("epics", "EP-"),
+            ("feat", "FEAT-"),
+            ("journeys", "JOURNEY-"),
+            ("personas", "PERSONA-"),
+            ("business-rules", "BR-"),
+        ]:
+            d = dom / sub
+            if d.is_dir():
+                for f in d.glob(f"{prefix}*.md"):
+                    if not f.name.startswith("TEMPLATE"):
+                        targets["remove"].append(f)
 
     # docs/plans (flat layout: WAVE-SEQUENCE.md + wave-{NNN}.md)
     plans = root / "docs/plans"
@@ -179,6 +199,12 @@ def collect_targets() -> dict[str, list[Path]]:
             for f in cr_dir.glob("*.md"):
                 if not f.name.startswith("TEMPLATE"):
                     targets["remove"].append(f)
+        # Cross-wave files sinh ở runtime: translation-log (domain-translate) +
+        # doc-review-findings (sanity-check) + decisions (audit force-bypass)
+        for name in ("translation-log.md", "doc-review-findings.md", "decisions.md"):
+            f = tracking / name
+            if f.is_file():
+                targets["remove"].append(f)
 
     # handoff
     handoff = root / "handoff"

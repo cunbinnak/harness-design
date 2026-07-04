@@ -28,7 +28,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 3. Verify `docs/architecture/infra/docker-compose.yml` SINGLE location (không có file compose nào khác).
 4. Build infra: `docker-compose up --build -d`, wait healthcheck max 120s.
 5. Smoke functional test: health all ports + auth login + create entity + FE accessible + **kết nối liên service (cross-boundary): mỗi `INTEG-INT-*` / `depends_on` → caller gọi được callee qua service name**.
-6. Capture proof artifacts trong `tracking/wave-{N}/`: docker-build.log, docker-ps.json, docker-ps.txt.
+6. Ghi `tracking/wave-{N}/docker-build.log` (log build). **Proof harness-đo (docker-ps.json + health-proof.json + api-proof.json) do MAIN chạy `py scripts/capture_infra_proof.py` sinh — agent KHÔNG ghi tay (hook FM-PROOF-FORGE chặn)**; việc của agent là đưa stack UP thật để capture pass.
 7. Update `handoff/wave-{N}.md` với UAT instructions skeleton.
 8. (Nếu phát sinh) append KG kinh nghiệm/decisions per boundary — KHÔNG tái tạo entities (đã seed ở start-wave).
 
@@ -36,7 +36,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 
 ```
 1. Invoke skill `infra-local-dev` → load full bash checklist + verify rules
-2. Walk checklist: coverage → infra single location → build → healthcheck → smoke functional → proof artifacts
+2. Walk checklist: coverage → infra single location → build → healthcheck → smoke functional → báo MAIN chạy capture_infra_proof.py (proof harness-đo)
 3. Container chưa healthy → `docker compose logs <svc>` chẩn ROOT-CAUSE:
    - (a) lỗi compose/env → sửa `docs/architecture/infra/docker-compose.yml` + up lại (đây là việc của dev-handoff).
    - (b) lỗi code/migration/config/Dockerfile trong `services/{boundary}/` → **STOP, KHÔNG tự sửa** (hook chặn),
@@ -56,11 +56,11 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 ## Owned paths
 
 - `docs/architecture/infra/docker-compose.yml` (Edit nếu cần fix)
-- `tracking/wave-{N}/docker-build.log` (Write proof)
-- `tracking/wave-{N}/docker-ps.json` (Write proof)
-- `tracking/wave-{N}/docker-ps.txt` (Write proof)
+- `tracking/wave-{N}/docker-build.log` (Write — log build tự do)
 - `handoff/wave-{N}.md` (Edit append UAT instructions)
 - `knowledge-base/{boundary}.knowledge-graph.yaml` (append per boundary)
+
+> **CẤM ghi:** `tracking/wave-{N}/{docker-ps,health-proof,api-proof}.json` — proof harness-đo, CHỈ `capture_infra_proof.py` (MAIN chạy) được sinh; hook FM-PROOF-FORGE deny Write/Edit.
 
 ## Forbidden
 
@@ -78,7 +78,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
   "completed": ["dev-handoff-done", "infra-build-verified", "smoke-functional-pass"],
   "deferred": [],
   "needs_review": [],
-  "files_changed": ["handoff/wave-{N}.md", "tracking/wave-{N}/docker-*.{log,json,txt}"],
+  "files_changed": ["handoff/wave-{N}.md", "tracking/wave-{N}/docker-build.log"],
   "kg_appended": ["integ:depends-auth","decision:..."],
   "build": "pass",
   "lint": "pass",

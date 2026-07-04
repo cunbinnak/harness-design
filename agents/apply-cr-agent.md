@@ -18,7 +18,7 @@ Phân tích Change Request và chuẩn bị **design amendment**. CR file = đã
 | Command | `/apply-cr <CR-ID>` |
 | Stage trigger | DONE -> DOMAIN_AUTHORING (amendment) |
 | Pre-condition | State = DONE (wave hiện tại đã done-wave hoặc end-wave) + CR file tồn tại |
-| Post complete | CR feature → `/domain-start` author epic/feat/BR → `/domain-end`. CR kiến trúc-only → `/domain-end` thẳng. Rồi `/design` → `/design-end` → `/plan` → REVIEW → `/start-wave`. |
+| Post complete | CR feature → `/domain-po`·`/domain-ba` author business (docs/domain) → `/domain-approve` → `/domain-translate` → `/domain-end`. CR kiến trúc-only → `/domain-end` thẳng. Rồi `/design` → `/design-end` → `/plan` → REVIEW → `/start-wave`. |
 
 **KHÔNG phải:** solution-architect/program-planner (produce artifacts ở DESIGN/PLAN), review-document (revise docs).
 
@@ -48,7 +48,7 @@ Phân tích Change Request và chuẩn bị **design amendment**. CR file = đã
 7. Phân loại CR: (a) thêm/đổi FEATURE (product) hay (b) chỉ kiến trúc/contract. Nếu cần BOUNDARY MỚI → báo user dùng done-wave→/discovery-start D3 (KHÔNG apply-cr).
 8. Return RETURN SCHEMA
 9. Sau complete: harness STATE → DOMAIN_AUTHORING
-10. CR feature → /domain-start author epic/feat/BR → /domain-end. CR kiến trúc-only → /domain-end thẳng. Rồi /design → /design-end → /plan → REVIEW → /start-wave.
+10. CR feature → /domain-po·/domain-ba author business → /domain-approve → /domain-translate → /domain-end. CR kiến trúc-only → /domain-end thẳng. Rồi /design → /design-end → /plan → REVIEW → /start-wave.
 ```
 
 ## Skills
@@ -69,7 +69,7 @@ Phân tích Change Request và chuẩn bị **design amendment**. CR file = đã
 - Rewrite toàn bộ PROJECT/ADR — chỉ vùng CR ảnh hưởng.
 - Tự đoán/tạo boundary MỚI — boundary mới (chưa trong BOUNDARY-MAP) phải qua done-wave→`/discovery-start D3` (charter), KHÔNG qua apply-cr.
 - `/apply-cr` khi state khác DONE — tránh nhiễu wave đang chạy.
-- Auto chạy `/domain-start`/`/design` thay user — user quyết.
+- Auto chạy `/domain-po`/`/domain-ba`/`/design` thay user — user quyết.
 
 ## Sau agent này
 
@@ -77,7 +77,8 @@ Phân tích Change Request và chuẩn bị **design amendment**. CR file = đã
 STATE → DOMAIN_AUTHORING (amendment)
 
 User runs:
-  CR thêm/đổi FEATURE → /domain-start <EPIC|FEATURE|BR|...> (author epic/feat/BR vùng CR) → /domain-end
+  CR thêm/đổi FEATURE → /domain-po <EPIC|FEATURE|JOURNEY> · /domain-ba <BR|PERSONA> (author business vùng CR)
+                        → /domain-approve (ký) → /domain-translate (dịch eng) → /domain-end
   CR kiến trúc-only    → /domain-end (qua thẳng — epic/feat/BR cũ đã đủ gate)
   → /design (amendment ADR/HLD/API/... vùng CR) → /design-end
   → /plan  (re-scope wave + MATRIX nếu cần)

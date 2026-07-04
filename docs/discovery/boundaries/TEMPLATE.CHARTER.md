@@ -161,7 +161,7 @@ Current: **{{STATUS}}**
 **Sibling (cùng D3):** `docs/architecture/PROJECT.md` (PRD project-level — derive cùng lúc).
 
 **Forward:**
-- DOMAIN (`/domain-start`): `docs/architecture/{epics,feat,business-rules,journeys}/*` từ §3/§5/§6.
+- DOMAIN (`/domain-po`·`/domain-ba` → ký → `/domain-translate`): `docs/domain/*` (business) → `docs/architecture/{epics,feat,business-rules,journeys}/*` (eng) từ §3/§5/§6.
 - DESIGN (`/design`): HLD/API/data-model/events `hld-{{boundary}}` · `api-{{boundary}}` · `data-model-{{boundary}}` · `{{boundary}}-events` — fill contract path §3/§4.
 - PLAN (`/plan`): `WAVE-SEQUENCE.md` + `SERVICE-BOUNDARY-MATRIX.json` (owned_paths §8) + KG `{{boundary}}.knowledge-graph.yaml`.
 - DEV (`/start-dev {{boundary}}`): scaffold `services/{{prefix}}-{{boundary-name}}/` theo §8.

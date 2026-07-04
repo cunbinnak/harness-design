@@ -29,9 +29,9 @@ STAGE_NEXT_GUIDE = {
     "DISC_D1": "/discovery-start D2 (gate D1 → sang D2) · hoặc /discovery-start D1 (refine capability/persona)",
     "DISC_D2": "/discovery-start D3 (gate D2 → sang D3) · hoặc /discovery-start D2 (refine event-storming)",
     "DISC_D3": "/discovery-end (gate D3 → DOMAIN) · hoặc /discovery-start D3 (refine charter/PROJECT)",
-    "DOMAIN_AUTHORING": "/domain-start <EPIC|FEATURE|JOURNEY|BR|PERSONA> (author) · /domain-end → DESIGN",
-    "DESIGN": "/design (refine) · /design-end → PLAN · LÙI sửa product: /domain-start <mode> → DOMAIN",
-    "PLAN": "/plan → REVIEW · LÙI sửa design: /design → DESIGN",
+    "DOMAIN_AUTHORING": "/domain-po <EPIC|FEATURE|JOURNEY> · /domain-ba <BR|PERSONA> (author business) → /domain-approve (ký) → /domain-translate (dịch eng) → /domain-end → DESIGN",
+    "DESIGN": "/design (hệ thống/contract, refine) · /design-ux (UX/UI cho FE boundary) · /design-end → PLAN · LÙI sửa product: /domain-po·/domain-ba → DOMAIN (re-ký + re-translate)",
+    "PLAN": "/plan → REVIEW · LÙI sửa design: /design (hoặc /design-ux) → DESIGN",
     "REVIEW": "/review-document (sửa mọi doc) · /approve-document · /start-wave <N>",
     "WAVE_OPEN": "/start-dev <boundary>",
     "DEV": "/start-dev <boundary khác> · xong hết boundary → /review-dev",
@@ -119,7 +119,7 @@ def is_proof_file(rel_path: str) -> bool:
 # ------------------------------------------------------------------------
 # ZIP (multi-repo) đóng băng upstream bằng snapshot `_inputs/**` read-only per repo. Single-repo
 # tương đương = phase-lock theo stage: mỗi LỚP doc chỉ sửa được ở stage SỞ HỮU (+ REVIEW = cửa
-# revision chung). Stage khác → frozen → LÙI về stage sở hữu (back-edge /design, /domain-start)
+# revision chung). Stage khác → frozen → LÙI về stage sở hữu (back-edge /design, /domain-po//domain-ba)
 # rồi tiến lại (re-gate); sau ship dùng /apply-cr. Chống dev/test sửa spec cho khớp code (anti-pattern
 # e2e) + chống sửa FEAT/HLD lúc đã ở PLAN. Thực thi NON-NEGOTIABLE #6 (trước chỉ honor-system).
 
@@ -140,7 +140,7 @@ PHASE_LOCK_CLASSES = [
 ]
 _BACK_HINT = {
     "discovery": "lùi qua done-wave→/discovery-start (hoặc sửa ở REVIEW)",
-    "domain": "lùi /domain-start <mode> → DOMAIN",
+    "domain": "lùi /domain-po·/domain-ba → DOMAIN (sửa business → /domain-approve → /domain-translate)",
     "design": "lùi /design → DESIGN",
     "plan": "về PLAN",
 }
@@ -277,7 +277,7 @@ def validate_return_schema(parsed: dict) -> tuple[bool, list[str]]:
 DEV_SPAWN_KEYWORDS = (
     "start-dev", "fix-bugs", "review-dev",
     "domain-po", "domain-ba", "domain-translate",
-    "test-plan", "test-execute",
+    "test-plan", "test-execute", "design-ux",
 )
 
 
@@ -376,7 +376,8 @@ def _selftest() -> int:
     # next-step hint contextual (arg + back-edge)
     assert "discovery-start D2" in next_step_hint({"stage": "DISC_D1"})  # advance qua start (cơ chế mới)
     assert "/design" in next_step_hint({"stage": "PLAN"})          # back-edge
-    assert "domain-start" in next_step_hint({"stage": "DESIGN"})    # back-edge
+    assert "domain-po" in next_step_hint({"stage": "DESIGN"})    # back-edge
+    assert "domain-translate" in next_step_hint({"stage": "DOMAIN_AUTHORING"})  # flow 2 lớp: ký → dịch
     assert "header" not in state_header_line({"stage": "PLAN"}, []).lower() or True
     assert "next:" in state_header_line({"stage": "DISC_D0"}, [])
     # E-6 chặt: detect theo tên agent (registry) — khớp tên thật, không khớp prompt research

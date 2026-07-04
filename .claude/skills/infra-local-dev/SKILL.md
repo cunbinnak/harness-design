@@ -92,7 +92,7 @@ psql "postgresql://postgres:postgres@localhost:5432/app_dev" -c "\dt" \
 ```
 `count = 0` → migration chưa chạy, debug ngay.
 
-## Done (dev-handoff-agent set `docker_compose_ok`/`connectivity_ok=true` + capture docker-ps.json — evidence cho gate `/test-plan` kế tiếp; gate `/dev-handoff` riêng = all_boundaries_reviewed)
+## Done (dev-handoff-agent set `docker_compose_ok`/`connectivity_ok=true`; proof — docker-ps.json + health-proof.json + api-proof.json — do MAIN chạy `py scripts/capture_infra_proof.py` sinh, agent KHÔNG ghi tay [FM-PROOF-FORGE])
 - `docker-compose.yml` valid, **mọi service (app boundary + infra) healthy**; migrations applied (schema có tables).
 - **Kết nối liên service (cross-boundary connectivity)**: mỗi dependency `INTEG-INT-*` / `depends_on` MATRIX đã verify caller gọi được callee qua service name (HTTP 200 / topic tồn tại) — không chỉ healthy riêng lẻ.
 - Test agent chạy được: `docker compose exec {service} <test-cmd>` / `curl localhost:{port}/health`.

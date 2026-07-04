@@ -371,8 +371,8 @@ def build_discovery_end(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 # ------------------------------------------------------------------------
-# DOMAIN (author product chia nhỏ Epic/Feature/BR — clone ZIP, author THẲNG vào docs/architecture/,
-# single-repo: KHÔNG docs/domain riêng, KHÔNG translate. Boot-sequence kiểu ZIP agent.)
+# DOMAIN 2 lớp (clone ZIP A1): po/ba author BUSINESS plain VN vào docs/domain/ → /domain-approve KÝ
+# → /domain-translate DỊCH sang eng docs/architecture/ (gate translation_parity giữ 1-1).
 # ------------------------------------------------------------------------
 
 DOMAIN_MODES = {
@@ -532,33 +532,64 @@ def build_domain_translate(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_design(state: dict, matrix: list[dict], opts: dict) -> str:
-    """Technical design (stage DESIGN) — tái dùng skill technical-design + solution-architect-agent."""
+    """Technical design (stage DESIGN) — solution-architect: hệ thống/contract (UX = /design-ux riêng)."""
     parts = [
         "# SPAWN PROMPT — /design",
-        "\nAgent: **solution-architect-agent** · Skill: `technical-design` · Stage DESIGN → PLAN.",
+        "\nAgent: **solution-architect-agent** · Skill: `technical-design` · Stage DESIGN → PLAN. **KHÔNG design UX/UI** — đó là `/design-ux` (ux-designer-agent).",
         state_bundle(state),
         NON_NEGOTIABLES,
-        skills_block(["technical-design"], available=["ux-design"]),
+        skills_block(["technical-design"]),
         docs_to_read([
             ("PROJECT (PRD: scope/NFR/stack/glossary — D3)", "docs/architecture/PROJECT.md"),
             ("Boundary map (topology + quan hệ — D3)", "docs/discovery/BOUNDARY-MAP.md"),
             ("Charter từng boundary (mission/owned-data/capabilities/deps — D3)", "docs/discovery/boundaries/*/CHARTER.md"),
             ("Epic (capability grouping — DOMAIN)", "docs/architecture/epics/EP-*.md"),
-            ("FEAT (AC + business_rule_refs — DOMAIN author thẳng)", "docs/architecture/feat/FEAT-*.md"),
+            ("FEAT (AC + business_rule_refs — eng, dịch từ business qua /domain-translate)", "docs/architecture/feat/FEAT-*.md"),
             ("Business rules (domain invariant → API error catalog + data-model — DOMAIN)", "docs/architecture/business-rules/BR-*.md"),
             ("Journey + Persona (UX context cho FE boundary — DOMAIN)", "docs/architecture/journeys/JOURNEY-*.md + docs/architecture/personas/PERSONA-*.md"),
             ("Event-storming D2 raw (OPTIONAL ref — đã fold vào FEAT/BR/domain; CHỈ đọc khi cần truy nguồn domain event/hot-spot, KHÔNG bắt buộc)", "docs/discovery/event-storming/ES-*.md"),
             ("Templates artifact (PHẢI đọc + giữ cấu trúc)", "docs/architecture/{adr,hld,api,data-model,ux,events,integrations}/TEMPLATE.*.md"),
         ]),
         tasks_block([
-            "Invoke skill `technical-design` (+ `ux-design` khi design FE boundary).",
+            "Invoke skill `technical-design`.",
             "Đọc boot sequence trên (targeted) + template từng artifact TRƯỚC khi author.",
-            "Produce per boundary: ADR (≥3), HLD, API, data-model (backend), UX (FE), events (nếu phát/nhận); + integrations (≥1) + infra/docker-compose skeleton.",
+            "Produce per boundary: ADR (≥3), HLD, API, data-model (backend), events (nếu phát/nhận); + integrations (≥1) + infra/docker-compose skeleton. **UX (ux-{boundary}.md + design-tokens.css) KHÔNG làm ở đây** — user chạy `/design-ux` (ux-designer-agent) sau khi api-{be}.md sẵn; FE boundary ở /design chỉ cần HLD.",
             "Boundary decomposition + kind/stack lấy từ Charter + BOUNDARY-MAP (D3); FEAT/BR (DOMAIN) → API error catalog + data-model invariant.",
             "**TRẢ NỢ TODO-engineer (gate `todo_resolved` @/design-end):** mọi marker `TODO engineer`/`TBD (DESIGN)` translator để lại trong eng feat/BR (nhất là BR `enforcement_location`, FEAT `consumes_contracts`) phải được ĐIỀN ở stage này; chưa chốt thật → ghi Open question có chủ, KHÔNG để TBD.",
             "**Contract graph khớp MATRIX (gate `contract_graph_parity` @/plan):** api-*.md frontmatter `producer`/`consumers[]`, INTEG-INT `consumer`/`producer`, events subscriber phải dùng đúng boundary_id — 3 nguồn này sẽ bị đối chiếu với MATRIX depends_on, khai lệch = chặn ở /plan.",
             "Iterate với user tới khi confirm. **Chưa vừa ý → user chạy lại `/design`** = re-spawn refine (self-loop DESIGN→DESIGN, KHÔNG advance). Idempotent: update artifact đã có, KHÔNG blind-append.",
-            "Khi user OK TOÀN BỘ: return RETURN SCHEMA `user_confirmed: true` → main chạy **`/design-end`** (gate per-boundary completeness) → DESIGN→PLAN. KHÔNG tự advance bằng `/design`.",
+            "Khi user OK TOÀN BỘ: return RETURN SCHEMA `user_confirmed: true` → nhắc user chạy `/design-ux` (nếu có FE boundary + chưa làm UX) rồi **`/design-end`** (gate per-boundary completeness) → DESIGN→PLAN. KHÔNG tự advance bằng `/design`.",
+        ]),
+        RETURN_SCHEMA_TEMPLATE,
+    ]
+    return "\n\n".join(parts)
+
+
+def build_design_ux(state: dict, matrix: list[dict], opts: dict) -> str:
+    """UX/UI design (stage DESIGN, self-loop) — ux-designer-agent chuyên môn, tách khỏi solution-architect."""
+    parts = [
+        "# SPAWN PROMPT — /design-ux",
+        "\nAgent: **ux-designer-agent** · Skill: `ux-design` · Stage DESIGN (self-loop) — UX/UI cho FE boundary. "
+        "KHÔNG đụng ADR/HLD/API/data-model/events/INTEG (đó là `/design`).",
+        state_bundle(state),
+        NON_NEGOTIABLES,
+        skills_block(["ux-design"]),
+        docs_to_read([
+            ("PROJECT (persona/platform/design system/ADR ui-kit)", "docs/architecture/PROJECT.md"),
+            ("Boundary map (FE boundary nào: kind web/mobile)", "docs/discovery/BOUNDARY-MAP.md"),
+            ("FEAT (user story + AC — nguồn user flow)", "docs/architecture/feat/FEAT-*.md"),
+            ("Journey + Persona (UX context)", "docs/architecture/journeys/JOURNEY-*.md + docs/architecture/personas/PERSONA-*.md"),
+            ("API contract BE phục vụ (UX consume, KHÔNG bịa endpoint)", "docs/architecture/api/api-*.md"),
+            ("Templates (PHẢI giữ cấu trúc)", "docs/architecture/ux/TEMPLATE.ux.md + docs/architecture/ux/TEMPLATE.design-tokens.css"),
+            ("UX hiện có (refine idempotent)", "docs/architecture/ux/ux-*.md (nếu đã có)"),
+        ]),
+        tasks_block([
+            "Invoke skill `ux-design`.",
+            "**design-tokens.css TRƯỚC** (SoT `--color-*`/`--font-*`/`--space-*` + dark/hc theme, theo TEMPLATE — 1 file dùng chung MỌI web boundary; gate `design_gate` đòi khi có web boundary).",
+            "Foreach FE boundary (kind web/mobile): `ux-{boundary}.md` theo TEMPLATE.ux — user flow per FEAT Must · wireframe per screen · component states đầy đủ (default/hover/disabled/loading/error/empty) · API calls khớp `api-{be}.md` · validation FE · permission UI · responsive · a11y WCAG 2.1 AA · **§Visual polish** (app shell/spacing rhythm/type scale/primitives/interaction states/elevation — cụ thể đối chiếu được).",
+            "Thiếu endpoint/contract để vẽ flow → ghi Open question cho architect (user chạy `/design` bổ sung), KHÔNG tự bịa.",
+            "Iterate với user tới khi confirm. **Chưa vừa ý → user chạy lại `/design-ux`** (self-loop, KHÔNG advance). Idempotent: update file đã có.",
+            "Khi user OK: return RETURN SCHEMA `user_confirmed: true` → cả /design lẫn /design-ux xong → user chạy `/design-end`.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
     ]
@@ -648,7 +679,7 @@ def build_review_document(state: dict, matrix: list[dict], opts: dict) -> str:
             "mỗi gap 1 row `DR-NNN | severity | concern | file | status` (severity BLOCKER/MAJOR/MINOR; status=open). "
             "**Luôn ghi file kể cả KHÔNG có gap** (bảng rỗng) — gate /approve-document đọc file này; thiếu file = review chưa chạy = chặn approve.",
             "Return issues[] (file + concern + severity). KHÔNG sửa doc nguồn — user feed `/review-document \"<feedback>\"` "
-            "(revision mode) hoặc lùi `/domain-start` author bổ sung để vá gap BLOCKER/MAJOR.",
+            "(revision mode) hoặc lùi `/domain-po`·`/domain-ba` author bổ sung (→ /domain-approve → /domain-translate) để vá gap BLOCKER/MAJOR.",
         ]
         section_label = (
             "## SANITY-CHECK TASK (gap / mâu thuẫn / thiếu độ phủ)\n\n"
@@ -702,7 +733,7 @@ def build_approve_document(state: dict, matrix: list[dict], opts: dict) -> str:
         "## TASK\n\n1. Ask user explicit confirm.\n2. User reply 'yes' → run `py scripts/harness.py approve-document complete '{\"approved\":true}'`.\n3. User reply 'no' → cancel, suggest /review-document.\n4. Sau approve: report 'Approved. Run /start-wave 1 để mở wave đầu tiên.'\n\n"
         "> **Gate `doc_review`:** lệnh này bị CHẶN nếu `/review-document` (no-arg, sanity-check) chưa chạy "
         "(thiếu `tracking/doc-review-findings.md`) hoặc còn gap **BLOCKER/MAJOR** open. Vá gap (revision loop "
-        "hoặc lùi `/domain-start`) tới sạch. Edge thật → `'{\"approved\":true,\"force\":true,\"reason\":\"<lý do>\"}'` "
+        "hoặc lùi `/domain-po`·`/domain-ba` → ký → translate) tới sạch. Edge thật → `'{\"approved\":true,\"force\":true,\"reason\":\"<lý do>\"}'` "
         "(bypass + audit `tracking/decisions.md`).",
     ]
     return "\n\n".join(parts)
@@ -1134,6 +1165,7 @@ BUILDERS = {
     "domain-translate": build_domain_translate,
     "domain-end": build_domain_end,
     "design": build_design,
+    "design-ux": build_design_ux,
     "design-end": build_design_end,
     "plan": build_plan,
     "review-document": build_review_document,

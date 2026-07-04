@@ -16,7 +16,7 @@ Input: `docs/architecture/{PROJECT.md, feat/FEAT-*.md, business-rules/BR-*.md}` 
 2. **Business rules `BR-*`** — phát biểu rõ + nguồn (policy/regulation/stakeholder) + ≥2 ví dụ; `related_features` ≥1.
 3. **Scope rõ** — §Ngoài phạm vi đủ để QC biết KHÔNG test gì; bounded context rõ (boundary thật chốt ở DESIGN/PLAN).
 
-> DOMAIN (`/domain-start`) author FEAT/BR; skill này là LENS kiểm chất lượng (review) + phân tích thay đổi (CR) — KHÔNG tự author FEAT.
+> DOMAIN (`/domain-po`·`/domain-ba` author business → ký → `/domain-translate` sinh eng) sở hữu FEAT/BR; skill này là LENS kiểm chất lượng (review) + phân tích thay đổi (CR) — KHÔNG tự author FEAT.
 
 ## Phương pháp phân tích (để ra AC/BR/boundaries chất lượng)
 1. **Research** — chỉ khi domain phức tạp/chưa rõ và có WebSearch/WebFetch: business process pattern của industry, edge case/failure đã documented, compliance/regulatory. KHÔNG bịa nguồn.

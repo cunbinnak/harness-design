@@ -49,7 +49,7 @@ Read TẤT CẢ doc đã author (discovery + domain + design + plan), soi **5 le
 Output:
 - Ghi MỖI gap 1 row `DR-NNN | severity | concern | file | status=open` vào `tracking/doc-review-findings.md` (template `tracking/_templates/TEMPLATE.doc-review-findings.md`). **LUÔN ghi file kể cả 0 gap** (bảng rỗng) — gate đọc file này; thiếu file = review chưa chạy = chặn approve.
 - (On-demand) Invoke `technical-design` verify ADR/HLD consistent · `implementation-plan` verify wave plan + MATRIX.
-- Return `issues[]` = `{file, concern, severity}` (mirror các row đã ghi) + `findings_file`. KHÔNG sửa doc nguồn (user vá qua revision loop / lùi `/domain-start`).
+- Return `issues[]` = `{file, concern, severity}` (mirror các row đã ghi) + `findings_file`. KHÔNG sửa doc nguồn (user vá qua revision loop / lùi `/domain-po`·`/domain-ba` → ký → translate).
 
 ## Workflow
 
@@ -86,7 +86,8 @@ Output:
 Edit theo file user chỉ định (hoặc detect từ feedback):
 - `docs/architecture/**`
 - `docs/plans/**`
-- `harness/SERVICE-BOUNDARY-MATRIX.json`
+
+> KHÔNG sửa `harness/SERVICE-BOUNDARY-MATRIX.json` (kernel file — hook chặn Write/Edit; materialize_matrix.py chỉ chạy ở stage PLAN). Feedback đòi đổi MATRIX → báo user lùi `/plan`. Feedback đòi đổi NGHIỆP VỤ (epic/feat/BR) → báo user lùi `/domain-po`·`/domain-ba` → re-ký → re-translate (sửa thẳng bản eng sẽ lệch bản đã ký).
 
 ### Mode sanity-check
 

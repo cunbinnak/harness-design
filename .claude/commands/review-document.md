@@ -83,7 +83,7 @@ Khi user gọi `/review-document` không argument, agent soi TOÀN BỘ doc theo
 
 Output → `tracking/doc-review-findings.md` (DR-NNN + severity + status; **LUÔN ghi kể cả 0 gap**). KHÔNG sửa doc nguồn.
 
-> **Gate `doc_review` @ `/approve-document`:** thiếu file (review chưa chạy) hoặc còn gap BLOCKER/MAJOR open → **chặn approve**. Vá qua revision mode (`/review-document "<feedback>"`) hoặc lùi `/domain-start` author bổ sung; set row `status=resolved`. Edge → `force:true,reason` (audit).
+> **Gate `doc_review` @ `/approve-document`:** thiếu file (review chưa chạy) hoặc còn gap BLOCKER/MAJOR open → **chặn approve**. Vá qua revision mode (`/review-document "<feedback>"`) hoặc lùi `/domain-po`·`/domain-ba` author bổ sung (→ `/domain-approve` → `/domain-translate`); set row `status=resolved`. Edge → `force:true,reason` (audit).
 
 ## Output
 

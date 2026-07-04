@@ -189,7 +189,7 @@ Client map `error.code` → i18n; KHÔNG parse `message`. `details[]` optional c
 
 **Additive (MINOR — dev trong wave)**: thêm field response/request optional (default an toàn); thêm endpoint; thêm error code (consumer ignore code lạ).
 
-**Breaking (MAJOR — `/apply-cr` từ DONE → DESIGN)**: xoá field / đổi type / đổi semantics / optional→required / đổi nghĩa HTTP status / rename.
+**Breaking (MAJOR — `/apply-cr` từ DONE, kiến trúc-only → `/domain-end` qua thẳng → DESIGN sửa contract)**: xoá field / đổi type / đổi semantics / optional→required / đổi nghĩa HTTP status / rename.
 
 Breaking → `/api/v2`; v1 giữ ACTIVE qua deprecation window (default 2 wave) → `status: DEPRECATED` → xoá.
 

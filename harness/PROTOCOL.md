@@ -18,17 +18,19 @@ Giao thức orchestrator (Harness v4) ↔ sub-agent. Harness = lớp ngoài mode
 
 ## State machine (17 states)
 
-**Front-half** (intake tách nhỏ — clone ADLC DISCOVERY/DOMAIN/ARCHITECT):
+**Front-half** (intake tách nhỏ — clone ADLC DISCOVERY/DOMAIN/ARCHITECT; DOMAIN 2 lớp business↔eng):
 ```
 BOOTSTRAP → DISC_D0 → DISC_D1 → DISC_D2 → DISC_D3 → DOMAIN_AUTHORING → DESIGN → PLAN → REVIEW
-   discovery-start/end (self-loop re-spawn; gate disk per wave)   │            │       │
-   D3 → DOMAIN_AUTHORING                domain-start (self-loop) ──┘   /design   /plan  review/approve
+   discovery-start tiến wave (gate wave đang rời)      │                  │        │       │
+   DISC_D3 → /discovery-end → DOMAIN                   │      /design↻ /design-ux↻  /plan   review/approve
+   /domain-po·/domain-ba (author business, self-loop) ─┘            /design-end
+   → /domain-approve (ký) → /domain-translate (dịch eng) → /domain-end
 ```
 **Back-half** (wave execution):
 ```
 REVIEW → WAVE_OPEN → DEV → REVIEW_DEV → DEV_HANDOFF → TEST_PLAN → TEST_EXECUTE → (auto) MANUAL_TEST → DONE → BOOTSTRAP
  start-wave  start-dev↻      ↑ fix Mode B loop                                    ↑ fix-bugs/log-bug↻      │
-                                                                                          DONE → DESIGN (apply-cr amendment)
+                                                              DONE → DOMAIN_AUTHORING (apply-cr: po/ba → ký → translate)
 ```
 
 Chi tiết transitions + evidence required: xem `harness/STATE-MACHINE.json`.
@@ -100,7 +102,8 @@ Evidence là input cho gates.py check tại moment complete. Pass → state tran
 | `domain-approve` | `domain_no_jargon` — business doc plain nghiệp vụ (no code/SQL/API/class) mới ký được |
 | `domain-translate` | `domain_signed` — MỌI business doc docs/domain/ đã `status: APPROVED` (ký TRƯỚC dịch SAU) |
 | `domain-end` | `domain_gate` (≥1 eng epic+feat+BR) + `planning_lint` (field bắt buộc + ref-integrity) + `translation_parity` (business đã ký ↔ eng doc 1-1 qua `source`/`domain_source_id`; eng epics/feat/BR không nguồn = mồ côi) |
-| `design` | (self-loop refine — KHÔNG gate, KHÔNG advance) |
+| `design` | (self-loop refine hệ thống/contract — solution-architect. KHÔNG gate, KHÔNG advance) |
+| `design-ux` | (self-loop refine UX/UI cho FE boundary — ux-designer-agent, skill ux-design; ux-*.md + design-tokens.css. KHÔNG gate, KHÔNG advance) |
 | `design-end` | `design_gate` (ADR≥3 + INTEG≥1 + per-boundary completeness: backend/bff→hld+api, web/mobile→hld+ux + design-tokens.css khi có web) + `todo_resolved` (marker `TODO engineer`/`TBD (DESIGN)` trong eng feat/BR đã điền hết) |
 | `plan` | `plan_gate` (WAVE-SEQUENCE + MATRIX + wave-*.md + KG) + `planning_lint` + `plan_integrity` (FEAT-id MATRIX có file + **FEAT mồ côi**: FEAT-*.md phải vào features[] boundary nào đó + depends_on no-cycle) + `matrix_coherence` (MATRIX phủ đủ BOUNDARY-MAP đúng kind) + `api_transport` (tenant-id qua header/JWT, không query) + `wave_sequence_lint` (§wave-NNN enum/cap/purity) + `contract_graph_parity` (api consumers[]/INTEG/events subscribers ↔ MATRIX depends_on 2 chiều) |
 | `review-document` | `feedback_processed: true` (revision mode; no-arg = sanity-check ghi doc-review-findings.md) |

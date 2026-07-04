@@ -11,7 +11,7 @@
       "read_only_spawn_always": true
     },
     "DISC_D0": {
-      "description": "D0 hypothesis-log. /discovery-start D0 spawn hypothesis agent; /discovery-end D0 gate → D1.",
+      "description": "D0 hypothesis-log. /discovery-start D0 spawn hypothesis agent (refine); /discovery-start D1 tiến wave (gate D0).",
       "allowed_commands": [
         "discovery-start"
       ],
@@ -19,7 +19,7 @@
       "read_only_spawn_always": true
     },
     "DISC_D1": {
-      "description": "D1 capability-map+persona-pool. /discovery-start D1 spawn capability-mapper; /discovery-end D1 → D2.",
+      "description": "D1 capability-map+persona-pool. /discovery-start D1 spawn capability-mapper (refine); /discovery-start D2 tiến wave (gate D1).",
       "allowed_commands": [
         "discovery-start"
       ],
@@ -27,7 +27,7 @@
       "read_only_spawn_always": true
     },
     "DISC_D2": {
-      "description": "D2 event-storming. /discovery-start D2 spawn event-stormer (per domain); /discovery-end D2 → D3.",
+      "description": "D2 event-storming. /discovery-start D2 spawn event-stormer per domain (refine); /discovery-start D3 tiến wave (gate D2).",
       "allowed_commands": [
         "discovery-start"
       ],
@@ -35,7 +35,7 @@
       "read_only_spawn_always": true
     },
     "DISC_D3": {
-      "description": "D3 charter + PROJECT.md. /discovery-start D3 spawn charter-author; /discovery-end D3 gate → DOMAIN_AUTHORING.",
+      "description": "D3 charter + PROJECT.md. /discovery-start D3 spawn charter-author (refine); /discovery-end (không arg) gate D3 → DOMAIN_AUTHORING.",
       "allowed_commands": [
         "discovery-start",
         "discovery-end"
@@ -44,7 +44,7 @@
       "read_only_spawn_always": true
     },
     "DOMAIN_AUTHORING": {
-      "description": "DOMAIN authoring (continuous) — po-author (EPIC/FEATURE/JOURNEY) + ba-author (BR/PERSONA) author product THẲNG vào docs/architecture/{epics,feat,journeys,business-rules,personas}/ (single-repo, KHÔNG translate). /domain-start <mode> spawn; /domain-end gate (≥1 epic+feat+BR) → DESIGN.",
+      "description": "DOMAIN authoring 2 lớp (continuous) — /domain-po (EPIC/FEATURE/JOURNEY) + /domain-ba (BR/PERSONA) author BUSINESS plain VN vào docs/domain/ → /domain-approve KÝ (status: APPROVED) → /domain-translate DỊCH sang eng docs/architecture/{epics,feat,journeys,business-rules,personas}/. /domain-end gate (domain_gate + planning_lint + translation_parity) → DESIGN.",
       "allowed_commands": [
         "domain-po",
         "domain-ba",
@@ -59,6 +59,7 @@
       "description": "Technical design — /design spawn solution-architect: ADR/HLD/API/data-model/UX/events/integrations. Gate → PLAN.",
       "allowed_commands": [
         "design",
+        "design-ux",
         "design-end",
         "domain-po",
         "domain-ba"
@@ -70,7 +71,8 @@
       "description": "Implementation plan — /plan spawn program-planner: WAVE-SEQUENCE + wave-{N} + MATRIX + KG skeleton. Gate → REVIEW.",
       "allowed_commands": [
         "plan",
-        "design"
+        "design",
+        "design-ux"
       ],
       "allowed_spawn": true,
       "read_only_spawn_always": true
@@ -303,7 +305,7 @@
       "evidence_required": {
         "cr_id": "any"
       },
-      "note": "CR amendment re-enter DOMAIN_AUTHORING: feature mới → /domain-start author epic/feat/BR; CR chỉ kiến trúc → /domain-end qua thẳng → /design → /design-end → /plan → REVIEW → /start-wave."
+      "note": "CR amendment re-enter DOMAIN_AUTHORING: feature mới → /domain-po//domain-ba author business → /domain-approve → /domain-translate; CR chỉ kiến trúc → /domain-end qua thẳng → /design → /design-end → /plan → REVIEW → /start-wave."
     },
     {
       "from": "DESIGN",
@@ -311,6 +313,13 @@
       "trigger": "design",
       "evidence_required": {},
       "note": "self-loop: re-spawn solution-architect de thao luan/refine. KHONG advance — dung /design-end de sang PLAN."
+    },
+    {
+      "from": "DESIGN",
+      "to": "DESIGN",
+      "trigger": "design-ux",
+      "evidence_required": {},
+      "note": "self-loop: spawn ux-designer-agent (skill ux-design) — UX/UI cho FE boundary (ux-*.md + design-tokens.css). KHONG advance — dung /design-end."
     },
     {
       "from": "DESIGN",
@@ -393,6 +402,13 @@
       "trigger": "design",
       "evidence_required": {},
       "note": "back-edge: lui sua design doc (HLD/API/UX/ADR); tien lai /design-end re-gate"
+    },
+    {
+      "from": "PLAN",
+      "to": "DESIGN",
+      "trigger": "design-ux",
+      "evidence_required": {},
+      "note": "back-edge: lui sua UX doc (ux-*.md/design-tokens) qua ux-designer; tien lai /design-end re-gate"
     },
     {
       "from": "DISC_D0",

@@ -16,18 +16,19 @@ py scripts/reset_for_new_project.py    # clear artifacts cũ
 py scripts/harness.py state            # verify stage=BOOTSTRAP
 ```
 
-## Workflow (19 commands, 17 states)
+## Workflow (24 commands, 17 states)
 
 Front-half (intake tách nhỏ — clone ADLC; phủ đủ D0-D7 dạng gộp, xem `CLAUDE.md §ADLC MAPPING`):
 
 ```
 BOOTSTRAP → /discovery-start D0 "<project description>"
-DISC_D0..D3 → /discovery-end <D>  (D0 hypothesis · D1 persona+capability · D2 event-storming · D3 charter+PROJECT.md)
-DISC_D3   → DOMAIN_AUTHORING
-DOMAIN_AUTHORING → /domain-start <EPIC|FEATURE|JOURNEY|BR|PERSONA> (self-loop) → /domain-end
-DESIGN    → /design   (ADR/HLD/API/data-model/UX/events/integrations)
+DISC_D0..D3 → /discovery-start D{N+1} tiến wave (D0 hypothesis · D1 persona+capability · D2 event-storming · D3 charter+PROJECT.md)
+DISC_D3   → /discovery-end → DOMAIN_AUTHORING
+DOMAIN_AUTHORING → /domain-po <EPIC|FEATURE|JOURNEY> · /domain-ba <BR|PERSONA>  (author BUSINESS plain VN → docs/domain/, self-loop)
+                 → /domain-approve (KÝ) → /domain-translate (dịch eng → docs/architecture/) → /domain-end
+DESIGN    → /design (hệ thống/contract: ADR/HLD/API/data-model/events/INTEG) → /design-ux (UX/UI cho FE boundary) → /design-end
 PLAN      → /plan     (WAVE-SEQUENCE + wave-*.md + MATRIX + KG skeleton)
-REVIEW    → /review-document "<feedback>" (revise loop) → /approve-document → /start-wave <N>
+REVIEW    → /review-document (no-arg = sanity-check · "<feedback>" = revise) → /approve-document → /start-wave <N>
 ```
 
 Back-half (wave execution):
@@ -41,7 +42,7 @@ TEST_PLAN → /test-execute (run + log bug auto, KHÔNG fix)
 TEST_EXECUTE → (auto) MANUAL_TEST (pass HAY fail)
 MANUAL_TEST → /log-bug "<mô tả>" · /fix-bugs [<bug-id>] (loop) · /end-wave (UAT signed)
 DONE      → /done-wave → BOOTSTRAP (next wave)
-            /apply-cr <CR-ID> → DESIGN (amendment: /design → /plan → REVIEW)
+            /apply-cr <CR-ID> → DOMAIN_AUTHORING (CR feature: /domain-po·/domain-ba → ký → translate → /domain-end; kiến trúc-only: /domain-end thẳng → /design...)
 ```
 
 Mỗi command có 2 lệnh:

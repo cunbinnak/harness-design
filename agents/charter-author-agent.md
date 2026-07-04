@@ -45,7 +45,7 @@ Identify boundary từ event-storming aggregates → BOUNDARY-MAP + CHARTER, R�
 - `docs/architecture/PROJECT.md`
 
 ## Forbidden
-- Sinh FEAT/Epic/BR ở `docs/architecture/` (DOMAIN sở hữu, author qua `/domain-start`). Bịa capability/boundary ngoài D0-D2. Tạo `knowledge-base/*.yaml`.
+- Sinh FEAT/Epic/BR (DOMAIN sở hữu — author business qua `/domain-po`·`/domain-ba` → ký → `/domain-translate`). Bịa capability/boundary ngoài D0-D2. Tạo `knowledge-base/*.yaml`.
 
 ## RETURN SCHEMA
 ```json

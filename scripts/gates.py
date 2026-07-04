@@ -519,7 +519,8 @@ def check_doc_review(state: dict, evidence: dict | None = None, root: Path | Non
     if open_findings:
         return False, (
             f"còn {len(open_findings)} gap tài liệu BLOCKER/MAJOR chưa xử: {open_findings} — sửa qua "
-            "`/review-document \"<feedback>\"` (hoặc lùi `/domain-start` author bổ sung) tới sạch rồi approve"
+            "`/review-document \"<feedback>\"` (hoặc lùi `/domain-po`·`/domain-ba` author bổ sung → "
+            "`/domain-approve` → `/domain-translate`) tới sạch rồi approve"
         )
     return True, ""
 
@@ -2134,6 +2135,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "translation_parity"},  # business đã KÝ ↔ eng doc 1-1 (translate không bỏ sót; eng không mồ côi) (force bypass)
     ],
     "design": [],   # self-loop re-spawn solution-architect (refine) — KHÔNG gate, KHÔNG advance
+    "design-ux": [],  # self-loop spawn ux-designer (UX/UI cho FE boundary) — KHÔNG gate, KHÔNG advance
     "design-end": [
         {"kind": "design_gate"},   # ADR≥3 + INTEG + per-boundary completeness (force bypass + audit). Advance DESIGN→PLAN
         {"kind": "todo_resolved"},  # TODO-engineer/TBD(DESIGN) translator để lại phải điền hết (BR có nơi enforce) (force bypass)

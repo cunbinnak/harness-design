@@ -8,7 +8,7 @@
 > - Còn row `severity ∈ {BLOCKER, MAJOR}` + `status` chưa đóng → **chặn approve** (ép vá gap).
 > - Mọi gap đóng (`resolved`/`accepted`/`wontfix`) hoặc chỉ MINOR open → **pass**.
 >
-> Vá gap qua `/review-document "<feedback>"` (revision mode) hoặc lùi `/domain-start` author bổ sung; sau khi sửa, set `status=resolved`.
+> Vá gap qua `/review-document "<feedback>"` (revision mode) hoặc lùi `/domain-po`·`/domain-ba` author bổ sung (→ `/domain-approve` → `/domain-translate`); sau khi sửa, set `status=resolved`.
 > **Luôn ghi file kể cả KHÔNG có gap** — để bảng rỗng (chỉ header) để chứng minh review đã chạy.
 
 ## Severity

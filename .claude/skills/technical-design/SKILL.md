@@ -1,6 +1,6 @@
 ---
 name: technical-design
-description: Stage DESIGN (/design, solution-architect) — boundary decomposition + kind/stack, ADR, HLD (theo TEMPLATE.hld ZIP)/API/data-model/UX/events per boundary, integrations, docker-compose skeleton. Sau DOMAIN, trước PLAN. Enterprise cross-cutting concerns.
+description: Stage DESIGN (/design, solution-architect) — boundary decomposition + kind/stack, ADR, HLD (theo TEMPLATE.hld ZIP)/API/data-model/events per boundary, integrations, docker-compose skeleton. UX/UI KHÔNG thuộc skill này (bước riêng /design-ux, ux-designer-agent). Sau DOMAIN, trước PLAN. Enterprise cross-cutting concerns.
 ---
 
 # Technical Design Skill
@@ -19,7 +19,7 @@ Input: `docs/architecture/PROJECT.md` + product DOMAIN (`feat/` AC+BR, `epics/`,
    - `api/api-{boundary}.md` — **theo `TEMPLATE.api.md`**: contract (REST/OpenAPI 3.1 / GraphQL) + **Domain error code catalog** (→ `{Domain}ErrorEnum`; map mỗi BR / invalid-state transition → 1 code). Common error envelope + generic codes (400/401/403/404/409/429/500) **GIỐNG NHAU mọi boundary** (chuẩn chung, không mỗi boundary 1 kiểu); per-endpoint Errors chỉ **ref** code trong catalog.
    - **`kind=bff` có aggregation ≥2 backend** → thêm `api/bff-aggregation-{boundary}.md` **theo `TEMPLATE.bff-aggregation.md`** (fan-out composition: DataLoader/N+1, timeout cascade, graceful degrade, circuit breaker, caching, resolver). Bổ trợ `api-{boundary}.md` (full schema).
    - `data-model/data-model-{boundary}.md` — **theo `TEMPLATE.data-model.md`**: ownership · entities + **mục đích từng bảng** (lưu gì / phục vụ FEAT nào) · schema (**no FK** — liên kết qua id, app-layer) · state machine (entity có status) · migration approach.
-   - `ux/ux-{boundary}.md` — flows + screens (mỗi FE boundary 1 file) → **invoke skill `ux-design`** (user flow, wireframe, UI states, a11y, permission UI).
+   - `ux/ux-{boundary}.md` + `ux/design-tokens.css` — **KHÔNG làm ở skill này**: UX/UI là bước riêng **`/design-ux`** (agent chuyên môn `ux-designer-agent`, skill `ux-design`) chạy sau khi api-{be}.md sẵn. Architect chỉ đảm bảo FE boundary có HLD + BE contract đủ cho UX consume.
    - `events/{boundary}-events.md` — **theo `TEMPLATE.events.md`**: event phát/nhận (topic, payload schema, consumers, idempotency key).
 4. **Integrations** **theo `TEMPLATE.integration-internal.md` / `TEMPLATE.integration-external.md`**: `integrations/INTEG-INT-*.md` (cross-boundary) + `INTEG-EXT-*.md` (external) — **≥ 1**.
 5. **`infra/docker-compose.yml`** skeleton local dev (service + DB/cache/broker cho boundary trong scope).
@@ -40,7 +40,7 @@ Mỗi concern ghi rõ ở ADR / HLD / API (không để hở):
 1. **Research** — nếu domain phức tạp + có WebSearch: pattern từ production system (CQRS / Saga / Outbox / Event-Sourcing), API design convention, data consistency ở scale, service decomposition. KHÔNG bịa nguồn.
 2. Đọc FEAT → chốt boundary list + kind + quan hệ (depends_on, ai gọi ai).
 3. ADR nền trước (stack, kiến trúc backend, auth, event) → design sau tuân ADR.
-4. Per boundary: HLD (theo `TEMPLATE.hld`) → API (contract + error) → data-model (backend) / UX (FE) → events.
+4. Per boundary: HLD (theo `TEMPLATE.hld`) → API (contract + error) → data-model (backend) → events. (FE boundary: HLD ở đây; UX = `/design-ux` sau khi api sẵn.)
 5. Integrations: cross-boundary (sync HTTP / async event) + external.
 6. docker-compose skeleton.
 
@@ -53,7 +53,7 @@ Mỗi concern ghi rõ ở ADR / HLD / API (không để hở):
 - [ ] ≥ 3 ADR (theo chủ đề, có decision + **alternatives ≥2** + consequences).
 - [ ] Mỗi boundary chốt kind + stack; HLD theo `TEMPLATE.hld` (goals/responsibilities, data ownership, C4, flows happy+error, auth, deployment; consistency/failure khi áp dụng) + API.
 - [ ] API theo `TEMPLATE.api`: có **Domain error catalog** (→ `{Domain}ErrorEnum`, map mọi BR/invalid-state → code); common envelope + generic codes **giống nhau mọi boundary**; per-endpoint chỉ ref code (không đẻ code mới); đủ error responses; pagination cursor; versioning.
-- [ ] Backend boundary có data-model **theo TEMPLATE.data-model** (mỗi bảng có mục đích; no FK — liên kết qua id; state machine cho entity có status); FE boundary có UX.
+- [ ] Backend boundary có data-model **theo TEMPLATE.data-model** (mỗi bảng có mục đích; no FK — liên kết qua id; state machine cho entity có status). (UX cho FE boundary do `/design-ux` — gate `/design-end` vẫn đòi đủ.)
 - [ ] Boundary phát/nhận event có `{boundary}-events.md`.
 - [ ] Ref FEAT/EP/BR/persona bằng id canonical ĐẦY ĐỦ (`FEAT-{prefix}-NNN`, `PERSONA-{prefix}-NNN`…), KHÔNG rút gọn (`FEAT-NNN`) — tránh ID drift, giữ traceability resolve được.
 - [ ] **Trả nợ TODO-engineer (gate `todo_resolved` @/design-end):** mọi `TODO engineer` / `TBD (DESIGN)` translator để lại trong eng feat/BR đã ĐIỀN — BR `enforcement_location` chỉ đúng nơi enforce (api/data-model/event handler), FEAT `consumes_contracts` trỏ contract thật. Chưa chốt → Open question có chủ, KHÔNG để TBD.
