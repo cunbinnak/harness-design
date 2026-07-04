@@ -17,14 +17,15 @@ outcome_persona: "PERSONA-{{PREFIX}}-{{NNN}}"   # persona CHÍNH nhận outcome
 demo_signature: "{{1 câu: demo gì để CHỨNG MINH feature đạt (anti-gaming) — nguồn cho wave demo_target}}"
 target_boundary_hint: "{{boundary name (kind backend/web/mobile) hoặc TBD}}"
 has_ui_touchpoint: true
+consumes_contracts: []   # TODO engineer — DESIGN điền contract FEAT tiêu thụ (api/INTEG id); gate todo_resolved đòi hết TBD/TODO trước /design-end
 source: "docs/domain/feat/FEAT-{{PREFIX}}-{{NNN}}.md"   # file business nguồn (translator điền — gate translation_parity @domain-end đối chiếu 1-1)
 domain_source_id: "FEAT-{{PREFIX}}-{{NNN}}"
 last_reviewed: "{{YYYY-MM-DD}}"
 ---
 
-> Điền NGẮN GỌN: ưu tiên bảng/bullet, không văn xuôi thừa, không lặp. Doc này agent downstream đọc nhiều lần — tiết kiệm context.
+> **LỚP ENGINEERING** — bản dịch từ business (`source` ở trên) do `/domain-translate` sinh, KHÔNG author tay (gate `translation_parity` chặn eng mồ côi). Sửa NGHIỆP VỤ → lùi `/domain-po` sửa bản business → re-ký → re-dịch. Điền NGẮN GỌN: ưu tiên bảng/bullet — agent downstream đọc nhiều lần.
 
-> AC viết BDD plain Vietnamese (Cho/Khi/Thì), ngôn ngữ NGHIỆP VỤ thuần — không tech (endpoint/API/HTTP status/component/tên bảng/cache/token). APPROVED khi: epic_ref + feat_type + ≥1 business_rule_refs trỏ file THẬT; mỗi AC testable (QC seed 1:1); phủ happy + validation + lỗi nghiệp vụ (+ a11y/responsive nếu has_ui_touchpoint); demo_signature cụ thể; có "Ngoài phạm vi".
+> AC giữ BDD Cho/Khi/Thì thuần HÀNH VI (test map vào hành vi, không map class/endpoint — spec sống lâu hơn implementation; heading `### AC-n` để gate `ac_coverage` parse). Khác bản business ở FRONTMATTER máy-đọc: `feat_type`/`priority`/refs (planning_lint gate) + `consumes_contracts` (TODO engineer → DESIGN điền) + `source`/`domain_source_id` (trace về bản đã ký) + §5 AC→BR + §7 demo evidence.
 
 # FEAT-{{PREFIX}}-{{NNN}} — {{Tên tính năng}}
 
@@ -134,13 +135,13 @@ last_reviewed: "{{YYYY-MM-DD}}"
 - {{Workflow duyệt nhiều cấp — feature riêng}}
 - {{Tích hợp kế toán bên thứ ba — phase sau}}
 
-## 9. Câu hỏi cần Business Authority xác nhận
+## 9. TODO engineer / Open questions kỹ thuật (DESIGN trả — gate `todo_resolved`)
 
-> Liệt kê hết điểm chưa chắc, kèm phương án mặc định.
+> Câu hỏi NGHIỆP VỤ đã chốt trước khi ký ở lớp business (docs/domain). Ở đây chỉ còn nợ KỸ THUẬT translator để lại — DESIGN phải điền hết trước `/design-end`.
 
-- [ ] {{Giới hạn số yêu cầu/đơn? (mặc định: 1 yêu cầu đang mở/đơn)}}
-- [ ] {{Lý do hoàn preset hay free text?}}
-- [ ] {{Đính kèm bằng chứng bắt buộc hay tuỳ chọn?}}
+- [ ] {{consumes_contracts: FEAT này gọi contract nào? (api-{{boundary}} / INTEG-INT-*)}}
+- [ ] {{Lỗi nghiệp vụ AC-3 map error code nào trong Domain error catalog? (api §4.2)}}
+- [ ] {{Màn hình nào ở ux-{{boundary}}.md hiện thực AC có UI? (/design-ux)}}
 
 ## 10. References
 
@@ -148,11 +149,12 @@ last_reviewed: "{{YYYY-MM-DD}}"
 - Journey: `docs/architecture/journeys/JOURNEY-{{PREFIX}}-{{NNN}}.md`
 - Personas: `docs/architecture/personas/PERSONA-{{PREFIX}}-{{NNN}}.md`
 - Business rules: `docs/architecture/business-rules/BR-{{PREFIX}}-*.md`
-- UX (nếu có UI, do DESIGN): `docs/architecture/ux/ux-{{boundary}}.md`
+- Business nguồn (bản ĐÃ KÝ): `docs/domain/feat/FEAT-{{PREFIX}}-{{NNN}}.md`
+- UX (nếu có UI, do /design-ux): `docs/architecture/ux/ux-{{boundary}}.md`
 
 ## 11. Change log
 
 | Date | Version | Status | Author | Thay đổi |
 |---|---|---|---|---|
-| {{YYYY-MM-DD}} | 1 | DRAFT | {{tác giả}} | Initial |
-| {{YYYY-MM-DD}} | 1 | APPROVED | Business Authority | Sign-off — sẵn sàng DESIGN |
+| {{YYYY-MM-DD}} | 1 | TRANSLATED | domain-translator | Dịch từ bản business đã ký (source) — TODO-engineer chờ DESIGN |
+| {{YYYY-MM-DD}} | 1 | ENRICHED | solution-architect | DESIGN điền consumes_contracts/error-code map (gate todo_resolved sạch) |
