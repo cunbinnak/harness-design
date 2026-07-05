@@ -11,7 +11,9 @@ Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md
 
 ## Deliverable
 Mỗi FE boundary: 1 file spec + N mockup HTML (design bằng HTML — KHÔNG ASCII wireframe):
-- **`docs/architecture/ux/ux-{boundary}.md`** theo `TEMPLATE.ux.md` — BEHAVIOR: tổng quan, user flows (mỗi FEAT Must ≥1), per-screen states/API calls/validation, component API, i18n, permission UI, a11y, edge cases.
+- **`docs/architecture/ux/ux-{boundary}.md`** — BEHAVIOR (không template — viết thẳng theo outline này, ngắn gọn bảng/bullet):
+  `## 1 Tổng quan` (persona/platform/BE phục vụ) · `## 2 User flows` (mỗi FEAT Must ≥1) · `## 3 Screens` (mỗi screen: link mockup + bảng Screen states + API calls khớp `api-{be}.md` + validation FE map `error.code`→field) · `## 4 Permission UI` (ẩn/hiện theo role) · `## 5 Global patterns` (toast/routing-guard/loading-empty quy ước chung) · `## 6 A11y` (WCAG 2.1 AA checklist) · `## 7 Edge cases + handoff notes` · `## 8 Open questions`.
+  **KHÔNG chép giá trị token vào .md** — `design-tokens.css` là SoT duy nhất về màu/spacing/chữ (chép = drift).
 - **`docs/architecture/ux/mockups/{boundary}/{screen}.html`** — LOOK: **THIẾT KẾ THẲNG giao diện hoàn chỉnh bằng HTML** (không có template — bạn là designer, tự dựng app shell + screen đẹp theo §Visual polish, như trang web thật). Luật (mockups/README.md): HTML TĨNH mở `file://` xem được (không JS/build/CDN) · style CHỈ `var(--...)` từ design-tokens.css (thiếu token → thêm vào SoT, không bịa tại chỗ) · nội dung thật không lorem · state phụ (loading/empty/error) = section trong cùng file · responsive media query · đủ `:hover`/`:focus-visible`. **Gate `design_gate` đòi ≥1 mockup/web boundary + mockup phải dùng token.** User duyệt "đẹp/xấu" TRÊN MOCKUP trước khi build; dev FE (rules-web) bám mockup; reviewer đối chiếu.
 
 ## Design system trước khi vẽ

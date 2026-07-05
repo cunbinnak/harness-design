@@ -61,7 +61,7 @@ docs/architecture/
 | API | [api/TEMPLATE.api.md](api/TEMPLATE.api.md) |
 | BFF aggregation | [api/TEMPLATE.bff-aggregation.md](api/TEMPLATE.bff-aggregation.md) |
 | data-model | [data-model/TEMPLATE.data-model.md](data-model/TEMPLATE.data-model.md) |
-| UX | [ux/TEMPLATE.ux.md](ux/TEMPLATE.ux.md) |
+| UX | KHÔNG template — `ux-{b}.md` viết thẳng theo outline skill `ux-design`; LOOK = mockup HTML [ux/mockups/README.md](ux/mockups/README.md); token seed [ux/TEMPLATE.design-tokens.css](ux/TEMPLATE.design-tokens.css) |
 | events | [events/TEMPLATE.events.md](events/TEMPLATE.events.md) |
 | integrations EXT | [integrations/TEMPLATE.integration-external.md](integrations/TEMPLATE.integration-external.md) |
 | integrations INT | [integrations/TEMPLATE.integration-internal.md](integrations/TEMPLATE.integration-internal.md) |
