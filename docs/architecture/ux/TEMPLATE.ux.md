@@ -12,7 +12,7 @@ last_reviewed: "{{DATE}}"
 
 # UX — `{{boundary}}` (FE)
 
-> 1 file / FE boundary (kind=web/mobile): user-flow + nhiều screen + design tokens + component API + global UI patterns. **Visual = MOCKUP HTML** per screen ở `ux/mockups/{{boundary}}/{{screen}}.html` (theo `mockups/TEMPLATE.mockup.html` — tĩnh, mở browser xem được, chỉ dùng `var(--...)` từ design-tokens.css; gate `design_gate` đòi ≥1 mockup/web boundary). KHÔNG ASCII wireframe. Author ở DESIGN (`/design-ux`, ux-designer). File .md này tả BEHAVIOR (states/API/validation/a11y) — mockup tả LOOK.
+> 1 file / FE boundary (kind=web/mobile): user-flow + nhiều screen + design tokens + component API + global UI patterns. **Visual = GIAO DIỆN THIẾT KẾ THẲNG BẰNG HTML** per screen ở `ux/mockups/{{boundary}}/{{screen}}.html` (không template — ux-designer tự dựng hoàn chỉnh; luật ở `mockups/README.md`: tĩnh, mở browser xem được, chỉ `var(--...)` từ design-tokens.css; gate `design_gate` đòi ≥1 mockup/web boundary). KHÔNG ASCII wireframe. Author ở DESIGN (`/design-ux`, ux-designer). File .md này tả BEHAVIOR (states/API/validation/a11y) — mockup tả LOOK.
 
 ---
 

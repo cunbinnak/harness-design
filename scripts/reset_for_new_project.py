@@ -136,7 +136,7 @@ def collect_targets() -> dict[str, list[Path]]:
         tokens = arch / "ux" / "design-tokens.css"
         if tokens.is_file():
             targets["remove"].append(tokens)
-        # mockup HTML per boundary (ux/mockups/{boundary}/ — giữ TEMPLATE.mockup.html file gốc)
+        # mockup HTML per boundary (ux/mockups/{boundary}/ — giữ README.md luật mockup)
         mockups = arch / "ux" / "mockups"
         if mockups.is_dir():
             for child in mockups.iterdir():

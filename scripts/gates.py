@@ -853,7 +853,7 @@ def _web_mockup_problem(bid: str, root: Path | None = None) -> str | None:
     if not pages:
         return (
             f"boundary {bid!r} (web) thiếu mockup HTML `docs/architecture/ux/mockups/{bid}/*.html` "
-            f"(design bằng HTML tĩnh theo `mockups/TEMPLATE.mockup.html` — mở browser duyệt được, không ASCII)"
+            f"(thiết kế THẲNG giao diện bằng HTML tĩnh — luật ở `ux/mockups/README.md`; mở browser duyệt được, không ASCII)"
         )
     for p in pages:
         t = p.read_text(encoding="utf-8", errors="ignore")

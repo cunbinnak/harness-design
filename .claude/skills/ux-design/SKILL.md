@@ -12,7 +12,7 @@ Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md
 ## Deliverable
 Mỗi FE boundary: 1 file spec + N mockup HTML (design bằng HTML — KHÔNG ASCII wireframe):
 - **`docs/architecture/ux/ux-{boundary}.md`** theo `TEMPLATE.ux.md` — BEHAVIOR: tổng quan, user flows (mỗi FEAT Must ≥1), per-screen states/API calls/validation, component API, i18n, permission UI, a11y, edge cases.
-- **`docs/architecture/ux/mockups/{boundary}/{screen}.html`** theo `mockups/TEMPLATE.mockup.html` — LOOK: mỗi screen 1 file **HTML TĨNH** (mở `file://` xem được, không JS/build/CDN), style CHỈ bằng `var(--...)` từ design-tokens.css, state phụ (loading/empty/error) = section trong cùng file, responsive bằng media query thật. **Gate `design_gate` đòi ≥1 mockup/web boundary + mockup phải dùng token.** User duyệt "đẹp/xấu" TRÊN MOCKUP trước khi build; dev FE (rules-web) bám mockup; reviewer đối chiếu.
+- **`docs/architecture/ux/mockups/{boundary}/{screen}.html`** — LOOK: **THIẾT KẾ THẲNG giao diện hoàn chỉnh bằng HTML** (không có template — bạn là designer, tự dựng app shell + screen đẹp theo §Visual polish, như trang web thật). Luật (mockups/README.md): HTML TĨNH mở `file://` xem được (không JS/build/CDN) · style CHỈ `var(--...)` từ design-tokens.css (thiếu token → thêm vào SoT, không bịa tại chỗ) · nội dung thật không lorem · state phụ (loading/empty/error) = section trong cùng file · responsive media query · đủ `:hover`/`:focus-visible`. **Gate `design_gate` đòi ≥1 mockup/web boundary + mockup phải dùng token.** User duyệt "đẹp/xấu" TRÊN MOCKUP trước khi build; dev FE (rules-web) bám mockup; reviewer đối chiếu.
 
 ## Design system trước khi vẽ
 - Project có design system / **ADR ui-kit** → TUÂN THEO (layout, color, component pattern, mobile nav).
@@ -33,7 +33,7 @@ Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/test-execute đối 
 1. **Research** — nếu domain/UX chưa rõ + có WebSearch: UX pattern cho product type (form/table/dashboard), WCAG 2.1 AA, enterprise design system (Ant/Material/Atlassian), mobile-first. KHÔNG bịa nguồn.
 2. **User flow** per FEAT Must: entry → screens → nhánh success/error (Mermaid hoặc bullet).
 3. **Per screen**:
-   - **Mockup HTML** (`mockups/{boundary}/{screen}.html`): copy TEMPLATE.mockup.html → compose token thành app shell + nội dung screen thật (text thật, số liệu mẫu thật — không lorem); link `../../design-tokens.css`. Mockup là SoT về look — chỉnh "đẹp" ở ĐÂY theo §Visual polish, không tả suông.
+   - **Mockup HTML** (`mockups/{boundary}/{screen}.html`): THIẾT KẾ giao diện hoàn chỉnh — app shell + nội dung screen thật, compose từ token, link `../../design-tokens.css`. Mockup là SoT về look — làm "đẹp" ở ĐÂY theo §Visual polish, không tả suông, không skeleton chờ điền.
    - **Component states đầy đủ**: default / hover / disabled / loading / error / empty — state chính render trong mockup, bảng behavior ở ux-*.md.
    - **API calls**: trigger → endpoint → method → loading state, khớp `api-{be}.md`.
    - **Validation FE-side**: field · required · rule · error message.
