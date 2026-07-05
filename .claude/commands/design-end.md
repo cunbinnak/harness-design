@@ -20,7 +20,7 @@ gates: [{type: design_gate}, {type: todo_resolved}]
 ## Gate (design_gate + todo_resolved)
 - ADR ≥3 + INTEG ≥1 ở `docs/architecture/`.
 - **Per-boundary completeness**: MỖI boundary trong BOUNDARY-MAP đủ artifact đúng kind — backend→`hld-{b}.md`+`api-{b}.md`; web/mobile→`hld-{b}.md`+`ux-{b}.md`.
-- Có FE boundary → `docs/architecture/ux/design-tokens.css` (SoT token) + **`ux/SCREEN-MAP.md`** (mục lục màn ↔ boundary ↔ FEAT ↔ mockup): gate parse từng row — **mockup phải TỒN TẠI + dùng design token**; màn gán boundary ma = chặn; **web boundary 0 màn = chặn** (thiết kế theo MÀN, duyệt look trong browser trước khi build).
+- Có FE boundary → `docs/architecture/ux/design-tokens.css` (SoT token) + **`ux/SCREEN-MAP.md`** (mục lục màn ↔ boundary ↔ FEAT ↔ mockup): gate parse từng row — **mockup phải TỒN TẠI + dùng design token**; màn gán boundary ma = chặn; **web boundary 0 màn = chặn**; **màn tuân thủ FEAT**: trace FEAT ma = chặn, FEAT `has_ui_touchpoint: true` (không deferred/dropped) mà 0 màn = chặn (feature có UI bị bỏ rơi khỏi design).
 - **`todo_resolved`**: field kỹ thuật translator để lại (`TODO engineer` / `TBD (DESIGN)` / `enforcement_location: TBD` / `scope: TBD` / `consumes_contracts` TBD) trong eng epics/feat/business-rules phải được DESIGN **điền hết** — BR không có nơi enforce = rule không bao giờ được code. Chưa chốt thật → ghi `Open question` có chủ, không để TBD.
 - FAIL → bổ sung artifact boundary còn thiếu / điền TODO (qua `/design`) rồi `/design-end` lại.
 

@@ -847,7 +847,10 @@ def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = 
     (cột tối thiểu `screen | boundary | feat | mockup`):
       (a) MỖI web boundary có ≥1 row (màn được gán rõ, không boundary nào trắng design);
       (b) cột `boundary` của row phải là FE boundary hợp lệ (không gán màn cho boundary ma);
-      (c) MỖI row: file mockup tồn tại + (html) dùng design token (var(--)/design-tokens.css).
+      (c) MỖI row: file mockup tồn tại + (html) dùng design token (var(--)/design-tokens.css);
+      (d) màn TUÂN THỦ FEAT (khi docs/architecture/feat/ đã có): FEAT-id trong cột `feat` phải có
+          file thật (không trace FEAT ma); chiều ngược — MỌI FEAT `has_ui_touchpoint: true`
+          (không deferred/dropped) phải xuất hiện ở ≥1 row (FEAT có UI mà 0 màn = bị bỏ rơi).
     Nhiều FE boundary → đây chính là chỗ làm rõ "màn nào thuộc boundary nào, đọc tài liệu nào".
     """
     root = root or REPO_ROOT
@@ -865,14 +868,22 @@ def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = 
     rows = _parse_md_table_rows(smap.read_text(encoding="utf-8", errors="ignore"), ("screen", "boundary", "mockup"))
     if not rows:
         return ["SCREEN-MAP.md không có bảng hợp lệ (cần cột `screen | boundary | feat | mockup`)"]
+    feat_dir = root / "docs" / "architecture" / "feat"
     problems: list[str] = []
     covered: set[str] = set()
+    mapped_feats: set[str] = set()
     for r in rows:
         sid = (r.get("screen") or "").strip().strip("`")
         bid = (r.get("boundary") or "").strip().strip("`")
         cell = (r.get("mockup") or "").strip()
         if not sid or sid == "—":
             continue
+        # màn tuân thủ FEAT: token cột feat phải trace FEAT thật (chỉ check khi feat/ đã author)
+        for m_f in _FEAT_TOKEN_RE.finditer(r.get("feat") or ""):
+            fid = m_f.group(0).upper()
+            mapped_feats.add(fid)
+            if feat_dir.is_dir() and _feat_file_for(fid, root) is None:
+                problems.append(f"SCREEN-MAP: màn `{sid}` trace {fid} KHÔNG có file FEAT (màn phục vụ feature ma)")
         if bid not in fe_ids:
             problems.append(f"SCREEN-MAP: màn `{sid}` gán boundary {bid!r} không phải FE boundary nào trong BOUNDARY-MAP")
             continue
@@ -897,6 +908,23 @@ def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = 
             f"boundary {bid!r} (web) KHÔNG có màn nào trong SCREEN-MAP (boundary trắng design — "
             f"gán màn + mockup ở `ux/mockups/{bid}/`)"
         )
+    # Chiều ngược: FEAT có UI (has_ui_touchpoint: true, không deferred/dropped) phải có ≥1 màn
+    if feat_dir.is_dir():
+        for fp in sorted(feat_dir.glob("FEAT-*.md")):
+            if fp.name.startswith("TEMPLATE"):
+                continue
+            fm = planning_lint.parse_frontmatter(fp.read_text(encoding="utf-8", errors="ignore"))
+            if str(fm.get("has_ui_touchpoint") or "").strip().lower() != "true":
+                continue
+            # opt-out status dùng CHUNG 1 nguồn với plan_integrity (planning_lint) — không chép tay
+            if str(fm.get("status") or "").strip().lower() in planning_lint._FEAT_OPTOUT_STATUSES:
+                continue
+            fid = str(fm.get("id") or fp.stem).upper()
+            if fid not in mapped_feats and fp.stem.upper() not in mapped_feats:
+                problems.append(
+                    f"{fp.name}: FEAT có UI (has_ui_touchpoint) nhưng KHÔNG xuất hiện ở màn nào trong "
+                    f"SCREEN-MAP — feature bị bỏ rơi khỏi design (thêm màn hoặc gắn vào màn dùng chung)"
+                )
     return problems
 
 
@@ -2633,6 +2661,23 @@ def _selftest() -> int:
         _fe2 = _fe + [("admin-web", "web")]
         probs = _screen_map_problems(_fe2, _mkroot)
         assert probs and "admin-web" in probs[0] and "trắng design" in probs[0], probs
+        # (f) màn tuân thủ FEAT (khi feat/ đã author): FEAT ma bị bắt + FEAT có UI 0 màn bị bắt
+        _fdir = _mkroot / "docs" / "architecture" / "feat"
+        _fdir.mkdir(parents=True, exist_ok=True)
+        (_fdir / "FEAT-001.md").write_text('---\nid: "FEAT-001"\nhas_ui_touchpoint: true\n---\n# F\n', encoding="utf-8")
+        (_fdir / "FEAT-010.md").write_text('---\nid: "FEAT-010"\nhas_ui_touchpoint: false\n---\n# BE-only\n', encoding="utf-8")
+        (_fdir / "FEAT-020.md").write_text('---\nid: "FEAT-020"\nhas_ui_touchpoint: true\nstatus: "deferred"\n---\n# defer\n', encoding="utf-8")
+        assert _screen_map_problems(_fe, _mkroot) == [], _screen_map_problems(_fe, _mkroot)  # FEAT-001 có màn; 010 no-UI; 020 deferred
+        (_fdir / "FEAT-777.md").write_text('---\nid: "FEAT-777"\nhas_ui_touchpoint: true\n---\n# UI bị bỏ rơi\n', encoding="utf-8")
+        probs = _screen_map_problems(_fe, _mkroot)
+        assert probs and "FEAT-777" in probs[0] and "bỏ rơi" in probs[0], probs
+        (_fdir / "FEAT-777.md").unlink()
+        (_uxd / "SCREEN-MAP.md").write_text(
+            "| screen | route | boundary | feat | mockup |\n|--|--|--|--|--|\n"
+            "| rooms-day | /rooms | shop-web | FEAT-001, FEAT-404 | `mockups/shop-web/rooms-day.html` |\n",
+            encoding="utf-8")
+        probs = _screen_map_problems(_fe, _mkroot)
+        assert probs and "FEAT-404" in probs[0] and "feature ma" in probs[0], probs
     finally:
         _sh_mk.rmtree(_mkroot, ignore_errors=True)
 
