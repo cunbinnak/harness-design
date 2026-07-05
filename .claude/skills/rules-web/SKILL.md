@@ -20,7 +20,7 @@ Sub-agent `kind=web` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
 > Boundary serve REST hay BFF ghi trong `hld-{boundary}.md` / integration design — không tự ý đổi.
 
 ## Quy ước bắt buộc
-1. **Component**: implement theo `docs/architecture/ux/ux-{boundary}.md` (Figma/wireframe), đúng design fidelity.
+1. **Component**: implement theo **mockup HTML** `docs/architecture/ux/mockups/{boundary}/*.html` (SoT về look — mở browser đối chiếu, bám app shell/spacing/primitives) + `ux-{boundary}.md` (SoT về behavior/states/API), đúng design fidelity.
 2. **Wire actions**: mọi element actionable map đúng endpoint/op trong integration design; handle **loading / error / success** đủ trạng thái.
 3. **Auth**: theo auth flow đã chốt (token/refresh/route guard); KHÔNG embed credential.
 4. **Role gate**: dùng `roles[]` claim từ JWT.

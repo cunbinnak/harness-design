@@ -12,7 +12,7 @@ last_reviewed: "{{DATE}}"
 
 # UX — `{{boundary}}` (FE)
 
-> 1 file / FE boundary (kind=web/mobile): user-flow + nhiều screen + design tokens + component API + global UI patterns. Wireframe = ASCII inline (KHÔNG file MOCKUP riêng). Author ở DESIGN (skill `ux-design`). Tả what render+behave từ góc user — KHÔNG implementation.
+> 1 file / FE boundary (kind=web/mobile): user-flow + nhiều screen + design tokens + component API + global UI patterns. **Visual = MOCKUP HTML** per screen ở `ux/mockups/{{boundary}}/{{screen}}.html` (theo `mockups/TEMPLATE.mockup.html` — tĩnh, mở browser xem được, chỉ dùng `var(--...)` từ design-tokens.css; gate `design_gate` đòi ≥1 mockup/web boundary). KHÔNG ASCII wireframe. Author ở DESIGN (`/design-ux`, ux-designer). File .md này tả BEHAVIOR (states/API/validation/a11y) — mockup tả LOOK.
 
 ---
 
@@ -48,22 +48,13 @@ last_reviewed: "{{DATE}}"
 
 ## 3. Screens
 
-> Lặp block cho MỖI screen. Wireframe ASCII inline. Component states đầy đủ. API call khớp `api-{{be}}.md`.
+> Lặp block cho MỖI screen. Visual = mockup HTML (link dưới). Component states đầy đủ. API call khớp `api-{{be}}.md`.
 
 ### 3.1 Screen: {{Tên màn}} (`/refunds/new`)
 
 **Mục tiêu**: {{1 câu user làm gì}}.
 
-**Wireframe (ASCII)**:
-```
-┌─────────────────────────────────────────┐
-│ AppShell (sidebar + topbar)             │
-│ Page header: "Yêu cầu hoàn tiền"        │
-│ Card tóm tắt đơn (ngày, số tiền, KH)    │
-│ Form: [Số tiền] [Lý do] [Đính kèm]      │
-│       [Gửi yêu cầu] (phải)              │
-└─────────────────────────────────────────┘
-```
+**Mockup**: [`mockups/{{boundary}}/{{screen}}.html`](mockups/{{boundary}}/{{screen}}.html) — mở bằng browser để duyệt look & feel (state phụ loading/empty/error là các section trong cùng file). Layout/spacing/màu là SoT ở mockup; bảng dưới là SoT về BEHAVIOR.
 
 **Component states** (mỗi component nêu đủ trong: `default / hover / focus / disabled / loading / error / empty`):
 

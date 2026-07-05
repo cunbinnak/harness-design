@@ -840,6 +840,31 @@ def _required_design_files(boundary_id: str, kind: str) -> list[str]:
     ]
 
 
+def _web_mockup_problem(bid: str, root: Path | None = None) -> str | None:
+    """Web boundary phải có ≥1 mockup HTML dùng design token — design bằng HTML, không ASCII.
+
+    `docs/architecture/ux/mockups/{bid}/*.html` (bỏ TEMPLATE): thiếu = user không có gì mở browser
+    duyệt "đẹp/xấu" trước khi build; mockup không reference token = look rời design system.
+    Trả None nếu ok, str = lý do fail.
+    """
+    root = root or REPO_ROOT
+    d = root / "docs" / "architecture" / "ux" / "mockups" / bid
+    pages = [p for p in sorted(d.glob("*.html")) if not p.name.startswith("TEMPLATE")] if d.is_dir() else []
+    if not pages:
+        return (
+            f"boundary {bid!r} (web) thiếu mockup HTML `docs/architecture/ux/mockups/{bid}/*.html` "
+            f"(design bằng HTML tĩnh theo `mockups/TEMPLATE.mockup.html` — mở browser duyệt được, không ASCII)"
+        )
+    for p in pages:
+        t = p.read_text(encoding="utf-8", errors="ignore")
+        if "design-tokens.css" not in t and "var(--" not in t:
+            return (
+                f"mockup `mockups/{bid}/{p.name}` KHÔNG dùng design token "
+                f"(link ../../design-tokens.css + style qua var(--...)) — look rời design system"
+            )
+    return None
+
+
 def check_design_gate(evidence: dict) -> tuple[bool, str]:
     """Gate /design (DESIGN → PLAN): ADR≥3 + INTEG≥1 + **per-boundary kind-aware completeness**.
 
@@ -863,6 +888,11 @@ def check_design_gate(evidence: dict) -> tuple[bool, str]:
         for rel in _required_design_files(bid, kind):
             if not (REPO_ROOT / rel).is_file():
                 errs.append(f"boundary {bid!r} (kind={kind}) thiếu {rel}")
+        # Design bằng HTML: web boundary phải có mockup HTML thật (ux-*.md chỉ tả behavior)
+        if kind == "web":
+            prob = _web_mockup_problem(bid)
+            if prob:
+                errs.append(prob)
     # Có web boundary → shared design tokens (SoT) phải tồn tại — mọi web FE consume chung 1 palette,
     # không boundary nào tự bịa màu/spacing (gate web_styling downstream enforce việc DÙNG token).
     if any(k == "web" for _, k in boundaries) and not (
@@ -2529,6 +2559,30 @@ def _selftest() -> int:
     finally:
         import shutil as _sh_dr
         _sh_dr.rmtree(_droot, ignore_errors=True)
+
+    # _web_mockup_problem (design bằng HTML): web boundary phải có mockup HTML dùng token
+    _mkroot = Path(__import__("tempfile").mkdtemp(prefix="gates_mk_"))
+    try:
+        import shutil as _sh_mk
+        # (a) chưa có mockup nào → fail
+        prob = _web_mockup_problem("shop-web", _mkroot)
+        assert prob and "mockup HTML" in prob, prob
+        _mkd = _mkroot / "docs" / "architecture" / "ux" / "mockups" / "shop-web"
+        _mkd.mkdir(parents=True, exist_ok=True)
+        # (b) TEMPLATE không tính
+        (_mkd / "TEMPLATE.mockup.html").write_text("<html>t</html>", encoding="utf-8")
+        assert _web_mockup_problem("shop-web", _mkroot) is not None
+        # (c) mockup không dùng token → fail
+        (_mkd / "home.html").write_text("<html><body style='color:#333'>x</body></html>", encoding="utf-8")
+        prob = _web_mockup_problem("shop-web", _mkroot)
+        assert prob and "design token" in prob, prob
+        # (d) mockup link design-tokens / dùng var(--) → ok
+        (_mkd / "home.html").write_text(
+            '<html><head><link rel="stylesheet" href="../../design-tokens.css"></head>'
+            '<body><div style="color: var(--color-text)">x</div></body></html>', encoding="utf-8")
+        assert _web_mockup_problem("shop-web", _mkroot) is None
+    finally:
+        _sh_mk.rmtree(_mkroot, ignore_errors=True)
 
     # doc_stamped: design/contract doc phải APPROVED/ACTIVE (stamp bởi approve_document.py) — chặn approve chay
     import tempfile as _tf_ds, shutil as _sh_ds

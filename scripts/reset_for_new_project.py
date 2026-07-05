@@ -136,6 +136,12 @@ def collect_targets() -> dict[str, list[Path]]:
         tokens = arch / "ux" / "design-tokens.css"
         if tokens.is_file():
             targets["remove"].append(tokens)
+        # mockup HTML per boundary (ux/mockups/{boundary}/ — giữ TEMPLATE.mockup.html file gốc)
+        mockups = arch / "ux" / "mockups"
+        if mockups.is_dir():
+            for child in mockups.iterdir():
+                if child.is_dir():
+                    targets["remove"].append(child)
         infra = arch / "infra"
         if infra.is_dir():
             for name in ("docker-compose.yml", "local-dev.md"):

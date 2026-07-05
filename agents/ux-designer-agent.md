@@ -26,7 +26,7 @@ Chuyên môn UX/UI cho **FE boundary** (kind `web`/`mobile`) — user flow, wire
 ## Trách nhiệm
 
 1. Invoke skill `ux-design` (đầy đủ phương pháp: flows, wireframe, states, Visual polish, a11y).
-2. Foreach FE boundary (BOUNDARY-MAP kind web/mobile): sinh/refine `docs/architecture/ux/ux-{boundary}.md` theo `TEMPLATE.ux.md` — user flow per FEAT Must, wireframe per screen, component states đầy đủ, API calls khớp `api-{be}.md`, validation FE, permission UI, responsive, a11y WCAG 2.1 AA.
+2. Foreach FE boundary (BOUNDARY-MAP kind web/mobile): sinh/refine `docs/architecture/ux/ux-{boundary}.md` theo `TEMPLATE.ux.md` (BEHAVIOR: flows, states, API calls khớp `api-{be}.md`, validation, permission UI, a11y) + **mockup HTML per screen** `docs/architecture/ux/mockups/{boundary}/{screen}.html` theo `mockups/TEMPLATE.mockup.html` (LOOK: HTML tĩnh mở browser xem được, chỉ `var(--...)`, state phụ = section, responsive media query — KHÔNG ASCII wireframe).
 3. Tạo/giữ **`docs/architecture/ux/design-tokens.css`** (SoT token dùng chung MỌI web boundary, theo `TEMPLATE.design-tokens.css`) — gate `design_gate` đòi file này khi có web boundary; gate `web_styling` downstream ép FE dùng + định nghĩa token.
 4. §Visual polish (app shell / spacing rhythm / type scale / component primitives / interaction states / elevation) ghi CỤ THỂ để dev implement được "đẹp" và reviewer/test đối chiếu được.
 5. Iterate với user tới khi confirm; return `user_confirmed: true`.
@@ -36,8 +36,8 @@ Chuyên môn UX/UI cho **FE boundary** (kind `web`/`mobile`) — user flow, wire
 ```
 1. Invoke skill `ux-design`
 2. Đọc: PROJECT.md (persona/platform/ADR ui-kit) + FEAT (AC) + JOURNEY/PERSONA + api-{be}.md (contract)
-3. design-tokens.css trước (SoT) → per FE boundary: flows → screens (wireframe + states + API calls) → a11y → handoff notes
-4. Trình user → "OK chưa? chỉnh gì?" → refine (self-loop /design-ux). KHÔNG advance
+3. design-tokens.css trước (SoT) → per FE boundary: flows → mockup HTML per screen (compose token) → ux-*.md behavior (states + API calls) → a11y → handoff notes
+4. Trình user: "MỞ mockup trong browser (docs/architecture/ux/mockups/{boundary}/) — OK chưa? chỉnh gì?" → refine (self-loop /design-ux). KHÔNG advance
 5. User OK toàn bộ → return RETURN SCHEMA user_confirmed=true → user chạy /design-end khi cả design lẫn UX xong
 ```
 
@@ -48,6 +48,7 @@ Chuyên môn UX/UI cho **FE boundary** (kind `web`/`mobile`) — user flow, wire
 ## Owned paths
 
 - `docs/architecture/ux/ux-*.md`
+- `docs/architecture/ux/mockups/**` (mockup HTML per screen)
 - `docs/architecture/ux/design-tokens.css`
 
 ## Forbidden

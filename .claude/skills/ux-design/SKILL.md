@@ -1,6 +1,6 @@
 ---
 name: ux-design
-description: UX/UI cho FE boundary (stage DESIGN, /design-ux, ux-designer-agent — tách vai khỏi solution-architect) — user flow, wireframe, UI states đầy đủ, design tokens + Visual polish, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md + design-tokens.css.
+description: UX/UI cho FE boundary (stage DESIGN, /design-ux, ux-designer-agent — tách vai khỏi solution-architect) — user flow, MOCKUP HTML tĩnh per screen (design bằng HTML, không ASCII), UI states đầy đủ, design tokens + Visual polish, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md + mockups/{boundary}/*.html + design-tokens.css.
 ---
 
 # UX Design Skill
@@ -10,12 +10,9 @@ Command **`/design-ux`** (stage DESIGN, self-loop) — agent chuyên môn **`ux-
 Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md` (user story + AC) + `JOURNEY/PERSONA` + `api-{be}.md` (contract boundary phục vụ).
 
 ## Deliverable
-`docs/architecture/ux/ux-{boundary}.md` theo `TEMPLATE.ux.md` — mỗi FE boundary 1 file:
-- **Tổng quan**: persona, platform, design system, a11y target, BE boundaries phục vụ.
-- **User flows**: mỗi FEAT Must ≥ 1 flow.
-- **Screens**: wireframe + components + API calls + UI states + validation FE.
-- **Global UI patterns**: toasts, routing/guards, responsive, a11y checklist.
-- **Open questions**.
+Mỗi FE boundary: 1 file spec + N mockup HTML (design bằng HTML — KHÔNG ASCII wireframe):
+- **`docs/architecture/ux/ux-{boundary}.md`** theo `TEMPLATE.ux.md` — BEHAVIOR: tổng quan, user flows (mỗi FEAT Must ≥1), per-screen states/API calls/validation, component API, i18n, permission UI, a11y, edge cases.
+- **`docs/architecture/ux/mockups/{boundary}/{screen}.html`** theo `mockups/TEMPLATE.mockup.html` — LOOK: mỗi screen 1 file **HTML TĨNH** (mở `file://` xem được, không JS/build/CDN), style CHỈ bằng `var(--...)` từ design-tokens.css, state phụ (loading/empty/error) = section trong cùng file, responsive bằng media query thật. **Gate `design_gate` đòi ≥1 mockup/web boundary + mockup phải dùng token.** User duyệt "đẹp/xấu" TRÊN MOCKUP trước khi build; dev FE (rules-web) bám mockup; reviewer đối chiếu.
 
 ## Design system trước khi vẽ
 - Project có design system / **ADR ui-kit** → TUÂN THEO (layout, color, component pattern, mobile nav).
@@ -34,10 +31,10 @@ Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/test-execute đối 
 
 ## Phương pháp
 1. **Research** — nếu domain/UX chưa rõ + có WebSearch: UX pattern cho product type (form/table/dashboard), WCAG 2.1 AA, enterprise design system (Ant/Material/Atlassian), mobile-first. KHÔNG bịa nguồn.
-2. **User flow** per FEAT Must: entry → screens → nhánh success/error (ASCII nav hoặc Mermaid).
+2. **User flow** per FEAT Must: entry → screens → nhánh success/error (Mermaid hoặc bullet).
 3. **Per screen**:
-   - Wireframe ASCII có annotation rõ.
-   - **Component states đầy đủ**: default / hover / disabled / loading / error / empty.
+   - **Mockup HTML** (`mockups/{boundary}/{screen}.html`): copy TEMPLATE.mockup.html → compose token thành app shell + nội dung screen thật (text thật, số liệu mẫu thật — không lorem); link `../../design-tokens.css`. Mockup là SoT về look — chỉnh "đẹp" ở ĐÂY theo §Visual polish, không tả suông.
+   - **Component states đầy đủ**: default / hover / disabled / loading / error / empty — state chính render trong mockup, bảng behavior ở ux-*.md.
    - **API calls**: trigger → endpoint → method → loading state, khớp `api-{be}.md`.
    - **Validation FE-side**: field · required · rule · error message.
    - Mobile layout riêng nếu khác desktop đáng kể.
@@ -48,7 +45,8 @@ Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/test-execute đối 
 
 ## Quality checklist
 - [ ] Mọi FEAT Must có user flow.
-- [ ] Mọi màn hình mới có wireframe (desktop + mobile nếu khác).
+- [ ] Mọi màn hình mới có **mockup HTML** mở browser xem được (responsive trong cùng file; đủ section state phụ).
+- [ ] Mockup CHỈ dùng `var(--...)` — không hardcode hex/px (gate design_gate check reference token).
 - [ ] Mọi component có đủ states (default/hover/disabled/loading/error/empty).
 - [ ] API call mỗi screen khớp `api-{be}.md` (op name, method, loading state).
 - [ ] Design tokens referenced — KHÔNG hardcode màu/spacing/typography; shared `design-tokens.css` tồn tại + §4 trỏ tới nó.

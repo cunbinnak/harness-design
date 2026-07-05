@@ -38,7 +38,7 @@ ls tailwind.config.* 2>/dev/null; grep -rl "styled\.\|@emotion\|makeStyles" src 
    - **Trạng thái visual đủ**: hover/focus cho element tương tác, loading/empty/error có style riêng (không chỉ text trần) — grep `:hover`/`:focus-visible` + component state.
    - **className có backing style**: mỗi class BEM trong markup phải có rule CSS định nghĩa (grep class ↔ CSS); class "mồ côi" (khai báo trong JSX nhưng không có CSS) = MAJOR.
    - **Render proof (khuyến nghị)**: build + serve (hoặc screenshot 1 screen chính) xác nhận trang KHÔNG trắng/không-style; lý tưởng có 1 visual/e2e TC ở registry.
-   - Layout/screen khớp wireframe `ux §3` (SCR/screen), responsive breakpoint `ux §3.*`, theming `ux §4.6` nếu spec yêu cầu.
+   - **Khớp mockup HTML** (`docs/architecture/ux/mockups/{boundary}/*.html` — SoT về look): app shell/layout/spacing/primitives của app phải bám mockup (mở cả 2 so sánh); responsive breakpoint `ux §3.*`, theming `ux §4.6` nếu spec yêu cầu. Lệch mockup rõ rệt (khung khác, màu khác, thiếu state) = MAJOR.
 7. **Security (FE)**:
    - **XSS**: không `dangerouslySetInnerHTML` với data chưa sanitize; không render HTML thô từ input/API.
    - **Token**: không lưu access/refresh token vào `localStorage` (XSS-exfil) — ưu tiên httpOnly cookie / in-memory; không log token.

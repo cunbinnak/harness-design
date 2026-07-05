@@ -20,7 +20,7 @@ gates: [{type: design_gate}, {type: todo_resolved}]
 ## Gate (design_gate + todo_resolved)
 - ADR ≥3 + INTEG ≥1 ở `docs/architecture/`.
 - **Per-boundary completeness**: MỖI boundary trong BOUNDARY-MAP đủ artifact đúng kind — backend→`hld-{b}.md`+`api-{b}.md`; web/mobile→`hld-{b}.md`+`ux-{b}.md`.
-- Có web boundary → `docs/architecture/ux/design-tokens.css` (SoT token) phải tồn tại.
+- Có web boundary → `docs/architecture/ux/design-tokens.css` (SoT token) phải tồn tại + **mỗi web boundary ≥1 mockup HTML** ở `ux/mockups/{boundary}/*.html` **dùng design token** (design bằng HTML — user duyệt look trong browser trước khi build).
 - **`todo_resolved`**: field kỹ thuật translator để lại (`TODO engineer` / `TBD (DESIGN)` / `enforcement_location: TBD` / `scope: TBD` / `consumes_contracts` TBD) trong eng epics/feat/business-rules phải được DESIGN **điền hết** — BR không có nơi enforce = rule không bao giờ được code. Chưa chốt thật → ghi `Open question` có chủ, không để TBD.
 - FAIL → bổ sung artifact boundary còn thiếu / điền TODO (qua `/design`) rồi `/design-end` lại.
 
