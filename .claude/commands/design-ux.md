@@ -21,9 +21,9 @@ gates: []
 ## Workflow
 1. Run `py scripts/build_prompt.py design-ux`.
 2. Spawn ux-designer-agent (skill `ux-design`).
-3. Agent produce: `docs/architecture/ux/design-tokens.css` (SoT token) + **THIẾT KẾ THẲNG giao diện per screen bằng HTML** `ux/mockups/{boundary}/{screen}.html` (**không template — tự dựng hoàn chỉnh như trang web thật**; luật ở `mockups/README.md`: HTML tĩnh mở browser duyệt được, chỉ `var(--...)`, nội dung thật, state phụ = section, responsive; KHÔNG ASCII wireframe) + `ux-{boundary}.md` (BEHAVIOR: flows per FEAT Must, component states, API calls khớp `api-{be}.md`, validation, permission UI, a11y). User duyệt look & feel TRÊN MOCKUP trong browser → iterate.
+3. Agent produce theo thứ tự: `design-tokens.css` (SoT token) → **`ux/SCREEN-MAP.md`** (MỤC LỤC MÀN — đơn vị thiết kế là MÀN: bảng `screen|route|boundary|feat|mockup`; gán màn→boundary theo hint FEAT/persona, mơ hồ HỎI user) → **THIẾT KẾ TỪNG MÀN bằng HTML** `ux/mockups/{boundary}/{screen}.html` (**không template — tự dựng hoàn chỉnh như trang web thật**; mỗi màn đọc đúng FEAT+api của nó; luật ở `mockups/README.md`) → `ux-{boundary}.md` (BEHAVIOR). User duyệt SCREEN-MAP (toàn cảnh) + look & feel TRÊN MOCKUP trong browser → iterate.
 4. `py scripts/harness.py design-ux complete '{}'` = **self-loop DESIGN→DESIGN** (KHÔNG advance, KHÔNG gate).
-5. Cả `/design` lẫn `/design-ux` đều vừa ý → `/design-end` (gate `design_gate`: web/mobile→hld+**ux** + **design-tokens.css khi có web** + **mỗi web boundary ≥1 mockup HTML dùng token** + `todo_resolved`).
+5. Cả `/design` lẫn `/design-ux` đều vừa ý → `/design-end` (gate `design_gate`: web/mobile→hld+**ux** + **design-tokens.css khi có web** + **SCREEN-MAP: mọi màn có mockup tồn tại + dùng token, web boundary 0 màn = chặn** + `todo_resolved`).
 
 ## Forbidden
 - Sửa ADR/HLD/API/data-model/events/INTEG — đó là `/design`. Sửa product (epic/feat/BR) — đó là DOMAIN (po/ba → ký → translate). Code trong services/. Advance bằng `/design-ux` (phải dùng `/design-end`).

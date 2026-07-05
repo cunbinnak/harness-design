@@ -1,12 +1,15 @@
-# Mockups — thiết kế giao diện THẲNG bằng HTML
+# Mockups — thiết kế giao diện THẲNG bằng HTML, theo TỪNG MÀN
 
-> KHÔNG có template. `ux-designer-agent` (`/design-ux`) **tự thiết kế giao diện hoàn chỉnh** cho từng screen — như một trang web thật, đẹp theo chuẩn `ux-design §Visual polish`. Đây là SoT về LOOK; `ux-{boundary}.md` là SoT về BEHAVIOR.
+> KHÔNG có template. **Đơn vị thiết kế = MÀN (screen)** — `ux-designer-agent` (`/design-ux`) tự thiết kế giao diện hoàn chỉnh cho từng màn như một trang web thật, đẹp theo chuẩn `ux-design §Visual polish`. Đây là SoT về LOOK; `ux-{boundary}.md` là SoT về BEHAVIOR; **`../SCREEN-MAP.md` là MỤC LỤC** gắn màn ↔ boundary ↔ FEAT ↔ file mockup (gate `design_gate` parse — mockup phải tồn tại + dùng token).
 
 ## Cấu trúc
 
 ```
-mockups/{boundary}/{screen}.html    # mỗi screen 1 file, tên theo route (vd rooms-day.html, booking-new.html)
+../SCREEN-MAP.md                    # mục lục: | screen | route | boundary | feat | mockup | note |
+mockups/{boundary}/{screen}.html    # mỗi MÀN 1 file, đặt trong thư mục boundary mà màn thuộc về
 ```
+
+Màn thuộc boundary nào (khi có nhiều FE boundary): theo FEAT `target_experience_hint`/`target_boundary_hint` → persona của experience (BOUNDARY-MAP/CHARTER) → mơ hồ thì ux-designer HỎI user, không đoán.
 
 ## Luật (gate `design_gate` + skill `ux-design` enforce)
 

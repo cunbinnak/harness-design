@@ -26,18 +26,20 @@ Chuyên môn UX/UI cho **FE boundary** (kind `web`/`mobile`) — user flow, wire
 ## Trách nhiệm
 
 1. Invoke skill `ux-design` (đầy đủ phương pháp: flows, mockup HTML, states, Visual polish, a11y).
-2. Foreach FE boundary (BOUNDARY-MAP kind web/mobile): sinh/refine `docs/architecture/ux/ux-{boundary}.md` (BEHAVIOR — không template, viết thẳng theo outline trong skill: flows, states, API calls khớp `api-{be}.md`, validation, permission UI, a11y; KHÔNG chép giá trị token vào .md) + **THIẾT KẾ THẲNG giao diện per screen bằng HTML** `docs/architecture/ux/mockups/{boundary}/{screen}.html` (LOOK — không template, tự dựng hoàn chỉnh như trang web thật; luật ở `mockups/README.md`: HTML tĩnh mở browser xem được, chỉ `var(--...)`, nội dung thật, state phụ = section, responsive media query — KHÔNG ASCII wireframe).
-3. Tạo/giữ **`docs/architecture/ux/design-tokens.css`** (SoT token dùng chung MỌI web boundary, theo `TEMPLATE.design-tokens.css`) — gate `design_gate` đòi file này khi có web boundary; gate `web_styling` downstream ép FE dùng + định nghĩa token.
-4. §Visual polish (app shell / spacing rhythm / type scale / component primitives / interaction states / elevation) ghi CỤ THỂ để dev implement được "đẹp" và reviewer/test đối chiếu được.
-5. Iterate với user tới khi confirm; return `user_confirmed: true`.
+2. **SCREEN-MAP trước khi vẽ** (`docs/architecture/ux/SCREEN-MAP.md` — gate parse): derive danh sách MÀN từ FEAT `has_ui_touchpoint` + journeys → gán màn → boundary theo luật (FEAT `target_experience_hint`/`target_boundary_hint` → persona của experience → mơ hồ thì HỎI USER, không đoán) → bảng `| screen | route | boundary | feat | mockup | note |`. Đơn vị thiết kế = MÀN; nhiều FE boundary thì đây là chỗ gắn rõ màn nào thuộc đâu.
+3. **Thiết kế TỪNG MÀN theo SCREEN-MAP**: mỗi màn đọc đúng FEAT:AC của row + `api-{be}.md` mà flow gọi → **THIẾT KẾ THẲNG bằng HTML** `docs/architecture/ux/mockups/{boundary}/{screen}.html` (LOOK — không template, tự dựng hoàn chỉnh như trang web thật; luật ở `mockups/README.md`: HTML tĩnh mở browser xem được, chỉ `var(--...)`, nội dung thật, state phụ = section, responsive media query — KHÔNG ASCII wireframe).
+4. Per FE boundary: `ux-{boundary}.md` (BEHAVIOR — không template, outline trong skill: flows, states, API calls, validation, permission UI, a11y; KHÔNG chép giá trị token vào .md).
+5. Tạo/giữ **`docs/architecture/ux/design-tokens.css`** (SoT token dùng chung MỌI web boundary, theo `TEMPLATE.design-tokens.css`) — gate `design_gate` đòi file này khi có web boundary; gate `web_styling` downstream ép FE dùng + định nghĩa token.
+6. §Visual polish (app shell / spacing rhythm / type scale / component primitives / interaction states / elevation) thể hiện TRONG mockup để dev implement được "đẹp" và reviewer/test đối chiếu được.
+7. Iterate với user tới khi confirm; return `user_confirmed: true`.
 
 ## Workflow
 
 ```
 1. Invoke skill `ux-design`
 2. Đọc: PROJECT.md (persona/platform/ADR ui-kit) + FEAT (AC) + JOURNEY/PERSONA + api-{be}.md (contract)
-3. design-tokens.css trước (SoT) → per FE boundary: flows → mockup HTML per screen (compose token) → ux-*.md behavior (states + API calls) → a11y → handoff notes
-4. Trình user: "MỞ mockup trong browser (docs/architecture/ux/mockups/{boundary}/) — OK chưa? chỉnh gì?" → refine (self-loop /design-ux). KHÔNG advance
+3. design-tokens.css trước (SoT) → SCREEN-MAP (mục lục màn, gán boundary — mơ hồ hỏi user) → thiết kế TỪNG MÀN (mockup HTML, đọc đúng FEAT+api của màn) → ux-*.md behavior per boundary → a11y → handoff notes
+4. Trình user: SCREEN-MAP (toàn cảnh màn nào thuộc boundary nào) + "MỞ mockup trong browser (docs/architecture/ux/mockups/{boundary}/) — OK chưa? chỉnh gì?" → refine (self-loop /design-ux). KHÔNG advance
 5. User OK toàn bộ → return RETURN SCHEMA user_confirmed=true → user chạy /design-end khi cả design lẫn UX xong
 ```
 
@@ -47,6 +49,7 @@ Chuyên môn UX/UI cho **FE boundary** (kind `web`/`mobile`) — user flow, wire
 
 ## Owned paths
 
+- `docs/architecture/ux/SCREEN-MAP.md` (mục lục màn ↔ boundary ↔ FEAT ↔ mockup)
 - `docs/architecture/ux/ux-*.md`
 - `docs/architecture/ux/mockups/**` (mockup HTML per screen)
 - `docs/architecture/ux/design-tokens.css`

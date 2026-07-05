@@ -840,29 +840,64 @@ def _required_design_files(boundary_id: str, kind: str) -> list[str]:
     ]
 
 
-def _web_mockup_problem(bid: str, root: Path | None = None) -> str | None:
-    """Web boundary phải có ≥1 mockup HTML dùng design token — design bằng HTML, không ASCII.
+def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = None) -> list[str]:
+    """Thiết kế theo MÀN: SCREEN-MAP.md là mục lục gắn màn ↔ boundary ↔ FEAT ↔ mockup.
 
-    `docs/architecture/ux/mockups/{bid}/*.html` (bỏ TEMPLATE): thiếu = user không có gì mở browser
-    duyệt "đẹp/xấu" trước khi build; mockup không reference token = look rời design system.
-    Trả None nếu ok, str = lý do fail.
+    Có FE boundary (web/mobile) → `docs/architecture/ux/SCREEN-MAP.md` phải tồn tại với bảng
+    (cột tối thiểu `screen | boundary | feat | mockup`):
+      (a) MỖI web boundary có ≥1 row (màn được gán rõ, không boundary nào trắng design);
+      (b) cột `boundary` của row phải là FE boundary hợp lệ (không gán màn cho boundary ma);
+      (c) MỖI row: file mockup tồn tại + (html) dùng design token (var(--)/design-tokens.css).
+    Nhiều FE boundary → đây chính là chỗ làm rõ "màn nào thuộc boundary nào, đọc tài liệu nào".
     """
     root = root or REPO_ROOT
-    d = root / "docs" / "architecture" / "ux" / "mockups" / bid
-    pages = [p for p in sorted(d.glob("*.html")) if not p.name.startswith("TEMPLATE")] if d.is_dir() else []
-    if not pages:
-        return (
-            f"boundary {bid!r} (web) thiếu mockup HTML `docs/architecture/ux/mockups/{bid}/*.html` "
-            f"(thiết kế THẲNG giao diện bằng HTML tĩnh — luật ở `ux/mockups/README.md`; mở browser duyệt được, không ASCII)"
-        )
-    for p in pages:
+    fe = [(b, k) for b, k in boundaries if k in ("web", "mobile")]
+    if not fe:
+        return []
+    fe_ids = {b for b, _ in fe}
+    web_ids = {b for b, k in fe if k == "web"}
+    smap = root / "docs" / "architecture" / "ux" / "SCREEN-MAP.md"
+    if not smap.is_file():
+        return [
+            "thiếu `docs/architecture/ux/SCREEN-MAP.md` — thiết kế theo MÀN: mục lục screen ↔ boundary ↔ "
+            "FEAT ↔ mockup (bảng cột `screen|route|boundary|feat|mockup`; /design-ux sinh TRƯỚC khi vẽ)"
+        ]
+    rows = _parse_md_table_rows(smap.read_text(encoding="utf-8", errors="ignore"), ("screen", "boundary", "mockup"))
+    if not rows:
+        return ["SCREEN-MAP.md không có bảng hợp lệ (cần cột `screen | boundary | feat | mockup`)"]
+    problems: list[str] = []
+    covered: set[str] = set()
+    for r in rows:
+        sid = (r.get("screen") or "").strip().strip("`")
+        bid = (r.get("boundary") or "").strip().strip("`")
+        cell = (r.get("mockup") or "").strip()
+        if not sid or sid == "—":
+            continue
+        if bid not in fe_ids:
+            problems.append(f"SCREEN-MAP: màn `{sid}` gán boundary {bid!r} không phải FE boundary nào trong BOUNDARY-MAP")
+            continue
+        covered.add(bid)
+        # mockup cell: `path` / [text](path) / path trần — lấy path .html đầu tiên
+        m = re.search(r"[\w./-]+\.html", cell)
+        if not m:
+            problems.append(f"SCREEN-MAP: màn `{sid}` ({bid}) thiếu đường dẫn mockup .html")
+            continue
+        rel = m.group(0).lstrip("./")
+        p = root / rel
+        if not p.is_file():
+            p = root / "docs" / "architecture" / "ux" / rel  # cho phép path relative từ ux/
+        if not p.is_file():
+            problems.append(f"SCREEN-MAP: màn `{sid}` ({bid}) trỏ mockup `{rel}` KHÔNG tồn tại — màn chưa được thiết kế")
+            continue
         t = p.read_text(encoding="utf-8", errors="ignore")
         if "design-tokens.css" not in t and "var(--" not in t:
-            return (
-                f"mockup `mockups/{bid}/{p.name}` KHÔNG dùng design token "
-                f"(link ../../design-tokens.css + style qua var(--...)) — look rời design system"
-            )
-    return None
+            problems.append(f"mockup `{rel}` (màn `{sid}`) KHÔNG dùng design token (link design-tokens.css / var(--...))")
+    for bid in sorted(web_ids - covered):
+        problems.append(
+            f"boundary {bid!r} (web) KHÔNG có màn nào trong SCREEN-MAP (boundary trắng design — "
+            f"gán màn + mockup ở `ux/mockups/{bid}/`)"
+        )
+    return problems
 
 
 def check_design_gate(evidence: dict) -> tuple[bool, str]:
@@ -888,11 +923,8 @@ def check_design_gate(evidence: dict) -> tuple[bool, str]:
         for rel in _required_design_files(bid, kind):
             if not (REPO_ROOT / rel).is_file():
                 errs.append(f"boundary {bid!r} (kind={kind}) thiếu {rel}")
-        # Design bằng HTML: web boundary phải có mockup HTML thật (ux-*.md chỉ tả behavior)
-        if kind == "web":
-            prob = _web_mockup_problem(bid)
-            if prob:
-                errs.append(prob)
+    # Thiết kế theo MÀN: SCREEN-MAP gắn màn ↔ boundary ↔ FEAT ↔ mockup (mockup phải tồn tại + dùng token)
+    errs.extend(_screen_map_problems(boundaries))
     # Có web boundary → shared design tokens (SoT) phải tồn tại — mọi web FE consume chung 1 palette,
     # không boundary nào tự bịa màu/spacing (gate web_styling downstream enforce việc DÙNG token).
     if any(k == "web" for _, k in boundaries) and not (
@@ -2560,27 +2592,47 @@ def _selftest() -> int:
         import shutil as _sh_dr
         _sh_dr.rmtree(_droot, ignore_errors=True)
 
-    # _web_mockup_problem (design bằng HTML): web boundary phải có mockup HTML dùng token
+    # _screen_map_problems (thiết kế theo MÀN): SCREEN-MAP gắn màn↔boundary↔mockup, mockup tồn tại + dùng token
     _mkroot = Path(__import__("tempfile").mkdtemp(prefix="gates_mk_"))
     try:
         import shutil as _sh_mk
-        # (a) chưa có mockup nào → fail
-        prob = _web_mockup_problem("shop-web", _mkroot)
-        assert prob and "mockup HTML" in prob, prob
-        _mkd = _mkroot / "docs" / "architecture" / "ux" / "mockups" / "shop-web"
+        _fe = [("shop-web", "web"), ("order", "backend")]
+        # (a) không FE boundary → không áp dụng
+        assert _screen_map_problems([("order", "backend")], _mkroot) == []
+        # (b) có web boundary mà thiếu SCREEN-MAP → fail
+        probs = _screen_map_problems(_fe, _mkroot)
+        assert probs and "SCREEN-MAP.md" in probs[0], probs
+        _uxd = _mkroot / "docs" / "architecture" / "ux"
+        _uxd.mkdir(parents=True, exist_ok=True)
+        # (c) màn trỏ mockup không tồn tại + màn gán boundary ma → fail cả 2
+        (_uxd / "SCREEN-MAP.md").write_text(
+            "# Screen map\n\n"
+            "| screen | route | boundary | feat | mockup | note |\n"
+            "|--------|-------|----------|------|--------|------|\n"
+            "| rooms-day | /rooms | shop-web | FEAT-001 | `mockups/shop-web/rooms-day.html` | |\n"
+            "| ghost-scr | /x | billing-web | FEAT-002 | `mockups/billing-web/x.html` | |\n",
+            encoding="utf-8")
+        probs = _screen_map_problems(_fe, _mkroot)
+        blob = " ".join(probs)
+        assert "KHÔNG tồn tại" in blob and "billing-web" in blob, probs
+        # (d) mockup tồn tại nhưng không dùng token → fail; dùng token → sạch
+        _mkd = _uxd / "mockups" / "shop-web"
         _mkd.mkdir(parents=True, exist_ok=True)
-        # (b) TEMPLATE không tính
-        (_mkd / "TEMPLATE.mockup.html").write_text("<html>t</html>", encoding="utf-8")
-        assert _web_mockup_problem("shop-web", _mkroot) is not None
-        # (c) mockup không dùng token → fail
-        (_mkd / "home.html").write_text("<html><body style='color:#333'>x</body></html>", encoding="utf-8")
-        prob = _web_mockup_problem("shop-web", _mkroot)
-        assert prob and "design token" in prob, prob
-        # (d) mockup link design-tokens / dùng var(--) → ok
-        (_mkd / "home.html").write_text(
+        (_mkd / "rooms-day.html").write_text("<html><body style='color:#333'>x</body></html>", encoding="utf-8")
+        (_uxd / "SCREEN-MAP.md").write_text(
+            "| screen | route | boundary | feat | mockup |\n|--|--|--|--|--|\n"
+            "| rooms-day | /rooms | shop-web | FEAT-001 | `mockups/shop-web/rooms-day.html` |\n",
+            encoding="utf-8")
+        probs = _screen_map_problems(_fe, _mkroot)
+        assert probs and "design token" in probs[0], probs
+        (_mkd / "rooms-day.html").write_text(
             '<html><head><link rel="stylesheet" href="../../design-tokens.css"></head>'
             '<body><div style="color: var(--color-text)">x</div></body></html>', encoding="utf-8")
-        assert _web_mockup_problem("shop-web", _mkroot) is None
+        assert _screen_map_problems(_fe, _mkroot) == [], _screen_map_problems(_fe, _mkroot)
+        # (e) web boundary không có màn nào trong map → fail (boundary trắng design)
+        _fe2 = _fe + [("admin-web", "web")]
+        probs = _screen_map_problems(_fe2, _mkroot)
+        assert probs and "admin-web" in probs[0] and "trắng design" in probs[0], probs
     finally:
         _sh_mk.rmtree(_mkroot, ignore_errors=True)
 
