@@ -582,7 +582,7 @@ def build_design_ux(state: dict, matrix: list[dict], opts: dict) -> str:
             ("API contract BE phục vụ (UX consume, KHÔNG bịa endpoint)", "docs/architecture/api/api-*.md"),
             ("Token seed (palette mặc định — copy làm design-tokens.css rồi tinh chỉnh)", "docs/architecture/ux/TEMPLATE.design-tokens.css"),
             ("Luật mockup (không template — thiết kế thẳng)", "docs/architecture/ux/mockups/README.md"),
-            ("BÀI MẪU CHẤT LƯỢNG (BẮT BUỘC mở xem trước khi vẽ — mức tối thiểu phải đạt; KHÔNG copy nội dung)", "docs/architecture/ux/mockups/EXAMPLE.reference.html"),
+            ("THƯ VIỆN ARCHETYPE MÀN (BẮT BUỘC mở xem trước khi vẽ — màn của bạn thuộc archetype nào thì so section đó; mức tối thiểu phải đạt; KHÔNG copy nội dung)", "docs/architecture/ux/mockups/EXAMPLE.reference.html"),
             ("UX hiện có (refine idempotent)", "docs/architecture/ux/ux-*.md + mockups/*/ (nếu đã có)"),
         ]),
         tasks_block([

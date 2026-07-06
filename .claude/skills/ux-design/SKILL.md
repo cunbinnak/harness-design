@@ -25,7 +25,7 @@ Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md
 - **Shared design tokens:** tạo/giữ `docs/architecture/ux/design-tokens.css` (SoT 1 file dùng chung MỌI web boundary, theo `TEMPLATE.design-tokens.css`: `--color-*`/`--font-*`/`--space-*`/`--radius-*` + dark/hc theme). ux-{boundary}.md §4 tham chiếu token NÀY (không bịa palette per-boundary). Web FE consume qua `var(--...)`; mobile map `ThemeData`/`ColorScheme`. Gate `web_styling` ép plain-CSS phải dùng `var(--...)`.
 
 ## Chuẩn chuyên nghiệp + ANTI-PATTERNS (bắt buộc — mockup xấu = fail review)
-**BƯỚC 0 bắt buộc: MỞ `ux/mockups/EXAMPLE.reference.html` trong browser** — đó là mức chất lượng TỐI THIỂU phải đạt (app shell, nhịp trắng, block span, states, responsive). KHÔNG copy nội dung — chỉ neo phong cách. Vẽ xong tự so với bài mẫu: thua = làm lại trước khi trình user.
+**BƯỚC 0 bắt buộc: MỞ `ux/mockups/EXAMPLE.reference.html` trong browser** — thư viện ARCHETYPE màn dùng cho MỌI đề bài (1 Dashboard · 2 Bảng danh sách · 3 Form · 4 Trang chi tiết · 5 Timeline/lịch tài nguyên · 6 Feedback states). Mỗi màn sắp vẽ: xác định thuộc archetype nào (hoặc ghép archetype nào) → đối chiếu section đó về bố cục/mật độ/màu/states — đó là mức chất lượng TỐI THIỂU. KHÔNG copy nội dung — chỉ neo phong cách. Vẽ xong tự so: thua bài mẫu = làm lại trước khi trình user.
 
 **LUẬT MÀU — neutral-first (lỗi hay phạm nhất):**
 - NỀN luôn trung tính (`--color-surface`/`--color-surface-alt`). **CẤM sơn màu semantic (xanh lá/đỏ/vàng) lên mảng lớn** — màu chỉ để NHẤN (block/badge/button/status), chiếm ~10% màn hình.

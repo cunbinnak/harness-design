@@ -13,7 +13,7 @@ Màn thuộc boundary nào (khi có nhiều FE boundary): theo FEAT `target_expe
 
 ## Bài mẫu + luật màu
 
-- **`EXAMPLE.reference.html`** = mức chất lượng TỐI THIỂU — mở browser xem trước khi vẽ, vẽ xong tự so (thua = làm lại). KHÔNG copy nội dung.
+- **`EXAMPLE.reference.html`** = **thư viện ARCHETYPE màn** dùng cho MỌI đề bài (Dashboard · Bảng danh sách · Form · Trang chi tiết · Timeline · Feedback states) — app nghiệp vụ nào cũng ghép từ bộ này. Màn sắp vẽ thuộc archetype nào → mở browser so section đó (mức tối thiểu phải đạt); vẽ xong tự so, thua = làm lại. KHÔNG copy nội dung.
 - **Neutral-first**: nền luôn `--color-surface/alt`; CẤM sơn màu semantic lên mảng lớn (màu = nhấn ~10%); ô trống im lặng (hover mới hiện affordance); booking = `--color-primary-soft` (KHÔNG đỏ — `--color-danger` chỉ cho lỗi).
 
 ## Luật (gate `design_gate` + skill `ux-design` enforce)
