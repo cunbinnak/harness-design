@@ -210,6 +210,10 @@ def _matrix_boundary(boundary_id: str | None, root: Path | None = None) -> dict 
 
 _WEB_STYLE_EXTS = (".css", ".scss", ".sass", ".less")
 _CSS_IN_JS_MARKERS = ("styled.", "styled(", "@emotion", "makeStyles", "createUseStyles", "css`", "sx={")
+# Component library trưởng thành (chốt qua ADR ui-kit) — có theme system riêng → miễn yêu cầu
+# var(--...) như tailwind/CSS-in-JS (token map qua theme, vd antd ConfigProvider).
+_UI_LIB_MARKERS = ("from 'antd'", 'from "antd"', "@ant-design/", "antd/dist",
+                   "@mui/", "from '@chakra-ui", 'from "@chakra-ui', "from 'primereact", 'from "primereact')
 
 
 _TOKEN_DEF_RE = re.compile(r"--[\w-]+\s*:")  # định nghĩa CSS custom property (`--color-x: #...`)
@@ -219,7 +223,7 @@ def _web_styling_signals(src_dir: Path) -> dict:
     """Quét src của 1 web boundary → tín hiệu styling: file CSS, tailwind, CSS-in-JS, className,
     dùng design-token (`var(--...)`), và ĐỊNH NGHĨA token (`:root { --x: ... }` / import design-tokens)."""
     sig = {"css_files": 0, "has_className": False, "has_css_in_js": False,
-           "has_tailwind": False, "uses_token": False, "defines_token": False}
+           "has_tailwind": False, "has_ui_lib": False, "uses_token": False, "defines_token": False}
     if not src_dir.is_dir():
         return sig
     for p in src_dir.rglob("*"):
@@ -249,6 +253,8 @@ def _web_styling_signals(src_dir: Path) -> dict:
                 sig["has_className"] = True
             if any(m in txt for m in _CSS_IN_JS_MARKERS):
                 sig["has_css_in_js"] = True
+            if any(m in txt for m in _UI_LIB_MARKERS):
+                sig["has_ui_lib"] = True
             if "@tailwind" in txt:
                 sig["has_tailwind"] = True
             if "var(--" in txt or "design-tokens" in txt:
@@ -286,16 +292,18 @@ def check_web_styling(state: dict, evidence: dict | None = None, root: Path | No
         if not src.is_dir():
             continue  # chưa scaffold → để infra_proof bắt, không double-fail ở đây
         sig = _web_styling_signals(src)
-        styled = sig["css_files"] > 0 or sig["has_tailwind"] or sig["has_css_in_js"]
+        styled = sig["css_files"] > 0 or sig["has_tailwind"] or sig["has_css_in_js"] or sig["has_ui_lib"]
         if sig["has_className"] and not styled:
             problems.append(
-                f"{bid}: dùng className nhưng 0 styling (CSS/tailwind/CSS-in-JS) → FE unstyled "
-                f"(không màu/layout), không theo ux-{bid}.md §4 design tokens"
+                f"{bid}: dùng className nhưng 0 styling (CSS/tailwind/CSS-in-JS/component-library) → FE unstyled "
+                f"(không màu/layout), không theo ux-{bid}.md design tokens"
             )
             continue
-        # G15: style bằng PLAIN CSS (không tailwind/CSS-in-JS) thì phải dùng design token (var(--...))
-        # — chống FE bịa màu/spacing rời design-tokens.css. Tailwind/CSS-in-JS có cơ chế token riêng → miễn.
-        plain_css_only = sig["css_files"] > 0 and not sig["has_tailwind"] and not sig["has_css_in_js"]
+        # G15: style bằng PLAIN CSS (không tailwind/CSS-in-JS/UI-library) thì phải dùng design token
+        # (var(--...)) — chống FE bịa màu/spacing rời design-tokens.css. Tailwind/CSS-in-JS/component
+        # library (antd/MUI... — token map qua theme, vd ConfigProvider) có cơ chế token riêng → miễn.
+        plain_css_only = (sig["css_files"] > 0 and not sig["has_tailwind"]
+                          and not sig["has_css_in_js"] and not sig["has_ui_lib"])
         if styled and plain_css_only and not sig["uses_token"]:
             problems.append(
                 f"{bid}: CSS không dùng design token `var(--color-/--font-/--space-...)` (hardcode hex/px) "
@@ -2790,6 +2798,12 @@ def _selftest() -> int:
         # thêm định nghĩa token (copy design-tokens vào src) → PASS
         (_wsrc / "design-tokens.css").write_text(":root{--color-primary:#1d4ed8;--space-md:16px}", encoding="utf-8")
         assert check_web_styling(_ws_state, root=_wroot)[0] is True, "web_styling phải pass khi CSS dùng + định nghĩa token"
+        # component library (antd — ADR ui-kit): 0 file CSS vẫn styled, token map qua theme → PASS
+        (_wsrc / "App.css").unlink(); (_wsrc / "design-tokens.css").unlink()
+        (_wsrc / "App.tsx").write_text(
+            "import { Button } from 'antd';\nexport const A = () => <Button className=\"x\">hi</Button>;",
+            encoding="utf-8")
+        assert check_web_styling(_ws_state, root=_wroot)[0] is True, "dùng component library (antd) phải pass"
         assert check_web_styling(_ws_state, {"force": True}, root=_wroot)[0] is True
     finally:
         _sh_ws.rmtree(_wroot, ignore_errors=True)

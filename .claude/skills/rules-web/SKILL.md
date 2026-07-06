@@ -87,9 +87,11 @@ Sub-agent `kind=web` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
 
 ### Styling & responsive
 43. **Responsive theo breakpoint chuẩn của project**; không hardcode media query rải rác nếu design system đã có token.
-44. **Dùng design token/theme** cho spacing, color, typography; không dùng màu/spacing tùy tiện. **COPY `docs/architecture/ux/design-tokens.css` vào `src/` + import ở entry (main.tsx / index.css)** — token phải được ĐỊNH NGHĨA trong bundle, `var(--...)` mà không định nghĩa = resolve rỗng = UI vẫn unstyled. Style plain-CSS qua `var(--color-/--font-/--space-...)`, KHÔNG hardcode hex/px. Gate `web_styling` (dev-handoff) chặn cả 2: không dùng var + dùng var mà không định nghĩa/import.
+44. **Dùng design token/theme** cho spacing, color, typography; không dùng màu/spacing tùy tiện. Hai nhánh theo **ADR ui-kit**:
+    - **ADR chọn component library (mặc định khuyến nghị: Ant Design 5)**: dùng component của library (Button/Table/Modal/DatePicker/Form...), **map design-tokens vào theme** (antd `ConfigProvider` token: colorPrimary/borderRadius/fontFamily... lấy giá trị từ `design-tokens.css`) — KHÔNG tự dựng lại primitives mà library đã có; custom CSS chỉ cho layout đặc thù. Gate `web_styling` nhận diện library → miễn yêu cầu `var(--...)`.
+    - **ADR không chọn library (plain CSS)**: COPY `docs/architecture/ux/design-tokens.css` vào `src/` + import ở entry — token phải được ĐỊNH NGHĨA trong bundle (`var(--...)` không định nghĩa = resolve rỗng = unstyled); style qua `var(--color-/--font-/--space-...)`, KHÔNG hardcode hex/px. Gate `web_styling` chặn cả 2 lỗi.
 45. **Không inline style phức tạp** trừ case rất nhỏ hoặc dynamic style có lý do.
-    - **UI primitives dùng chung**: Button/Input/Card/Badge/Modal/Toast style 1 lần (từ token, đủ hover/focus-visible/disabled theo `ux §4 Visual polish`), page compose lại — KHÔNG style ad-hoc per-page; element tương tác thiếu `:hover`/`:focus-visible` = thiếu polish, reviewer flag.
+    - **UI primitives dùng chung** (chỉ khi KHÔNG dùng component library): Button/Input/Card/Badge/Modal/Toast style 1 lần (từ token, đủ hover/focus-visible/disabled theo `ux §Visual polish`), page compose lại — KHÔNG style ad-hoc per-page; element tương tác thiếu `:hover`/`:focus-visible` = thiếu polish, reviewer flag.
 46. **Không phá layout khi text dài**: handle overflow, ellipsis, wrap, empty label.
 47. **Dark mode/theme**: nếu project hỗ trợ thì component mới không được hardcode màu làm vỡ theme.
 

@@ -19,9 +19,20 @@ Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md
 
 ## Design system trước khi vẽ
 - Project có design system / **ADR ui-kit** → TUÂN THEO (layout, color, component pattern, mobile nav).
-- Chưa có → tự define dựa `PROJECT.md` + best practice, rồi ghi vào **ADR ui-kit**.
-- KHÔNG hardcode color/spacing/typography → **reference design tokens**.
+- Chưa có → **đề xuất chốt 1 component library trưởng thành** (React → mặc định **Ant Design 5**; hoặc MUI/Chakra theo ý user) — báo user chốt để `/design` (solution-architect) ghi **ADR ui-kit** (adr/ không thuộc quyền ux-designer). KHÔNG tự chế design system từ số 0. Library đã chốt = visual language chuẩn cho CẢ mockup lẫn app.
+- **Mockup mô phỏng đúng visual language của library đã chốt** (mockup là HTML tĩnh nên không nhúng antd thật — nhưng radius/màu/spacing/kiểu component phải nhìn NHƯ antd; dev sau đó dùng antd thật, token map qua `ConfigProvider`/theme → mockup và app hội tụ).
+- KHÔNG hardcode color/spacing/typography → **reference design tokens** (design-tokens.css chỉnh theo palette của library đã chốt).
 - **Shared design tokens:** tạo/giữ `docs/architecture/ux/design-tokens.css` (SoT 1 file dùng chung MỌI web boundary, theo `TEMPLATE.design-tokens.css`: `--color-*`/`--font-*`/`--space-*`/`--radius-*` + dark/hc theme). ux-{boundary}.md §4 tham chiếu token NÀY (không bịa palette per-boundary). Web FE consume qua `var(--...)`; mobile map `ThemeData`/`ColorScheme`. Gate `web_styling` ép plain-CSS phải dùng `var(--...)`.
+
+## Chuẩn chuyên nghiệp + ANTI-PATTERNS (bắt buộc — mockup xấu = fail review)
+Benchmark: mockup phải trông như **sản phẩm SaaS thương mại** (chuẩn Ant Design/Linear-level) — người xem không phân biệt được với app thật đã style. Cấm các lỗi "bảng thô" hay gặp:
+- **CẤM text-link lặp trong mọi ô** (vd chữ "Trống" gạch chân × 50 ô): ô trống phải IM LẶNG (nền nhạt), affordance chỉ hiện khi `:hover` (đổi nền + con trỏ/nhãn mờ). Trạng thái thể hiện bằng MÀU + BLOCK, không bằng chữ lặp.
+- **CẤM link gạch chân thay button** — hành động dùng button/segment có nền, radius, hover.
+- **Booking/sự kiện = BLOCK có chiều dài theo thời lượng** (span đúng số slot, tên + người + giờ trong block), KHÔNG phải 1 cell text.
+- **CẤM bảng HTML mộc** (border đen mảnh, cell đều tăm tắp, không nhịp thở): dùng grid + separator mảnh màu `--color-border`, hàng có padding `--space-*`, header nhóm rõ.
+- **Thông báo lỗi/toast đặt đúng chỗ** (banner trong luồng nội dung hoặc toast cố định có nền/đổ bóng chuẩn), không thả nổi lạc lõng góc màn.
+- **Mật độ có nhịp**: mọi khoảng cách từ `--space-*`; không có vùng chữ dày đặc sát mép.
+- **Responsive bắt buộc kiểm**: thu browser <768px phải ra layout mobile tử tế (card/stack), không phải bảng tràn ngang.
 
 ## Visual polish (spec CỤ THỂ để dev implement được "đẹp" — không chung chung)
 Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/test-execute đối chiếu được):
