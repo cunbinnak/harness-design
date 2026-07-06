@@ -149,13 +149,13 @@ _BACK_HINT = {
 def phase_lock_violation(rel_path: str, stage: str) -> str | None:
     """None = cho phép; str = lý do chặn (doc thuộc lớp phase-lock mà stage hiện tại không sở hữu).
 
-    TEMPLATE.* + README.md luôn cho sửa (scaffolding). Doc ngoài 4 lớp → không khoá.
+    TEMPLATE.* / EXAMPLE.* + README.md luôn cho sửa (scaffolding/bài mẫu). Doc ngoài 4 lớp → không khoá.
     """
     if not rel_path or not stage:
         return None
     norm = rel_path.replace("\\", "/").lstrip("./")
     base = norm.rsplit("/", 1)[-1]
-    if base.startswith("TEMPLATE.") or base == "README.md":
+    if base.startswith("TEMPLATE.") or base.startswith("EXAMPLE.") or base == "README.md":
         return None
     for label, editable, pat in PHASE_LOCK_CLASSES:
         if pat.search(norm):
@@ -354,10 +354,11 @@ def _selftest() -> int:
     assert phase_lock_violation("docs/architecture/PROJECT.md", "DOMAIN_AUTHORING") is not None
     assert phase_lock_violation("docs/architecture/PROJECT.md", "DISC_D3") is None
     assert phase_lock_violation("docs/discovery/BOUNDARY-MAP.md", "DESIGN") is not None
-    # TEMPLATE.* + README luôn sửa được (scaffolding)
+    # TEMPLATE.* / EXAMPLE.* + README luôn sửa được (scaffolding/bài mẫu)
     assert phase_lock_violation("docs/architecture/hld/TEMPLATE.hld.md", "DEV") is None
     assert phase_lock_violation("docs/architecture/feat/README.md", "PLAN") is None
     assert phase_lock_violation("docs/architecture/ux/TEMPLATE.design-tokens.css", "PLAN") is None
+    assert phase_lock_violation("docs/architecture/ux/mockups/EXAMPLE.reference.html", "DEV") is None
     # KHÔNG khoá: infra (docker-compose update ở dev-handoff), KG, tracking, services, arch root
     assert phase_lock_violation("docs/architecture/infra/docker-compose.yml", "DEV_HANDOFF") is None
     assert phase_lock_violation("knowledge-base/x.knowledge-graph.yaml", "DEV") is None

@@ -11,6 +11,11 @@ mockups/{boundary}/{screen}.html    # mỗi MÀN 1 file, đặt trong thư mục
 
 Màn thuộc boundary nào (khi có nhiều FE boundary): theo FEAT `target_experience_hint`/`target_boundary_hint` → persona của experience (BOUNDARY-MAP/CHARTER) → mơ hồ thì ux-designer HỎI user, không đoán.
 
+## Bài mẫu + luật màu
+
+- **`EXAMPLE.reference.html`** = mức chất lượng TỐI THIỂU — mở browser xem trước khi vẽ, vẽ xong tự so (thua = làm lại). KHÔNG copy nội dung.
+- **Neutral-first**: nền luôn `--color-surface/alt`; CẤM sơn màu semantic lên mảng lớn (màu = nhấn ~10%); ô trống im lặng (hover mới hiện affordance); booking = `--color-primary-soft` (KHÔNG đỏ — `--color-danger` chỉ cho lỗi).
+
 ## Luật (gate `design_gate` + skill `ux-design` enforce)
 
 1. **HTML TĨNH 100%** — mở bằng `file://` là xem được. KHÔNG JS framework, KHÔNG build step, KHÔNG CDN/font ngoài.

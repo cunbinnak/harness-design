@@ -25,6 +25,13 @@ Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md
 - **Shared design tokens:** tạo/giữ `docs/architecture/ux/design-tokens.css` (SoT 1 file dùng chung MỌI web boundary, theo `TEMPLATE.design-tokens.css`: `--color-*`/`--font-*`/`--space-*`/`--radius-*` + dark/hc theme). ux-{boundary}.md §4 tham chiếu token NÀY (không bịa palette per-boundary). Web FE consume qua `var(--...)`; mobile map `ThemeData`/`ColorScheme`. Gate `web_styling` ép plain-CSS phải dùng `var(--...)`.
 
 ## Chuẩn chuyên nghiệp + ANTI-PATTERNS (bắt buộc — mockup xấu = fail review)
+**BƯỚC 0 bắt buộc: MỞ `ux/mockups/EXAMPLE.reference.html` trong browser** — đó là mức chất lượng TỐI THIỂU phải đạt (app shell, nhịp trắng, block span, states, responsive). KHÔNG copy nội dung — chỉ neo phong cách. Vẽ xong tự so với bài mẫu: thua = làm lại trước khi trình user.
+
+**LUẬT MÀU — neutral-first (lỗi hay phạm nhất):**
+- NỀN luôn trung tính (`--color-surface`/`--color-surface-alt`). **CẤM sơn màu semantic (xanh lá/đỏ/vàng) lên mảng lớn** — màu chỉ để NHẤN (block/badge/button/status), chiếm ~10% màn hình.
+- Vùng/ô trống = IM LẶNG: nền surface, không chữ, không màu; `:hover` mới hiện affordance.
+- Sự kiện/booking bình thường = `--color-primary-soft` + viền primary. `--color-danger` CHỈ dành cho LỖI — "đã đặt" không phải lỗi, không được đỏ/hồng.
+
 Benchmark: mockup phải trông như **sản phẩm SaaS thương mại** (chuẩn Ant Design/Linear-level) — người xem không phân biệt được với app thật đã style. Cấm các lỗi "bảng thô" hay gặp:
 - **CẤM text-link lặp trong mọi ô** (vd chữ "Trống" gạch chân × 50 ô): ô trống phải IM LẶNG (nền nhạt), affordance chỉ hiện khi `:hover` (đổi nền + con trỏ/nhãn mờ). Trạng thái thể hiện bằng MÀU + BLOCK, không bằng chữ lặp.
 - **CẤM link gạch chân thay button** — hành động dùng button/segment có nền, radius, hover.

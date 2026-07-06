@@ -1,0 +1,248 @@
+<!doctype html>
+<!--
+  EXAMPLE.reference.html — BÀI MẪU CHẤT LƯỢNG (exemplar), KHÔNG phải template điền.
+
+  ux-designer PHẢI MỞ FILE NÀY TRONG BROWSER trước khi vẽ mockup thật: chất lượng mockup của bạn
+  phải NGANG HOẶC HƠN bài này (app shell, nhịp trắng, block span theo thời lượng, màu neutral-first,
+  states, responsive). KHÔNG copy nội dung — nội dung phải theo sản phẩm thật của project.
+
+  LUẬT MÀU (neutral-first — vi phạm là lỗi hay gặp nhất):
+  - NỀN luôn trung tính (--color-surface / --color-surface-alt). CẤM sơn màu semantic
+    (xanh lá/đỏ/vàng) lên mảng lớn — màu chỉ để NHẤN (block/badge/button/status), chiếm ~10% màn.
+  - Ô/vùng trống = IM LẶNG (nền surface, không chữ, không màu); :hover mới hiện affordance.
+  - Sự kiện/booking bình thường = --color-primary-soft + viền primary. --color-danger CHỈ cho lỗi.
+  - Thông báo lỗi = banner trong luồng nội dung hoặc toast chuẩn — không thả nổi góc màn.
+
+  Riêng file EXAMPLE này có :root fallback để mở xem được khi project chưa có design-tokens.css —
+  MOCKUP THẬT KHÔNG ĐƯỢC tự define token, phải link ../../design-tokens.css (SoT).
+-->
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EXAMPLE — chuẩn chất lượng mockup (lịch phòng theo ngày)</title>
+<link rel="stylesheet" href="../design-tokens.css">
+<style>
+  /* fallback token CHỈ cho EXAMPLE (mockup thật cấm define token — dùng SoT) */
+  :root {
+    --color-primary:#4338ca; --color-primary-contrast:#fff; --color-primary-soft:#e0e7ff;
+    --color-surface:#fff; --color-surface-alt:#f6f7fb; --color-text:#1f2937; --color-text-muted:#6b7280;
+    --color-border:#e5e7eb; --color-success:#15803d; --color-success-soft:#dcfce7;
+    --color-warning:#b45309; --color-danger:#b91c1c; --color-danger-soft:#fee2e2;
+    --font-family-base:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --font-size-sm:.875rem; --font-size-base:1rem; --font-size-lg:1.25rem; --font-size-xl:1.75rem;
+    --font-weight-regular:400; --font-weight-bold:600; --line-height-base:1.5;
+    --space-xs:4px; --space-sm:8px; --space-md:16px; --space-lg:24px; --space-xl:40px;
+    --radius-sm:4px; --radius-md:8px; --radius-lg:16px; --border-width:1px;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.06); --shadow-md:0 4px 12px rgba(0,0,0,.1);
+    --motion-fast:120ms; --motion-base:200ms;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family:var(--font-family-base); font-size:var(--font-size-base);
+         line-height:var(--line-height-base); color:var(--color-text); background:var(--color-surface-alt); }
+  a { color: inherit; text-decoration: none; }
+
+  .topbar { background:var(--color-surface); border-bottom:var(--border-width) solid var(--color-border);
+            padding:var(--space-sm) var(--space-lg); display:flex; align-items:center; gap:var(--space-lg);
+            position:sticky; top:0; box-shadow:var(--shadow-sm); }
+  .brand { font-size:var(--font-size-lg); font-weight:var(--font-weight-bold); color:var(--color-primary); }
+  .topnav { display:flex; gap:var(--space-xs); }
+  .topnav a { padding:var(--space-sm) var(--space-md); border-radius:var(--radius-md);
+              color:var(--color-text-muted); font-size:var(--font-size-sm);
+              transition:background var(--motion-fast), color var(--motion-fast); }
+  .topnav a:hover { background:var(--color-surface-alt); color:var(--color-text); }
+  .topnav a:focus-visible { outline:2px solid var(--color-primary); outline-offset:2px; }
+  .topnav a.active { background:var(--color-primary-soft); color:var(--color-primary); font-weight:var(--font-weight-bold); }
+  .topbar .who { margin-left:auto; color:var(--color-text-muted); font-size:var(--font-size-sm); }
+
+  main { max-width:1100px; margin:0 auto; padding:var(--space-lg); display:grid; gap:var(--space-lg); }
+  .page-head { display:flex; align-items:end; gap:var(--space-md); flex-wrap:wrap; }
+  .page-head h1 { font-size:var(--font-size-xl); font-weight:var(--font-weight-bold); }
+  .page-head .sub { color:var(--color-text-muted); }
+  .datebar { margin-left:auto; display:flex; align-items:center; gap:var(--space-sm); }
+  .btn { display:inline-flex; align-items:center; gap:var(--space-xs); cursor:pointer;
+         padding:var(--space-sm) var(--space-md); border-radius:var(--radius-sm);
+         border:var(--border-width) solid transparent; font:inherit; font-size:var(--font-size-sm);
+         font-weight:var(--font-weight-bold); transition:filter var(--motion-fast), background var(--motion-fast); }
+  .btn:focus-visible { outline:2px solid var(--color-primary); outline-offset:2px; }
+  .btn-primary { background:var(--color-primary); color:var(--color-primary-contrast); }
+  .btn-primary:hover { filter:brightness(1.08); }
+  .btn-ghost { background:var(--color-surface); border-color:var(--color-border); color:var(--color-text); }
+  .btn-ghost:hover { background:var(--color-surface-alt); }
+  .date-label { font-weight:var(--font-weight-bold); padding:0 var(--space-sm); }
+
+  .legend { display:flex; gap:var(--space-lg); font-size:var(--font-size-sm); color:var(--color-text-muted); }
+  .legend span { display:inline-flex; align-items:center; gap:var(--space-xs); }
+  .dot { width:12px; height:12px; border-radius:var(--radius-sm); display:inline-block; }
+  .dot.busy { background:var(--color-primary-soft); border:var(--border-width) solid var(--color-primary); }
+  .dot.mine { background:var(--color-primary); }
+
+  /* NỀN TRUNG TÍNH — slot trống im lặng, hover mới đổi nền nhẹ */
+  .board { background:var(--color-surface); border:var(--border-width) solid var(--color-border);
+           border-radius:var(--radius-md); box-shadow:var(--shadow-sm); overflow-x:auto; }
+  .grid { display:grid; grid-template-columns:140px repeat(20, minmax(34px,1fr)); min-width:860px; }
+  .grid .hourhead { grid-column:span 2; padding:var(--space-sm) var(--space-xs);
+                    font-size:var(--font-size-sm); color:var(--color-text-muted);
+                    border-bottom:var(--border-width) solid var(--color-border); }
+  .grid .corner { padding:var(--space-sm); border-bottom:var(--border-width) solid var(--color-border); }
+  .roomcell { padding:var(--space-md) var(--space-sm); border-top:var(--border-width) solid var(--color-border);
+              font-weight:var(--font-weight-bold); font-size:var(--font-size-sm);
+              display:flex; flex-direction:column; gap:2px; }
+  .roomcell small { color:var(--color-text-muted); font-weight:var(--font-weight-regular); }
+  .slot { border-top:var(--border-width) solid var(--color-border);
+          border-left:var(--border-width) dashed var(--color-border);
+          min-height:52px; cursor:pointer; transition:background var(--motion-fast); }
+  .slot:hover { background:var(--color-primary-soft); }
+  .slot:focus-visible { outline:2px solid var(--color-primary); outline-offset:-2px; }
+  .booking { margin:var(--space-xs); padding:var(--space-xs) var(--space-sm);
+             border-radius:var(--radius-sm); background:var(--color-primary-soft);
+             border-left:3px solid var(--color-primary); font-size:var(--font-size-sm);
+             overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+             border-top:var(--border-width) solid var(--color-border); }
+  .booking b { display:block; }
+  .booking small { color:var(--color-text-muted); }
+  .booking.mine { background:var(--color-primary); color:var(--color-primary-contrast); }
+  .booking.mine small { color:var(--color-primary-soft); }
+  .c1-s2 { grid-column:2 / span 2; }  .c3-s3 { grid-column:4 / span 3; }
+  .c9-s4 { grid-column:10 / span 4; } .c13-s2 { grid-column:14 / span 2; } .c17-s3 { grid-column:18 / span 3; }
+
+  .state-note { border-left:4px solid var(--color-warning); background:var(--color-surface);
+                padding:var(--space-sm) var(--space-md); color:var(--color-text-muted);
+                font-size:var(--font-size-sm); border-radius:var(--radius-sm); }
+  .card { background:var(--color-surface); border:var(--border-width) solid var(--color-border);
+          border-radius:var(--radius-md); box-shadow:var(--shadow-sm); padding:var(--space-lg); }
+  .empty { text-align:center; padding:var(--space-xl); color:var(--color-text-muted); }
+  .empty .glyph { font-size:var(--font-size-xl); font-weight:var(--font-weight-bold); color:var(--color-primary); }
+  .error-banner { background:var(--color-danger-soft); border:var(--border-width) solid var(--color-danger);
+                  color:var(--color-danger); border-radius:var(--radius-sm);
+                  padding:var(--space-sm) var(--space-md); display:flex; gap:var(--space-md); align-items:center; }
+  .skl { background:var(--color-surface-alt); border-radius:var(--radius-sm); height:16px; }
+  .skl.w40{width:40%} .skl.w70{width:70%} .skl.w55{width:55%}
+  .sk-row { display:grid; gap:var(--space-sm); padding:var(--space-sm) 0; }
+
+  @media (max-width:768px) {
+    .grid { display:none; }
+    .board { overflow:visible; background:none; border:none; box-shadow:none; }
+    .m-room { background:var(--color-surface); border:var(--border-width) solid var(--color-border);
+              border-radius:var(--radius-md); box-shadow:var(--shadow-sm);
+              padding:var(--space-md); margin-bottom:var(--space-md); }
+    .m-room h3 { font-size:var(--font-size-base); margin-bottom:var(--space-sm); }
+    .m-room .booking { white-space:normal; margin:var(--space-xs) 0; }
+    .datebar { margin-left:0; width:100%; }
+  }
+  @media (min-width:769px) { .m-list { display:none; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">RoomBook</div>
+  <nav class="topnav">
+    <a class="active" href="#">Lịch phòng</a>
+    <a href="#">Booking của tôi</a>
+  </nav>
+  <div class="who">Xin chào, Minh (Đội Web)</div>
+</header>
+
+<main>
+  <div class="page-head">
+    <div>
+      <h1>Lịch phòng họp</h1>
+      <div class="sub">4 phòng · khung giờ 08:00–18:00 · bấm vào ô trống để đặt</div>
+    </div>
+    <div class="datebar">
+      <button class="btn btn-ghost" aria-label="Ngày trước">&#8249;</button>
+      <span class="date-label">Thứ Sáu, 04/07/2026</span>
+      <button class="btn btn-ghost" aria-label="Ngày sau">&#8250;</button>
+      <button class="btn btn-primary">+ Đặt phòng</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot busy"></i> Đã có người đặt</span>
+    <span><i class="dot mine"></i> Booking của tôi</span>
+    <span>Ô trống: di chuột để đặt</span>
+  </div>
+
+  <!-- MÀN CHÍNH (default): nền trung tính, booking = block span đúng thời lượng -->
+  <section class="board" aria-label="Lịch 4 phòng ngày 04/07/2026">
+    <div class="grid">
+      <div class="corner"></div>
+      <div class="hourhead">08:00</div><div class="hourhead">09:00</div>
+      <div class="hourhead">10:00</div><div class="hourhead">11:00</div>
+      <div class="hourhead">12:00</div><div class="hourhead">13:00</div>
+      <div class="hourhead">14:00</div><div class="hourhead">15:00</div>
+      <div class="hourhead">16:00</div><div class="hourhead">17:00</div>
+
+      <div class="roomcell">Mekong <small>8 chỗ · TV</small></div>
+      <div class="booking c1-s2"><b>Daily standup</b><small>Đội Web · 08:00–09:00</small></div>
+      <div class="booking mine c3-s3"><b>Review thiết kế Q3</b><small>Minh · 09:00–10:30</small></div>
+      <div class="slot" tabindex="0" title="Đặt Mekong 10:30"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+
+      <div class="roomcell">Saigon <small>12 chỗ · TV · bảng</small></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div>
+      <div class="booking c9-s4"><b>Phỏng vấn BE Java</b><small>Chị Hà (HR) · 12:00–14:00</small></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+
+      <div class="roomcell">Hanoi <small>6 chỗ</small></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="booking c13-s2"><b>1-1 hàng tuần</b><small>Anh Tuấn · 14:00–15:00</small></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+
+      <div class="roomcell">Danang <small>4 chỗ · yên tĩnh</small></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+      <div class="booking c17-s3"><b>Retro sprint 14</b><small>Đội Mobile · 16:00–17:30</small></div>
+      <div class="slot" tabindex="0"></div><div class="slot" tabindex="0"></div>
+    </div>
+
+    <div class="m-list">
+      <div class="m-room"><h3>Mekong <small>· 8 chỗ</small></h3>
+        <div class="booking"><b>Daily standup</b><small> Đội Web · 08:00–09:00</small></div>
+        <div class="booking mine"><b>Review thiết kế Q3</b><small> Minh · 09:00–10:30</small></div>
+        <button class="btn btn-ghost">Xem giờ trống</button>
+      </div>
+      <div class="m-room"><h3>Saigon <small>· 12 chỗ</small></h3>
+        <div class="booking"><b>Phỏng vấn BE Java</b><small> 12:00–14:00</small></div>
+        <button class="btn btn-ghost">Xem giờ trống</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATES PHỤ: mỗi state 1 section, style tử tế — banner lỗi TRONG luồng, không thả nổi góc -->
+  <div class="state-note">STATE: loading — skeleton theo hàng phòng (giữ layout, không nhảy)</div>
+  <section class="card" aria-hidden="true">
+    <div class="sk-row"><div class="skl w40"></div><div class="skl w70"></div></div>
+    <div class="sk-row"><div class="skl w40"></div><div class="skl w55"></div></div>
+  </section>
+
+  <div class="state-note">STATE: empty — cả 4 phòng trống nguyên ngày</div>
+  <section class="card empty">
+    <div class="glyph">Trống cả ngày</div>
+    <p>Chưa có booking nào cho Thứ Bảy, 05/07/2026.</p>
+    <p><button class="btn btn-primary">+ Đặt phòng đầu tiên</button></p>
+  </section>
+
+  <div class="state-note">STATE: error — tải lịch thất bại (mạng/máy chủ)</div>
+  <section class="error-banner" role="alert">
+    <span>Không tải được lịch phòng. Kiểm tra kết nối rồi thử lại.</span>
+    <button class="btn btn-ghost">Thử lại</button>
+  </section>
+</main>
+
+</body>
+</html>
