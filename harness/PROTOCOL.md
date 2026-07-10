@@ -144,7 +144,7 @@ Tất cả route qua `scripts/hooks/dispatcher.py --event <name>`:
 | PreToolUse | Bash | Check `harness <X> complete` gate; deny nếu sai |
 | PreToolUse | Write\|Edit\|MultiEdit\|NotebookEdit | Block 4 kernel files (STATE.json, STATE-MACHINE.json, SERVICE-BOUNDARY-MATRIX.json, settings.json) + **3 proof file harness-đo** (`tracking/*/{docker-ps,health-proof,api-proof}.json` — chỉ capture_infra_proof.py được sinh, FM-PROOF-FORGE) + **phase-lock doc upstream** (doc lớp discovery/domain/design/plan chỉ sửa ở stage sở hữu +REVIEW) + block `services/**` khi spawn.active=dev-handoff-agent |
 | PreToolUse | Task | KHÔNG block theo stage (Explore free); inject boundary reminder + block spawn MỌI command-agent bằng prompt tự viết tay (E-6: keyword + tên-agent registry; thiếu chữ ký `# SPAWN PROMPT`/`STATE BUNDLE` = block) |
-| PreToolUse | Skill\|SlashCommand | Chặn MAIN TỰ invoke harness slash-command ∈ GATE_RULES (chống auto-nối pipeline; user gõ tay = pre-loaded, không qua tool → không ảnh hưởng) |
+| PreToolUse | Skill\|SlashCommand | Chặn **CHỈ `SlashCommand`** tool chạy harness cmd ∈ GATE_RULES (MAIN tự nối pipeline). **`Skill` tool cho qua LUÔN** (sub-agent load convention skill — kể cả tên trùng command; Skill không transition state) |
 | PostToolUse | Bash | no-op (STATE.json chỉ giữ trạng thái hiện tại) |
 | SubagentStop | * | Parse RETURN SCHEMA, validate 7 field bắt buộc |
 | Stop | * | Build/lint/test **wave-scoped** per kind khi stage ∈ {DEV, REVIEW_DEV, TEST_EXECUTE} + có sửa services/; đỏ→block 40 dòng cuối; cache git-hash |
@@ -159,7 +159,7 @@ File cờ `harness/.turn-advance.flag` mở **đúng 1 lượt** cho **1 `harnes
 - **Reset** ở `UserPromptSubmit` + `SessionStart` (mỗi prompt người dùng mở lại 1 cờ).
 - **Tiêu cờ** khi 1 `harness complete` PASS gate → `complete` thứ 2 cùng turn bị `PreToolUse(Bash)` deny (`"MAIN tự nối lệnh"`). Buộc MAIN dừng, báo kết quả, chờ user gõ lệnh kế.
 - **Gate-fail KHÔNG tiêu cờ** — cho phép retry cùng lệnh trong turn.
-- **Vá lỗ hổng:** `PreToolUse(Skill|SlashCommand)` chặn MAIN tự invoke slash-command ∈ `GATE_RULES` (nếu không, invoke sẽ fire lại `UserPromptSubmit` → reset cờ → lệnh kế lọt). User **gõ tay** slash-command = pre-loaded, MAIN không gọi tool → không ảnh hưởng.
+- **Vá lỗ hổng:** `PreToolUse(SlashCommand)` chặn MAIN tự chạy slash-command ∈ `GATE_RULES` (nếu không, invoke sẽ fire lại `UserPromptSubmit` → reset cờ → lệnh kế lọt). User **gõ tay** slash-command = pre-loaded, MAIN không gọi tool → không ảnh hưởng. **`Skill` tool KHÔNG chặn** — sub-agent CẦN load skill convention của chính nó (domain-po/test-plan/ux-design…); Skill không transition state nên không phải vector tự-nối-lệnh.
 - **#12 dev-handoff infra-only:** `_pre_task` set `spawn.active=dev-handoff-agent` → `PreToolUse(Write|Edit)` block sửa `services/**` (lỗi code boundary → fix-agent, dev-handoff KHÔNG tự vá).
 
 ## Handoff & audit

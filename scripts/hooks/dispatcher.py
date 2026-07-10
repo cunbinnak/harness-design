@@ -220,14 +220,19 @@ def handle_pre_tool_use(payload: dict) -> int:
 
 
 def _pre_skill(payload: dict) -> int:
-    """Chặn MAIN TỰ chạy harness slash-command (auto-nối pipeline ở auto mode).
+    """Chặn MAIN TỰ chạy harness slash-command (auto-nối pipeline) — CHỈ tool `SlashCommand`.
 
-    Harness slash-command = HÀNH ĐỘNG CỦA USER: user GÕ `/test-plan` → pre-loaded (MAIN KHÔNG gọi
-    Skill tool). MAIN gọi Skill/SlashCommand tool để chạy `/dev-handoff`,`/test-plan`,`/test-execute`…
-    = TỰ NỐI LỆNH → deny. (Lỗ hổng cũ: invoke slash-command fire UserPromptSubmit → reset turn-flag →
-    `harness complete` kế lọt. Chặn NGAY tại nguồn, trước khi slash-command kịp reset cờ.)
-    Skill ngoài-harness (research/code-review/…) KHÔNG trong GATE_RULES → cho qua.
+    Phân biệt 2 tool khác hẳn nhau (trước đây gộp → chặn oan sub-agent load skill):
+    - **`SlashCommand`** tool = CHẠY LỆNH `/test-plan` (như user gõ → fire UserPromptSubmit → reset
+      turn-flag → MAIN tự nối pipeline). Vector tự-nối-lệnh THẬT → deny nếu ∈ GATE_RULES.
+    - **`Skill`** tool = LOAD convention skill (sub-agent nạp checklist của chính nó: domain-po,
+      test-plan, ux-design…). KHÔNG transition state, KHÔNG fire UserPromptSubmit → CHO QUA LUÔN,
+      kể cả tên trùng harness command. (Để transition vẫn phải `harness complete` qua Bash →
+      _pre_bash + turn-flag đã chặn; Skill không giúp MAIN né gì.)
+    Skill ngoài-harness (research/code-review/…) → cho qua như thường.
     """
+    if _tool_name(payload) != "SlashCommand":
+        return allow_silent()  # Skill tool (load convention) — sub-agent cần, không phải tự-nối-lệnh
     name = _skill_name(payload)
     if not name:
         return allow_silent()
@@ -598,17 +603,18 @@ def _selftest() -> int:
             _pre_skill(payload)
         return buf.getvalue()
 
-    # harness slash-command MAIN tự gọi → deny
-    for cmd in ("test-plan", "test-execute", "dev-handoff", "start-wave"):
-        out = _cap({"tool_name": "Skill", "tool_input": {"skill": cmd}})
-        assert '"permissionDecision": "deny"' in out and cmd in out, f"{cmd}: {out!r}"
-    out = _cap({"tool_name": "SlashCommand", "tool_input": {"command": "/test-plan"}})
-    assert '"permissionDecision": "deny"' in out, out
-    # skill ngoài-harness → allow (no output)
+    # SlashCommand tool = MAIN chạy lệnh harness (tự nối pipeline) → deny
+    for cmd in ("/test-plan", "/test-execute", "/dev-handoff", "/start-wave"):
+        out = _cap({"tool_name": "SlashCommand", "tool_input": {"command": cmd}})
+        assert '"permissionDecision": "deny"' in out and cmd.lstrip("/") in out, f"{cmd}: {out!r}"
+    # Skill tool = sub-agent LOAD convention skill (kể cả tên trùng harness command) → ALLOW (vá chặn oan)
+    for cmd in ("domain-po", "domain-ba", "test-plan", "test-execute", "ux-design"):
+        assert _cap({"tool_name": "Skill", "tool_input": {"skill": cmd}}) == "", f"Skill '{cmd}' phải allow: {cmd}"
+    # skill/command ngoài-harness → allow
     for other in ("deep-research", "code-review", "verify"):
-        assert _cap({"tool_name": "Skill", "tool_input": {"skill": other}}) == "", other
+        assert _cap({"tool_name": "SlashCommand", "tool_input": {"command": f"/{other}"}}) == "", other
     # empty → allow
-    assert _cap({"tool_name": "Skill", "tool_input": {}}) == ""
+    assert _cap({"tool_name": "SlashCommand", "tool_input": {}}) == ""
     # sanity: GATE_RULES chứa harness cmds
     assert {"dev-handoff", "test-plan", "test-execute"} <= set(gates.GATE_RULES)
     print("OK: dispatcher.py selftest passed")
