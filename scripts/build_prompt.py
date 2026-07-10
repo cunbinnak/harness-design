@@ -814,7 +814,9 @@ def build_boundary_command(
                 + _feat_order
                 + ". Với MỖI feat (làm xong hẳn feat này mới sang feat kế): implement MỌI AC + enforce MỌI BR của nó "
                 "→ viết + chạy test CỦA FEAT ĐÓ **XANH** → commit → sang feat kế. "
-                "**KHÔNG mở nhiều feat song song, KHÔNG bỏ feat dở dang nhảy sang feat khác.** "
+                "**KHÔNG mở nhiều feat song song, KHÔNG bỏ feat dở dang nhảy sang feat khác** — "
+                "gate `features_complete` @end-wave DERIVE `feature-state.md` và CHẶN SHIP nếu còn feat `active` "
+                "(làm dở nửa chừng), nên feat làm dở = wave không đóng được. "
                 "Phải làm HẾT mọi feat được giao (không dừng ở feat đầu). KHÔNG tự suy FEAT từ wave plan."
             )
         else:

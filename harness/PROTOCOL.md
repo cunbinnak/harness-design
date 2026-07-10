@@ -117,7 +117,7 @@ Evidence là input cho gates.py check tại moment complete. Pass → state tran
 | `_auto` (TEST_EXECUTE → MANUAL_TEST) | `test_result` (any — pass HAY fail) |
 | `log-bug` | `bug_id` non-empty (log-bug-agent trả về sau khi append row) |
 | `fix-bugs` | `bug_id` non-empty (đơn lẻ); sweep no-arg = MAIN orchestrate, complete per-bug |
-| `end-wave` | `uat_signed: true` + `test_result: pass` (STATE — harness derive từ report, ép re-run sau fix) + `no_open_bugs` (parse `tracking/wave-{N}/bugs.md`) |
+| `end-wave` | `uat_signed: true` + `test_result: pass` (STATE — harness derive từ report, ép re-run sau fix) + `no_open_bugs` (parse `tracking/wave-{N}/bugs.md`) + `features_complete` (derive feature-state: KHÔNG in-scope feat nào `active`/làm-dở — WIP=1 ship-gate L07; chỉ chặn active, không chặn not_started) |
 | `done-wave` | `teardown_ok: true` |
 | `apply-cr` | `cr_id` non-empty |
 

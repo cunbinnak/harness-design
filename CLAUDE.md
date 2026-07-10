@@ -122,7 +122,7 @@
 | | `/test-execute` | Chạy test tự động trên hệ **đang chạy thật** + ghi bug auto (KHÔNG sửa) |
 | | `/log-bug "<mô tả>"` | Ghi 1 bug tìm khi test tay (manual) |
 | | `/fix-bugs [<bug-id>]` | Sửa bug (bỏ trống = sửa hết); xong re-test rồi đóng bug |
-| **8. Đóng** | `/end-wave` | Đóng mềm: dừng service (giữ image + dữ liệu) khi UAT ký + test pass + hết bug |
+| **8. Đóng** | `/end-wave` | Đóng mềm: dừng service (giữ image + dữ liệu) khi UAT ký + test pass + hết bug + **mọi feat done** (features_complete: không feat `active`/làm-dở) |
 | | `/done-wave` | Đóng cứng: teardown về trạng thái ban đầu, sẵn sàng tính năng kế |
 | **Ngoài luồng** | `/apply-cr <CR-ID>` | Đổi/thêm sau khi ship: quay lại Domain rồi chạy lại luồng thiết kế → plan → review → wave |
 

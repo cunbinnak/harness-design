@@ -1648,6 +1648,28 @@ def render_feature_state_md(state: dict, root: Path | None = None) -> str:
     return "\n".join(lines) + "\n"
 
 
+def check_features_complete(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Gate /end-wave (L07 WIP=1 → enforcement ở điểm SHIP): KHÔNG feat nào được `active` (làm dở).
+
+    `active` = một phần AC pass, phần khác chưa (feature dở dang — chính là overreach: mở feat mới khi
+    feat cũ chưa xong). Đây là điều harness quan sát ĐƯỢC bằng máy (derive từ report), thay cho lời-dặn
+    WIP=1 trong prompt. CHỈ chặn `active` — KHÔNG chặn `not_started` (AC chỉ-manual chưa ghi report =
+    not_started; test_passed/ac_coverage/uat_signed đã phủ). Khác test_passed (auto-TC pass) + ac_coverage
+    (AC↔TC design-time): cái này bắt "feat verify được NỬA" ở run-time. force=true → bypass (audit).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    active = [r for r in derive_feature_states(state, root) if r["state"] == "active"]
+    if active:
+        detail = "; ".join(f"{r['feat']} ({r['ac_pass']}/{r['ac_total']} AC verified)" for r in active)
+        return False, (
+            "còn feature LÀM DỞ (state=active — WIP=1: xong hẳn 1 feat mới sang feat kế, L07): " + detail
+            + " — hoàn thành nốt AC còn thiếu (mọi AC có TC pass trong report) rồi /end-wave"
+        )
+    return True, ""
+
+
 # ========================================================================
 # ui_test_present + registry_scope (test-plan) — UI phải được test thật + TC không over-scope
 # ========================================================================
@@ -2589,6 +2611,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "flag", "field": "uat_signed", "expected": True},
         {"kind": "test_passed"},  # lần test-execute cuối phải pass (STATE) → ép re-run sau fix
         {"kind": "no_open_bugs"},
+        {"kind": "features_complete"},  # WIP=1 ship-gate (L07): KHÔNG feat nào `active` (làm dở) — VCR-ở-điểm-ship
     ],
     "done-wave": [
         {"kind": "flag", "field": "teardown_ok", "expected": True},
@@ -2629,6 +2652,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_doc_stamped(evidence)
         if kind == "test_passed":
             return check_test_passed(state)
+        if kind == "features_complete":
+            return check_features_complete(state, evidence)
         if kind == "infra_proof":
             return check_infra_proof(state, evidence)
         if kind == "health_proof":
@@ -3623,6 +3648,15 @@ def _selftest() -> int:
         # (e) render markdown chứa tiến độ + bảng
         md = render_feature_state_md(_fs_state, root=_acroot)
         assert "1/1 feat in-scope `passing`" in md and "| FEAT-T01 | passing" in md, md
+        # (f) features_complete gate (bước 2): passing → pass; active (làm dở) → chặn ship
+        assert check_features_complete(_fs_state, root=_acroot)[0] is True, "mọi feat passing → end-wave ok"
+        _rep.write_text("| TC | Result |\n|----|--------|\n| TC-1 | PASS |\n", encoding="utf-8")  # AC-1 pass, AC-2 chưa → active
+        ok, msg = check_features_complete(_fs_state, root=_acroot)
+        assert (not ok) and "FEAT-T01" in msg and "LÀM DỞ" in msg, f"feat active phải chặn end-wave: {msg}"
+        assert check_features_complete(_fs_state, {"force": True}, root=_acroot)[0] is True
+        # not_started (report rỗng) KHÔNG chặn (manual-AC chưa ghi report — gate khác lo)
+        _rep.unlink()
+        assert check_features_complete(_fs_state, root=_acroot)[0] is True, "not_started không chặn (tránh chặn oan manual)"
     finally:
         _shutil.rmtree(_acroot, ignore_errors=True)
 
