@@ -564,7 +564,7 @@ def check_doc_stamped(evidence: dict | None = None, root: Path | None = None) ->
         if not d.is_dir():
             continue
         for p in sorted(d.glob("*.md")):
-            if p.name.startswith("TEMPLATE") or p.name.startswith("_TEMPLATE") or p.name == "README.md":
+            if _is_scaffold_md(p.name):
                 continue
             text = p.read_text(encoding="utf-8", errors="ignore")
             if not text.startswith("---"):
@@ -1800,6 +1800,14 @@ _ENG_PRODUCT_KINDS = ("epics", "feat", "business-rules", "journeys", "personas")
 _ENG_ORPHAN_KINDS = ("epics", "feat", "business-rules")  # lớp product bắt buộc có nguồn business
 
 
+def _is_scaffold_md(name: str) -> bool:
+    """File .md scaffold (KHÔNG phải artifact sản phẩm): TEMPLATE.* / _TEMPLATE* / README.md.
+
+    Dùng CHUNG cho mọi chỗ glob docs/architecture/{kind}/*.md — chống drift kiểu 'quên loại README'
+    ở 1 hàm mà hàm khác nhớ (bug translation_parity/todo_resolved: README.md bị coi là eng doc mồ côi)."""
+    return name.startswith("TEMPLATE") or name.startswith("_TEMPLATE") or name == "README.md"
+
+
 def _eng_docs_by_kind(root: Path) -> dict[str, list[tuple[Path, dict]]]:
     """docs/architecture/{kind}/*.md (bỏ TEMPLATE) → {kind: [(path, frontmatter)]}."""
     out: dict[str, list[tuple[Path, dict]]] = {}
@@ -1808,7 +1816,7 @@ def _eng_docs_by_kind(root: Path) -> dict[str, list[tuple[Path, dict]]]:
         if not d.is_dir():
             continue
         for p in sorted(d.glob("*.md")):
-            if p.name.startswith("TEMPLATE") or p.name.startswith("_TEMPLATE"):
+            if _is_scaffold_md(p.name):
                 continue
             fm = planning_lint.parse_frontmatter(p.read_text(encoding="utf-8", errors="ignore"))
             out.setdefault(kind, []).append((p, fm))
@@ -1892,7 +1900,7 @@ def check_todo_resolved(evidence: dict | None = None, root: Path | None = None) 
         if not d.is_dir():
             continue
         for p in sorted(d.glob("*.md")):
-            if p.name.startswith("TEMPLATE") or p.name.startswith("_TEMPLATE"):
+            if _is_scaffold_md(p.name):
                 continue
             text = p.read_text(encoding="utf-8", errors="ignore")
             hits = sum(len(rx.findall(text)) for rx in _TODO_ENGINEER_RES)
@@ -3549,7 +3557,11 @@ def _selftest() -> int:
             '---\nid: "FEAT-999"\n---\n# tự author thẳng eng\n', encoding="utf-8")
         ok, msg = check_translation_parity(root=_tproot)
         assert (not ok) and "FEAT-999" in msg and "MỒ CÔI" in msg, msg
-        # (d) force bypass
+        (_tproot / "docs" / "architecture" / "feat" / "FEAT-999.md").unlink()
+        # (d) README.md trong folder eng KHÔNG bị coi là eng doc mồ côi (bug drift _is_scaffold_md)
+        (_tproot / "docs" / "architecture" / "feat" / "README.md").write_text("# feat folder\nMô tả.\n", encoding="utf-8")
+        assert check_translation_parity(root=_tproot)[0] is True, "README.md không phải eng doc — không coi mồ côi"
+        # (e) force bypass
         assert check_translation_parity({"force": True}, root=_tproot)[0] is True
     finally:
         _shutil.rmtree(_tproot, ignore_errors=True)
