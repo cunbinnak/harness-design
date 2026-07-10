@@ -277,6 +277,8 @@ dependencies {
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'org.testcontainers:kafka'
+    // ArchUnit — enforce layer/package rule bằng test (gate code_compliance; xem ref-backend-pattern §7.5)
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
     // BẮT BUỘC cho JUnit 5 Platform
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

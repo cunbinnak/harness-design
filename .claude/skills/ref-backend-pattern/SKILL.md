@@ -256,6 +256,43 @@ public class GlobalExceptionHandler {
 - Expose entity ra API hoặc dùng entity làm request body.
 - Import code từ `services/{prefix}-{other}/` — cross-boundary chỉ qua HTTP/event theo `docs/architecture/integrations/INTEG-*.md`.
 
+## 7.5. ArchUnit — enforce §7 bằng TEST (bắt buộc, gate `code_compliance`)
+
+> Luật §7 phải được ép bằng **test chạy được** (deterministic), KHÔNG chỉ để review đọc — review-agent đọc N file có thể sót, ArchUnit thì không. Là JUnit test → gradle/Stop hook tự chạy; vi phạm = build ĐỎ ngay ở DEV. **Scaffold BẮT BUỘC gồm `src/test/java/**/architecture/ArchitectureTest.java`** (gate `code_compliance` đòi ≥1 file import `com.tngtech.archunit`). Dependency: xem `ref-backend-config` (`archunit-junit5`). Chọn biến thể theo mô hình HLD §4.
+
+**Layered:**
+```java
+@AnalyzeClasses(packages = "com.{org}.{boundary}", importOptions = ImportOption.DoNotIncludeTests.class)
+class ArchitectureTest {
+  @ArchTest static final ArchRule layered = layeredArchitecture().consideringAllDependencies()
+      .layer("Controller").definedBy("..controller..")
+      .layer("Service").definedBy("..service..")
+      .layer("Repository").definedBy("..repository..")
+      .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
+      .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller")
+      .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service");
+  // controller KHÔNG gọi repository trực tiếp (§7)
+  @ArchTest static final ArchRule ctrl_no_repo = noClasses().that().resideInAPackage("..controller..")
+      .should().dependOnClassesThat().resideInAPackage("..repository..");
+  // @Entity ở entities/ + tên *Entity (rules-backend)
+  @ArchTest static final ArchRule entity_pkg = classes().that().areAnnotatedWith(jakarta.persistence.Entity.class)
+      .should().resideInAPackage("..entities..").andShould().haveSimpleNameEndingWith("Entity");
+  // không cycle giữa slice
+  @ArchTest static final ArchRule no_cycles = slices().matching("com.{org}.{boundary}.(*)..").should().beFreeOfCycles();
+}
+```
+
+**Hexagonal (thêm/thay):** `domain`/`application` KHÔNG phụ thuộc `adapter` hay Spring —
+```java
+  @ArchTest static final ArchRule domain_pure = noClasses().that().resideInAPackage("..domain..")
+      .should().dependOnClassesThat().resideInAnyPackage("..adapter..", "org.springframework..");
+  @ArchTest static final ArchRule hexagonal = onionArchitecture()
+      .domainModels("..domain..").applicationServices("..application..")
+      .adapter("web", "..adapter.in.web..").adapter("persistence", "..adapter.out.persistence..");
+```
+
+> Rule phải khớp CHÍNH XÁC layout §2/§3 + rules-backend (kẻo false-positive). Thêm rule khi boundary có pattern riêng (event handler, scheduler). ArchUnit chỉ cover **intra-boundary**; cross-boundary FK/import giữ ở review + contract-graph.
+
 ## 8. Done
 - Cấu trúc khớp mô hình chốt trong ADR backend-architecture + `hld-{boundary}.md`.
 - API khớp `api-{boundary}.md`; schema khớp `data-model-{boundary}.md`.

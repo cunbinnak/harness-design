@@ -15,7 +15,7 @@ description: Convention bắt buộc khi code backend boundary (Java 21 / Spring
 Sub-agent `kind=backend` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
 
 ## Quy ước bắt buộc
-1. **Kiến trúc**: theo loại đã chốt trong **ADR backend-architecture** (Layered hoặc DDD tactical) — cấu trúc thư mục + layer responsibilities xem `ref-backend-pattern`.
+1. **Kiến trúc**: theo loại đã chốt trong **ADR backend-architecture** (Layered hoặc DDD tactical) — cấu trúc thư mục + layer responsibilities xem `ref-backend-pattern`. **Layer/package rule enforce bằng ArchUnit test** (`ref-backend-pattern §7.5`, bắt buộc trong scaffold — gate `code_compliance`): vi phạm = `gradle test` ĐỎ, không đợi review.
 2. **Multi-tenancy**: mọi entity, query MUST filter `tenant_id` từ auth context (nếu project multi-tenant).
 3. **API**: contract khớp `docs/architecture/api/api-{boundary}.md`; KHÔNG đổi breaking không qua ADR.
 4. **DB**: migration versioned, additive (không sửa migration đã apply); schema khớp `data-model-{boundary}.md`.

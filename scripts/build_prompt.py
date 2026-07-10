@@ -796,6 +796,10 @@ def build_boundary_command(
             "Read HLD + API + data-model + KG của boundary; lấy **kiến trúc (Layered/Hexagonal) đã CHỐT ở HLD §4** (HLD §4 chỉ CHỌN kiến trúc — KHÔNG phải nguồn cây thư mục).",
             f"**Scaffold (BẮT BUỘC invoke {scaffold_invoke} trước khi tạo file)** — nếu `{service_folder}/` chưa có code: tạo build file (**theo ADR tech-stack** — backend: Gradle `build.gradle` default / Maven `pom.xml`; bff/web: `package.json`; mobile: `pubspec.yaml`) + **folder/file layout BÁM ĐÚNG cây thư mục trong `{pattern_ref}`** — **chọn đúng layout Layered HAY Hexagonal/DDD theo kiến trúc chốt ở HLD §4, KHÔNG mặc định Layered**. KHÔNG tự bịa cấu trúc; KHÔNG dùng bảng layer HLD làm cây thư mục; KHÔNG tự đổi build tool khác ADR.",
         ]
+        if kind == "backend":
+            task_list.append(
+                "**Scaffold BẮT BUỘC gồm `src/test/java/**/architecture/ArchitectureTest.java`** (ArchUnit, template `ref-backend-pattern §7.5`, biến thể theo HLD §4 + dependency `archunit-junit5` ở `ref-backend-config`) — enforce layer/package rule bằng test deterministic. Gate `code_compliance` đòi ≥1 file import `com.tngtech.archunit`; vi phạm layer = `gradle test` ĐỎ."
+            )
         if ref_skills:
             task_list.append(
                 "Boundary này được intake gắn ref skill (MATRIX `ref_skills`): "
@@ -804,10 +808,14 @@ def build_boundary_command(
             )
         _feats = list(boundary.get("features") or [])
         if _feats:
+            _feat_order = " → ".join(f"`{f}`" for f in _feats)
             _feat_task = (
-                "Đọc AC + BR trong các FEAT đã GẮN CỨNG cho boundary này (MATRIX `features`): "
-                + ", ".join(f"`{f}`" for f in _feats)
-                + " (path ở §DOCS TO READ) → implement MỌI AC, enforce MỌI BR. KHÔNG tự suy FEAT từ wave plan."
+                "Implement **TUẦN TỰ TỪNG FEAT MỘT (WIP=1)** đúng thứ tự MATRIX `features`: "
+                + _feat_order
+                + ". Với MỖI feat (làm xong hẳn feat này mới sang feat kế): implement MỌI AC + enforce MỌI BR của nó "
+                "→ viết + chạy test CỦA FEAT ĐÓ **XANH** → commit → sang feat kế. "
+                "**KHÔNG mở nhiều feat song song, KHÔNG bỏ feat dở dang nhảy sang feat khác.** "
+                "Phải làm HẾT mọi feat được giao (không dừng ở feat đầu). KHÔNG tự suy FEAT từ wave plan."
             )
         else:
             _feat_task = (

@@ -112,7 +112,7 @@ Evidence là input cho gates.py check tại moment complete. Pass → state tran
 | `start-dev` | `boundary` ∈ `wave_boundaries` |
 | `review-dev` | `review_results` non-empty (chống complete `{}` làm STATE rỗng) + `no_open_findings` (review-findings.md hết row BLOCKER/MAJOR open) |
 | `dev-handoff` | `all_boundaries_reviewed` (mọi wave boundary pass + coverage BE80/BFF70/web·mobile60 — **harness derive từ coverage report thật** khi service đã scaffold, không tin số tự khai) + `infra_proof` (docker-ps.json: State=running content-validated) + `health_proof` (health-proof.json HARNESS curl /health/ready 2xx) + `code_compliance` (backend: cấm H2/create-drop, bắt Dockerfile + base config + ≥1 profile) + `web_styling` (FE có styling thật; plain-CSS dùng `var(--...)` VÀ token được định nghĩa/import trong bundle) + `api_contract_proof` (endpoint khai api-{b}.md tồn tại trong runtime OpenAPI — api-proof.json) |
-| `test-plan` | `docker_compose_ok` + `connectivity_ok` + `infra_proof` + `health_proof` (stack còn UP) + `contract_test_present` (consumer có depends_on → ≥1 TC contract/integration/e2e) + `ui_test_present` (mỗi web boundary ≥1 auto-TC UI in-scope) + `registry_scope` (TC chỉ trace FEAT ≤ wave hiện tại; deferred phải tag) + `ac_coverage` (FEAT.AC ↔ TC 2 chiều: AC mồ côi + TC stale) |
+| `test-plan` | `docker_compose_ok` + `connectivity_ok` + `infra_proof` + `health_proof` (stack còn UP) + `contract_test_present` (consumer có depends_on → ≥1 TC contract/integration/e2e) + `journey_e2e_present` (chuỗi depends_on ≥3 boundary → ≥1 TC e2e/integration span cả chuỗi; API-driven, không đợi FE) + `ui_test_present` (mỗi web boundary ≥1 auto-TC UI in-scope) + `registry_scope` (TC chỉ trace FEAT ≤ wave hiện tại; deferred phải tag) + `ac_coverage` (FEAT.AC ↔ TC 2 chiều: AC mồ côi + TC stale) |
 | `test-execute` | `test_cases_count ≥ 1` + `test_evidence` (report+log+bugs+screenshots+health-proof: network-call thật cho group mạng; skip phải service-down thật + không mâu thuẫn health-proof; TC web boundary phải có screenshot PNG thật; FAIL phải có bug ref; harness DERIVE test_result từ report) |
 | `_auto` (TEST_EXECUTE → MANUAL_TEST) | `test_result` (any — pass HAY fail) |
 | `log-bug` | `bug_id` non-empty (log-bug-agent trả về sau khi append row) |
@@ -151,6 +151,16 @@ Tất cả route qua `scripts/hooks/dispatcher.py --event <name>`:
 | SessionEnd | * | Cleanup spawn.active nếu stale |
 
 Hook policies pure functions in `scripts/hooks/policies.py`. Dispatcher routes events to handlers. Fail-open: hook crash → allow tool call.
+
+### Turn-flag (#11) — chống MAIN tự nối lệnh
+
+File cờ `harness/.turn-advance.flag` mở **đúng 1 lượt** cho **1 `harness <cmd> complete`** mỗi user-turn:
+
+- **Reset** ở `UserPromptSubmit` + `SessionStart` (mỗi prompt người dùng mở lại 1 cờ).
+- **Tiêu cờ** khi 1 `harness complete` PASS gate → `complete` thứ 2 cùng turn bị `PreToolUse(Bash)` deny (`"MAIN tự nối lệnh"`). Buộc MAIN dừng, báo kết quả, chờ user gõ lệnh kế.
+- **Gate-fail KHÔNG tiêu cờ** — cho phép retry cùng lệnh trong turn.
+- **Vá lỗ hổng:** `PreToolUse(Skill|SlashCommand)` chặn MAIN tự invoke slash-command ∈ `GATE_RULES` (nếu không, invoke sẽ fire lại `UserPromptSubmit` → reset cờ → lệnh kế lọt). User **gõ tay** slash-command = pre-loaded, MAIN không gọi tool → không ảnh hưởng.
+- **#12 dev-handoff infra-only:** `_pre_task` set `spawn.active=dev-handoff-agent` → `PreToolUse(Write|Edit)` block sửa `services/**` (lỗi code boundary → fix-agent, dev-handoff KHÔNG tự vá).
 
 ## Handoff & audit
 

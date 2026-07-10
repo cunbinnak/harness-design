@@ -1843,8 +1843,17 @@ def check_ac_coverage(state: dict, evidence: dict | None = None, root: Path | No
     for fid in feats:
         fidU = str(fid).upper()
         acs = _file_acs(fidU)
+        if acs is None:
+            continue  # FEAT chưa có file — plan_integrity lo (không double-fail)
         if not acs:
-            continue  # FEAT chưa có file (plan_integrity bắt) / file không đánh số AC
+            # File TỒN TẠI nhưng 0 heading `### AC-n`: feature in-scope không thể trace coverage →
+            # lọt verify (planning_lint chỉ ép epic_ref/feat_type, KHÔNG ép có AC). KHÔNG bỏ qua im lặng.
+            if fidU not in deferred:
+                problems.append(
+                    f"{fidU}: FEAT có file nhưng KHÔNG có AC `### AC-n` nào — feature không verify được "
+                    f"(viết AC theo TEMPLATE.feat, hoặc khai deferred ở wave plan)"
+                )
+            continue
         for ac in sorted(acs):
             if fidU in deferred or f"{fidU}:{ac}" in deferred or ac in deferred:
                 continue
@@ -2086,6 +2095,7 @@ _H2_BUILD_MARKERS = ("com.h2database", "h2database")
 _DDL_CREATE_DROP_RE = re.compile(r"ddl-auto\s*[:=]\s*create-drop", re.IGNORECASE)
 _JDBC_H2_RE = re.compile(r"jdbc:h2:", re.IGNORECASE)
 _APP_CONFIG_NAMES = ("application.yml", "application.yaml", "application.properties")
+_ARCHUNIT_MARKER = "com.tngtech.archunit"  # W5: import ArchUnit = có test enforce layer rule bằng máy
 
 
 def check_code_compliance(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
@@ -2094,7 +2104,9 @@ def check_code_compliance(state: dict, evidence: dict | None = None, root: Path 
     Bắt đúng chuỗi defect e2e mà 'test xanh nhờ H2' che (flyway-postgres thiếu, TIMESTAMP vs TIMESTAMPTZ,
     app chạy in-mem khác prod): mỗi backend boundary đã scaffold phải (a) có `Dockerfile` (dev-done ≠
     runnable nếu thiếu); (b) KHÔNG khai H2 trong build (`com.h2database`); (c) config main KHÔNG
-    `jdbc:h2:` và KHÔNG `ddl-auto: create-drop`; (d) có ≥1 `application.{yml,yaml,properties}`.
+    `jdbc:h2:` và KHÔNG `ddl-auto: create-drop`; (d) có ≥1 `application.{yml,yaml,properties}`;
+    (e) có ≥1 ArchUnit test (`src/test/**/*.java` import `com.tngtech.archunit`) — layer/package rule
+    enforce bằng test DETERMINISTIC thay vì review-agent đọc (W5/L10; PASS do gradle/Stop hook chạy).
     Test (black-box) + review tĩnh không bắt được → cần gate. force=true → bypass (audit decisions.md).
     """
     evidence = evidence or {}
@@ -2144,6 +2156,20 @@ def check_code_compliance(state: dict, evidence: dict | None = None, root: Path 
                 problems.append(f"{bid}: {cfg.name} có `jdbc:h2:` — app chạy in-memory khác prod (dùng Postgres)")
             if _DDL_CREATE_DROP_RE.search(ctxt):
                 problems.append(f"{bid}: {cfg.name} có `ddl-auto: create-drop` — schema tự sinh che migration drift (dùng Flyway/Liquibase)")
+        # (e) ArchUnit — layer rule enforce bằng TEST CHẠY ĐƯỢC, không nhờ review-agent đọc (W5, L10).
+        # Chỉ cần TỒN TẠI: việc PASS đã do gradle/Stop hook chạy (ArchUnit là JUnit test). Deterministic > LLM recall.
+        test_dir = svc / "src" / "test"
+        has_archunit = False
+        if test_dir.is_dir():
+            for jf in test_dir.rglob("*.java"):
+                if _ARCHUNIT_MARKER in jf.read_text(encoding="utf-8", errors="ignore"):
+                    has_archunit = True
+                    break
+        if not has_archunit:
+            problems.append(
+                f"{bid}: thiếu ArchUnit test (src/test/**/*.java import `{_ARCHUNIT_MARKER}`) — "
+                f"layer/package rule phải enforce bằng test deterministic, không chỉ review đọc (ref-backend-pattern §7.5)"
+            )
     if problems:
         return False, "code-compliance backend fail: " + "; ".join(problems)
     return True, ""
@@ -2205,6 +2231,89 @@ def check_contract_test_present(state: dict, evidence: dict | None = None, root:
             "contract/integration TC thiếu cho consumer (cross-boundary không được test): "
             + ", ".join(sorted(missing))
             + " — test-plan thêm ≥1 TC group=contract|integration|e2e nối consumer↔provider"
+        )
+    return True, ""
+
+
+# ========================================================================
+# Journey e2e — chuỗi depends_on ≥3 boundary phải có TC SPAN cả chuỗi (API-driven OK, KHÔNG đợi FE)
+# ========================================================================
+
+_JOURNEY_TC_GROUPS = ("e2e", "integration")
+
+
+def _wave_depends_chains(wave_b: set, root: Path) -> list[list[str]]:
+    """Liệt kê path root→leaf trong đồ thị depends_on (consumer→provider) nội bộ wave, chỉ giữ ≥3 boundary.
+
+    depends_on acyclic (plan_integrity ép no-cycle); dfs có seen-guard phòng hờ. Path maximal (append ở leaf).
+    """
+    graph: dict[str, list[str]] = {}
+    incoming: set[str] = set()
+    for bid in wave_b:
+        b = _matrix_boundary(bid, root) or {}
+        deps = [d for d in (b.get("depends_on") or []) if d in wave_b]
+        graph[bid] = deps
+        incoming.update(deps)
+    sources = [b for b in wave_b if b not in incoming]  # top consumer (không ai depends_on)
+    chains: list[list[str]] = []
+
+    def dfs(node: str, path: list[str], seen: set[str]) -> None:
+        deps = [d for d in graph.get(node, []) if d not in seen]
+        if not deps:
+            if len(path) >= 3:
+                chains.append(list(path))
+            return
+        for d in deps:
+            dfs(d, path + [d], seen | {d})
+
+    for s in sorted(sources):
+        dfs(s, [s], {s})
+    return chains
+
+
+def check_journey_e2e_present(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """Chuỗi depends_on ≥3 boundary (journey đa-hop) phải có ≥1 auto-TC e2e|integration SPAN CẢ CHUỖI.
+
+    `contract_test_present` chỉ ép PAIRWISE (A→B, B→C); bug seam khi A→B→C chạy LIỀN (data transform
+    tích lũy / state chỉ vỡ khi cả chuỗi chạy) lọt pairwise (L10). Journey e2e KHÔNG cần FE — curl drive
+    A→B→C là đủ (group e2e|integration). Chuỗi ≤2 boundary → vacuous (pairwise = full chain). force=bypass.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    wave_id = (state.get("wave") or {}).get("id")
+    if not wave_id:
+        return False, "chưa có wave"
+    wave_b = set(state.get("wave_boundaries") or [])
+    chains = _wave_depends_chains(wave_b, root)
+    if not chains:
+        return True, ""  # không có chuỗi ≥3 hop → không cần journey e2e
+    reg = root / "tracking" / wave_id / "test-case-registry.md"
+    if not reg.is_file():
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — /test-plan phải sinh trước"
+    rows = _parse_md_table_rows(reg.read_text(encoding="utf-8", errors="ignore"), ("tc", "group", "type"))
+    uncovered: list[str] = []
+    for chain in chains:
+        nodes = [c.lower() for c in chain]
+        covered = False
+        for r in rows:
+            if (r.get("type") or "").strip().lower() != "auto":
+                continue
+            if (r.get("group") or "").strip().lower() not in _JOURNEY_TC_GROUPS:
+                continue
+            blob = f"{r.get('boundary','')} {r.get('tags','')}".lower()
+            if all(n in blob for n in nodes):
+                covered = True
+                break
+        if not covered:
+            uncovered.append(" → ".join(chain))
+    if uncovered:
+        return False, (
+            "journey e2e thiếu cho chuỗi đa-hop (pairwise không phủ luồng chạy liền): "
+            + "; ".join(uncovered)
+            + " — test-plan thêm ≥1 auto-TC group=e2e|integration SPAN cả chuỗi (curl API-driven, KHÔNG cần FE; "
+            "boundary/tags tham chiếu ĐỦ mọi boundary trong chuỗi)"
         )
     return True, ""
 
@@ -2358,6 +2467,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "infra_proof"},
         {"kind": "health_proof"},  # stack còn UP + app reachable (kế thừa từ /dev-handoff)
         {"kind": "contract_test_present"},  # consumer cross-boundary phải có TC contract/integration (G4/G6)
+        {"kind": "journey_e2e_present"},  # chuỗi depends_on ≥3 boundary phải có TC span cả chuỗi (L10, API-driven, không đợi FE)
         {"kind": "ui_test_present"},  # mỗi web boundary phải có ≥1 auto-TC UI (chống UI không bao giờ được test thật)
         {"kind": "registry_scope"},   # TC chỉ trace FEAT thuộc scope ≤ wave hiện tại; deferred phải tag (chống over-scope → bug rác)
         {"kind": "ac_coverage"},      # FEAT.AC ↔ TC 2 chiều: AC in-scope phải có TC; TC trace AC không tồn tại = stale
@@ -2426,6 +2536,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_code_compliance(state, evidence)
         if kind == "contract_test_present":
             return check_contract_test_present(state, evidence)
+        if kind == "journey_e2e_present":
+            return check_journey_e2e_present(state, evidence)
         if kind == "ui_test_present":
             return check_ui_test_present(state, evidence)
         if kind == "registry_scope":
@@ -3126,10 +3238,17 @@ def _selftest() -> int:
         (_res / "application.yml").write_text("spring:\n  datasource:\n    url: jdbc:postgresql://db:5432/app\n  jpa:\n    hibernate:\n      ddl-auto: validate\n", encoding="utf-8")
         ok, msg = check_code_compliance(_cc_state, root=_croot)
         assert (not ok) and "PROFILE" in msg, f"thiếu profile file phải fail: {msg}"
-        # (c) thêm profile file → pass
+        # (c) thêm profile file NHƯNG chưa có ArchUnit test → vẫn fail (thiếu ArchUnit)
         (_res / "application-dev.yml").write_text("spring:\n  datasource:\n    url: jdbc:postgresql://dev-db:5432/app\n", encoding="utf-8")
-        assert check_code_compliance(_cc_state, root=_croot)[0] is True, "code_compliance pass khi Postgres + Dockerfile + base + profile"
-        # (d) web boundary bỏ qua (chỉ backend); chưa scaffold → bỏ qua. force bypass
+        ok, msg = check_code_compliance(_cc_state, root=_croot)
+        assert (not ok) and "ArchUnit" in msg, f"thiếu ArchUnit test phải fail: {msg}"
+        # (d) thêm ArchUnit test → pass
+        _at = _svc / "src" / "test" / "java" / "arch"
+        _at.mkdir(parents=True, exist_ok=True)
+        (_at / "ArchitectureTest.java").write_text(
+            "import com.tngtech.archunit.junit.ArchTest;\n// layer rules\n", encoding="utf-8")
+        assert check_code_compliance(_cc_state, root=_croot)[0] is True, "pass khi Postgres+Dockerfile+base+profile+ArchUnit"
+        # (e) web boundary bỏ qua (chỉ backend); chưa scaffold → bỏ qua. force bypass
         (_res / "application.yml").write_text("url: jdbc:h2:mem:x\n", encoding="utf-8")
         assert check_code_compliance(_cc_state, {"force": True}, root=_croot)[0] is True
     finally:
@@ -3168,6 +3287,44 @@ def _selftest() -> int:
         assert check_contract_test_present(_ct_state, {"force": True}, root=_kroot)[0] is True
     finally:
         _shutil.rmtree(_kroot, ignore_errors=True)
+
+    # journey_e2e_present: chuỗi depends_on ≥3 (order→payment→ledger) phải có TC span cả chuỗi.
+    _jroot = Path(_tf_hp.mkdtemp(prefix="gates_je_"))
+    try:
+        (_jroot / "harness").mkdir(parents=True, exist_ok=True)
+        (_jroot / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(json.dumps({"version": 1, "boundaries": [
+            {"boundary_id": "order", "kind": "backend", "prefix": "demo", "depends_on": ["payment"]},
+            {"boundary_id": "payment", "kind": "backend", "prefix": "demo", "depends_on": ["ledger"]},
+            {"boundary_id": "ledger", "kind": "backend", "prefix": "demo"},
+        ]}), encoding="utf-8")
+        _je_state = {"wave": {"id": "wave-001"}, "wave_boundaries": ["order", "payment", "ledger"]}
+        _jew = _jroot / "tracking" / "wave-001"
+        _jew.mkdir(parents=True, exist_ok=True)
+        _jreg = _jew / "test-case-registry.md"
+        # (a) chỉ pairwise (order↔payment, payment↔ledger), KHÔNG span cả chuỗi → fail
+        _jreg.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-I01 | integration | auto | order | FEAT-001 | AC-1 | @order @payment |\n"
+            "| TC-I02 | integration | auto | payment | FEAT-002 | AC-1 | @payment @ledger |\n",
+            encoding="utf-8")
+        ok, msg = check_journey_e2e_present(_je_state, root=_jroot)
+        assert (not ok) and "order → payment → ledger" in msg, msg
+        # (b) thêm TC e2e span cả 3 → pass
+        _jreg.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-E01 | e2e | auto | order | FEAT-001 | AC-1 | @order @payment @ledger |\n",
+            encoding="utf-8")
+        assert check_journey_e2e_present(_je_state, root=_jroot)[0] is True, "TC span cả chuỗi → pass"
+        # (c) wave 2-boundary (không chuỗi ≥3) → vacuous pass
+        _je_state2 = {"wave": {"id": "wave-001"}, "wave_boundaries": ["order", "payment"]}
+        assert check_journey_e2e_present(_je_state2, root=_jroot)[0] is True, "≤2 boundary → vacuous"
+        # (d) force bypass
+        _jreg.write_text("no tc\n", encoding="utf-8")
+        assert check_journey_e2e_present(_je_state, {"force": True}, root=_jroot)[0] is True
+    finally:
+        _shutil.rmtree(_jroot, ignore_errors=True)
 
     # api_transport (G6-B): tenant-id qua query → fail; header/JWT → pass.
     _aroot = Path(_tf_hp.mkdtemp(prefix="gates_at_"))
@@ -3327,6 +3484,12 @@ def _selftest() -> int:
         _ac_state2 = {"wave": {"id": "wave-001"}, "wave_features": ["FEAT-NOFILE"]}
         _acreg.write_text("| TC | group | type | feature | AC |\n|--|--|--|--|--|\n", encoding="utf-8")
         assert check_ac_coverage(_ac_state2, root=_acroot)[0] is True
+        # (e) FEAT CÓ file nhưng 0 AC `### AC-n` → KHÔNG bỏ qua im lặng, phải fail (khe lọt verify đã vá)
+        (_acroot / "docs" / "architecture" / "feat" / "FEAT-NOAC.md").write_text(
+            "# Feat không đánh số AC\nBusiness prose nhưng thiếu heading AC.\n", encoding="utf-8")
+        _ac_state3 = {"wave": {"id": "wave-001"}, "wave_features": ["FEAT-NOAC"]}
+        ok, msg = check_ac_coverage(_ac_state3, root=_acroot)
+        assert (not ok) and "FEAT-NOAC" in msg and "KHÔNG có AC" in msg, f"FEAT 0-AC phải fail: {msg}"
         assert check_ac_coverage(_ac_state, {"force": True}, root=_acroot)[0] is True
     finally:
         _shutil.rmtree(_acroot, ignore_errors=True)

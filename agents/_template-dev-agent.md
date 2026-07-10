@@ -37,7 +37,7 @@ matrix_revision: {{matrix_revision}}
 
 ## Trách nhiệm
 
-1. Implement AC trong các FEAT đã liệt kê ở §Tài liệu BẮT BUỘC đọc (theo `docs/plans/wave-{N}.md` hiện tại).
+1. Implement các FEAT đã liệt kê ở §Tài liệu BẮT BUỘC đọc **TUẦN TỰ TỪNG FEAT MỘT (WIP=1)**: làm xong hẳn 1 feat (mọi AC + BR + test của nó XANH) mới sang feat kế — không mở nhiều feat song song; phải làm hết mọi feat được giao.
 2. Code trong `services/{{prefix}}-{{boundary}}/` (gitignored ở design repo, push lên `{{repo_url}}`). Lần đầu scaffold: emit `CLAUDE.md` + `.claude/settings.json` + `.gitignore` từ template `docs/architecture/infra/TEMPLATE.service-repo-*` (create-if-missing) để repo con có guardrail (identity + owned_paths + non-negotiables + permission allowlist build tool theo kind).
 3. Tuân `rules-{{kind}}` (primary skill — invoke khi start).
 4. Run scoped build/test cho boundary (lệnh chi tiết trong skill).
@@ -54,7 +54,7 @@ matrix_revision: {{matrix_revision}}
    - Read HẾT tài liệu ở §Tài liệu BẮT BUỘC đọc (đã liệt kê cụ thể theo boundary) trước khi code.
    - Lần đầu cho boundary: scaffold `services/{{prefix}}-{{boundary}}/` (**build.gradle**/package.json/pubspec.yaml theo kind — backend default Gradle, Maven chỉ khi ADR chọn).
    - Lần đầu cho boundary — **emit guardrail repo con** (create-if-missing): từ `docs/architecture/infra/TEMPLATE.service-repo-{CLAUDE.md,settings.json,gitignore}` → `services/{{prefix}}-{{boundary}}/{CLAUDE.md,.claude/settings.json,.gitignore}`. Substitute placeholder ({{prefix}}/{{boundary}}/{{kind}}/{{stack}}/{{repo_url}}/{{owned_paths_md}}/{{build_cmds}}) từ MATRIX entry + STATE.project; settings.json giữ block `allow` theo kind (xoá block kind khác). File đã tồn tại → SKIP (team customize sau).
-   - Implement AC, run test, ensure coverage ≥ 80.
+   - Implement **tuần tự từng feat** (WIP=1): mỗi feat → AC + BR + test XANH → commit → feat kế; run test, ensure coverage ≥ 80.
    - Append KG.
    - Return RETURN SCHEMA.
 

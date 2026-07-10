@@ -55,7 +55,7 @@ Khi `/apply-cr` refine AC của FEAT đã có TC:
 - **unit/isolation** (nhiều): domain/service thuần, mock infra. (Dev viết — không vào registry trừ invariant phức tạp.)
 - **functional** (nhiều): 1 hành vi/feature theo 1 AC, scope hẹp.
 - **integration** (vừa): api + DB thật (Testcontainers) / cross-boundary qua contract.
-- **e2e** (ít): journey end-to-end UI→DB, không stub (CHỈ wave full-stack BE+FE).
+- **e2e** (ít): journey end-to-end. **2 dạng:** (a) **UI→DB** không stub — CHỈ wave full-stack BE+FE; (b) **journey đa-hop API-driven** (curl/RestAssured drive A→B→C liền, KHÔNG cần FE) — cho chuỗi `depends_on` ≥3 boundary, **kể cả wave backend-only**. Gate `journey_e2e_present` đòi ≥1 TC span cả chuỗi (boundary/tags tham chiếu đủ mọi boundary) — bug seam khi cả chuỗi chạy liền lọt pairwise (L10).
 - **performance** (chỉ khi NFR latency) · **security** (chạm auth/payment/PII) · **accessibility** (CHỈ wave full-stack FE).
 
 > test_type ưu tiên theo wave strategy (backend-heavy / frontend-heavy / full-stack): xem `SEVERITY-TEST-TAXONOMY §4.2`.
@@ -91,6 +91,7 @@ Mỗi AC sinh TC cho các nhánh sau (bỏ nhánh không áp dụng):
 ## Quy ước
 1. Mỗi AC có ≥ 1 TC happy + TC cho error path/tenant/idempotency áp dụng được.
 2. Smoke test cross-boundary cho mọi integration điểm (login + create + read). **Gate `contract_test_present`:** mỗi consumer boundary (có `depends_on` trong wave) PHẢI có ≥1 auto-TC group=contract|integration|e2e nối tới nó (boundary cell hoặc tags chứa consumer-id) — chống "thiếu liên kết BE-FE" lọt test (BUG-010/011/012).
+   - **Gate `journey_e2e_present` (đa-hop):** khi có chuỗi `depends_on` **≥3 boundary** (A→B→C) trong wave → PHẢI có ≥1 auto-TC `group=e2e|integration` **span cả chuỗi** (boundary/tags tham chiếu ĐỦ A, B, C). Pairwise (contract_test_present) không phủ bug khi cả chuỗi chạy liền. **API-driven (curl) là đủ — KHÔNG cần FE**, nên backend-only wave vẫn validate được luồng đa-service sớm (không hoãn tới wave FE).
 3. P0 = blocker release · P1 = must-have · P2 = nice-to-have (`SEVERITY-TEST-TAXONOMY §3`).
 4. Contract TC: response/enum/error code khớp `api-{boundary}.md` (deep → `specialist-testing`).
 5. **Traceability 2 chiều**: mọi AC `Must` → ≥1 TC (không AC mồ côi); mọi TC → đúng 1 AC (không TC thừa không trace).

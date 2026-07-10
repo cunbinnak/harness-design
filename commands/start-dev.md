@@ -32,7 +32,7 @@ py scripts/build_prompt.py start-dev --boundary order-management
 - Đọc DOCS IN SCOPE inline trong prompt
 - Lần đầu: tạo `services/{project.service_prefix}-{boundary}/` skeleton (**`build.gradle`** / package.json / pubspec.yaml theo kind — backend DEFAULT Gradle, Maven chỉ khi ADR tech-stack chọn)
 - Lần đầu: emit guardrail repo con — `CLAUDE.md` + `.claude/settings.json` + `.gitignore` từ `docs/architecture/infra/TEMPLATE.service-repo-*` (create-if-missing, substitute placeholder từ MATRIX + STATE.project)
-- Implement AC trong FEAT
+- Implement FEAT **tuần tự từng feat một (WIP=1)**: xong hẳn feat 1 (AC + BR + test xanh) → feat 2 → feat 3 → … (không mở nhiều feat song song; làm hết mọi feat được giao)
 - Append KG, return RETURN SCHEMA
 
 ## kind_matrix
