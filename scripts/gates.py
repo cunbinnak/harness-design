@@ -1546,6 +1546,109 @@ def derive_test_result(state: dict, root: Path | None = None) -> str | None:
 
 
 # ========================================================================
+# Feature-state (L05/L07/L08) — DERIVE trạng thái từng FEAT từ bằng chứng, KHÔNG agent tự khai.
+# Ghép các mảnh có sẵn: _feat_file_for + _AC_HEADING_RE (AC của FEAT) · registry (TC↔AC) ·
+# _report_results (TC→result) · _wave_deferred_tokens (defer). Không parser mới.
+# ========================================================================
+
+# State enum (L07 giới hạn 4 — bỏ 'blocked' vì single-repo không có blocker-raise; +'no-file' cho FEAT-id ma).
+_FEAT_STATE_ORDER = ("not_started", "active", "passing", "deferred", "no-file")
+
+
+def derive_feature_states(state: dict, root: Path | None = None) -> list[dict]:
+    """DERIVE trạng thái mỗi FEAT in-scope wave → [{feat, state, ac_pass, ac_total, tcs, note}].
+
+    `passing`  = mọi AC in-scope (`### AC-n`, trừ deferred) có ≥1 TC trace + MỌI TC đó pass ở report.
+    `active`   = một phần AC pass (0 < ac_pass < ac_total) — feature đang dở.
+    `not_started` = 0 AC pass (chưa có TC pass / chưa test).
+    `deferred` = FEAT khai deferred ở wave plan. `no-file` = FEAT-id không có file (plan_integrity lo).
+
+    Không cần registry/report tồn tại: thiếu → mọi feat `not_started` (baseline lúc DEV, trước test).
+    Đây là VIEW (như derive_test_result); nguồn sự thật là phép derive, không phải file materialized.
+    """
+    root = root or REPO_ROOT
+    wave_id = (state.get("wave") or {}).get("id")
+    feats = list(state.get("wave_features") or [])
+    if not feats:
+        for b in (state.get("wave_boundaries") or []):
+            feats += list((_matrix_boundary(b, root) or {}).get("features") or [])
+    if not wave_id or not feats:
+        return []
+    reg_f = root / "tracking" / wave_id / "test-case-registry.md"
+    rep_f = root / "tracking" / wave_id / "test-report.md"
+    deferred = _wave_deferred_tokens(wave_id, root)
+    # (feat, ac) → set TC-id trace nó (từ registry)
+    ac_tcs: dict[tuple[str, str], set[str]] = {}
+    if reg_f.is_file():
+        for r in _parse_md_table_rows(reg_f.read_text(encoding="utf-8", errors="ignore"), ("tc", "feature", "ac")):
+            tc = (r.get("tc") or "").strip().upper()
+            if not re.fullmatch(r"tc-[\w-]+", tc, re.IGNORECASE):
+                continue
+            fids = {m.group(0).upper() for m in _FEAT_TOKEN_RE.finditer(r.get("feature") or "")}
+            acs = {m.group(0).upper() for m in _AC_TOKEN_RE.finditer(r.get("ac") or "")}
+            for f in fids:
+                for a in acs:
+                    ac_tcs.setdefault((f, a), set()).add(tc)
+    results = _report_results(rep_f.read_text(encoding="utf-8", errors="ignore")) if rep_f.is_file() else {}
+    out: list[dict] = []
+    for fid in feats:
+        fidU = str(fid).upper()
+        if fidU in deferred:
+            out.append({"feat": fidU, "state": "deferred", "ac_pass": 0, "ac_total": 0, "tcs": [], "note": "wave plan defer"})
+            continue
+        fp = _feat_file_for(fidU, root)
+        if fp is None:
+            out.append({"feat": fidU, "state": "no-file", "ac_pass": 0, "ac_total": 0, "tcs": [], "note": "FEAT-id không có file"})
+            continue
+        acs = [a.upper() for a in _AC_HEADING_RE.findall(fp.read_text(encoding="utf-8", errors="ignore"))]
+        acs = [a for a in acs if a not in deferred and f"{fidU}:{a}" not in deferred]
+        ac_total = len(acs)
+        ac_pass = 0
+        tcs_all: set[str] = set()
+        for a in acs:
+            tcs = ac_tcs.get((fidU, a), set())
+            tcs_all |= tcs
+            if tcs and all(results.get(t) == "pass" for t in tcs):
+                ac_pass += 1
+        if ac_total == 0:
+            st = "not_started"  # file có nhưng 0 AC — ac_coverage đã fail riêng; ở đây coi chưa khởi động
+        elif ac_pass == 0:
+            st = "not_started"
+        elif ac_pass == ac_total:
+            st = "passing"
+        else:
+            st = "active"
+        out.append({"feat": fidU, "state": st, "ac_pass": ac_pass, "ac_total": ac_total,
+                    "tcs": sorted(tcs_all), "note": ""})
+    return out
+
+
+def render_feature_state_md(state: dict, root: Path | None = None) -> str:
+    """Format derive_feature_states → bảng markdown máy-đọc + người-đọc (clock-in artifact L05)."""
+    rows = derive_feature_states(state, root)
+    wave_id = (state.get("wave") or {}).get("id") or "-"
+    passing = sum(1 for r in rows if r["state"] == "passing")
+    scoped = sum(1 for r in rows if r["state"] not in ("deferred", "no-file"))
+    lines = [
+        f"# Feature State — {wave_id}",
+        "",
+        "> HARNESS-derived (capture_feature_state.py) — KHÔNG sửa tay (FM-PROOF-FORGE). Nguồn sự thật = "
+        "derive từ FEAT `### AC-n` + registry (TC↔AC) + test-report (TC pass). Là clock-in artifact: "
+        "session mới đọc để biết feat nào `passing`/`active`/`not_started` mà không cần dò lại.",
+        "",
+        f"**Tiến độ: {passing}/{scoped} feat in-scope `passing`.**",
+        "",
+        "| FEAT | state | AC pass/total | TCs |",
+        "|---|---|---|---|",
+    ]
+    for r in rows:
+        tcs = ", ".join(r["tcs"]) if r["tcs"] else "—"
+        note = f" ({r['note']})" if r["note"] else ""
+        lines.append(f"| {r['feat']} | {r['state']}{note} | {r['ac_pass']}/{r['ac_total']} | {tcs} |")
+    return "\n".join(lines) + "\n"
+
+
+# ========================================================================
 # ui_test_present + registry_scope (test-plan) — UI phải được test thật + TC không over-scope
 # ========================================================================
 
@@ -3491,6 +3594,35 @@ def _selftest() -> int:
         ok, msg = check_ac_coverage(_ac_state3, root=_acroot)
         assert (not ok) and "FEAT-NOAC" in msg and "KHÔNG có AC" in msg, f"FEAT 0-AC phải fail: {msg}"
         assert check_ac_coverage(_ac_state, {"force": True}, root=_acroot)[0] is True
+
+        # derive_feature_states (L05/L07/L08): trạng thái FEAT derive từ registry + report.
+        # FEAT-T01 có AC-1,AC-2,AC-3(deferred) → in-scope {AC-1,AC-2}. Registry: TC-1→AC-1, TC-2→AC-2.
+        _fs_state = {"wave": {"id": "wave-001"}, "wave_features": ["FEAT-T01"]}
+        _acreg.write_text(
+            "| TC | group | type | boundary | feature | AC | tags |\n"
+            "|----|-------|------|----------|---------|----|------|\n"
+            "| TC-1 | functional | auto | api | FEAT-T01 | FEAT-T01:AC-1 | @FEAT-T01 |\n"
+            "| TC-2 | functional | auto | api | FEAT-T01 | FEAT-T01:AC-2 | @FEAT-T01 |\n", encoding="utf-8")
+        _rep = _acw / "test-report.md"
+        # (a) chưa có report → not_started
+        if _rep.exists():
+            _rep.unlink()
+        d = derive_feature_states(_fs_state, root=_acroot)
+        assert len(d) == 1 and d[0]["state"] == "not_started" and d[0]["ac_total"] == 2, d
+        # (b) report: AC-1 pass, AC-2 chưa → active (1/2)
+        _rep.write_text("| TC | Result |\n|----|--------|\n| TC-1 | PASS |\n", encoding="utf-8")
+        d = derive_feature_states(_fs_state, root=_acroot)
+        assert d[0]["state"] == "active" and d[0]["ac_pass"] == 1, d
+        # (c) cả 2 AC in-scope pass → passing (AC-3 deferred không tính)
+        _rep.write_text("| TC | Result |\n|----|--------|\n| TC-1 | PASS |\n| TC-2 | PASS |\n", encoding="utf-8")
+        d = derive_feature_states(_fs_state, root=_acroot)
+        assert d[0]["state"] == "passing" and d[0]["ac_pass"] == 2 and d[0]["ac_total"] == 2, d
+        # (d) FEAT deferred toàn bộ / no-file
+        assert derive_feature_states({"wave": {"id": "wave-001"}, "wave_features": ["FEAT-NOFILE"]},
+                                     root=_acroot)[0]["state"] == "no-file"
+        # (e) render markdown chứa tiến độ + bảng
+        md = render_feature_state_md(_fs_state, root=_acroot)
+        assert "1/1 feat in-scope `passing`" in md and "| FEAT-T01 | passing" in md, md
     finally:
         _shutil.rmtree(_acroot, ignore_errors=True)
 

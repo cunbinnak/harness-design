@@ -87,6 +87,7 @@
 | "Lịch sử quyết định kiến trúc?" | `docs/architecture/adr/ADR-*.md` |
 | "Domain model + business rule per boundary?" | `knowledge-base/{boundary}.knowledge-graph.yaml` |
 | "Test cases wave hiện tại?" | `tracking/wave-{N}/test-case-registry.md` |
+| "Feat nào xong / đang dở (clock-in)?" | `tracking/wave-{N}/feature-state.md` (HARNESS-derive: passing/active/not_started per FEAT; `py scripts/capture_feature_state.py` refresh) |
 | "Bug đang open?" | `tracking/wave-{N}/bugs.md` |
 | "Skills cho `kind` nào?" | `commands/start-dev.md` § kind_matrix |
 | "Skills cho ``kind`` nào ở đâu?" | ``.claude/skills/<skill-name>/SKILL.md`` (auto-load on-demand bởi Claude Code) |

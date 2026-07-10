@@ -64,7 +64,44 @@ def format_state_brief(state: dict, allowed_cmds: list[str]) -> str:
         f"  last_completed= {last}",
         f"  next          = {next_step_hint(state)}",
     ]
+    fp = _feature_state_progress(wave_id)  # clock-in L05: session mới thấy ngay feat còn dở
+    if fp:
+        lines.append(f"  features      = {fp}")
     return "\n".join(lines)
+
+
+def _feature_state_progress(wave_id: str) -> str:
+    """Đọc tracking/{wave}/feature-state.md → summary 1 dòng cho clock-in (feat active/còn lại).
+
+    Không parse lại report (rẻ) — chỉ đọc bảng derive HARNESS đã ghi. Rỗng nếu chưa có file.
+    """
+    if not wave_id or wave_id == "-":
+        return ""
+    f = REPO_ROOT / "tracking" / wave_id / "feature-state.md"
+    if not f.is_file():
+        return ""
+    passing = active = other = 0
+    active_ids: list[str] = []
+    for line in f.read_text(encoding="utf-8", errors="ignore").splitlines():
+        s = line.strip()
+        if not s.startswith("| FEAT-"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        st = cells[1].split()[0] if cells[1] else ""
+        if st == "passing":
+            passing += 1
+        elif st == "active":
+            active += 1
+            active_ids.append(cells[0])
+        else:
+            other += 1
+    total = passing + active + other
+    if not total:
+        return ""
+    tail = f" · đang dở: {', '.join(active_ids)}" if active_ids else ""
+    return f"{passing}/{total} passing{tail}"
 
 
 def state_header_line(state: dict, allowed_cmds: list[str]) -> str:
@@ -104,11 +141,16 @@ def is_protected_file(rel_path: str) -> bool:
 # tracking/** nói chung ghi tự do (report/bugs/registry), nhưng 3 file này là BẰNG CHỨNG máy đo
 # cho gate infra_proof/health_proof/api_contract_proof — ghi tay được thì cả tầng harness-đo
 # đứng trên thư mục ghi-tự-do (agent fake proof sau khi script chạy).
-PROOF_FILE_RE = re.compile(r"^tracking/[^/]+/(docker-ps|health-proof|api-proof)\.json$")
+PROOF_FILE_RE = re.compile(
+    r"^tracking/[^/]+/((docker-ps|health-proof|api-proof)\.json|feature-state\.md)$")
 
 
 def is_proof_file(rel_path: str) -> bool:
-    """True nếu path là proof file harness-đo (chỉ capture_infra_proof.py được sinh)."""
+    """True nếu path là artifact HARNESS-derive (chỉ script capture_* được sinh, agent KHÔNG ghi tay).
+
+    3 proof-json (capture_infra_proof.py) + feature-state.md (capture_feature_state.py — trạng thái
+    FEAT derive từ report, ghi tay = fake tiến độ). Đều là VIEW của phép derive, không phải file agent khai.
+    """
     if not rel_path:
         return False
     return bool(PROOF_FILE_RE.match(rel_path.replace("\\", "/").lstrip("./")))
@@ -369,6 +411,7 @@ def _selftest() -> int:
     assert is_proof_file("tracking/wave-001/health-proof.json") is True
     assert is_proof_file("tracking/wave-001/docker-ps.json") is True
     assert is_proof_file("tracking/wave-012/api-proof.json") is True
+    assert is_proof_file("tracking/wave-001/feature-state.md") is True  # HARNESS-derive, agent không ghi tay
     assert is_proof_file("tracking\\wave-001\\health-proof.json") is True  # path Windows
     assert is_proof_file("tracking/wave-001/test-report.md") is False
     assert is_proof_file("tracking/wave-001/bugs.md") is False
