@@ -287,6 +287,19 @@ def _pre_bash(payload: dict) -> int:
     return allow_silent()
 
 
+def _handoff_no_code_fix(stage: str | None, spawn_active: str | None, norm_path: str) -> bool:
+    """True = chặn edit services/** vì đang trong dev-handoff (infra-only, #12).
+
+    Gate theo STAGE: chỉ chặn ở DEV_HANDOFF — lúc duy nhất dev-handoff-agent chạy. Ngoài stage đó
+    (REVIEW_DEV/MANUAL_TEST/DEV…) mọi sửa services là fix/dev-agent hợp lệ → KHÔNG chặn oan dù cờ
+    spawn.active còn kẹt (SubagentStop có thể không fire với background Agent tool → cờ stale)."""
+    return (
+        stage == "DEV_HANDOFF"
+        and spawn_active == "dev-handoff-agent"
+        and norm_path.startswith("services/")
+    )
+
+
 def _pre_write_edit(payload: dict) -> int:
     path = _edit_path(payload)
     if policies.is_protected_file(path):
@@ -311,8 +324,11 @@ def _pre_write_edit(payload: dict) -> int:
             return pre_tool_deny(violation)
     # #12: dev-handoff-agent (infra-only) KHÔNG được sửa services/** — lỗi code/migration/Dockerfile
     # của boundary → STOP, báo MAIN spawn fix-{boundary}-agent (Mode B). dev-handoff chỉ sửa docker-compose.yml.
+    # Gate theo STAGE (robust): block CHỈ ở DEV_HANDOFF — lúc duy nhất dev-handoff-agent chạy. Ngoài
+    # stage đó (REVIEW_DEV/MANUAL_TEST/DEV…) mọi sửa services là fix/dev-agent hợp lệ → KHÔNG chặn oan
+    # dù cờ spawn.active còn kẹt (SubagentStop có thể không fire với background Agent tool → cờ stale).
     norm = path.replace("\\", "/").lstrip("./")
-    if (st.get("spawn") or {}).get("active") == "dev-handoff-agent" and norm.startswith("services/"):
+    if _handoff_no_code_fix(stage, (st.get("spawn") or {}).get("active"), norm):
         return pre_tool_deny(
             f"FM-HANDOFF-NO-CODE-FIX: dev-handoff INFRA-ONLY — KHÔNG sửa '{norm}' (code/migration/config/Dockerfile "
             "của boundary). Container chết do lỗi này → STOP, đọc `docker compose logs`, báo root-cause + "
@@ -359,12 +375,18 @@ def _pre_task(payload: dict) -> int:
             )
         # #12: dev-handoff-agent = infra-only → đánh dấu spawn.active để PreToolUse(Write|Edit) chặn
         # sửa services/** (lỗi code boundary phải để fix-agent, KHÔNG dev-handoff tự vá).
-        if "dev-handoff-agent" in prompt.lower():
-            try:
+        try:
+            if "dev-handoff-agent" in prompt.lower():
                 state.setdefault("spawn", {})["active"] = "dev-handoff-agent"
                 state_mod.save_state(state, updated_by="pre_task:dev-handoff")
-            except Exception:
-                pass
+            elif (state.get("spawn") or {}).get("active"):
+                # Spawn agent KHÁC dev-handoff = bằng chứng dev-handoff trước đã return (MAIN đã
+                # chuyển sang agent kế, vd fix-agent). Clear cờ stale ngay tại ranh giới spawn — không
+                # phụ thuộc SubagentStop (có thể không fire với background Agent tool).
+                state["spawn"]["active"] = None
+                state_mod.save_state(state, updated_by="pre_task:clear-stale-spawn")
+        except Exception:
+            pass
         boundary = state.get("active_boundary")
         reminder = policies.boundary_reminder(boundary)
         # PreToolUse can also use additionalContext for inject without deny
@@ -617,6 +639,16 @@ def _selftest() -> int:
     assert _cap({"tool_name": "SlashCommand", "tool_input": {}}) == ""
     # sanity: GATE_RULES chứa harness cmds
     assert {"dev-handoff", "test-plan", "test-execute"} <= set(gates.GATE_RULES)
+    # #12 stage-gate: chặn edit services CHỈ ở DEV_HANDOFF + cờ dev-handoff-agent
+    assert _handoff_no_code_fix("DEV_HANDOFF", "dev-handoff-agent", "services/x/A.java") is True
+    # cờ kẹt nhưng đã sang stage khác (fix Mode B) → KHÔNG chặn oan
+    assert _handoff_no_code_fix("REVIEW_DEV", "dev-handoff-agent", "services/x/A.java") is False
+    assert _handoff_no_code_fix("MANUAL_TEST", "dev-handoff-agent", "services/x/A.java") is False
+    assert _handoff_no_code_fix("DEV", "dev-handoff-agent", "services/x/A.java") is False
+    # đúng stage nhưng không phải services/ (vd docker-compose.yml) → cho qua
+    assert _handoff_no_code_fix("DEV_HANDOFF", "dev-handoff-agent", "docs/architecture/infra/docker-compose.yml") is False
+    # không có cờ → cho qua
+    assert _handoff_no_code_fix("DEV_HANDOFF", None, "services/x/A.java") is False
     print("OK: dispatcher.py selftest passed")
     return 0
 
