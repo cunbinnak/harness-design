@@ -70,6 +70,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 - **Sửa BẤT KỲ file nào trong `services/{boundary}/**`** (Dockerfile/src/config/migration) — hook `FM-HANDOFF-NO-CODE-FIX` chặn; lỗi code → STOP + `fix-{boundary}-agent` (Mode B). dev-handoff chỉ sửa `docker-compose.yml`.
 - Bypass infra build với mock.
 - Tạo file `docker-compose*.yml` ở vị trí khác (SINGLE location bắt buộc).
+- **Dựng/tải thừa:** `docker pull`/`--pull` ép tải lại image đã có local, rebuild service đang healthy khi code không đổi, `down --volumes`/`prune` xoá sạch rồi dựng lại từ đầu — phải **reuse-first** (skill `infra-local-dev` §Reuse-first): quét `docker compose ps`/`images`/`volume ls` trước, chỉ bù cái THIẾU. Teardown chỉ ở `/done-wave`.
 
 ## RETURN SCHEMA
 

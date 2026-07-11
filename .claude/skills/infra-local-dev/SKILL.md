@@ -56,9 +56,22 @@ services:
 volumes: { pg_data: {} }
 ```
 
+## Reuse-first — kiểm tra ĐÃ CÓ GÌ trước khi dựng/tải (KHÔNG cài/pull/build thừa)
+> Nguyên tắc: env dev tồn tại lâu, nhiều thứ đã sẵn từ lần handoff/wave trước. Dựng lại từ đầu = tải lại rác + chậm. **Quét trước, chỉ bù cái THIẾU.**
+```bash
+docker compose ps                                   # service nào đang UP rồi (re-run handoff → có thể đã healthy)
+docker images --format '{{.Repository}}:{{.Tag}}'   # image nền (postgres/redis/kafka) đã pull chưa
+docker volume ls                                    # volume DB đã tồn tại (giữ data) — KHÔNG tạo trùng
+```
+- **Image nền đã có local** → Docker tự dùng cache; **KHÔNG** `docker pull`/`--pull` ép tải lại. Chỉ kéo image THIẾU (compose tự kéo khi up).
+- **Service đã UP+healthy và code boundary KHÔNG đổi** → KHÔNG rebuild/restart thừa. `docker compose up -d --build` dùng layer-cache: chỉ rebuild app boundary có source đổi; infra đang chạy giữ nguyên.
+- **KHÔNG** `docker compose down --volumes` / `docker system prune` / xoá image để "cho sạch" — chỉ teardown ở `/done-wave`. Reset chỉ khi thật sự hỏng (nêu lý do).
+- **Volume/network đã tồn tại → tái dùng**, không nhân bản; không tạo container tên khác cho cùng vai trò.
+
 ## Verify (BẮT BUỘC chạy lệnh + đọc output, không chỉ viết file)
 ```bash
 docker info >/dev/null 2>&1 || { echo "Docker daemon chưa chạy — bật Docker Desktop"; exit 1; }
+# đã quét reuse-first ở trên → up (compose chỉ kéo image thiếu + rebuild service code đổi, giữ cái đang chạy)
 cd docs/architecture/infra && docker compose up -d --build
 # đợi tới khi tất cả healthy (max ~60s)
 for i in $(seq 1 12); do
