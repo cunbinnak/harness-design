@@ -287,17 +287,15 @@ def _pre_bash(payload: dict) -> int:
     return allow_silent()
 
 
-def _handoff_no_code_fix(stage: str | None, spawn_active: str | None, norm_path: str) -> bool:
-    """True = chặn edit services/** vì đang trong dev-handoff (infra-only, #12).
+def _handoff_no_code_fix(spawn_active: str | None, norm_path: str) -> bool:
+    """True = chặn edit services/** vì dev-handoff-agent đang là spawn hoạt động (infra-only, #12).
 
-    Gate theo STAGE: chỉ chặn ở DEV_HANDOFF — lúc duy nhất dev-handoff-agent chạy. Ngoài stage đó
-    (REVIEW_DEV/MANUAL_TEST/DEV…) mọi sửa services là fix/dev-agent hợp lệ → KHÔNG chặn oan dù cờ
-    spawn.active còn kẹt (SubagentStop có thể không fire với background Agent tool → cờ stale)."""
-    return (
-        stage == "DEV_HANDOFF"
-        and spawn_active == "dev-handoff-agent"
-        and norm_path.startswith("services/")
-    )
+    Discriminator = WHO (cờ spawn.active), KHÔNG phải stage: `/dev-handoff` chỉ transition sang
+    DEV_HANDOFF ở `complete` (SAU khi agent chạy xong) → suốt lúc dev-handoff-agent thật sự chạy
+    stage vẫn REVIEW_DEV; và fix-agent (Mode B) CŨNG chạy ở REVIEW_DEV → stage không phân biệt được.
+    Chống cờ stale (SubagentStop có thể không fire với background Agent) → clear ở _pre_task khi MAIN
+    spawn agent khác dev-handoff (bằng chứng dev-handoff đã return)."""
+    return spawn_active == "dev-handoff-agent" and norm_path.startswith("services/")
 
 
 def _pre_write_edit(payload: dict) -> int:
@@ -328,7 +326,7 @@ def _pre_write_edit(payload: dict) -> int:
     # stage đó (REVIEW_DEV/MANUAL_TEST/DEV…) mọi sửa services là fix/dev-agent hợp lệ → KHÔNG chặn oan
     # dù cờ spawn.active còn kẹt (SubagentStop có thể không fire với background Agent tool → cờ stale).
     norm = path.replace("\\", "/").lstrip("./")
-    if _handoff_no_code_fix(stage, (st.get("spawn") or {}).get("active"), norm):
+    if _handoff_no_code_fix((st.get("spawn") or {}).get("active"), norm):
         return pre_tool_deny(
             f"FM-HANDOFF-NO-CODE-FIX: dev-handoff INFRA-ONLY — KHÔNG sửa '{norm}' (code/migration/config/Dockerfile "
             "của boundary). Container chết do lỗi này → STOP, đọc `docker compose logs`, báo root-cause + "
@@ -639,16 +637,13 @@ def _selftest() -> int:
     assert _cap({"tool_name": "SlashCommand", "tool_input": {}}) == ""
     # sanity: GATE_RULES chứa harness cmds
     assert {"dev-handoff", "test-plan", "test-execute"} <= set(gates.GATE_RULES)
-    # #12 stage-gate: chặn edit services CHỈ ở DEV_HANDOFF + cờ dev-handoff-agent
-    assert _handoff_no_code_fix("DEV_HANDOFF", "dev-handoff-agent", "services/x/A.java") is True
-    # cờ kẹt nhưng đã sang stage khác (fix Mode B) → KHÔNG chặn oan
-    assert _handoff_no_code_fix("REVIEW_DEV", "dev-handoff-agent", "services/x/A.java") is False
-    assert _handoff_no_code_fix("MANUAL_TEST", "dev-handoff-agent", "services/x/A.java") is False
-    assert _handoff_no_code_fix("DEV", "dev-handoff-agent", "services/x/A.java") is False
-    # đúng stage nhưng không phải services/ (vd docker-compose.yml) → cho qua
-    assert _handoff_no_code_fix("DEV_HANDOFF", "dev-handoff-agent", "docs/architecture/infra/docker-compose.yml") is False
-    # không có cờ → cho qua
-    assert _handoff_no_code_fix("DEV_HANDOFF", None, "services/x/A.java") is False
+    # #12 discriminator = WHO: cờ dev-handoff-agent đang active + path services/ → chặn (bất kể stage,
+    # vì dev-handoff-agent chạy khi stage vẫn REVIEW_DEV — transition DEV_HANDOFF chỉ ở complete).
+    assert _handoff_no_code_fix("dev-handoff-agent", "services/x/A.java") is True
+    # cờ đã clear (MAIN spawn fix-agent → _pre_task clear) → fix Mode B sửa services được
+    assert _handoff_no_code_fix(None, "services/x/A.java") is False
+    # dev-handoff sửa docker-compose.yml (infra hợp lệ, không phải services/) → cho qua
+    assert _handoff_no_code_fix("dev-handoff-agent", "docs/architecture/infra/docker-compose.yml") is False
     print("OK: dispatcher.py selftest passed")
     return 0
 
