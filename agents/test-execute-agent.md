@@ -75,6 +75,7 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
 - Teardown infra — KHÔNG (giữ UP cho MANUAL_TEST; teardown ở `/done-wave`).
 - Quên field `origin: auto` trong bug ticket.
 - Sửa source code / spawn fix — KHÔNG phải việc test-execute. Bug fix qua `/fix-bugs` ở MANUAL_TEST.
+- **Cài runtime/package-manager lạ** (python/pip/pipx/poetry/uv/conda, ruby/gem, …) — black-box KHÔNG cần: API=`curl`/newman, UI=Playwright (Node, đã có từ FE), perf=`k6`, contract=Pact. Cần HTTP client → `curl` có sẵn, KHÔNG `pip install requests`; cần API-test → curl/newman, KHÔNG tự dựng pytest/schemathesis. Thiếu đúng tool trong bộ này → reuse-first cài RIÊNG tool đó (skill §Loại TC), KHÔNG kéo cả hệ Python/manager.
 
 ## RETURN SCHEMA
 

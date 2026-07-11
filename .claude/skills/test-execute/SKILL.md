@@ -32,7 +32,8 @@ description: Chạy auto TC BLACK-BOX trên hệ thống ĐANG CHẠY (API qua c
 | security | curl negative + dependency scan | 401/403 đúng; injection/authz-bypass bị chặn |
 | accessibility | axe / Lighthouse | 0 critical violation (CHỈ wave full-stack FE) |
 
-> **Reuse-first (mọi tool: Playwright/k6/newman/psql…):** kiểm tra đã có TRƯỚC khi cài — `command -v k6` / `command -v newman` / browser cache; có rồi → dùng luôn, KHÔNG cài lại. Chỉ cài cái THIẾU, cài ở scope local (KHÔNG global system trừ khi bắt buộc). Infra service (DB/app) do `/dev-handoff` dựng + giữ UP — test-execute KHÔNG tự `docker pull`/dựng lại.
+> **Bộ tool black-box CỐ ĐỊNH — KHÔNG kéo runtime lạ:** chỉ dùng đúng cột "Công cụ" ở bảng trên (curl/newman · Playwright/Node · k6 · Pact · axe/Lighthouse). **KHÔNG cài thêm ngôn ngữ/package-manager** (python/pip/pipx/poetry/uv/conda, ruby/gem…) — hệ thống test qua HTTP/UI đang chạy, không build gì. Cần HTTP client → `curl` (luôn có), KHÔNG `pip install requests`; cần chạy loạt API → newman/curl script, KHÔNG tự dựng pytest/schemathesis. Kéo cả hệ Python/manager = thừa + rác đúng nghĩa.
+> **Reuse-first (mọi tool trong bộ trên):** kiểm tra đã có TRƯỚC khi cài — `command -v k6` / `command -v newman` / browser cache; có rồi → dùng luôn, KHÔNG cài lại. Chỉ cài cái THIẾU, scope local (KHÔNG global system trừ khi bắt buộc). Infra service (DB/app) do `/dev-handoff` dựng + giữ UP — test-execute KHÔNG tự `docker pull`/dựng lại.
 
 > Unit/integration (white-box, build từ source) + coverage là của **DEV** (`/start-dev`), KHÔNG chạy lại ở đây.
 
