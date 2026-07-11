@@ -2147,6 +2147,10 @@ def check_contract_graph_parity(evidence: dict | None = None, root: Path | None 
 
 
 _API_ENDPOINT_RE = re.compile(r"`(GET|POST|PUT|PATCH|DELETE)\s+(/[^\s`?]+)")
+# CHỈ ăn dòng KHAI BÁO bảng `| Method · Path | `VERB /path` |` (convention TEMPLATE.api.md).
+# KHÔNG quét văn xuôi: câu tường thuật viết tắt (vd 'Happy: `POST /refunds`' thiếu /api/v1) không
+# phải endpoint khai báo → tránh false-positive contract-drift với runtime OpenAPI.
+_API_DECL_ROW_RE = re.compile(r"^\s*\|\s*Method\W+Path\s*\|", re.IGNORECASE)
 
 
 def _normalize_api_path(path: str) -> str:
@@ -2156,9 +2160,15 @@ def _normalize_api_path(path: str) -> str:
 
 
 def _doc_endpoints(api_file: Path) -> set[tuple[str, str]]:
-    """Endpoint khai trong api-*.md (bảng `Method · Path`) → {(METHOD, path-normalized)}."""
-    text = api_file.read_text(encoding="utf-8", errors="ignore")
-    return {(m.group(1).upper(), _normalize_api_path(m.group(2))) for m in _API_ENDPOINT_RE.finditer(text)}
+    """Endpoint khai trong api-*.md — CHỈ dòng bảng `| Method · Path | `VERB /path` |`
+    (bỏ qua văn xuôi viết tắt) → {(METHOD, path-normalized)}."""
+    out: set[tuple[str, str]] = set()
+    for line in api_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+        if not _API_DECL_ROW_RE.match(line):
+            continue
+        for m in _API_ENDPOINT_RE.finditer(line):
+            out.add((m.group(1).upper(), _normalize_api_path(m.group(2))))
+    return out
 
 
 def check_api_contract_proof(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
@@ -3727,7 +3737,10 @@ def _selftest() -> int:
         assert check_api_contract_proof(_ap_state, root=_aproot)[0] is True
         (_apd / "api-scheduling.md").write_text(
             "## 3.1\n| Method · Path | `POST /api/v1/appointments` |\n"
+            "Happy: `POST /appointments` + headers → 201 (văn xuôi VIẾT TẮT — KHÔNG phải khai báo)\n"
             "## 3.2\n| Method · Path | `GET /api/v1/appointments/{id}` |\n", encoding="utf-8")
+        # văn xuôi `POST /appointments` KHÔNG được trích (nếu bị trích → runtime thiếu → false fail)
+        assert ("POST", "/appointments") not in _doc_endpoints(_apd / "api-scheduling.md")
         # (a) có api doc + endpoint nhưng thiếu proof → fail
         ok, msg = check_api_contract_proof(_ap_state, root=_aproot)
         assert (not ok) and "api-proof.json" in msg, msg
