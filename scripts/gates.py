@@ -814,10 +814,13 @@ def _boundaries_from_boundary_map(root: Path | None = None) -> list[tuple[str, s
     out: list[tuple[str, str]] = []
     cur_kind: str | None = None
     for line in text.splitlines():
-        for pat, kind in section_kind.items():
-            if re.match(pat, line):
-                cur_kind = kind
-                break
+        if re.match(r"^##\s", line):
+            # Bất kỳ heading level-2 nào: set kind nếu là §1/2/3, RESET None nếu khác
+            # (§4 BFF / §5 Dependency / … KHÔNG phải boundary — tránh parse row của
+            #  chúng thành boundary kind=mobile do cur_kind sót lại từ §3).
+            cur_kind = next(
+                (k for pat, k in section_kind.items() if re.match(pat, line)), None
+            )
         else:
             if cur_kind and line.lstrip().startswith("|"):
                 cells = [c.strip() for c in line.strip().strip("|").split("|")]
