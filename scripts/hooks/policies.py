@@ -173,8 +173,14 @@ _DISC_STAGES = {"DISC_D0", "DISC_D1", "DISC_D2", "DISC_D3"}
 PHASE_LOCK_CLASSES = [
     ("discovery", _DISC_STAGES | {_REVIEW},
      re.compile(r"^docs/discovery/|^docs/architecture/PROJECT\.md$")),
-    ("domain", {"DOMAIN_AUTHORING", _REVIEW},
-     re.compile(r"^docs/domain/|^docs/architecture/(epics|feat|journeys|business-rules|personas)/")),
+    # business thuần: author/ký/dịch ở DOMAIN — DESIGN KHÔNG được đụng narrative/AC/rule.
+    ("domain-business", {"DOMAIN_AUTHORING", _REVIEW},
+     re.compile(r"^docs/domain/|^docs/architecture/(epics|journeys|personas)/")),
+    # eng spec feat/BR: dual-owner. Business (AC/rule) do DOMAIN dịch; NHƯNG field kỹ thuật
+    # translator cố ý để mở (enforcement_location/consumes_contracts = `TBD (DESIGN)`) là việc
+    # DESIGN điền (gate todo_resolved @/design-end). Nên DESIGN cũng sửa được lớp này.
+    ("domain-spec", {"DOMAIN_AUTHORING", "DESIGN", _REVIEW},
+     re.compile(r"^docs/architecture/(feat|business-rules)/")),
     ("design", {"DESIGN", _REVIEW},
      re.compile(r"^docs/architecture/(adr|hld|api|data-model|ux|events|integrations)/")),
     ("plan", {"PLAN", _REVIEW},
@@ -182,7 +188,8 @@ PHASE_LOCK_CLASSES = [
 ]
 _BACK_HINT = {
     "discovery": "lùi qua done-wave→/discovery-start (hoặc sửa ở REVIEW)",
-    "domain": "lùi /domain-po·/domain-ba → DOMAIN (sửa business → /domain-approve → /domain-translate)",
+    "domain-business": "lùi /domain-po·/domain-ba → DOMAIN (sửa business → /domain-approve → /domain-translate)",
+    "domain-spec": "field kỹ thuật (enforcement/contract) → sửa ở DESIGN; narrative/AC → lùi /domain-po·/domain-ba",
     "design": "lùi /design → DESIGN",
     "plan": "về PLAN",
 }
@@ -385,6 +392,14 @@ def _selftest() -> int:
     assert phase_lock_violation("docs/architecture/feat/FEAT-1.md", "DOMAIN_AUTHORING") is None
     assert phase_lock_violation("docs/architecture/feat/FEAT-1.md", "REVIEW") is None
     assert phase_lock_violation("docs/architecture/feat/FEAT-1.md", "DEV") is not None
+    # dual-owner eng spec: DESIGN cũng sửa được feat/BR (điền field kỹ thuật todo_resolved)
+    assert phase_lock_violation("docs/architecture/feat/FEAT-1.md", "DESIGN") is None
+    assert phase_lock_violation("docs/architecture/business-rules/BR-1.md", "DESIGN") is None
+    # nhưng business thuần (epics/journeys/personas + docs/domain) DESIGN KHÔNG đụng
+    assert phase_lock_violation("docs/architecture/epics/EP-1.md", "DESIGN") is not None
+    assert phase_lock_violation("docs/architecture/personas/PS-1.md", "DESIGN") is not None
+    assert phase_lock_violation("docs/domain/feat/FEAT-1.md", "DESIGN") is not None
+    assert phase_lock_violation("docs/domain/business-rules/BR-1.md", "DESIGN") is not None
     # design doc frozen ở PLAN + DEV, sửa được ở DESIGN
     assert phase_lock_violation("docs/architecture/hld/hld-x.md", "PLAN") is not None
     assert phase_lock_violation("docs/architecture/hld/hld-x.md", "DESIGN") is None
