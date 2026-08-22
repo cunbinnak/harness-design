@@ -158,14 +158,23 @@ def main() -> int:
             continue
         if p.name in tpl_names:
             continue                       # template không tự chứng minh mình còn sống
+        if p.name == "HARNESS-CHANGELOG.md":
+            continue                       # changelog là LỊCH SỬ, không phải tham chiếu sống:
+                                           # "từng có" không chứng minh "đang dùng"
         try:
             corpus.append(p.read_text(encoding="utf-8", errors="ignore"))
         except OSError:
             pass
     joined = "\n".join(corpus)
     for name in sorted(tpl_names):
-        if name not in joined:
-            problems.append(f"[template mồ côi] {name} — không chỗ nào nhắc tên; xoá hoặc nối vào flow")
+        if name in joined:
+            continue
+        # Dạng gộp `TEMPLATE.service-repo-{CLAUDE.md,settings.json,gitignore}` — khớp tên nguyên
+        # văn không thấy. Nhận cả tiền tố tới dấu `-` cuối, đứng ngay trước `{`.
+        pre = name.rsplit("-", 1)[0] + "-"
+        if "-" in name and (pre + "{") in joined:
+            continue
+        problems.append(f"[template mồ côi] {name} — không chỗ nào nhắc tên; xoá hoặc nối vào flow")
 
     # 8. command file trên đĩa nhưng chưa sync sang .claude/commands
     synced = {p.stem for p in (ROOT / ".claude" / "commands").glob("*.md")}

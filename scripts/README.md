@@ -1,26 +1,46 @@
-# Scripts (v4 kernel)
+# Scripts — kernel Python
 
-Python kernel cho ADLC Design Harness. ~10 file core.
+Bảng dưới là **danh sách đầy đủ**. Trước đây nó liệt kê 12/23 file — bản chép tay thiếu quá nửa
+mà không ai thấy, vì thiếu thì không gây lỗi gì. Thêm script mới thì thêm dòng ở đây; quên thì
+`doc_integrity` không bắt được, nhưng `selftest_all.py --list` sẽ lộ ra chỗ chênh.
 
-## Inventory
+## Bắt đầu một project mới
+
+```bash
+py scripts/bootstrap.py <mã-project> --name "Tên" --prefix cb
+```
+
+COPY bộ khung ra thư mục riêng, dọn artifact, đặt danh tính, `git init` sạch. **Bản khung giữ
+nguyên** — không fork, không phải nhớ chạy reset, không mang lịch sử git của khung sang.
+
+## Danh sách
 
 | Script | Mục đích |
-|--------|----------|
-| `harness.py` | CLI thin wrapper (gọi state.py) |
-| `state.py` | STATE manager: load/save/validate/transition (no history) |
-| `gates.py` | Pure gate functions per command (no side effect) |
-| `build_prompt.py` | Build self-contained spawn prompt per command |
-| `materialize.py` | Per-boundary artifact generator (dev/fix/KG từ MATRIX) |
-| `materialize_matrix.py` | Ghi SERVICE-BOUNDARY-MATRIX.json (stage PLAN, gate stage, validate) |
-| `discovery_gate.py` | Gate D0-D3 (port từ ZIP, adapt single-repo) |
-| `harness_lib.py` | Helper dùng chung: repo_root · load_json · save_json · utc_now_iso |
-| `smoke_test.py` | E2E state machine walkthrough (28 assertions) |
+|---|---|
+| `bootstrap.py` | Dựng project mới từ khung (copy → dọn → danh tính → kiểm → git init) |
+| `harness.py` | CLI mỏng, gọi `state.py` |
+| `state.py` | Quản STATE: load/save/validate/transition + in mục tự-xác-nhận |
+| `gates.py` | Hàm gate thuần + `GATE_RULES` (nguồn duy nhất; `--list` để in) |
+| `build_prompt.py` | Dựng prompt tự chứa cho sub-agent theo từng chốt |
+| `next_wave.py` | Đóng wave / mở wave: snapshot, đánh dấu, re-arm, **KHÔNG reset** |
+| `decide.py` | Ghi 1 quyết định vào `tracking/decisions.md` (từ chối dòng không dẫn về artifact) |
+| `approve_document.py` | Stamp `APPROVED`/`ACTIVE` vào frontmatter lớp doc |
+| `domain_approve.py` | Ký lớp nghiệp vụ `docs/domain/` |
+| `discovery_gate.py` | Gate D0-D3 |
+| `planning_lint.py` | Lint tài liệu kế hoạch |
+| `wave_sequence_lint.py` | Lint `WAVE-SEQUENCE.md` |
+| `materialize.py` | Sinh artifact per-boundary (dev/fix agent, KG) từ MATRIX |
+| `materialize_matrix.py` | Ghi `SERVICE-BOUNDARY-MATRIX.json` |
+| `capture_infra_proof.py` | Sinh proof hạ tầng/health — **chỉ script này được ghi**, ghi tay = FM-PROOF-FORGE |
+| `capture_feature_state.py` | Derive `feature-state.md` từ registry + report |
+| `doc_integrity.py` | Soi tài liệu trôi khỏi code (lệnh ma · gate ma · số lệnh sai · link chết · template mồ côi) |
+| `selftest_all.py` | Chạy MỌI phép tự kiểm — **tự dò**, không chép danh sách |
+| `smoke_test.py` | E2E state machine |
 | `sync_commands.py` | Sync `commands/*.md` → `.claude/commands/` |
-| `reset_for_new_project.py` | Clear v4 artifacts khi fork repo |
-| `hooks/dispatcher.py` | Single entry route 9 hook events |
-| `hooks/policies.py` | Pure check functions cho hooks |
-
-> (LOC column bỏ — drift mỗi lần sửa, không có giá trị contract.)
+| `reset_for_new_project.py` | Dọn artifact TẠI CHỖ (bootstrap gọi lại; dùng trực tiếp khi bản làm việc đã bẩn) |
+| `harness_lib.py` | Helper: `repo_root` · `load_json` · `save_json` · `utc_now_iso` |
+| `hooks/dispatcher.py` | Một cửa vào cho 9 sự kiện hook |
+| `hooks/policies.py` | Hàm kiểm thuần cho hook (phase-lock · protected · token drift) |
 
 ## Entry points
 

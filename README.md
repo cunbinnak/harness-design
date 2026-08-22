@@ -11,12 +11,17 @@ pip install -r requirements-harness.txt
 py scripts/harness.py state             # STATE hiện tại (mặc định BOOTSTRAP)
 ```
 
-Fork cho project mới:
+Dựng một project mới:
 
 ```bash
-py scripts/reset_for_new_project.py     # dọn artifact của project cũ
-py scripts/harness.py state             # xác nhận stage=BOOTSTRAP
+py scripts/bootstrap.py <mã-project> --name "Tên dự án" --prefix cb
 ```
+
+COPY bộ khung ra thư mục riêng (`../<mã-project>`), dọn artifact, đặt danh tính, `git init` sạch.
+**Bản khung giữ nguyên, dùng lại được** — đừng làm việc trực tiếp trong nó: chạy thử một wave là
+nó bẩn, và `archive/wave-N/` kiêm cờ "wave đã đóng" nên project sau sinh ra đã đóng sẵn wave 1.
+
+Bản làm việc lỡ bẩn rồi → `py scripts/reset_for_new_project.py --confirm` dọn tại chỗ.
 
 ## 7 lệnh
 
@@ -69,7 +74,9 @@ KHÔNG sửa `harness/STATE.json` bằng tay — hook chặn.
 │   ├── build_prompt.py            Dựng prompt tự chứa
 │   ├── next_wave.py               Đóng wave / mở wave — snapshot, KHÔNG reset
 │   ├── decide.py                  Ghi quyết định khi gặp mơ hồ (agent tự gọi)
+│   ├── bootstrap.py               Dựng project mới từ khung (copy, không fork)
 │   ├── doc_integrity.py           Chống tài liệu trôi khỏi code
+│   ├── selftest_all.py            Chạy mọi phép tự kiểm (tự dò)
 │   ├── smoke_test.py              E2E state machine
 │   └── hooks/{dispatcher,policies}.py
 ├── docs/
@@ -106,10 +113,7 @@ KHÔNG sửa `harness/STATE.json` bằng tay — hook chặn.
 ## Kiểm tra sau khi cài
 
 ```bash
-py scripts/gates.py --selftest    # gate
-py scripts/state.py validate      # STATE schema
-py scripts/smoke_test.py          # E2E state machine
-py scripts/doc_integrity.py       # tài liệu có trôi khỏi code không
+py scripts/selftest_all.py        # chạy MỌI phép tự kiểm (tự dò, không sót)
 ```
 
-Bốn cái xanh → cài đặt OK.
+Xanh hết → bộ khung lành.

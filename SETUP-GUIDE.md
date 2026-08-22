@@ -15,16 +15,23 @@ pip install -r requirements-harness.txt
 py scripts/harness.py state          # STATE hiện tại (mặc định BOOTSTRAP)
 ```
 
-## Fork cho project mới
+## Dựng một project mới
 
 ```bash
-git clone <fork-url> && cd <project>
-py scripts/reset_for_new_project.py    # dọn artifact của project cũ
-py scripts/harness.py state            # phải thấy stage: BOOTSTRAP
+py scripts/bootstrap.py <mã-project> --name "Tên dự án" --prefix cb
+py scripts/bootstrap.py <mã-project> --dry-run          # xem trước, không ghi
 ```
 
-`reset_for_new_project.py` dọn cả `archive/wave-*/` — thư mục đó kiêm **cờ "wave đã đóng"**, để sót
-thì wave 1 của project mới bị coi là đã đóng và không đóng lại được.
+COPY khung ra `../<mã-project>` (đổi bằng `--target`), dọn artifact, đặt
+`STATE.project.{id,display_name,service_prefix}`, kiểm rồi `git init` + commit đầu.
+
+**Đừng làm việc trực tiếp trong bản khung.** Chạy thử một wave là nó bẩn; `archive/wave-N/` kiêm
+**cờ "wave đã đóng"** nên project fork sau sinh ra đã đóng sẵn wave 1 và không đóng lại được.
+Bootstrap không copy `archive/`, `services/`, `.git/`, zip, `HARNESS-CHANGELOG.md` (nhật ký của
+khung, không phải của sản phẩm) và permission cá nhân.
+
+Bản làm việc lỡ bẩn rồi → `py scripts/reset_for_new_project.py --confirm` dọn tại chỗ (bootstrap
+gọi lại chính script này, nên hai đường không lệch nhau).
 
 ## Vòng chạy hằng ngày
 
@@ -93,11 +100,8 @@ KHÔNG mở khoá được thứ hook chặn.
 ## Kiểm tra sức khoẻ bộ khung
 
 ```bash
-py scripts/gates.py --selftest      # gate
-py scripts/state.py validate        # STATE khớp schema
-py scripts/smoke_test.py            # E2E state machine
-py scripts/doc_integrity.py         # tài liệu có trôi khỏi code không
-py scripts/next_wave.py --selftest  # đóng/mở wave
+py scripts/selftest_all.py          # chạy MỌI phép tự kiểm (tự dò, không sót)
+py scripts/selftest_all.py --list   # xem sẽ chạy những gì
 ```
 
 ## Gỡ rối

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Reset harness for a new project (v4 — TODO: full rewrite).
 
 ⚠️ STATUS: STUB — script này chưa được update cho v4 structure.
@@ -44,6 +44,7 @@ TODO Step 21+: Rewrite full v4 implementation.
 from __future__ import annotations
 
 import argparse
+import re
 import json
 import shutil
 import sys
@@ -258,12 +259,22 @@ def collect_targets() -> dict[str, list[Path]]:
     except Exception:
         pass
 
-    # Also: any agents/*.md not in CORE_AGENTS (stale boundary agents)
+    # Agent materialize theo boundary — nhận diện bằng HÌNH DẠNG TÊN, không bằng danh sách trắng.
+    #
+    # Bản cũ xoá "mọi *-agent.md KHÔNG có trong CORE_AGENTS". Danh sách trắng chép tay thì trôi:
+    # đo được nó thiếu `domain-translator-agent.md` và `ux-designer-agent.md`, nên reset ÂM THẦM
+    # XOÁ hai agent singleton — ai chạy reset là mất chúng, và không có gì báo.
+    #
+    # Đổi chiều fail-safe: cái gì KHỚP mẫu materialize thì xoá, còn lại GIỮ. Agent lạ → giữ (rác
+    # còn dọn tay được); agent singleton bị xoá nhầm → phải đi tìm lại ở git.
     agents_dir = root / "agents"
     if agents_dir.is_dir():
+        materialized = re.compile(r"^(dev|fix|review)-[a-z0-9]+-[a-z0-9-]+-agent\.md$")
         for f in agents_dir.glob("*-agent.md"):
+            if not materialized.match(f.name):
+                continue                     # singleton / template → GIỮ
             if f.name in CORE_AGENTS:
-                continue
+                continue                     # review-{kind}-agent trùng hình dạng nhưng là singleton
             if f not in targets["remove"]:
                 targets["remove"].append(f)
 

@@ -4747,4 +4747,6 @@ def _selftest() -> int:
 
 if __name__ == "__main__":
     import sys
+    # `--selftest` khai TƯỜNG MINH (dù chạy selftest là mặc định) để `selftest_all.py` dò
+    # thấy — hợp đồng dò là "có chuỗi `--selftest`", không phải "đọc được ý định".
     sys.exit(_print_rules() if "--list" in sys.argv else _selftest())
