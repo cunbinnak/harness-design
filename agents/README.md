@@ -34,7 +34,7 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (17 s
 | Command | Agent | Skill primary | Output chính |
 |---------|-------|---------------|--------------|
 | `/design` | [solution-architect-agent](solution-architect-agent.md) | `technical-design` | ADR + HLD + API + data-model + events + integrations + infra/docker-compose (KHÔNG UX) |
-| `/design-ux` | [ux-designer-agent](ux-designer-agent.md) | `ux-design` | `ux/ux-{boundary}.md` + `ux/design-tokens.css` (FE boundary — chạy SAU /design, consume api-{be}.md) |
+| `/design-ux` | [ux-designer-agent](ux-designer-agent.md) | `ux-design` | `ux/ux-{boundary}.md` + `ux/design-tokens.css` (FE boundary — chạy SAU /domain, consume api-{be}.md) |
 | `/plan` | [program-planner-agent](program-planner-agent.md) | `implementation-plan` | WAVE-SEQUENCE + wave-*.md + MATRIX + materialize per-boundary dev/fix/KG |
 
 ### Review (5 singletons)
@@ -66,9 +66,8 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (17 s
 
 | Agent | Command | Skill primary | Stage transition |
 |-------|---------|---------------|------------------|
-| [apply-cr-agent](apply-cr-agent.md) | `/apply-cr <CR-ID>` | `business-analysis` | DONE → DOMAIN_AUTHORING (CR feature → po/ba → ký → translate; kiến trúc-only → /domain-end thẳng) |
 
-## Materialize per-boundary (after /plan)
+## Materialize per-boundary (after /domain)
 
 Sau `/plan` + `/start-wave`, `materialize.py` gen per boundary:
 

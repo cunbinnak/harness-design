@@ -39,4 +39,4 @@ git diff --name-only main...HEAD
 - WebView load URL không tin / nhận deeplink không validate; hardcode API key trong asset.
 
 ## Output
-RETURN SCHEMA: `review_result`, `open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.
+RETURN SCHEMA: `review_result`, `no_open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.

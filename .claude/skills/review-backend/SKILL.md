@@ -14,7 +14,7 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 - Invoke bởi `review-backend-agent` ở `/run-wave` (state REVIEW_DEV). Đây là **source of truth**.
 - Quy trình: chạy build/test scoped (**Gradle default**: `./gradlew test jacocoTestReport checkstyleMain`; Maven `mvn -q test jacoco:report` nếu ADR chọn Maven) + `git diff --name-only main...HEAD` → đi qua **Review Checklist** bên dưới → phân loại severity.
 - **Coverage** theo kind (backend ≥ 80%) — dưới ngưỡng = BLOCKER.
-- Có **BLOCKER/MAJOR** hoặc build/test/coverage fail → **GHI row vào `tracking/{wave}/review-findings.md`** (KHÔNG tự spawn fix). **MAIN** đọc findings → spawn `fix-{prefix}-{boundary}-agent` (Mode B) → re-review. Review chỉ đánh giá + ghi findings + trả `open_findings`.
+- Có **BLOCKER/MAJOR** hoặc build/test/coverage fail → **GHI row vào `tracking/{wave}/review-findings.md`** (KHÔNG tự spawn fix). **MAIN** đọc findings → spawn `fix-{prefix}-{boundary}-agent` (Mode B) → re-review. Review chỉ đánh giá + ghi findings + trả `no_open_findings`.
 - Kết thúc: `review_result = pass` chỉ khi `open_findings == 0` (không còn BLOCKER/MAJOR), gate (coverage/build/test) pass, và verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}. (Field JSON trả về theo `RETURN_SCHEMA_TEMPLATE` ở `build_prompt.py` + task_list `/run-wave` — skill KHÔNG định nghĩa schema.)
 
 ## Vai trò reviewer

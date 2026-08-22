@@ -157,8 +157,7 @@
       "description": "Wave đã đóng mềm. /next-wave: snapshot wave vừa xong → còn wave trong WAVE-SEQUENCE thì mở wave kế (WAVE_OPEN), hết wave thì teardown về BOOTSTRAP. KHÔNG reset tài liệu.",
       "allowed_commands": [
         "next-wave",
-        "done-wave",
-        "apply-cr"
+        "done-wave"
       ],
       "allowed_spawn": false,
       "read_only_spawn_always": true
@@ -319,15 +318,6 @@
       "evidence_required": {
         "teardown_ok": true
       }
-    },
-    {
-      "from": "DONE",
-      "to": "DOMAIN_AUTHORING",
-      "trigger": "apply-cr",
-      "evidence_required": {
-        "cr_id": "any"
-      },
-      "note": "CR amendment re-enter DOMAIN_AUTHORING: feature mới → /domain-po//domain-ba author business → /domain-approve → /domain-translate; CR chỉ kiến trúc → /domain-end qua thẳng → /design → /design-end → /plan → REVIEW → /start-wave."
     },
     {
       "from": "DESIGN",

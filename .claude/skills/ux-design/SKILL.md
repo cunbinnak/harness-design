@@ -77,5 +77,48 @@ Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/run-wave đối chi�
 - [ ] A11y WCAG 2.1 AA checklist pass.
 - [ ] Handoff notes có edge case dev dễ sót.
 
+## Thứ tự BẮT BUỘC: design system TRƯỚC, mockup SAU
+
+Đảo thứ tự là mất tác dụng — token rút ra từ mockup đã vẽ chỉ là bản mô tả những màu đã lỡ chọn, không phải quyết định. Và phản hồi "chữ nhỏ quá" lẽ ra sửa MỘT token rồi lan ra mọi màn, nay thành đi sửa tay từng file.
+
+`docs/architecture/ux/DESIGN-SYSTEM.md` (chép từ `TEMPLATE.DESIGN-SYSTEM.md`) khai phần **máy không suy được từ `design-tokens.css`**:
+
+| § | Khai gì | Ai dùng về sau |
+|---|---|---|
+| §1 | **Ba tính từ + neo tham chiếu THẬT** user chỉ ra ("nhìn như app X") | chỗ đối chiếu khi cãi nhau đẹp/xấu — không có neo thì tranh luận không có đáy |
+| §3 | **Cặp tương phản** (hex chữ / hex nền / loại) | gate **tự tính tỉ số WCAG**, không tin lời khai |
+| §4 | **Kho component ĐÓNG** — mỗi khối: dùng ở màn nào + **trạng thái bắt buộc** | vai `picky` ở `/dogfood` đi kiểm đúng cột này trên app đã render |
+| §5 | **Ba khuôn** rỗng / lỗi / đang tải | năm màn không được đẻ ra năm kiểu báo lỗi |
+
+**§4 là mục dễ bỏ nhất và đắt nhất khi bỏ.** Thiếu trạng thái "đang gửi (khoá lại)" chính là cái bấm-hai-lần mà vai `rushed` sẽ tìm thấy — và lúc đó đã code xong. Component không dùng ở màn nào → **xoá dòng**, đừng giữ cho đủ bộ.
+
+Mockup chỉ được **lắp từ kho §4** và dùng `var(--…)` từ SoT. Cần khối mới → thêm dòng ở §4 trước, không vẽ khối lạ tại chỗ. Thiếu token → thêm vào `design-tokens.css`, không gõ thẳng hex.
+
+Gate `design_system_closed` @ `/domain` chốt 7 kiểm cả bốn mục.
+
+## Chốt mockup — DỪNG cho user xem
+
+Vẽ xong toàn bộ màn trong SCREEN-MAP thì **DỪNG**, không đi tiếp:
+
+1. Đưa user danh sách đường dẫn mockup, nói rõ **mở thẳng bằng trình duyệt** (`file://`, không cần server). Gợi ý màn nên xem trước: màn đầu tiên của luồng FEAT Must.
+2. Mời đi hết một luồng như persona chính — bấm được, thấy đủ state (rỗng/lỗi/đang tải).
+3. Ghi từng lượt phản hồi vào `SCREEN-MAP.md` §Chốt.
+4. **Phản hồi về hình thức** ("chữ nhỏ quá", "màu chìm quá") → sửa **TOKEN** ở `design-tokens.css` rồi để nó lan ra mọi màn. **KHÔNG sửa tay từng file mockup** — sửa tay là mất đúng tác dụng của việc có design token, và pha code sẽ thừa hưởng mớ lệch đó.
+5. Lặp tới khi user nói **chốt** → ghi `Chốt bởi user: <ngày ISO>` vào `SCREEN-MAP.md`.
+
+Gate `mockup_signed` @ `/approve-document` đòi đúng dòng đó khi có boundary web/mobile. Chưa chốt = chưa mở cổng wave được.
+
+Khuôn ghi ở cuối `SCREEN-MAP.md`:
+
+```markdown
+## Chốt
+
+| Ngày | Phản hồi | Xử (token nào đổi / màn nào sửa) |
+|---|---|---|
+| 2026-08-22 | chữ trong bảng nhỏ, khó đọc ngoài sáng | `--font-size-sm` 12px → 14px |
+
+Chốt bởi user: 2026-08-22
+```
+
 ## Done
 - `ux-{boundary}.md` (theo template) đủ user flow + screens + states + a11y + permission UI cho mọi FEAT Must của FE boundary.

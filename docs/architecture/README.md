@@ -35,7 +35,6 @@ docs/architecture/
 | DESIGN | `/design` solution-architect | ADR + HLD + API + data-model + UX + events + integrations + infra/docker-compose |
 | PLAN | `/plan` program-planner | (none here — đọc; ghi docs/plans/ + MATRIX) |
 | `/review-document` | review-document-agent | Revise theo user feedback hoặc sanity check |
-| `/apply-cr` | apply-cr-agent | Edit liên quan CR scope change (DESIGN amendment) |
 
 ## Boundary types
 

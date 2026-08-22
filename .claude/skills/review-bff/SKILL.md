@@ -37,4 +37,4 @@ git diff --name-only main...HEAD
 - Tin `userId`/`tenantId` từ GraphQL args thay vì context; introspection bật ở prod; không depth/complexity limit.
 
 ## Output
-RETURN SCHEMA: `review_result`, `open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.
+RETURN SCHEMA: `review_result`, `no_open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.

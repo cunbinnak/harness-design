@@ -5,7 +5,7 @@ command: review-dev
 kind_filter: mobile
 primary_skill: review-mobile
 secondary_skills: [rules-mobile]
-orchestrated_by: "MAIN loop /review-dev — review GHI findings + trả open_findings; MAIN (không phải review) spawn fix Mode B"
+orchestrated_by: "MAIN loop /run-wave — review GHI findings + trả open_findings; MAIN (không phải review) spawn fix Mode B"
 kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 ---
 

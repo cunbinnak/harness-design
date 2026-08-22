@@ -92,8 +92,6 @@ CORE_AGENTS = frozenset({
     "dogfood-mobile-agent.md",
     "end-wave-agent.md",
     "done-wave-agent.md",
-    # side
-    "apply-cr-agent.md",
 })
 
 

@@ -70,54 +70,52 @@ tracking/
 
 - review ghi row `status=open`; fix Mode B sửa → set `resolved`; review re-review xác nhận.
 - **Gate `no_open_findings`** reject `/review-dev complete` nếu còn row `severity ∈ {BLOCKER, MAJOR}` mà `status=open`. `MINOR/NIT/QUESTION` không chặn (set `accepted`/`wontfix`).
-- Khác `bugs.md`: findings là **pre-handoff, ephemeral theo wave**; bugs là auto/manual (test-execute/UAT) sống tới end-wave.
+- Findings sống **theo wave, trước bàn giao**: rà sạch thì đóng, không mang sang wave sau.
 
-## CR per-wave
+## Đổi ý giữa chừng
 
-Change Request lưu trong **wave folder bị ảnh hưởng**, không cross-wave global.
+Không có sổ change-request riêng. Phát hiện thiếu sót sau khi wave đã chốt scope → **đẩy sang wave
+sau**: lùi `/domain` (gọi được từ DESIGN/PLAN/REVIEW) sửa tài liệu, wave kế nhận. Sửa tại chỗ một
+wave đã ship là cách chắc chắn nhất làm gãy thứ wave đó đã giao.
 
-- CR-NNN raised mid wave-001 affecting wave-002 → `tracking/wave-002/change-requests/CR-NNN-*.md`
-- Từ DONE state, user chạy `/apply-cr CR-NNN` → analyze CR → DESIGN amendment (`/design` → `/plan` → REVIEW) cập nhật wave-002
-
-## Workflow
+## Chốt nào ghi cái gì
 
 ```
-/review-dev
-  → review-{kind}-agent ghi tracking/wave-{N}/review-findings.md (row/finding)
-  → MAIN đọc findings → spawn fix Mode B → fix set status=resolved → re-review
-  → gate no_open_findings chặn complete tới khi BLOCKER/MAJOR sạch
+review-dev
+  review-{kind}-agent  → review-findings.md (mỗi finding một row)
+  MAIN đọc findings    → spawn fix → fix set status=resolved → review lại
+  gate no_open_findings chặn tới khi BLOCKER/MAJOR sạch
 
-/test-plan
-  → write tracking/wave-{N}/test-case-registry.md (from TEMPLATE)
+test-plan
+  test-plan-agent      → test-case-registry.md
 
-/test-execute
-  → run TCs với proof
-  → write tracking/wave-{N}/test-report.md
-  → append bugs.md nếu fail (origin: auto). KHÔNG fix ở đây
-  → transition MANUAL_TEST (pass HAY fail); bug auto fix qua /fix-bugs
+test-execute
+  test-execute-agent   → test-report.md (BLACK-BOX: gọi API/UI hệ đang chạy)
+  TC fail              → sửa rồi chạy lại chốt này; test_report là nơi duy nhất giữ kết quả
 
-(auto-transition) MANUAL_TEST
-  → stakeholder UAT phát hiện bug → /log-bug "<mô tả>" (origin=manual, log-bug-agent ghi row)
-  → /fix-bugs (sweep mọi bug open: auto + manual) hoặc /fix-bugs <BUG> — fix re-run TC verify
-  → /test-execute re-run full auto suite (regression/bug mới → fix tiếp; loop tới sạch)
-  → write qc-signoff.md với UAT results + sign
+dogfood
+  dogfood-{vai}-agent  → dogfood-report.md (6 lăng kính x 2 đợt)
 
-/end-wave
-  → verify no_open_bugs + qc-signoff signed
-  → finalize qc-signoff.md
-  → state → DONE
+end-wave
+  qc-signoff.md ký + test_result=pass + backward_compat + production_ready → DONE
 
-/done-wave
-  → teardown infra
-  → archive vào handoff/wave-{N}.md
-  → state → BOOTSTRAP
+next-wave
+  next_wave.py         → archive/wave-{N}/ (snapshot TOÀN BỘ tài liệu) + DELIVERED.md
+                         BC-LEDGER §3 và mục "(mỗi wave)" của PRODUCTION-READY bị bỏ tick
 ```
+
+## Sổ sống xuyên wave
+
+| File | Vai trò |
+|---|---|
+| `BC-LEDGER.md` | Sổ hợp đồng surface — §1 tích luỹ vĩnh viễn, §3 rà lại mỗi wave |
+| `PRODUCTION-READY.md` | Sẵn sàng vận hành, 4 nhóm — mục `(mỗi wave)` re-arm khi mở wave |
+| `challenge-log.md` | Chất vấn spec trước khi code — FAIL thì chưa được code |
+| `decisions.md` | Quyết định agent tự ra lúc gặp mơ hồ (`py scripts/decide.py`) |
 
 ## Liên quan
 
 - [agents/test-plan-agent.md](../agents/test-plan-agent.md)
 - [agents/test-execute-agent.md](../agents/test-execute-agent.md)
 - [agents/end-wave-agent.md](../agents/end-wave-agent.md)
-- [agents/done-wave-agent.md](../agents/done-wave-agent.md)
-- [agents/apply-cr-agent.md](../agents/apply-cr-agent.md)
-- Root [CLAUDE.md](../CLAUDE.md) routing table
+- Router [CLAUDE.md](../CLAUDE.md)

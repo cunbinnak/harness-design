@@ -22,6 +22,39 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 # ========================================================================
+# Đọc tài liệu — DÙNG CHUNG
+# ========================================================================
+
+# Hai bước, và thứ tự có lý do: khối comment chiếm TRỌN dòng phải bay cả dòng, không để lại
+# dòng trắng. Parser bảng của mình reset header ở dòng non-pipe, nên một dòng trắng chen giữa
+# header và hàng đầu tiên làm mất luôn cả bảng — vá lỗ này mà đẻ lỗ kia thì không được.
+_COMMENT_LINE_RE = re.compile(r"^[ \t]*<!--.*?-->[ \t]*\r?\n", re.DOTALL | re.MULTILINE)
+COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+
+def live(text: str) -> str:
+    """Nội dung THẬT của tài liệu — đã bỏ khối `<!-- -->`.
+
+    VÌ SAO — template của mình để dòng MẪU trong comment cho người điền dễ bắt chước
+    (`<!-- | TC-001 | FEAT-A-001 | AC-1 | ... | -->`). Đếm mà không bỏ chúng ra thì gate
+    tính cả ví dụ, và **xanh khi chưa ai viết gì** — đúng kiểu hỏng tệ nhất: gate còn đó,
+    báo qua, mà không gác gì.
+
+    Một primitive dùng chung, không strip lẻ ở từng gate: strip lẻ thì gate viết sau quên,
+    và không có gì nhắc.
+    """
+    return COMMENT_RE.sub("", _COMMENT_LINE_RE.sub("", text))
+
+
+def read_live(p: Path) -> str:
+    """Đọc file tài liệu qua `live()`. File không đọc được → chuỗi rỗng (gọi bên ngoài tự xử)."""
+    try:
+        return live(p.read_text(encoding="utf-8", errors="ignore"))
+    except OSError:
+        return ""
+
+
+# ========================================================================
 # Primitive checks
 # ========================================================================
 
@@ -1326,7 +1359,7 @@ def _parse_md_table_rows(text: str, required_cols: tuple[str, ...]) -> list[dict
     """
     rows: list[dict] = []
     header: list[str] | None = None
-    for line in text.splitlines():
+    for line in live(text).splitlines():   # bỏ dòng MẪU trong <!-- --> trước khi đếm
         s = line.strip()
         if not s.startswith("|"):
             header = None
@@ -1638,7 +1671,7 @@ def derive_feature_states(state: dict, root: Path | None = None) -> list[dict]:
         if fp is None:
             out.append({"feat": fidU, "state": "no-file", "ac_pass": 0, "ac_total": 0, "tcs": [], "note": "FEAT-id không có file"})
             continue
-        acs = [a.upper() for a in _AC_HEADING_RE.findall(fp.read_text(encoding="utf-8", errors="ignore"))]
+        acs = [a.upper() for a in _AC_HEADING_RE.findall(read_live(fp))]
         acs = [a for a in acs if a not in deferred and f"{fidU}:{a}" not in deferred]
         ac_total = len(acs)
         ac_pass = 0
@@ -1709,6 +1742,231 @@ def check_features_complete(state: dict, evidence: dict | None = None, root: Pat
 
 
 # ========================================================================
+# design_system_closed (design-end) — có thứ để tuân thủ, trước khi ép tuân thủ
+# ========================================================================
+
+DESIGN_SYSTEM = "docs/architecture/ux/DESIGN-SYSTEM.md"
+_HEX = re.compile(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b")
+CONTRAST_MIN = {"thường": 4.5, "lớn": 3.0, "thành phần": 3.0}
+
+
+def _rgb(hexs: str) -> tuple[int, int, int]:
+    h = hexs.lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+
+
+def _luminance(rgb: tuple[int, int, int]) -> float:
+    def ch(v: float) -> float:
+        v /= 255.0
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    r, g, b = (ch(x) for x in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast_ratio(fg: str, bg: str) -> float:
+    a, b = _luminance(_rgb(fg)), _luminance(_rgb(bg))
+    hi, lo = max(a, b), min(a, b)
+    return round((hi + 0.05) / (lo + 0.05), 2)
+
+
+def check_design_system_closed(evidence: dict | None = None,
+                               root: Path | None = None) -> tuple[bool, str]:
+    """`/design --end`: có boundary web/mobile → DESIGN-SYSTEM.md phải đủ và ĐÓNG.
+
+    VÌ SAO — harness đang ép tuân thủ một design system chưa được định nghĩa đủ: gate `web_styling`
+    bắt FE dùng token, vai `picky` ở `/dogfood` đi kiểm "component thiếu trạng thái bắt buộc" —
+    nhưng **không chỗ nào khai trạng thái bắt buộc là gì**, nên nó không có gì để đối chiếu.
+
+    Kiểm bốn thứ máy KHÔNG suy được từ `design-tokens.css`:
+      §1 ý đồ thị giác (ba tính từ + neo tham chiếu thật — chỗ để đối chiếu khi cãi nhau đẹp/xấu)
+      §3 cặp tương phản — **tự tính tỉ số WCAG từ hex**, không tin lời khai
+      §4 kho component ĐÓNG — mỗi dòng có màn dùng + trạng thái bắt buộc, không ô trống
+      §5 ba khuôn rỗng/lỗi/đang tải (năm màn không được đẻ ra năm kiểu báo lỗi)
+
+    Backend-only → vacuous pass.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    if not ({k for _, k in _boundaries_from_boundary_map(root)} & {"web", "mobile"}):
+        return True, ""
+    f = root / DESIGN_SYSTEM
+    if not f.is_file():
+        return False, (f"có boundary web/mobile nhưng thiếu {DESIGN_SYSTEM} — chép từ "
+                       "TEMPLATE.DESIGN-SYSTEM.md và chốt TRƯỚC khi vẽ mockup "
+                       "(token rút ra từ mockup đã vẽ chỉ là bản mô tả màu đã lỡ chọn)")
+    text = re.sub(r"<!--.*?-->", "", f.read_text(encoding="utf-8", errors="ignore"), flags=re.S)
+    errs: list[str] = []
+
+    def rows(header: str) -> list[list[str]]:
+        m = re.search(rf"^##\s*{header}.*?$(.*?)(?=^##\s|\Z)", text, re.M | re.S)
+        if not m:
+            return []
+        out, seen_sep = [], False
+        for line in m.group(1).splitlines():
+            s = line.strip()
+            if not s.startswith("|"):
+                continue
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
+                seen_sep = True
+                continue
+            if seen_sep and not any("{{" in c for c in cells):
+                out.append(cells)
+        return out
+
+    # §1 ý đồ — phải có nội dung thật, không còn placeholder
+    intent = rows(r"1\.")
+    if not intent:
+        errs.append("§1 ý đồ thị giác chưa điền (ba tính từ + neo tham chiếu THẬT user chỉ ra)")
+
+    # §3 tương phản — TÍNH, không tin lời khai
+    pairs = rows(r"3\.")
+    if not pairs:
+        errs.append("§3 chưa khai cặp tương phản nào")
+    for c in pairs:
+        if len(c) < 4:
+            continue
+        fg, bg = _HEX.search(c[1]), _HEX.search(c[2])
+        if not (fg and bg):
+            errs.append(f"§3 '{c[0]}' thiếu mã hex — không tính được tỉ số")
+            continue
+        loai = next((k for k in CONTRAST_MIN if k in c[3].lower()), "thường")
+        r_ = contrast_ratio(fg.group(0), bg.group(0))
+        if r_ < CONTRAST_MIN[loai]:
+            errs.append(f"§3 '{c[0]}' tương phản {r_} < {CONTRAST_MIN[loai]} ({loai}) "
+                        f"— {fg.group(0)} trên {bg.group(0)}: chữ này người dùng đọc không ra")
+
+    # §4 kho component — đóng, không ô trống
+    comps = rows(r"4\.")
+    if not comps:
+        errs.append("§4 kho component chưa có dòng nào — vai `picky` sẽ không có gì để đối chiếu")
+    for c in comps:
+        if len(c) < 4 or not c[2] or not c[3]:
+            errs.append(f"§4 '{c[1] if len(c) > 1 else '?'}' thiếu 'dùng ở màn' hoặc "
+                        "'trạng thái bắt buộc' — component không dùng ở màn nào thì XOÁ dòng")
+
+    # §5 ba khuôn
+    khuon = {c[0].lower() for c in rows(r"5\.") if c}
+    for need in ("rỗng", "lỗi", "đang tải"):
+        if not any(need in k for k in khuon):
+            errs.append(f"§5 thiếu khuôn '{need}'")
+
+    return (not errs), ("; ".join(errs) if errs else "")
+
+
+# ========================================================================
+# production_ready (next-wave) — bảy chỗ vận hành trước đây không gate nào chạm
+# ========================================================================
+
+PROD_READY = "tracking/PRODUCTION-READY.md"
+PER_WAVE = "(mỗi wave)"       # /next-wave bỏ tick khi mở wave
+LATER = "(sau môi trường thật)"  # gate KHÔNG đếm — harness chưa có bước deploy
+BLANK = "_CHƯA ĐIỀN_"
+
+
+def check_production_ready(state: dict, evidence: dict | None = None,
+                           root: Path | None = None) -> tuple[bool, str]:
+    """Đóng wave: checklist sẵn-sàng-vận-hành không còn dòng bỏ trống.
+
+    VÌ SAO — bảy thứ này trước đây KHÔNG gate nào của harness chạm tới: backup · rate limit ·
+    error tracking · structured log · secret · HTTPS · rollback. Harness gác rất chặt "code có
+    đúng thiết kế không" mà không hỏi "cái này vận hành được chưa".
+
+    KHÔNG đếm mục gắn `(sau môi trường thật)` — backup đã-thử-khôi-phục, HTTPS, push-là-deploy,
+    analytics đang-đếm chỉ làm được khi có nơi chạy thật, mà harness dừng ở `/next-wave`. Ép chúng
+    thì gate thành gate chết bị force-bypass mãi mãi, và gate chết tệ hơn không có gate. Chúng vẫn
+    nằm trong file để không ai quên; chỗ ghi nhận là bảng "Đã cố tình bỏ qua" (cột **Làm lại khi**
+    phân biệt *hoãn* với *bỏ*).
+
+    Đếm THEO TỪNG NHÓM, không gộp một con số: "còn 18 mục" không nói được là đang hổng ở bảo mật
+    hay ở đo đạc. Mục `(mỗi wave)` bị `/next-wave` bỏ tick khi mở wave — đúng cho code cũ không tự
+    đúng cho code mới.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    f = root / PROD_READY
+    if not f.is_file():
+        return False, (f"thiếu {PROD_READY} — chép từ "
+                       "tracking/_templates/TEMPLATE.production-ready.md rồi rà. "
+                       "Bảy chỗ vận hành (backup · rate limit · error tracking · structured log · "
+                       "secret · HTTPS · rollback) hiện không gate nào khác chạm tới")
+    text = read_live(f)
+
+    group, todo = None, {}
+    for line in text.splitlines():
+        if line.startswith("## "):
+            group = line[3:].strip() if line.startswith("## Nhóm") else None
+            continue
+        if group and line.strip().startswith("- [ ]") and LATER not in line:
+            item = line.strip()[5:].strip()
+            m = re.match(r"\*\*(.+?)\*\*", item)  # chỉ lấy TÊN mục, bỏ phần giải thích
+            todo.setdefault(group, []).append(m.group(1) if m else item[:60])
+
+    bad = [f"{g}: còn {len(v)} mục — {v[0][:70]}" + (f" (+{len(v) - 1} nữa)" if len(v) > 1 else "")
+           for g, v in todo.items()]
+    if BLANK in text:
+        bad.append(f"khối Rollback còn {text.count(BLANK)} chỗ {BLANK} — điền TRƯỚC khi hỏng, "
+                   "lúc đó không ai còn bình tĩnh đọc tài liệu dài")
+    if not bad:
+        return True, ""
+    return False, (
+        f"chưa sẵn sàng vận hành ({PROD_READY}):\n      "
+        + "\n      ".join(bad)
+        + f"\n      Mục `{LATER}` KHÔNG bị đếm. Cố tình bỏ mục khác → ghi bảng "
+          '"Đã cố tình bỏ qua" kèm cột **Làm lại khi** rồi mới tick'
+    )
+
+
+# ========================================================================
+# mockup_signed (approve-document) — giao diện phải được NGƯỜI xem và chốt
+# ========================================================================
+
+SCREEN_MAP = "docs/architecture/ux/SCREEN-MAP.md"
+_SIGNED_RE = re.compile(r"^Chốt bởi user\s*:\s*(\d{4}-\d{2}-\d{2})", re.MULTILINE)
+
+
+def check_mockup_signed(evidence: dict | None = None,
+                        root: Path | None = None) -> tuple[bool, str]:
+    """Có boundary web/mobile → mockup phải có dòng `Chốt bởi user: <ISO>` ở SCREEN-MAP.
+
+    VÌ SAO — cả một tầng cơ chế đang ép code bám mockup: `design-tokens.css` là SoT màu/nhịp,
+    gate `web_styling` chặn FE không dùng token, vai dogfood `picky` đo computed style so với
+    token. Tất cả bảo vệ một bản thiết kế mà **chưa ai xem và duyệt**.
+
+    Skill `ux-design` vốn đã dặn "user duyệt đẹp/xấu TRÊN MOCKUP trước khi build" — nhưng lời dặn
+    không để lại hiện vật, nên không phân biệt được "đã duyệt" với "chưa ai mở ra xem".
+
+    Backend-only → vacuous pass (không có gì để duyệt).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    kinds = {k for _, k in _boundaries_from_boundary_map(root)}
+    if not (kinds & {"web", "mobile"}):
+        return True, ""
+    f = root / SCREEN_MAP
+    if not f.is_file():
+        return False, (f"có boundary web/mobile nhưng thiếu {SCREEN_MAP} "
+                       "(mục lục màn — skill `ux-design` sinh trước khi vẽ)")
+    if not _SIGNED_RE.search(f.read_text(encoding="utf-8", errors="ignore")):
+        return False, (
+            f"{SCREEN_MAP} chưa có dòng `Chốt bởi user: <ISO>` — giao diện CHƯA ai xem và duyệt.\n"
+            "      Mở mockup cho user bấm thử (`docs/architecture/ux/mockups/{boundary}/*.html`, "
+            "mở thẳng bằng trình duyệt), sửa theo phản hồi, rồi ghi ngày chốt.\n"
+            "      Phản hồi về hình thức (chữ nhỏ, màu chìm) → sửa TOKEN ở `design-tokens.css` để "
+            "nó lan ra mọi màn, KHÔNG sửa tay từng file mockup."
+        )
+    return True, ""
+
+
+# ========================================================================
 # regression_tc_present (test-plan, wave ≥2) — suite wave cũ phải GIỮ XANH
 # ========================================================================
 
@@ -1730,7 +1988,7 @@ def _delivered_feats(root: Path, before_wave: int) -> dict[str, str]:
             continue
         if n >= before_wave:
             continue
-        for line in f.read_text(encoding="utf-8", errors="ignore").splitlines():
+        for line in read_live(f).splitlines():
             s = line.strip()
             if not s.startswith("|"):
                 continue
@@ -1798,12 +2056,11 @@ def _edge_rows_unanswered(text: str) -> list[str]:
     "Chưa trả lời" = ô Xử lý rỗng, hoặc còn `{{…}}`. `n/a` TÍNH LÀ đã trả lời — mục đích của
     checklist đóng là ép RÀ QUA hết, không phải ép làm hết (mirror BC-LEDGER §3 và ma trận quyền).
     """
-    live = COMMENT_RE.sub("", text) if "COMMENT_RE" in globals() else re.sub(
-        r"<!--.*?-->", "", text, flags=re.DOTALL)
-    m = _EDGE_HDR.search(live)
+    doc = live(text)
+    m = _EDGE_HDR.search(doc)
     if not m:
         return ["<thiếu mục §6.1>"]
-    body = live[m.end():]
+    body = doc[m.end():]
     nxt = re.search(r"^##\s", body, re.MULTILINE)
     if nxt:
         body = body[: nxt.start()]
@@ -1913,7 +2170,7 @@ def _bc_section3(text: str) -> list[str] | None:
     Đếm cả file thì một checkbox ghi chú ở §1/§4 chặn đóng wave vĩnh viễn mà không chỗ nào re-arm nó.
     """
     out: list[str] | None = None
-    for line in text.splitlines():
+    for line in live(text).splitlines():
         if re.match(r"## 3(?!\d)", line):      # đúng §3 — "## 30. Ghi chú" không tính
             out = []
             continue
@@ -1998,7 +2255,7 @@ def check_challenge_passed(state: dict, evidence: dict | None = None,
             "hai AC · ca biên HLD chưa chặn · ô `cấm` trong ma trận quyền · surface wave trước sắp "
             "đụng) rồi tự chấm PASS/FAIL"
         )
-    rows = [l for l in f.read_text(encoding="utf-8", errors="ignore").splitlines()
+    rows = [l for l in read_live(f).splitlines()
             if l.strip().startswith("|") and wave_id in l and "{{" not in l]
     if not rows:
         return False, (
@@ -2050,7 +2307,7 @@ def check_dogfood_done(state: dict, evidence: dict | None = None,
             "viết TC cho (cảnh rỗng câm, lỗi nuốt im lặng, bấm hai lần ra hai bản ghi, "
             "vai A chạm dữ liệu vai B). Chạy /dogfood rồi /end-wave lại"
         )
-    text = f.read_text(encoding="utf-8", errors="ignore").lower()
+    text = read_live(f).lower()
     missing = [l for l in DOGFOOD_LENSES if l not in text]
     if missing:
         return False, (
@@ -2364,7 +2621,7 @@ def check_ac_coverage(state: dict, evidence: dict | None = None, root: Path | No
         if fid not in file_acs_cache:
             fp = _feat_file_for(fid, root)
             file_acs_cache[fid] = (
-                {a.upper() for a in _AC_HEADING_RE.findall(fp.read_text(encoding="utf-8", errors="ignore"))}
+                {a.upper() for a in _AC_HEADING_RE.findall(read_live(fp))}
                 if fp else None
             )
         return file_acs_cache[fid]
@@ -2965,6 +3222,8 @@ GATE_RULES: dict[str, list[dict]] = {
         # Ca biên là thứ AC hạnh phúc không nói tới mà hệ nào cũng gặp — chưa quyết ở HLD thì
         # lúc code agent phải đoán, và mỗi boundary đoán một kiểu.
         {"kind": "edge_cases_decided"},
+        # Có UI: phải có design system ĐỦ + ĐÓNG trước khi ép ai tuân thủ nó.
+        {"kind": "design_system_closed"},
         {"kind": "design_gate"},   # ADR≥3 + INTEG + per-boundary completeness (force bypass + audit). Advance DESIGN→PLAN
         {"kind": "todo_resolved"},  # TODO-engineer/TBD(DESIGN) translator để lại phải điền hết (BR có nơi enforce) (force bypass)
     ],
@@ -2981,6 +3240,9 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "flag", "field": "feedback_processed", "expected": True},
     ],
     "approve-document": [
+        # Giao diện phải được NGƯỜI xem: cả tầng design-tokens + web_styling + vai picky đang
+        # bảo vệ một bản thiết kế mà chưa ai duyệt. Backend-only → vacuous pass.
+        {"kind": "mockup_signed"},
         {"kind": "doc_review"},  # doc-review sanity-check đã chạy + no open BLOCKER/MAJOR gap (force bypass + audit)
         {"kind": "doc_stamped"},  # design/contract doc phải ĐÃ stamp APPROVED/ACTIVE (approve_document.py) — chặn approve chay
         {"kind": "flag", "field": "approved", "expected": True},
@@ -3045,7 +3307,8 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "no_open_bugs"},
         {"kind": "features_complete"},  # WIP=1 ship-gate (L07): KHÔNG feat nào `active` (làm dở) — VCR-ở-điểm-ship
         {"kind": "dogfood_done"},  # đã soi bằng 6 lăng kính persona, không chỉ chạy TC đã viết
-        {"kind": "backward_compat"},  # wave ≥2: hình dạng surface đã giao không bị đổi (dogfood soi LUỒNG, cái này soi SHAPE)
+        {"kind": "backward_compat"},
+        {"kind": "production_ready"},  # wave ≥2: hình dạng surface đã giao không bị đổi (dogfood soi LUỒNG, cái này soi SHAPE)
     ],
     "next-wave": [
         # KHÔNG gate lại: /end-wave chạy ngay trước đã gác đủ (uat_signed · test_passed ·
@@ -3055,9 +3318,6 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "done-wave": [
         {"kind": "flag", "field": "teardown_ok", "expected": True},
-    ],
-    "apply-cr": [
-        {"kind": "non_empty", "field": "cr_id"},
     ],
 }
 
@@ -3136,6 +3396,12 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_edge_cases_decided(evidence)
         if kind == "regression_tc_present":
             return check_regression_tc_present(state, evidence)
+        if kind == "mockup_signed":
+            return check_mockup_signed(evidence)
+        if kind == "design_system_closed":
+            return check_design_system_closed(evidence)
+        if kind == "production_ready":
+            return check_production_ready(state, evidence)
         if kind == "challenge_passed":
             return check_challenge_passed(state, evidence)
         if kind == "discovery_wave":
@@ -3184,6 +3450,27 @@ def check_for_command(
 # ========================================================================
 # Inline self-test (run: py scripts/gates.py)
 # ========================================================================
+
+def _print_rules() -> int:
+    """In GATE_RULES cho người đọc. Thay cho việc CHÉP bảng gate vào tài liệu.
+
+    Bảng chép tay là bản sao thứ hai của sự thật — nó trôi ngay lần đổi gate kế tiếp, và tài liệu
+    trôi thì tệ hơn tài liệu thiếu (người đọc tin nó). Có lệnh in thì không cần chép.
+    """
+    for cmd in sorted(GATE_RULES):
+        rules = GATE_RULES[cmd]
+        if not rules:
+            print(f"{cmd:18} (không gate — self-loop / refine)")
+            continue
+        parts = []
+        for r in rules:
+            k = r.get("kind")
+            extra = ", ".join(f"{x}={r[x]}" for x in ("field", "min", "expected", "pattern", "min_count")
+                              if x in r)
+            parts.append(f"{k}({extra})" if extra else k)
+        print(f"{cmd:18} {' · '.join(parts)}")
+    return 0
+
 
 def _selftest() -> int:
     """Smoke test các primitive functions."""
@@ -4245,10 +4532,30 @@ def _selftest() -> int:
     finally:
         _shutil.rmtree(_cvroot, ignore_errors=True)
 
+    # --- live(): dòng MẪU trong <!-- --> KHÔNG được làm gate xanh -------------
+    # Lỗ này hỏng theo kiểu tệ nhất: gate vẫn còn đó, vẫn báo qua, mà đang đếm ví dụ
+    # của template chứ không đếm cái người viết. Template nào cũng để dòng mẫu trong
+    # comment cho dễ bắt chước, nên nó không phải ca hiếm.
+    _sample = (
+        "| TC | Feature | AC | Type | Group |\n|---|---|---|---|---|\n"
+        "<!-- | TC-001 | FEAT-A-001 | AC-1 | auto | core |  <- dòng mẫu, xoá khi điền -->\n"
+    )
+    assert _parse_md_table_rows(_sample, ("tc", "feature", "ac")) == [], \
+        "dòng mẫu trong <!-- --> vẫn bị đếm là hàng thật"
+    assert _parse_md_table_rows(
+        _sample + "| TC-002 | FEAT-A-001 | AC-2 | auto | core |\n",
+        ("tc", "feature", "ac"))[0]["tc"] == "TC-002", "hàng thật phải còn"
+    assert _bc_section3("## 3. Rà\n<!-- - [ ] mẫu -->\n- [x] API\n") == \
+        ["- [x] API"], "checkbox mẫu trong comment vẫn bị đếm là nợ"
+    assert live("giữ <!-- bỏ --> lại") == "giữ  lại"
+    assert live("a\n<!-- cả dòng -->\nb\n") == "a\nb\n", \
+        "comment chiếm trọn dòng phải bay CẢ dòng — dòng trắng chen vào reset header bảng"
+    print("  ok   live(): dòng mẫu trong <!-- --> không làm gate xanh (3 phép)")
+
     print("OK: gates.py selftest passed")
     return 0
 
 
 if __name__ == "__main__":
     import sys
-    sys.exit(_selftest())
+    sys.exit(_print_rules() if "--list" in sys.argv else _selftest())

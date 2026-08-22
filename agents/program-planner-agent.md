@@ -59,7 +59,7 @@ Roadmap đủ wave + timeline. Mỗi wave plan chi tiết. MATRIX với boundary
 4. Materialize harness/SERVICE-BOUNDARY-MATRIX.json qua `py scripts/materialize_matrix.py <boundaries.json>` (MATRIX là protected file — Edit/Write tool bị hook chặn): array boundaries với fields boundary_id, kind, prefix, purpose, wave, features[], ref_skills[] (situational ref suy từ design step 3: event/cache/extra → ref tương ứng; CRUD thuần để rỗng), tech {language, framework, data_store}, owned_paths (auto từ template), depends_on, consumed_by.
 5. Run: py scripts/materialize.py - script đọc MATRIX → gen 3 file per boundary (dev-agent, fix-agent, KG yaml skeleton).
 6. Verify materialize output: ls agents/dev-* fix-* | wc -l == số boundary; ls knowledge-base/*.knowledge-graph.yaml == số boundary.
-7. Cuối: return `user_confirmed: true` → main chạy `py scripts/harness.py plan complete '{}'` (gate plan_gate: WAVE-SEQUENCE + MATRIX + wave files + KG) → PLAN→REVIEW. Nhắc user: 'Plan done. Review wave plan + MATRIX. Cần chỉnh: /review-document. OK: /approve-document → /start-wave 1.'
+7. Cuối: return `user_confirmed: true` → main chạy `py scripts/harness.py plan complete '{}'` (gate plan_gate: WAVE-SEQUENCE + MATRIX + wave files + KG) → PLAN→REVIEW. Nhắc user: 'Plan done. Review wave plan + MATRIX. Cần chỉnh: /domain. OK: /approve-document → /run-wave 1.'
 
 ## Skills
 

@@ -37,7 +37,7 @@ Thiết kế kỹ thuật phủ TẤT CẢ boundary của dự án (không chỉ
 4. `docs/discovery/BOUNDARY-MAP.md` — topology + quan hệ boundary (D3).
 5. `docs/discovery/boundaries/*/CHARTER.md` — mission/owned-data/capabilities/deps per boundary (D3).
 6. `docs/architecture/epics/EP-*.md` — capability grouping (DOMAIN).
-7. `docs/architecture/feat/FEAT-*.md` — AC + `business_rule_refs` (eng — dịch từ business docs/domain qua /domain-translate; TODO-engineer trong đây DESIGN phải điền, gate todo_resolved).
+7. `docs/architecture/feat/FEAT-*.md` — AC + `business_rule_refs` (eng — dịch từ business docs/domain qua /domain; TODO-engineer trong đây DESIGN phải điền, gate todo_resolved).
 8. `docs/architecture/business-rules/BR-*.md` — domain invariant → API error catalog + data-model state machine.
 9. `docs/architecture/journeys/JOURNEY-*.md` + `personas/PERSONA-*.md` — UX context cho FE boundary.
 10. `docs/discovery/event-storming/ES-*.md` — domain events → events design + data-model (D2).

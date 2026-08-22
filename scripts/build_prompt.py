@@ -14,7 +14,6 @@ Options:
   --mode M            # for domain-po (EPIC|FEATURE|JOURNEY) | domain-ba (BR|PERSONA)
   --wave N            # for start-wave
   --bug-id BUG-NNN    # for fix-bugs
-  --cr-id CR-NNN      # for apply-cr
   --stats             # print size breakdown instead of full prompt
   --save PATH         # write to file (and to stdout)
 """
@@ -1085,38 +1084,6 @@ def build_done_wave(state: dict, matrix: list[dict], opts: dict) -> str:
     return "\n\n".join(parts)
 
 
-def build_apply_cr(state: dict, matrix: list[dict], opts: dict) -> str:
-    cr_id = opts.get("cr_id") or "<CR-NNN>"
-    parts = [
-        f"# SPAWN PROMPT — /apply-cr {cr_id}",
-        f"\nAgent: **apply-cr-agent** · Analyze CR impact + transition DOMAIN_AUTHORING for amendment.",
-        state_bundle(state, {"cr_id": cr_id}),
-        NON_NEGOTIABLES,
-        skills_block(["business-analysis"], available=["implementation-plan"], note="Skill check CR impact lên scope/AC/BR."),
-        docs_to_read([
-            ("CR file", f"tracking/change-requests/{cr_id}-*.md"),
-            ("PROJECT", "docs/architecture/PROJECT.md"),
-            ("Epic/FEAT/BR hiện có (xác định CR thêm mới hay sửa)", "docs/architecture/{epics/EP-*,feat/FEAT-*,business-rules/BR-*}.md"),
-            ("BOUNDARY-MAP (CR có cần boundary mới? → nếu có, dùng done-wave→discovery thay vì apply-cr)", "docs/discovery/BOUNDARY-MAP.md"),
-            ("WAVE-SEQUENCE", "docs/plans/WAVE-SEQUENCE.md"),
-            ("MATRIX", "harness/SERVICE-BOUNDARY-MATRIX.json"),
-        ]),
-        tasks_block([
-            "Invoke skill `business-analysis` để analyze CR impact (+ `implementation-plan` on-demand cho wave-plan impact).",
-            f"Read CR file để hiểu scope change. Phân loại: (a) thêm/đổi FEATURE (product) hay (b) chỉ đổi kiến trúc/contract.",
-            "Identify affected boundaries (cross-reference MATRIX). Nếu CR cần BOUNDARY MỚI (chưa trong BOUNDARY-MAP) → KHÔNG dùng apply-cr; báo user dùng `done-wave` → `/discovery-start D3` (charter boundary mới).",
-            "Update CR file § 'Kế hoạch cập nhật' với impact analysis.",
-            f"Return RETURN SCHEMA với `cr_id: {cr_id}`.",
-            "After complete: STATE → **DOMAIN_AUTHORING**. CR feature → `/domain-po`/`/domain-ba` author business mới → `/domain-approve` → `/domain-translate` → `/domain-end`. CR kiến trúc-only → `/domain-end` qua thẳng. Rồi `/design` → `/design-end` → `/plan` → REVIEW → `/start-wave`.",
-        ]),
-        RETURN_SCHEMA_TEMPLATE,
-    ]
-    return "\n\n".join(parts)
-
-
-# ========================================================================
-# Dispatch
-# ========================================================================
 
 def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
     """Wave-scoped /review-dev (không --boundary): orchestrator cho main loop review TUẦN TỰ mọi boundary trong wave."""
@@ -1360,7 +1327,6 @@ BUILDERS = {
     "dogfood": build_dogfood,
     "end-wave": build_end_wave,
     "done-wave": build_done_wave,
-    "apply-cr": build_apply_cr,
 }
 
 

@@ -291,10 +291,6 @@ def main() -> int:
         )
         passed.append(ok) if ok else failed.append("end-wave")
 
-        # DONE -> DOMAIN_AUTHORING (apply-cr: CR re-enter domain cho mở rộng feature sau ship)
-        ok = step("DONE -> DOMAIN (apply-cr)", "apply-cr", {"cr_id": "CR-001"}, "DOMAIN_AUTHORING")
-        passed.append(ok) if ok else failed.append("apply-cr -> DOMAIN")
-        patch_state({"stage": "DONE"})  # restore DONE để test done-wave tiếp
 
         # DONE -> BOOTSTRAP (done-wave teardown)
         ok = step(

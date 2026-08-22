@@ -40,7 +40,7 @@ Gate verify infra docker-compose ready + smoke functional pass + coverage gates.
 3. Container chưa healthy → `docker compose logs <svc>` chẩn ROOT-CAUSE:
    - (a) lỗi compose/env → sửa `docs/architecture/infra/docker-compose.yml` + up lại (đây là việc của dev-handoff).
    - (b) lỗi code/migration/config/Dockerfile trong `services/{boundary}/` → **STOP, KHÔNG tự sửa** (hook chặn),
-         báo MAIN spawn `fix-{boundary}-agent` (Mode B) kèm root-cause → fix → re-run /dev-handoff.
+         báo MAIN spawn `fix-{boundary}-agent` (Mode B) kèm root-cause → fix → re-run /run-wave.
 4. All pass → fill handoff doc + KG → return RETURN SCHEMA
 ```
 

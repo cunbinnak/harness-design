@@ -39,8 +39,8 @@ Chuyên môn UX/UI cho **FE boundary** (kind `web`/`mobile`) — user flow, wire
 1. Invoke skill `ux-design`
 2. Đọc: PROJECT.md (persona/platform/ADR ui-kit) + FEAT (AC) + JOURNEY/PERSONA + api-{be}.md (contract)
 3. design-tokens.css trước (SoT) → SCREEN-MAP (mục lục màn, gán boundary — mơ hồ hỏi user) → thiết kế TỪNG MÀN (mockup HTML, đọc đúng FEAT+api của màn) → ux-*.md behavior per boundary → a11y → handoff notes
-4. Trình user: SCREEN-MAP (toàn cảnh màn nào thuộc boundary nào) + "MỞ mockup trong browser (docs/architecture/ux/mockups/{boundary}/) — OK chưa? chỉnh gì?" → refine (self-loop /design-ux). KHÔNG advance
-5. User OK toàn bộ → return RETURN SCHEMA user_confirmed=true → user chạy /design-end khi cả design lẫn UX xong
+4. Trình user: SCREEN-MAP (toàn cảnh màn nào thuộc boundary nào) + "MỞ mockup trong browser (docs/architecture/ux/mockups/{boundary}/) — OK chưa? chỉnh gì?" → refine (self-loop /domain). KHÔNG advance
+5. User OK toàn bộ → return RETURN SCHEMA user_confirmed=true → user chạy /domain khi cả design lẫn UX xong
 ```
 
 ## Skills

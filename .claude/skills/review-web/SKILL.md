@@ -61,4 +61,4 @@ ls tailwind.config.* 2>/dev/null; grep -rl "styled\.\|@emotion\|makeStyles" src 
 - Folder/file thừa không dùng (component/hook mồ côi, scaffold mẫu sót, dead code / import chết) — phải xóa, không để lại.
 
 ## Output
-RETURN SCHEMA: `review_result`, `open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.
+RETURN SCHEMA: `review_result`, `no_open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.

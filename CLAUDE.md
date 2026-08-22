@@ -104,7 +104,7 @@
 
 ## SLASH COMMANDS
 
-> **10 lệnh.** Xếp theo thứ tự chạy trong một vòng phát triển. Mỗi lệnh **tự suy đang đứng ở đâu** — không mode, không cờ phải nhớ. Gate chi tiết → `harness/PROTOCOL.md`; body lệnh → `.claude/commands/<name>.md`.
+> **7 lệnh.** Xếp theo thứ tự chạy trong một vòng phát triển. Mỗi lệnh **tự suy đang đứng ở đâu** — không mode, không cờ phải nhớ. Gate chi tiết → `harness/PROTOCOL.md`; body lệnh → `.claude/commands/<name>.md`.
 
 | Bước | Lệnh | Tác dụng |
 |---|---|---|

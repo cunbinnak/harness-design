@@ -5,7 +5,7 @@
 
 ## Project
 
-Orchestrator framework triển khai ADLC (Architecture-Driven Lifecycle): Discovery (D0-D3) → Domain (2 lớp: po/ba author business → ký → translate eng) → Design (architect + ux-designer tách vai) → Plan → Review → wave execution (Dev/Test/Done), combine AI agents + người theo state machine **17 states + 24 slash commands**.
+Orchestrator framework triển khai ADLC (Architecture-Driven Lifecycle): Discovery (D0-D3) → Domain (nghiệp vụ plain VN → ký → dịch sang bản kỹ thuật → thiết kế → chia wave) → Review → chạy wave (code/test/dogfood) → khép vòng. AI agent + người theo state machine: **17 state · 26 chốt · 7 lệnh**.
 
 Tech: Python 3.14 (kernel), service stack per-boundary set ở DESIGN (vd Java 21 + Spring Boot, Node + Apollo, React + Vite, Flutter).
 
@@ -19,7 +19,9 @@ py scripts/state.py validate         # validate config
 
 ## Commands
 
-24 slash commands theo state machine. Xem [commands/README.md](commands/README.md) để biết flow.
+**7 lệnh** — `/discover` `/domain` `/approve-document` `/run-wave` `/dogfood` `/next-wave` `/status`.
+Mỗi lệnh chạy qua NHIỀU chốt (`harness <chốt> complete`); lệnh tự suy đang đứng ở chốt nào, gọi lại
+thì chạy tiếp. Xem [commands/README.md](commands/README.md) để biết flow.
 
 Mỗi command có 2 lệnh:
 ```bash

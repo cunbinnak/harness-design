@@ -231,6 +231,29 @@ def mark_capabilities_delivered(n: int) -> int:
 
 
 BC_LEDGER = "tracking/BC-LEDGER.md"
+PROD_READY = "tracking/PRODUCTION-READY.md"
+PER_WAVE = "(mỗi wave)"
+
+
+def rearm_marked(rel: str, marker: str) -> int:
+    """Bỏ tick những dòng mang `marker` (vd `(mỗi wave)`). Trả số dòng đã bỏ tick.
+
+    Chỉ đụng dòng CÓ marker — mục hạ tầng (HTTPS, backup, pipeline) không mang marker nên giữ tick:
+    "đã kiểm cho code cũ" không tự thành "đã kiểm cho code mới", nhưng HTTPS thì không phải dựng lại
+    mỗi wave.
+    """
+    p = REPO_ROOT / rel
+    if not p.is_file():
+        return 0
+    out, n = [], 0
+    for line in p.read_text(encoding="utf-8").splitlines():
+        if line.startswith("- [x]") and marker in line:
+            line = "- [ ]" + line[5:]
+            n += 1
+        out.append(line)
+    if n:
+        p.write_text("\n".join(out) + "\n", encoding="utf-8")
+    return n
 
 
 def rearm_bc_ledger() -> int:
@@ -300,6 +323,11 @@ def do_go(state: dict, n: int) -> int:
     if n_bc:
         print(f"  ok  sổ tương thích ngược: bỏ tick {n_bc} mục §3 — wave mới rà lại "
               "(§1 sổ hợp đồng GIỮ NGUYÊN, tích luỹ vĩnh viễn)")
+
+    n_pr = rearm_marked(PROD_READY, PER_WAVE)
+    if n_pr:
+        print(f"  ok  sẵn sàng vận hành: bỏ tick {n_pr} mục '{PER_WAVE}' — đầu vào mới cần "
+              "validate mới, hành động mới cần thử phân quyền mới (hạ tầng giữ tick)")
 
     bs, has_next = plan(n)
     if not has_next:
@@ -485,6 +513,20 @@ def _selftest() -> int:
                   "- [x] surface wave 1 đã ghi" in after, after)
             check("BC: tick NGOÀI §3 giữ nguyên (re-arm không quét cả file)",
                   "- [x] ghi chú ngoài §3" in after, after)
+
+            # Sẵn sàng vận hành: mục "(mỗi wave)" re-arm, hạ tầng giữ tick.
+            pr = REPO_ROOT / PROD_READY
+            pr.write_text(
+                "## Nhóm 1\n\n- [x] **Validate đầu vào** `(mỗi wave)` — abc\n"
+                "- [x] **HTTPS** `(sau môi trường thật)`\n- [x] **Backup** — hạ tầng\n",
+                encoding="utf-8")
+            n_pr = rearm_marked(PROD_READY, PER_WAVE)
+            after_pr = pr.read_text(encoding="utf-8")
+            check("sẵn-sàng: bỏ tick đúng 1 mục '(mỗi wave)'", n_pr == 1, f"n={n_pr}")
+            check("sẵn-sàng: hạ tầng GIỮ tick (HTTPS dựng một lần, không dựng lại mỗi wave)",
+                  "- [x] **HTTPS**" in after_pr and "- [x] **Backup**" in after_pr, after_pr)
+            check("sẵn-sàng: thiếu file thì im lặng, không nổ",
+                  rearm_marked("tracking/KHONG-CO.md", PER_WAVE) == 0)
     finally:
         REPO_ROOT = saved
 

@@ -7,9 +7,8 @@ description: Lens phân tích AC/BR — kiểm AC testable + BR logical + scope 
 
 ## Khi load
 - **`/domain`** (review-document-agent): soi product (FEAT/AC + BR) + design xem AC có testable, BR có logical, scope có rõ — trả issues cho user feed feedback.
-- **`/domain`** (apply-cr-agent): analyze CR impact lên scope/AC/BR → vùng cần re-design.
 
-Input: `docs/architecture/{PROJECT.md, feat/FEAT-*.md, business-rules/BR-*.md}` + (apply-cr) `tracking/change-requests/{cr-id}-*.md`.
+Input: `docs/architecture/{PROJECT.md, feat/FEAT-*.md, business-rules/BR-*.md}`.
 
 ## Cái cần đảm bảo (chất lượng AC/BR — FEAT do DOMAIN author)
 1. **AC testable** — Given/When/Then (Cho/Khi/Thì) hoặc condition đo được; mỗi user story ≥ 1 AC; cover cả non-happy-path.
