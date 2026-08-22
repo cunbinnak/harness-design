@@ -1080,7 +1080,7 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
         "\nAgent: **test-execute-agent** · Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API/UI/e2e). **KHÔNG build source · KHÔNG mvn/npm/gradle/vitest · KHÔNG đo coverage** (đó là việc DEV ở start-dev).",
         state_bundle(state),
         NON_NEGOTIABLES,
-        skills_block(["test-execute", "specialist-testing", "browse", "infra-local-dev"]),
+        skills_block(["test-execute", "specialist-testing", "infra-local-dev"]),
         docs_to_read([
             ("Test registry", f"tracking/{wave_id}/test-case-registry.md"),
             ("docker-compose", "docs/architecture/infra/docker-compose.yml"),
@@ -1321,7 +1321,7 @@ def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
         "Soi hệ ĐANG CHẠY bằng 6 lăng kính persona — tìm thứ `test-case-registry` KHÔNG phủ. "
         "`test-execute` chỉ chạy được test-case ai đó đã nghĩ ra trước; lượt này đi tìm cảnh rỗng "
         "câm, lỗi bị nuốt im lặng, bấm hai lần ra hai bản ghi, vai A chạm dữ liệu vai B.",
-        skills_block(["dogfood", "browse"]),
+        skills_block(["dogfood"]),
         docs_to_read([
             ("URL/endpoint hệ đang chạy (KHÔNG đoán)", f"tracking/{wave_id}/health-proof.json"),
             ("Persona + ma trận vai × hành động + gán 6 vai", "docs/discovery/persona-pool.md"),

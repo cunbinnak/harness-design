@@ -42,6 +42,7 @@ description: Skill của test-execute-agent (chốt chạy test trong /run-wave)
 - **Network call bắt buộc** cho group ∈ {integration, e2e, performance, security}: log `<METHOD> <path> → <status>` (vd `POST /v1/auth/login → 200`) — không có = không tính đã chạy.
 - **Evidence**: mỗi pass/fail có log tail thật trong `test-logs/`; TC web boundary (pass HAY fail) **bắt buộc screenshot** vào `screenshots/{TC}.png`; fail (e2e) thêm video nếu có.
 - **UI render check**: trang load được ≠ trang ĐÚNG. Assert computed style theo token (màu nền/chữ/spacing) + không lỗi console nghiêm trọng; trang trắng/unstyled/vỡ layout = FAIL (ghi `tầng hỏng: frontend`, đính screenshot).
+  > Script `browser_evaluate` gom **mọi giá trị computed thật + selector đầu tiên dùng nó** để đối chiếu `design-tokens.css` nằm ở skill `dogfood` §3 (vai `picky`) — dùng lại, đừng viết lại. Ở đây bạn chạy Playwright như **trình chạy test** (viết spec, chạy, lấy screenshot); ở đó là **duyệt tương tác**. Cùng một phép đo, hai cách gọi.
 
 ## Log của một FAIL — phải đủ để người khác sửa mà không đoán
 
