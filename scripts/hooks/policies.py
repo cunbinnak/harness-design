@@ -179,12 +179,25 @@ PROTECTED_PATHS = {
 }
 
 
+def _norm_rel(rel_path: str) -> str:
+    """Chuẩn hoá đường dẫn tương đối: đổi dấu gạch ngược sang `/`, bỏ tiền tố `./`.
+
+    KHÔNG dùng `lstrip("./")` — nó cắt MỌI ký tự `.` và `/` ở đầu, nên `.claude/settings.json`
+    thành `claude/settings.json` và rơi khỏi `PROTECTED_PATHS`. Lỗi này khiến `settings.json`
+    (file khai chính các hook) **chưa bao giờ thật sự được bảo vệ** — đúng loại lỗi im lặng: phép
+    kiểm vẫn chạy, vẫn trả lời, chỉ là trả lời sai.
+    """
+    n = rel_path.replace("\\", "/")
+    while n.startswith("./"):
+        n = n[2:]
+    return n
+
+
 def is_protected_file(rel_path: str) -> bool:
     """Check if path is one of the kernel files that should not be hand-edited."""
     if not rel_path:
         return False
-    normalized = rel_path.replace("\\", "/").lstrip("./")
-    return normalized in PROTECTED_PATHS
+    return _norm_rel(rel_path) in PROTECTED_PATHS
 
 
 # Proof file do capture_infra_proof.py (HARNESS đo) sinh — agent KHÔNG được Write/Edit tay.
@@ -203,7 +216,7 @@ def is_proof_file(rel_path: str) -> bool:
     """
     if not rel_path:
         return False
-    return bool(PROOF_FILE_RE.match(rel_path.replace("\\", "/").lstrip("./")))
+    return bool(PROOF_FILE_RE.match(_norm_rel(rel_path)))
 
 
 # ------------------------------------------------------------------------
@@ -252,7 +265,7 @@ def phase_lock_violation(rel_path: str, stage: str) -> str | None:
     """
     if not rel_path or not stage:
         return None
-    norm = rel_path.replace("\\", "/").lstrip("./")
+    norm = _norm_rel(rel_path)
     base = norm.rsplit("/", 1)[-1]
     if base.startswith("TEMPLATE.") or base.startswith("EXAMPLE.") or base == "README.md":
         return None
@@ -514,6 +527,26 @@ def _selftest() -> int:
     assert ask_violation(_S("DEV", "dev-x-agent")) is not None
     assert ask_violation({}) is None                                 # fail-open: không rõ thì cho qua
 
+    # _norm_rel: `lstrip("./")` từng cắt luôn dấu chấm của `.claude/` → settings.json CHƯA BAO
+    # GIỜ được bảo vệ dù phép kiểm vẫn chạy và vẫn trả lời (sai).
+    assert is_protected_file(".claude/settings.json") is True
+    assert is_protected_file("./harness/STATE.json") is True
+    assert _norm_rel(".claude/x") == ".claude/x"
+    assert _norm_rel("./a/b") == "a/b"
+
+    # kernel_violation — sub-agent KHÔNG được sửa thứ đang chấm nó
+    assert kernel_violation("scripts/gates.py", "domain-po-agent") is not None
+    assert kernel_violation("scripts/build_prompt.py", "test-plan-agent") is not None
+    assert kernel_violation("scripts/hooks/policies.py", "review-web-agent") is not None
+    assert kernel_violation(".claude/skills/dogfood/SKILL.md", "dogfood-picky-agent") is not None
+    assert kernel_violation("commands/run-wave.md", "x-agent") is not None
+    assert kernel_violation("agents/README.md", "x-agent") is not None
+    assert kernel_violation("scripts/gates.py", None) is None          # MAIN sửa khung = việc của nó
+    assert kernel_violation("services/cb-x/src/App.java", "dev-agent") is None
+    assert kernel_violation("tracking/wave-001/test-report.md", "test-execute-agent") is None
+    assert kernel_violation("knowledge-base/x.knowledge-graph.yaml", "dev-agent") is None
+    assert kernel_violation("docs/domain/feat/FEAT-1.md", "domain-po-agent") is None  # phase-lock lo
+
     # next-step hint contextual (arg + back-edge)
     # Gợi ý phải dạy dạng KHÔNG ARG. Trước đây nó dạy `/discover D2` — mà `/discover` vốn tự suy
     # (gate wave đang đứng xanh thì tiến, đỏ thì ở lại), nên gợi ý đang dạy người dùng nhớ một cờ
@@ -690,8 +723,48 @@ def ask_violation(state: dict) -> str | None:
     )
 
 
+# ========================================================================
+# kernel_violation — sub-agent KHÔNG được sửa thứ đang chấm nó
+# ========================================================================
+#
+# VÌ SAO CÓ. `PROTECTED_PATHS` chỉ giữ 4 file DỮ LIỆU (STATE, STATE-MACHINE, MATRIX, settings).
+# Toàn bộ `scripts/**` để mở — nghĩa là một sub-agent đang chạy chốt có thể sửa:
+#   · `gates.py`            — thứ CHẤM nó
+#   · `build_prompt.py`     — CHỈ THỊ của chính nó
+#   · `hooks/policies.py`   — thứ CHẶN nó
+#   · `commands/` `agents/` `.claude/skills/` — luật nó phải theo
+# Không cần ác ý mới hỏng: agent bí ở một gate rất dễ "sửa cho nó qua", và đó là hỏng im lặng
+# nhất — gate xanh mà không ai biết nó vừa bị nới.
+#
+# MAIN thì được: sửa bộ khung LÀ việc của phiên chính. Phân biệt bằng `spawn.active`.
+# Sub-agent vẫn ghi được thứ nó phải ghi: `docs/**` (đã phase-lock) · `tracking/**` ·
+# `knowledge-base/**` · `services/**` · `handoff/**`.
+
+KERNEL_PREFIXES = ("scripts/", "harness/", "commands/", "agents/", ".claude/")
+
+
+def kernel_violation(rel_path: str, spawn_active: str | None) -> str | None:
+    """Thông báo chặn, hoặc None. Chỉ chặn khi ĐANG có sub-agent chạy."""
+    if not spawn_active or not rel_path:
+        return None
+    norm = _norm_rel(rel_path)
+    if not norm.startswith(KERNEL_PREFIXES):
+        return None
+    return (
+        f"FM-KERNEL-EDIT: sub-agent `{spawn_active}` KHÔNG được sửa `{norm}` — đó là bộ khung "
+        "đang chấm chính nó (`gates.py` chấm · `build_prompt.py` ra chỉ thị · `hooks/` chặn · "
+        "`commands/`+`agents/`+`skills/` là luật phải theo).\n"
+        "Gate đỏ thì SỬA CHO ĐẠT, đừng sửa gate. Thấy chính bộ khung sai → ghi một dòng "
+        "`tracking/blockers.md` + báo lại; phiên chính quyết, không phải bạn.\n"
+        "Bạn được ghi: `docs/**` (trong stage sở hữu) · `tracking/**` · `knowledge-base/**` · "
+        "`services/**` · `handoff/**`."
+    )
+
+
 if __name__ == "__main__":
     import sys as _sys
     _sys.exit(_selftest())
+
+
 
 

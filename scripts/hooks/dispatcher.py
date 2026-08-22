@@ -331,13 +331,16 @@ def _pre_write_edit(payload: dict) -> int:
     # Gate theo STAGE (robust): block CHỈ ở DEV_HANDOFF — lúc duy nhất dev-handoff-agent chạy. Ngoài
     # stage đó (REVIEW_DEV/MANUAL_TEST/DEV…) mọi sửa services là fix/dev-agent hợp lệ → KHÔNG chặn oan
     # dù cờ spawn.active còn kẹt (SubagentStop có thể không fire với background Agent tool → cờ stale).
-    norm = path.replace("\\", "/").lstrip("./")
+    norm = policies._norm_rel(path)
     if _handoff_no_code_fix((st.get("spawn") or {}).get("active"), norm):
         return pre_tool_deny(
             f"FM-HANDOFF-NO-CODE-FIX: dev-handoff INFRA-ONLY — KHÔNG sửa '{norm}' (code/migration/config/Dockerfile "
             "của boundary). Container chết do lỗi này → STOP, đọc `docker compose logs`, báo root-cause + "
             "spawn `fix-{boundary}-agent` (Mode B) để fix → re-run dev-handoff. dev-handoff chỉ chỉnh docker-compose.yml."
         )
+    ker = policies.kernel_violation(norm, (st.get("spawn") or {}).get("active"))
+    if ker:
+        return pre_tool_deny(ker)
     tok = policies.token_violation(norm, _edit_new_text(payload))
     if tok:
         return pre_tool_deny(tok)
@@ -390,18 +393,21 @@ def _pre_task(payload: dict) -> int:
                 f"`py scripts/build_prompt.py {matched} [--mode/--boundary/...]` rồi spawn với output đó "
                 "(STATE BUNDLE frozen + owned_paths/boot + RETURN SCHEMA chuẩn). MAIN KHÔNG tự build prompt (E-6)."
             )
-        # #12: dev-handoff-agent = infra-only → đánh dấu spawn.active để PreToolUse(Write|Edit) chặn
-        # sửa services/** (lỗi code boundary phải để fix-agent, KHÔNG dev-handoff tự vá).
+        # Ghi cờ "sub-agent nào đang chạy" cho MỌI spawn harness, không chỉ dev-handoff.
+        #
+        # Bản cũ chỉ set cờ cho `dev-handoff-agent` và XOÁ nó ở mọi spawn khác — nên với
+        # `domain-po-agent`, `review-*`, `test-*`… cờ luôn rỗng, và mọi luật phân biệt
+        # MAIN/sub-agent đều đọc nhầm sub-agent thành MAIN. Hai luật đang dựa vào cờ này:
+        #   · `ask_violation`  — sub-agent KHÔNG được hỏi user, MAIN ở chốt ký thì được
+        #   · `kernel_violation` — sub-agent KHÔNG được sửa kernel (scripts/harness/commands/agents)
+        # Cờ sai = cả hai luật mở toang đúng lúc cần kín nhất.
+        #
+        # Ghi tên THẬT (không phải cờ bool) để `_handoff_no_code_fix` vẫn so được `== dev-handoff-agent`.
         try:
-            if "dev-handoff-agent" in prompt.lower():
-                state.setdefault("spawn", {})["active"] = "dev-handoff-agent"
-                state_mod.save_state(state, updated_by="pre_task:dev-handoff")
-            elif (state.get("spawn") or {}).get("active"):
-                # Spawn agent KHÁC dev-handoff = bằng chứng dev-handoff trước đã return (MAIN đã
-                # chuyển sang agent kế, vd fix-agent). Clear cờ stale ngay tại ranh giới spawn — không
-                # phụ thuộc SubagentStop (có thể không fire với background Agent tool).
-                state["spawn"]["active"] = None
-                state_mod.save_state(state, updated_by="pre_task:clear-stale-spawn")
+            name = "dev-handoff-agent" if "dev-handoff-agent" in prompt.lower() else matched
+            if (state.get("spawn") or {}).get("active") != name:
+                state.setdefault("spawn", {})["active"] = name
+                state_mod.save_state(state, updated_by=f"pre_task:{name}")
         except Exception:
             pass
         boundary = state.get("active_boundary")

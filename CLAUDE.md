@@ -145,6 +145,7 @@ Mỗi command tự document trong `.claude/commands/<name>.md` (sync từ `comma
 |---|---|
 | `SessionStart` · `UserPromptSubmit` · `Notification` | Inject header `[HARNESS stage=… \| next: …]` mỗi turn |
 | `PreToolUse(Bash)` — gate | Deny `harness <cmd> complete` nếu sai `allowed_commands` hoặc fail gate — §Gate evidence |
+| `PreToolUse(Write\|Edit)` — kernel | **Sub-agent KHÔNG sửa được `scripts/` `harness/` `commands/` `agents/` `.claude/`** — đó là thứ đang chấm nó (gate · chỉ thị · hook · luật). Gate đỏ thì sửa cho đạt, đừng sửa gate. MAIN sửa được (đó là việc phát triển khung) |
 | `PreToolUse(Write\|Edit)` | Block kernel files + 3 proof file (chỉ `capture_infra_proof.py` sinh, FM-PROOF-FORGE) + doc phase-locked ngoài stage sở hữu + `services/**` khi dev-handoff-agent (#12) |
 | `PreToolUse(Task)` | Block spawn command-agent bằng prompt tự viết (E-6: phải dùng `build_prompt.py`); Explore free |
 | `PreToolUse(AskUserQuestion)` | Chặn hỏi user ngoài khâu khám phá. Cho qua ở `BOOTSTRAP`/`DISC_*` (đó LÀ chỗ để hỏi) và ở ba chốt KÝ khi **MAIN** chạy (`DOMAIN_AUTHORING` ký nghiệp vụ · `REVIEW` khoá scope · `MANUAL_TEST` UAT). **Sub-agent thì không, ở bất kỳ đâu ngoài khám phá** — nó phải suy từ tài liệu khám phá, mơ hồ thì `decide.py`, tắc thật thì `blockers.md` |
