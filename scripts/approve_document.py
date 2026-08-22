@@ -29,16 +29,32 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# (thư mục tương đối, status đích, status giữ nguyên nếu đang là)
-STAMP_PLAN = [
-    ("docs/architecture/adr", "APPROVED", ()),
-    ("docs/architecture/hld", "APPROVED", ()),
-    ("docs/architecture/data-model", "APPROVED", ()),
-    ("docs/architecture/ux", "APPROVED", ()),
-    ("docs/architecture/integrations", "APPROVED", ()),
-    ("docs/architecture/api", "ACTIVE", ("DEPRECATED",)),
-    ("docs/architecture/events", "ACTIVE", ("DEPRECATED",)),
-]
+# (glob tương đối repo-root, status đích, status giữ nguyên nếu đang là)
+#
+# Dùng GLOB chứ không dùng thư mục: lớp discovery có file lồng (`boundaries/<b>/CHARTER.md`) và
+# file lẻ ngoài thư mục của nó (`docs/architecture/PROJECT.md` — discovery sở hữu theo phase-lock).
+STAMP_PLANS: dict[str, list[tuple[str, str, tuple[str, ...]]]] = {
+    # Ký ở CHỐT D3 của `/discover`, trước khi sang DOMAIN. Vì sao ký tại đây chứ không đợi REVIEW:
+    # discovery là lớp THƯỢNG NGUỒN nhất — domain/design/plan đều xây trên nó. Đợi tới REVIEW mới
+    # ký nghĩa là phát hiện lỗ ở hypothesis-log sau khi đã dựng ba tầng lên trên, phải tháo ngược.
+    # Cùng lý do challenge đặt TRƯỚC khi code chứ không dựa vào review sau khi code.
+    "discovery": [
+        ("docs/discovery/*.md", "APPROVED", ()),
+        ("docs/discovery/event-storming/ES-*.md", "APPROVED", ()),
+        ("docs/discovery/boundaries/*/CHARTER.md", "APPROVED", ()),
+        ("docs/architecture/PROJECT.md", "APPROVED", ()),
+    ],
+    # Ký ở `/approve-document` (REVIEW) — cổng mở wave.
+    "design": [
+        ("docs/architecture/adr/*.md", "APPROVED", ()),
+        ("docs/architecture/hld/*.md", "APPROVED", ()),
+        ("docs/architecture/data-model/*.md", "APPROVED", ()),
+        ("docs/architecture/ux/*.md", "APPROVED", ()),
+        ("docs/architecture/integrations/*.md", "APPROVED", ()),
+        ("docs/architecture/api/*.md", "ACTIVE", ("DEPRECATED",)),
+        ("docs/architecture/events/*.md", "ACTIVE", ("DEPRECATED",)),
+    ],
+}
 
 _STATUS_RE = re.compile(r"^(\s*status\s*:).*$", re.MULTILINE)
 
@@ -67,15 +83,14 @@ def _stamp(path: Path, status: str, keep: tuple[str, ...]) -> bool:
     return False
 
 
-def run(root: Path | None = None) -> tuple[int, int]:
-    """Stamp toàn bộ theo STAMP_PLAN. Trả (số file quét, số file đổi)."""
+def run(layer: str = "design", root: Path | None = None) -> tuple[int, int]:
+    """Stamp một LỚP doc theo STAMP_PLANS. Trả (số file quét, số file đổi)."""
     root = root or REPO_ROOT
     scanned = changed = 0
-    for rel, status, keep in STAMP_PLAN:
-        d = root / rel
-        if not d.is_dir():
-            continue
-        for p in sorted(d.glob("*.md")):
+    for pattern, status, keep in STAMP_PLANS[layer]:
+        for p in sorted(root.glob(pattern)):
+            if not p.is_file():
+                continue
             if p.name.startswith("TEMPLATE") or p.name.startswith("_TEMPLATE") or p.name == "README.md":
                 continue
             scanned += 1
@@ -100,14 +115,35 @@ def _selftest() -> int:
             '---\nstatus: DEPRECATED\n---\n# old\n', encoding="utf-8")
         (d / "docs/architecture/api/TEMPLATE.api.md").write_text(
             '---\nstatus: DRAFT\n---\n', encoding="utf-8")
-        scanned, changed = run(d)
+        scanned, changed = run("design", d)
         assert scanned == 3 and changed == 2, (scanned, changed)
         assert "status: APPROVED" in (d / "docs/architecture/hld/hld-x.md").read_text(encoding="utf-8")
         assert "status: ACTIVE" in (d / "docs/architecture/api/api-x.md").read_text(encoding="utf-8")
         assert "status: DEPRECATED" in (d / "docs/architecture/api/api-old.md").read_text(encoding="utf-8")
         assert "status: DRAFT" in (d / "docs/architecture/api/TEMPLATE.api.md").read_text(encoding="utf-8")
         # idempotent
-        assert run(d) == (3, 0)
+        assert run("design", d) == (3, 0)
+
+        # lớp discovery: file phẳng + file LỒNG (boundaries/<b>/CHARTER.md) + file LẺ ngoài
+        # docs/discovery (PROJECT.md — discovery sở hữu theo phase-lock). Đây là lý do dùng
+        # glob thay vì duyệt thư mục.
+        (d / "docs/discovery/event-storming").mkdir(parents=True)
+        (d / "docs/discovery/boundaries/payment").mkdir(parents=True)
+        for rel in ("docs/discovery/hypothesis-log.md", "docs/discovery/persona-pool.md",
+                    "docs/discovery/event-storming/ES-payment.md",
+                    "docs/discovery/boundaries/payment/CHARTER.md",
+                    "docs/architecture/PROJECT.md"):
+            (d / rel).write_text("---\nstatus: DRAFT\n---\n# x\n", encoding="utf-8")
+        (d / "docs/discovery/TEMPLATE.hypothesis-log.md").write_text(
+            "---\nstatus: DRAFT\n---\n", encoding="utf-8")
+        sc, ch = run("discovery", d)
+        assert (sc, ch) == (5, 5), (sc, ch)
+        assert "status: APPROVED" in (d / "docs/discovery/boundaries/payment/CHARTER.md").read_text(encoding="utf-8")
+        assert "status: APPROVED" in (d / "docs/architecture/PROJECT.md").read_text(encoding="utf-8")
+        assert "status: DRAFT" in (d / "docs/discovery/TEMPLATE.hypothesis-log.md").read_text(encoding="utf-8")
+        assert run("discovery", d) == (5, 0)          # idempotent
+        # ký discovery KHÔNG đụng lớp design và ngược lại
+        assert run("design", d) == (3, 0)
         print("OK: approve_document.py selftest passed")
         return 0
     finally:
@@ -124,9 +160,21 @@ def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if "--selftest" in argv:
         return _selftest()
-    scanned, changed = run()
-    print(f"OK: quét {scanned} doc design/contract — stamp {changed} file "
-          f"(adr/hld/data-model/ux/integrations → APPROVED; api/events → ACTIVE; DEPRECATED giữ nguyên).")
+    layer = "design"
+    for i, a in enumerate(argv):
+        if a == "--layer" and i + 1 < len(argv):
+            layer = argv[i + 1]
+        elif a.startswith("--layer="):
+            layer = a.split("=", 1)[1]
+    if layer not in STAMP_PLANS:
+        print(f"ERROR: --layer phải ∈ {sorted(STAMP_PLANS)} (nhận {layer!r})", file=sys.stderr)
+        return 2
+    scanned, changed = run(layer)
+    what = ("discovery (hypothesis/persona/capability/BOUNDARY-MAP/ES/CHARTER/PROJECT) → APPROVED"
+            if layer == "discovery" else
+            "design/contract (adr/hld/data-model/ux/integrations → APPROVED; api/events → ACTIVE; "
+            "DEPRECATED giữ nguyên)")
+    print(f"OK: lớp {layer} — quét {scanned} doc, stamp {changed} file. {what}")
     return 0
 
 

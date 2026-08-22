@@ -39,14 +39,67 @@ Mỗi ô `cấm` sinh **một ca kiểm âm bắt buộc** ở `/run-wave` (ch�
 
 Ô trống là **lỗi**, không phải "chưa cần" — gate chặn. Không chắc thì hỏi user; vẫn không rõ thì chọn `cấm` (chặt an toàn hơn mở) + ghi quyết định.
 
-## Chạy
+## Chốt D3 — rà chéo rồi KÝ, trước khi sang Domain
+
+Trước đây Discovery là lớp **duy nhất không có chữ ký**: domain ký bằng `domain_approve.py`, design ký bằng `approve_document.py`, còn discovery thì template có sẵn field `status:` mà không ai stamp — xác nhận của bạn nằm trong chat, không thành hiện vật.
+
+Và phải ký **ở đây**, không đợi `/approve-document`: domain + design + plan đều xây trên discovery. Đợi tới REVIEW mới đọc chéo nghĩa là tìm ra lỗ ở `hypothesis-log` sau khi đã dựng ba tầng lên trên — tháo ngược cả ba. Cùng lý do challenge đặt **trước** khi code chứ không dựa vào review sau khi code.
+
+### Bước 1 — agent rà chéo
+
+Cái mà từng D-wave riêng lẻ không thấy được, vì nó chỉ soi được artifact của chính nó:
+
+```
+hypothesis ↔ capability   mỗi giả thuyết có ≥1 capability validate nó?
+capability ↔ persona      mỗi persona có ≥1 capability? capability nào không ai cần?
+persona    ↔ ma trận      mọi persona có cột trong ma trận quyền? còn ô trống?
+capability ↔ ES           mỗi candidate domain có ES? event nào không thuộc capability nào?
+ES         ↔ boundary     mỗi domain map vào đúng 1 boundary?
+boundary   ↔ PROJECT.md   danh sách boundary + service_prefix khớp nhau?
+§6 lỗ hổng                còn lỗ nào chưa có cách xử?
+```
+
+Lệch chỗ nào → **sửa trước**, đừng đẩy sang cho user phát hiện hộ.
+
+### Bước 2 — trình cho user ĐỌC, rồi DỪNG LẠI
+
+Đây là một lần dừng **thật**. Đưa đủ để user đọc và tự đánh giá, không phải để user tin lời agent:
+
+```
+Discovery xong. Mời anh/chị đọc rồi cho biết duyệt hay chưa.
+
+Đọc theo thứ tự này (mỗi file 1 dòng nói NÊN SOI GÌ):
+  docs/discovery/hypothesis-log.md     — 3 giả thuyết + bằng chứng: có đúng cược của mình không?
+  docs/discovery/persona-pool.md       — §Ma trận vai × hành động: có ô `cấm` nào SAI không?
+  docs/discovery/capability-map.md     — §1: có năng lực nào THIẾU, hoặc thừa không?
+  docs/discovery/event-storming/ES-*.md
+  docs/discovery/BOUNDARY-MAP.md + boundaries/*/CHARTER.md
+  docs/architecture/PROJECT.md         — scope + stack + service_prefix
+
+Tôi đã rà chéo, kết quả:  <lệch gì đã sửa · còn lỗ nào chưa xử>
+Chỗ tôi TỰ QUYẾT khi anh/chị chưa chốt:  <trỏ dòng tracking/decisions.md>
+Chỗ tôi KHÔNG CHẮC nhất:  <nói thẳng ra, đây là chỗ đáng soi nhất>
+```
+
+**KHÔNG tự ký. KHÔNG chạy tiếp.** Chờ user trả lời.
+
+### Bước 3 — theo câu trả lời
+
+| User nói | Làm gì |
+|---|---|
+| Góp ý / chưa duyệt | Sửa theo góp ý → rà chéo lại → trình lại. Lặp không giới hạn. Góp ý chạm D-wave nào thì `/discover D<n>` đào lại wave đó |
+| **Duyệt** | `py scripts/approve_document.py --layer discovery` (stamp `status: APPROVED`) → `py scripts/harness.py discovery-end complete` → DOMAIN |
+
+**User duyệt = chữ ký** — cùng khuôn với `/domain`. Gate `discovery_stamped` chặn **complete chay**: state nói đã chốt mà file vẫn `DRAFT` thì không qua được.
+
+## Chạy từng D-wave
 
 Thứ tự bắt buộc: **transition trước, spawn sau**. STATE phải ở đúng `DISC_D{N}` ngay thì phase-lock mới cho agent ghi `docs/discovery/**`.
 
 1. `py scripts/harness.py discovery-start complete` với evidence `{"wave": "D<n>"}`
 2. `py scripts/build_prompt.py discovery-start --disc-wave D<n> --input "$ARGUMENTS"` → spawn
 3. Agent iterate tới khi user confirm
-4. D3 đạt → `py scripts/harness.py discovery-end complete` → DOMAIN
+4. Hết D3 → làm mục "Chốt D3" ở trên
 
 ## Forbidden
 

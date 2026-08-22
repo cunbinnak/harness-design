@@ -1709,6 +1709,47 @@ def check_features_complete(state: dict, evidence: dict | None = None, root: Pat
 
 
 # ========================================================================
+# discovery_stamped (chốt D3) — Discovery phải được KÝ trước khi sang DOMAIN
+# ========================================================================
+
+def check_discovery_stamped(evidence: dict | None = None,
+                            root: Path | None = None) -> tuple[bool, str]:
+    """Chốt `/discover` (D3 → DOMAIN): doc discovery phải ĐÃ stamp `status: APPROVED`.
+
+    VÌ SAO CÓ GATE NÀY — discovery từng là lớp DUY NHẤT không có chữ ký: domain ký bằng
+    `domain_approve.py`, design ký bằng `approve_document.py`, còn discovery thì template có sẵn
+    field `status:` mà không script nào stamp. Xác nhận của user nằm trong chat, không thành hiện
+    vật — đúng thứ harness bắt mọi chỗ khác phải có ("lời khai không phải bằng chứng"), lại thiếu
+    ở lớp THƯỢNG NGUỒN nhất.
+
+    Và ký ở ĐÂY chứ không đợi `/approve-document`: domain + design + plan đều xây trên discovery.
+    Đợi tới REVIEW mới đọc chéo nghĩa là phát hiện lỗ ở hypothesis-log sau khi đã dựng ba tầng lên
+    trên, phải tháo ngược cả ba. Cùng lý do challenge đặt TRƯỚC khi code.
+
+    Chưa author gì → vacuous pass (`discovery_wave` lo phần "có artifact chưa").
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    import approve_document as _ad
+    files = [p for pat, _, _ in _ad.STAMP_PLANS["discovery"] for p in sorted(root.glob(pat))
+             if p.is_file() and not _is_scaffold_md(p.name)]
+    if not files:
+        return True, ""
+    unsigned = [str(p.relative_to(root)).replace("\\", "/") for p in files
+                if not _frontmatter_signed(p.read_text(encoding="utf-8", errors="ignore"))]
+    if unsigned:
+        return False, (
+            "doc discovery CHƯA ký `status: APPROVED`: " + ", ".join(sorted(unsigned))
+            + " — rà chéo một lượt (hypothesis ↔ capability ↔ persona ↔ ES ↔ boundary), trình user, "
+              "user OK thì chạy `py scripts/approve_document.py --layer discovery` rồi mới complete. "
+              "KHÔNG complete chay: chữ ký trong chat không phải hiện vật"
+        )
+    return True, ""
+
+
+# ========================================================================
 # backward_compat (end-wave, wave ≥2) — legacy là hợp đồng
 # ========================================================================
 
@@ -2745,6 +2786,9 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "discovery_advance"},  # nhảy tiến D{N}→D{N+1} → gate wave hiện tại (refine/first-entry: bỏ qua)
     ],
     "discovery-end": [
+        # Discovery là lớp thượng nguồn nhất — ký TẠI ĐÂY, không đợi /approve-document ở REVIEW
+        # (lúc đó domain+design+plan đã xây lên trên rồi, tìm ra lỗ là phải tháo ngược ba tầng).
+        {"kind": "discovery_stamped"},
         {"kind": "discovery_wave"},  # chốt D3 → DOMAIN: gate D3 (chỉ còn 1 transition từ DISC_D3)
     ],
     "domain-po": [
@@ -2930,6 +2974,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_dogfood_done(state, evidence)
         if kind == "backward_compat":
             return check_backward_compat(state, evidence)
+        if kind == "discovery_stamped":
+            return check_discovery_stamped(evidence)
         if kind == "challenge_passed":
             return check_challenge_passed(state, evidence)
         if kind == "discovery_wave":

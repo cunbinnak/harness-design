@@ -45,5 +45,15 @@ Sau D3 + `/discover` (gate pass → DOMAIN_AUTHORING): PROJECT.md + charter boun
 - [ ] service_prefix chốt (kebab).
 - [ ] KHÔNG sinh FEAT/Epic/BR (để DOMAIN).
 
+## Chốt D3 — user ĐỌC và ĐÁNH GIÁ rồi mới ký
+
+D3 là artifact cuối của Discovery, nên nó gánh thêm lượt **rà chéo toàn lớp** mà từng D-wave riêng lẻ không thấy: hypothesis ↔ capability ↔ persona ↔ ma trận quyền ↔ ES ↔ boundary ↔ PROJECT.md. Lệch chỗ nào sửa trước, đừng đẩy sang cho user phát hiện hộ.
+
+Rồi **DỪNG LẠI**: trình danh sách file kèm *mỗi file nên soi gì*, nói rõ chỗ đã tự quyết (trỏ `tracking/decisions.md`) và chỗ mình không chắc nhất. **KHÔNG tự ký, KHÔNG chạy tiếp.**
+
+User góp ý → sửa → rà lại → trình lại. User **duyệt** → `py scripts/approve_document.py --layer discovery` → complete.
+
+Vì sao ký ở đây chứ không đợi REVIEW: domain + design + plan đều xây trên Discovery. Tìm ra lỗ ở `hypothesis-log` lúc đã dựng ba tầng lên trên nghĩa là tháo ngược cả ba.
+
 ## Done
 - BOUNDARY-MAP + CHARTER + PROJECT.md pass gate D3; user confirm → `/discover` (không arg) → DOMAIN_AUTHORING.

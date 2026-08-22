@@ -69,6 +69,7 @@
 | "Năng lực nào đã giao, còn bao nhiêu?" | `docs/discovery/capability-map.md` §1 cột `Wave giao` + `Trạng thái` (bảng SỐNG — PLAN điền wave, `/next-wave` cập nhật trạng thái) |
 | "Surface nào đã giao ra ngoài, đổi được không?" | `tracking/BC-LEDGER.md` — §1 sổ hợp đồng (**tích luỹ vĩnh viễn**, không wave nào xoá) · §2 luật additive-first · §3 checklist rà mỗi wave (`/next-wave` re-arm; gate `backward_compat` chặn đóng wave ≥2) |
 | "Đã chất vấn spec trước khi code chưa?" | `tracking/challenge-log.md` — 1 câu hỏi khó dựa trên spec THẬT, tự chấm PASS/FAIL. **FAIL = chưa được code**. Gate `challenge_passed` lọc theo wave |
+| "Lớp doc nào đã được KÝ?" | discovery → ký ở chốt D3 của `/discover` · domain → ký trong `/domain` · design → ký ở `/approve-document`. Cả ba đều stamp `status: APPROVED` vào frontmatter; gate `*_stamped` chặn complete chay (state nói đã ký mà file còn `DRAFT`) |
 | "Quyết định tự quyết khi mơ hồ ghi ở đâu?" | `tracking/decisions.md` — agent tự ghi bằng `py scripts/decide.py` khi gặp mơ hồ lúc làm (KHÔNG phải slash command); cột *giả định đang mang* + *đảo ngược được không* |
 | "Event storming domain?" | `docs/discovery/event-storming/ES-{domain}.md` (D2) |
 | "Boundary nào, charter ra sao?" | `docs/discovery/BOUNDARY-MAP.md` + `docs/discovery/boundaries/{b}/CHARTER.md` (D3) |
@@ -106,7 +107,7 @@
 
 | Bước | Lệnh | Tác dụng |
 |---|---|---|
-| **1. Khám phá** | `/discover [D0..D3]` | Giả thuyết → persona + **ma trận vai x hành động** → event storming → boundary + `PROJECT.md`. Không arg = chạy tiếp D-wave đang đứng; D3 đạt gate = tự chốt sang Domain. **Chỗ được hỏi nhiều nhất — không trần số câu** |
+| **1. Khám phá** | `/discover [D0..D3]` | Giả thuyết → persona + **ma trận vai x hành động** → event storming → boundary + `PROJECT.md`. Không arg = chạy tiếp D-wave đang đứng. **Chỗ được hỏi nhiều nhất — không trần số câu.** Hết D3: agent rà chéo cả lớp → **DỪNG, bạn ĐỌC và đánh giá** → bạn duyệt = chữ ký (`status: APPROVED`) → mới sang Domain |
 | **2. Yêu cầu** | `/domain` | Tự suy **thiếu gì viết nấy** (Epic → Feature → BR → Journey/Persona) → trình bạn → **bạn OK = chữ ký** → dịch sang bản kỹ thuật → sang Design |
 | **3. Thiết kế** | `/design [--end]` | ADR + HLD + API + data-model + events + tích hợp. **Có boundary web/mobile → tự làm UX**; backend-only → bỏ qua *và nói rõ là bỏ qua*. Lặp refine; `--end` chốt sang Plan |
 | **4. Kế hoạch** | `/plan` | Chia *wave*: WAVE-SEQUENCE + kế hoạch wave + MATRIX + knowledge-graph |
