@@ -109,7 +109,7 @@
 
 | Bước | Lệnh | Tác dụng |
 |---|---|---|
-| **1. Khám phá** | `/discover [D0..D3]` | Giả thuyết → persona + **ma trận vai x hành động** → event storming → boundary + `PROJECT.md`. Không arg = chạy tiếp D-wave đang đứng. **Chỗ được hỏi nhiều nhất — không trần số câu.** Hết D3: agent rà chéo cả lớp → **DỪNG, bạn ĐỌC và đánh giá** → bạn duyệt = chữ ký (`status: APPROVED`) → mới sang Domain |
+| **1. Khám phá** | `/discover` | Giả thuyết → persona + **ma trận vai x hành động** → event storming → boundary + `PROJECT.md`. Không arg — tự suy: gate wave đang đứng **xanh thì tiến**, **đỏ thì ở lại** đào đúng chỗ thiếu. Arg `D0..D3` chỉ để ép đào thêm khi gate đã xanh. **Chỗ được hỏi nhiều nhất — không trần số câu.** Hết D3: agent rà chéo cả lớp → **DỪNG, bạn ĐỌC và đánh giá** → bạn duyệt = chữ ký (`status: APPROVED`) → mới sang Domain |
 | **2. Tài liệu** | `/domain` | **Nốt nửa sau, một mạch 9 chốt**: Epic/Feature/BR/Journey (nghiệp vụ, plain VN) → bạn OK = **ký** → dịch sang bản kỹ thuật → ADR/HLD/API/data-model/events/tích hợp → **UX nếu có boundary web/mobile** → chia wave (WAVE-SEQUENCE + MATRIX + KG) → **rà chéo toàn bộ**. Dừng ở REVIEW. Gọi lại = chạy tiếp từ chốt đang đứng. Chỉ chốt 1 được hỏi |
 | **3. Chốt** | `/approve-document` | Bạn **ĐỌC + đánh giá** toàn bộ tài liệu → duyệt = **KHOÁ SCOPE** (ký lớp design/contract). Đây là chỗ kết thúc phần tài liệu; mở cổng wave |
 | **4. Chạy wave** | `/run-wave [<N>]` | **Một mạch 7 chốt**: dựng wave → code từng boundary → review tới sạch → dựng chạy thật → sinh test → chạy test → dogfood. Gate đỏ = **DỪNG đúng chốt đó**. Gọi lại = chạy tiếp từ chốt đang đứng. Còn bug thì tự sửa + re-test |

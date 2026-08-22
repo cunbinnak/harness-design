@@ -30,7 +30,7 @@ phải nhớ. Gọi lại một lệnh = chạy tiếp từ chốt đang đứng
 
 | | Lệnh | Làm gì |
 |---|---|---|
-| 1 | `/discover [D0..D3]` | Giả thuyết → persona + ma trận vai × hành động → event storming → boundary + `PROJECT.md`. Chỗ được hỏi nhiều nhất. Hết D3 bạn đọc và duyệt = chữ ký |
+| 1 | `/discover` | Giả thuyết → persona + ma trận vai × hành động → event storming → boundary + `PROJECT.md`. Chỗ được hỏi nhiều nhất. Hết D3 bạn đọc và duyệt = chữ ký |
 | 2 | `/domain` | Nốt nửa sau, một mạch: Epic/Feature/BR/Journey plain VN → bạn ký → dịch sang bản kỹ thuật → ADR/HLD/API/data-model/events/tích hợp → UX nếu có boundary web/mobile → chia wave → rà chéo |
 | 3 | `/approve-document` | Bạn đọc + đánh giá toàn bộ → duyệt = **KHOÁ SCOPE**. Hết phần tài liệu, mở cổng wave |
 | 4 | `/run-wave [<N>]` | Một mạch: dựng wave → code từng boundary → review tới sạch → dựng chạy thật → sinh test → chạy test → dogfood. Gate đỏ = dừng đúng chốt đó |

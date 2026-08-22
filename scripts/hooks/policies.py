@@ -24,11 +24,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 # Next-step guidance per stage — báo CHÍNH XÁC lệnh + arg + ý nghĩa (thay vì list tên trống).
 # Gồm cả back-edge (lùi về stage sở hữu để sửa doc đã frozen).
 STAGE_NEXT_GUIDE = {
-    "BOOTSTRAP": "/discover D0 (bắt đầu khám phá)",
-    "DISC_D0": "/discover D1 (gate D0 → sang D1) · hoặc /discover D0 (đào thêm hypothesis)",
-    "DISC_D1": "/discover D2 (gate D1 → sang D2) · hoặc /discover D1 (đào thêm capability/persona/ma trận quyền)",
-    "DISC_D2": "/discover D3 (gate D2 → sang D3) · hoặc /discover D2 (đào thêm event-storming)",
-    "DISC_D3": "/discover (D3 đạt gate → ký lớp khám phá, sang DOMAIN) → rồi `/domain` · hoặc /discover D3 (đào thêm charter/PROJECT)",
+    "BOOTSTRAP": "/discover \"<mô tả project: giải quyết nỗi đau gì, cho ai>\" (vào D0)",
+    "DISC_D0": "/discover (D0 xanh → sang D1; chưa xanh → đào tiếp D0) · ép đào thêm: /discover D0",
+    "DISC_D1": "/discover (D1 xanh → sang D2; chưa xanh → đào tiếp D1) · ép đào thêm: /discover D1",
+    "DISC_D2": "/discover (D2 xanh → sang D3; chưa xanh → đào tiếp D2) · ép đào thêm: /discover D2",
+    "DISC_D3": "/discover (D3 xanh → rà chéo + DỪNG cho bạn đọc và ký) → rồi /domain · ép đào thêm: /discover D3",
     "DOMAIN_AUTHORING": "/domain (hành lang nửa sau: nghiệp vụ → ký → dịch → thiết kế → chia wave → rà chéo, dừng ở REVIEW)",
     "DESIGN": "/domain (chạy tiếp: thiết kế → chia wave → rà chéo). LÙI sửa nghiệp vụ: /domain từ DOMAIN (re-ký + re-dịch)",
     "PLAN": "/domain (chạy tiếp: chia wave → rà chéo → REVIEW)",
@@ -503,7 +503,12 @@ def _selftest() -> int:
     assert is_proof_file("tracking/doc-review-findings.md") is False
     assert is_proof_file("docs/health-proof.json") is False
     # next-step hint contextual (arg + back-edge)
-    assert "/discover D2" in next_step_hint({"stage": "DISC_D1"})   # gộp: 1 lệnh cho cả D-wave
+    # Gợi ý phải dạy dạng KHÔNG ARG. Trước đây nó dạy `/discover D2` — mà `/discover` vốn tự suy
+    # (gate wave đang đứng xanh thì tiến, đỏ thì ở lại), nên gợi ý đang dạy người dùng nhớ một cờ
+    # mà cả bộ khung cố ý bỏ đi. Arg chỉ còn là đường ÉP, phải nằm sau chữ "ép".
+    _h = next_step_hint({"stage": "DISC_D1"})
+    assert "/discover (" in _h, _h                 # dạng mặc định: không arg
+    assert "ép đào thêm: /discover D1" in _h, _h   # arg chỉ là đường ép, và ép Ở LẠI wave hiện tại
     assert "/domain" in next_step_hint({"stage": "PLAN"})          # hành lang nửa sau, chạy tiếp
     assert "/domain" in next_step_hint({"stage": "DESIGN"})       # back-edge
     assert "ký" in next_step_hint({"stage": "DOMAIN_AUTHORING"})  # flow 2 lớp: ký → dịch

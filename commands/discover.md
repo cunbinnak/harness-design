@@ -1,7 +1,7 @@
 ---
 name: discover
 description: "Khám phá D0-D3 → persona + ma trận quyền + capability + boundary + PROJECT.md. Chốt D3: rà chéo, user đọc + duyệt = ký."
-argument-hint: "(không arg — chạy tiếp D-wave đang đứng)  ·  <D0|D1|D2|D3>  ·  D0 kèm mô tả project"
+argument-hint: "(không arg — tự suy)  ·  \"<mô tả project>\" ở lần đầu  ·  <D0|D1|D2|D3> để ép đào thêm"
 when_state: [BOOTSTRAP, DISC_D0, DISC_D1, DISC_D2, DISC_D3]
 sets_stage: DISC_D0
 spawn:
@@ -12,7 +12,16 @@ gates: [{type: discovery_advance}, {type: discovery_stamped}, {type: discovery_w
 
 # /discover
 
-Không arg → chạy tiếp D-wave đang đứng (suy từ `stage`).
+**Không cần arg.** Lệnh tự suy đang đứng ở đâu và đi đâu — cùng luật với 6 lệnh còn lại:
+
+| Đang ở | `/discover` (không arg) làm gì |
+|---|---|
+| `BOOTSTRAP` | vào D0. Lần đầu thì kèm mô tả: `/discover "<sản phẩm giải quyết nỗi đau gì, cho ai>"` |
+| `DISC_D0..D2` | chạy gate của wave đang đứng → **xanh thì TIẾN** sang wave kế · **đỏ thì Ở LẠI**, đào đúng chỗ gate báo thiếu |
+| `DISC_D3` | D3 xanh → rà chéo cả lớp → **DỪNG cho user đọc và ký**. KHÔNG tự nhảy sang DOMAIN |
+
+Arg `<D0|D1|D2|D3>` chỉ để **ép ở lại đào thêm** khi gate đã xanh mà mình thấy chưa đủ sâu
+(`/discover D1` lúc đang ở `DISC_D1`). Không phải mode phải nhớ — mặc định là bỏ trống.
 
 | D | Ra cái gì | Gate |
 |---|---|---|
