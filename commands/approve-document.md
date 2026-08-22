@@ -14,7 +14,7 @@ gates: [{type: doc_review}, {type: doc_stamped}, {type: flag, field: approved, e
 
 ## Mục đích
 
-User explicit approve toàn bộ intake artifacts sau khi đã review (qua `/review-document` revision loop) và happy. Command này KHÔNG spawn sub-agent (instant action): set `approved=true` trong STATE **và stamp trạng thái duyệt vào frontmatter doc** qua `py scripts/approve_document.py` — adr/hld/data-model/ux/integrations → `status: APPROVED`; api/events (contract) → `status: ACTIVE` (DEPRECATED giữ nguyên). Không chạy script = gate `doc_stamped` chặn (doc duyệt rồi mà vẫn hiện DRAFT = approve chay).
+User explicit approve toàn bộ intake artifacts sau khi đã review (qua `/domain` (chốt rà chéo) revision loop) và happy. Command này KHÔNG spawn sub-agent (instant action): set `approved=true` trong STATE **và stamp trạng thái duyệt vào frontmatter doc** qua `py scripts/approve_document.py` — adr/hld/data-model/ux/integrations → `status: APPROVED`; api/events (contract) → `status: ACTIVE` (DEPRECATED giữ nguyên). Không chạy script = gate `doc_stamped` chặn (doc duyệt rồi mà vẫn hiện DRAFT = approve chay).
 
 Sau khi approved → có thể chạy `/run-wave <N>` (gate check `approved=true`).
 
@@ -22,8 +22,8 @@ Sau khi approved → có thể chạy `/run-wave <N>` (gate check `approved=true
 
 ## Gate `doc_review` (ép sanity-check trước approve)
 
-`scripts/gates.py check_doc_review` đọc `tracking/doc-review-findings.md` (do `/review-document` no-arg ghi):
-- **Thiếu file** → doc-review sanity-check CHƯA chạy → **chặn** (chạy `/review-document` no-arg trước).
+`scripts/gates.py check_doc_review` đọc `tracking/doc-review-findings.md` (do `/domain` (chốt rà chéo) no-arg ghi):
+- **Thiếu file** → doc-review sanity-check CHƯA chạy → **chặn** (chạy `/domain` (chốt rà chéo) no-arg trước).
 - Còn gap **BLOCKER/MAJOR** `status` open → **chặn** (vá qua revision loop hoặc lùi `/domain` → ký → dịch).
 - Mọi gap đóng / chỉ MINOR open → pass.
 
@@ -56,7 +56,7 @@ Không argument.
    - Run: py scripts/harness.py approve-document complete '{"approved":true}'   (gate doc_stamped verify stamp)
    - Báo user: "Approved. Chạy /run-wave 1 để mở wave đầu tiên."
 5. Nếu user "no":
-   - Báo: "Cancelled. Tiếp tục /review-document nếu cần chỉnh."
+   - Báo: "Cancelled. Tiếp tục /domain nếu cần chỉnh."
 ```
 
 ## State semantics
@@ -75,4 +75,4 @@ Không argument.
 
 Allowed commands ở REVIEW state:
 - `/run-wave <N>` → chốt 1 transition REVIEW → WAVE_OPEN, materialize.
-- `/review-document` vẫn allow (nếu user reconsider, revise thêm).
+- `/domain` (chốt rà chéo) vẫn allow (nếu user reconsider, revise thêm).

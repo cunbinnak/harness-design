@@ -29,10 +29,10 @@ STAGE_NEXT_GUIDE = {
     "DISC_D1": "/discover D2 (gate D1 → sang D2) · hoặc /discover D1 (đào thêm capability/persona/ma trận quyền)",
     "DISC_D2": "/discover D3 (gate D2 → sang D3) · hoặc /discover D2 (đào thêm event-storming)",
     "DISC_D3": "/discover (D3 đạt gate → chốt sang DOMAIN) · hoặc /discover D3 (đào thêm charter/PROJECT)",
-    "DOMAIN_AUTHORING": "/domain (tự suy thiếu gì viết nấy → bạn OK = ký → dịch → DESIGN)",
-    "DESIGN": "/design (refine, tự làm UX nếu có boundary web/mobile) · /design --end → PLAN · LÙI sửa nghiệp vụ: /domain → DOMAIN (re-ký + re-dịch)",
-    "PLAN": "/plan → REVIEW · LÙI sửa thiết kế: /design → DESIGN",
-    "REVIEW": "/review-document (sửa doc) · /approve-document (ký, mở cổng wave) · /run-wave <N>",
+    "DOMAIN_AUTHORING": "/domain (hành lang nửa sau: nghiệp vụ → ký → dịch → thiết kế → chia wave → rà chéo, dừng ở REVIEW)",
+    "DESIGN": "/domain (chạy tiếp: thiết kế → chia wave → rà chéo). LÙI sửa nghiệp vụ: /domain từ DOMAIN (re-ký + re-dịch)",
+    "PLAN": "/domain (chạy tiếp: chia wave → rà chéo → REVIEW)",
+    "REVIEW": "/approve-document (bạn ĐỌC + duyệt = KHOÁ SCOPE) → /run-wave <N> · cần sửa doc: /domain (chạy lại từ chốt liên quan)",
     "WAVE_OPEN": "/run-wave (chạy tiếp hành lang: code → review → dựng thật → test → dogfood)",
     "DEV": "/run-wave (chạy tiếp: boundary còn lại → review)",
     "REVIEW_DEV": "/run-wave (chạy tiếp: dựng chạy thật → test)",
@@ -508,7 +508,7 @@ def _selftest() -> int:
     assert is_proof_file("docs/health-proof.json") is False
     # next-step hint contextual (arg + back-edge)
     assert "/discover D2" in next_step_hint({"stage": "DISC_D1"})   # gộp: 1 lệnh cho cả D-wave
-    assert "/design" in next_step_hint({"stage": "PLAN"})          # back-edge
+    assert "/domain" in next_step_hint({"stage": "PLAN"})          # hành lang nửa sau, chạy tiếp
     assert "/domain" in next_step_hint({"stage": "DESIGN"})       # back-edge
     assert "ký" in next_step_hint({"stage": "DOMAIN_AUTHORING"})  # flow 2 lớp: ký → dịch
     assert "header" not in state_header_line({"stage": "PLAN"}, []).lower() or True

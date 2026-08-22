@@ -1,4 +1,4 @@
-# Slash commands — 10 cửa vào
+# Slash commands — 7 cửa vào
 
 > Sync sang `.claude/commands/` bằng `py scripts/sync_commands.py`. Sửa ở **đây**, không sửa bản sync.
 
@@ -11,17 +11,14 @@ Mỗi lệnh **tự suy đang đứng ở đâu** từ `stage`. Không mode, kh�
 | # | Lệnh | Từ stage | Tới stage | Gọi `harness` id nào |
 |---|---|---|---|---|
 | 1 | [discover](discover.md) | BOOTSTRAP · DISC_D0-D3 | DISC_D0-D3 · DOMAIN_AUTHORING | `discovery-start` (lặp D0→D3) · `discovery-end` |
-| 2 | [domain](domain.md) | DOMAIN_AUTHORING · DESIGN | DOMAIN_AUTHORING · DESIGN | `domain-po` · `domain-ba` · `domain-approve` · `domain-translate` · `domain-end` |
-| 3 | [design](design.md) | DESIGN · PLAN | DESIGN · PLAN | `design` · `design-ux` (chỉ khi có boundary web/mobile) · `design-end` |
-| 4 | [plan](plan.md) | PLAN | REVIEW | `plan` |
-| 5 | [review-document](review-document.md) | REVIEW | REVIEW | `review-document` |
-| 6 | [approve-document](approve-document.md) | REVIEW | REVIEW | `approve-document` (không transition — mở cổng wave) |
-| 7 | [run-wave](run-wave.md) | REVIEW → … → MANUAL_TEST | theo chốt | `start-wave` · `start-dev` · `review-dev` · `dev-handoff` · `test-plan` · `test-execute` · `dogfood` (+ vòng sửa bug) |
-| 8 | [dogfood](dogfood.md) | MANUAL_TEST | MANUAL_TEST | `dogfood` — chỉ để **chạy lại** một lăng kính |
-| 9 | [next-wave](next-wave.md) | MANUAL_TEST · DONE | WAVE_OPEN · BOOTSTRAP | `end-wave` → `next_wave.py --go` → `next-wave` · hết wave thì `done-wave` |
-| 10 | [status](status.md) | mọi stage | — | không gọi gì, không tiêu gate |
+| 2 | [domain](domain.md) | DOMAIN_AUTHORING · DESIGN · PLAN · REVIEW | REVIEW | `domain-po`·`domain-ba` · `domain-approve` · `domain-translate` · `domain-end` · `design` · `design-ux` · `design-end` · `plan` · `review-document` |
+| 3 | [approve-document](approve-document.md) | REVIEW | REVIEW | `approve-document` (không transition — mở cổng wave) |
+| 4 | [run-wave](run-wave.md) | REVIEW → … → MANUAL_TEST | theo chốt | `start-wave` · `start-dev` · `review-dev` · `dev-handoff` · `test-plan` · `test-execute` · `dogfood` (+ vòng sửa bug) |
+| 5 | [dogfood](dogfood.md) | MANUAL_TEST | MANUAL_TEST | `dogfood` — chỉ để **chạy lại** một lăng kính |
+| 6 | [next-wave](next-wave.md) | MANUAL_TEST · DONE | WAVE_OPEN · BOOTSTRAP | `end-wave` → `next_wave.py --go` → `next-wave` · hết wave thì `done-wave` |
+| 7 | [status](status.md) | mọi stage | — | không gọi gì, không tiêu gate |
 
-**Back-edge** (lùi sửa doc đã phase-lock): `PLAN --/design--> DESIGN` · `DESIGN --/domain--> DOMAIN_AUTHORING` (sửa business → ký lại → dịch lại → tiến lại re-gate).
+**Back-edge** (lùi sửa doc đã phase-lock): `/domain` gọi được từ `DESIGN`/`PLAN`/`REVIEW` — nó tự chạy tiếp từ chốt đang đứng; sửa business thì phải ký lại + dịch lại rồi chạy tiếp các chốt sau (re-gate).
 
 ## Ba thứ đáng nhớ
 

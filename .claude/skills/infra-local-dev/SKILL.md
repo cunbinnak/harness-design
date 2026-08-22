@@ -7,7 +7,7 @@ description: Setup + verify infra local cho test handoff — docker-compose serv
 
 ## Khi load
 `dev-handoff-agent` ở `/run-wave` (state DEV_HANDOFF). **Mục tiêu:** khi DONE, `test-execute` agent chạy được local — app boundary + DB/Redis/Kafka **healthy**, schema **migrated**.
-Input: `docs/architecture/infra/docker-compose.yml` (skeleton từ DESIGN `/design`) + boundaries trong wave (MATRIX) + `data-model-{boundary}.md` (migrations).
+Input: `docs/architecture/infra/docker-compose.yml` (skeleton từ DESIGN `/domain`) + boundaries trong wave (MATRIX) + `data-model-{boundary}.md` (migrations).
 
 ## Output: `docs/architecture/infra/docker-compose.yml` (1 vị trí chuẩn)
 Yêu cầu:

@@ -106,4 +106,4 @@ Thứ tự bắt buộc: **transition trước, spawn sau**. STATE phải ở đ
 - Nhảy cách wave (D0 → D2). Gate chặn.
 - Đổi tên/heading template — gate match regex, lệch là false-fail.
 - Bịa số liệu/nguồn/domain. Số nào là giả định thì ghi §5 để D1 verify.
-- Tạo `knowledge-base/*.yaml` (việc của `/plan` + `/run-wave`).
+- Tạo `knowledge-base/*.yaml` (việc của chốt chia-wave trong `/domain` + `/run-wave`).

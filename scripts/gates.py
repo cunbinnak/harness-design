@@ -1709,6 +1709,83 @@ def check_features_complete(state: dict, evidence: dict | None = None, root: Pat
 
 
 # ========================================================================
+# regression_tc_present (test-plan, wave ≥2) — suite wave cũ phải GIỮ XANH
+# ========================================================================
+
+def _delivered_feats(root: Path, before_wave: int) -> dict[str, str]:
+    """{FEAT-id: wave đã giao} lấy từ archive/wave-*/DELIVERED.md của các wave TRƯỚC.
+
+    Đọc DELIVERED.md chứ không đọc plan: plan nói ĐỊNH giao gì, DELIVERED nói THẬT SỰ giao được gì
+    (máy derive từ registry+report lúc đóng wave). Chỉ lấy dòng `passing` — FEAT hoãn hoặc dở dang
+    không phải hợp đồng, ép regression cho chúng là ép sai.
+    """
+    out: dict[str, str] = {}
+    d = root / "archive"
+    if not d.is_dir():
+        return out
+    for f in sorted(d.glob("wave-*/DELIVERED.md")):
+        try:
+            n = int(re.sub(r"\D", "", f.parent.name) or 0)
+        except ValueError:
+            continue
+        if n >= before_wave:
+            continue
+        for line in f.read_text(encoding="utf-8", errors="ignore").splitlines():
+            s = line.strip()
+            if not s.startswith("|"):
+                continue
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            if len(cells) >= 4 and re.fullmatch(r"FEAT-[A-Za-z0-9-]+", cells[0]) \
+                    and cells[-1].lower().startswith("passing"):
+                out.setdefault(cells[0], f.parent.name)
+    return out
+
+
+def check_regression_tc_present(state: dict, evidence: dict | None = None,
+                                root: Path | None = None) -> tuple[bool, str]:
+    """test-plan wave ≥2: registry phải có auto-TC cho MỌI FEAT các wave trước đã giao.
+
+    VÌ SAO — registry nằm ở `tracking/{wave}/`, tức MỖI WAVE MỘT FILE MỚI. Không có gì mang TC wave
+    cũ sang, nên wave 2 sinh registry sạch là `test-execute` chỉ chạy TC wave 2: **không gì chạy lại
+    test wave 1**. Regression lúc đó chỉ còn trông vào dogfood — một lượt soi thủ công, không phải
+    suite chạy mọi lần.
+
+    Đây là bất biến VIPER phát biểu thẳng: *smoke test vòng cũ đi theo `make test` và phải GIỮ XANH*.
+    Với mình `make test` chính là registry, nên nó phải mang theo TC wave cũ.
+
+    Chỉ đòi FEAT `passing` trong DELIVERED.md — FEAT hoãn/dở dang không phải hợp đồng.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    wave = state.get("wave") or {}
+    n = wave.get("number") or 0
+    wave_id = wave.get("id")
+    if n < 2 or not wave_id:
+        return True, ""
+    delivered = _delivered_feats(root, n)
+    if not delivered:
+        return True, ""      # chưa wave nào đóng đúng cách → không có hợp đồng nào để giữ
+    reg = root / "tracking" / wave_id / "test-case-registry.md"
+    if not reg.is_file():
+        return False, f"thiếu tracking/{wave_id}/test-case-registry.md"
+    text = reg.read_text(encoding="utf-8", errors="ignore")
+    missing = [f"{f} (giao ở {w})" for f, w in sorted(delivered.items())
+               if not re.search(rf"{re.escape(f)}(?![\w-])", text)]
+    if missing:
+        return False, (
+            f"registry wave {n} thiếu TC regression cho FEAT wave trước đã giao: "
+            + ", ".join(missing[:6]) + ("…" if len(missing) > 6 else "")
+            + f"\n      Registry là file MỚI mỗi wave (`tracking/{wave_id}/`), không tự mang TC cũ "
+              "sang — không có TC nào của wave trước thì không gì chạy lại chúng, và regression chỉ "
+              "còn trông vào dogfood. Mang ≥1 auto-TC luồng lõi mỗi FEAT sang, tag `@regression`. "
+              "Nguồn: archive/wave-*/DELIVERED.md + registry của wave đó trong archive"
+        )
+    return True, ""
+
+
+# ========================================================================
 # edge_cases_decided (design-end) — ca biên phải ĐƯỢC QUYẾT, không để agent đoán
 # ========================================================================
 
@@ -2939,6 +3016,9 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "health_proof"},  # stack còn UP + app reachable (kế thừa từ /dev-handoff)
         {"kind": "contract_test_present"},  # consumer cross-boundary phải có TC contract/integration (G4/G6)
         {"kind": "journey_e2e_present"},  # chuỗi depends_on ≥3 boundary phải có TC span cả chuỗi (L10, API-driven, không đợi FE)
+        # Registry là file MỚI mỗi wave (tracking/{wave}/) — không tự mang TC cũ sang. Không
+        # có TC wave trước thì không gì chạy lại chúng, regression chỉ còn trông vào dogfood.
+        {"kind": "regression_tc_present"},
         {"kind": "ui_test_present"},  # mỗi web boundary phải có ≥1 auto-TC UI (chống UI không bao giờ được test thật)
         {"kind": "registry_scope"},   # TC chỉ trace FEAT thuộc scope ≤ wave hiện tại; deferred phải tag (chống over-scope → bug rác)
         {"kind": "ac_coverage"},      # FEAT.AC ↔ TC 2 chiều: AC in-scope phải có TC; TC trace AC không tồn tại = stale
@@ -3054,6 +3134,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_discovery_stamped(evidence)
         if kind == "edge_cases_decided":
             return check_edge_cases_decided(evidence)
+        if kind == "regression_tc_present":
+            return check_regression_tc_present(state, evidence)
         if kind == "challenge_passed":
             return check_challenge_passed(state, evidence)
         if kind == "discovery_wave":

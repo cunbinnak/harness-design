@@ -36,7 +36,7 @@ Input: `hypothesis-log.md` + `capability-map.md` + `persona-pool.md` + `event-st
 - Idempotent re-run.
 
 ## Sang DOMAIN authoring
-Sau D3 + `/discover` (gate pass → DOMAIN_AUTHORING): PROJECT.md + charter boundaries đã có → user chạy `/domain` — tự suy thiếu gì viết nấy, lặp tới khi OK, rồi ký + dịch (gate ≥1 eng epic+feat+BR + translation_parity) → `/design` (refine tới khi vừa ý, `--end` chốt) → `/plan` → `/approve-document` → `/run-wave 1`.
+Sau D3 + `/discover` (gate pass → DOMAIN_AUTHORING): PROJECT.md + charter boundaries đã có → user chạy `/domain` — tự suy thiếu gì viết nấy, lặp tới khi OK, rồi ký + dịch (gate ≥1 eng epic+feat+BR + translation_parity) → `/domain` (refine tới khi vừa ý, `--end` chốt) → `/domain` → `/approve-document` → `/run-wave 1`.
 
 ## Quality checklist
 - [ ] BOUNDARY-MAP ≥1 row non-placeholder.

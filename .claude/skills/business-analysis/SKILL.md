@@ -1,12 +1,12 @@
 ---
 name: business-analysis
-description: Lens phân tích AC/BR — kiểm AC testable + BR logical + scope rõ. Dùng bởi /review-document (review product DOMAIN/DESIGN) + /domain (phân tích tác động khi đổi phạm vi). Process flow / use case / edge case làm phương pháp.
+description: Lens phân tích AC/BR — kiểm AC testable + BR logical + scope rõ. Dùng ở chốt rà chéo và chốt viết nghiệp vụ của /domain. Process flow / use case / edge case làm phương pháp.
 ---
 
 # Business Analysis Skill
 
 ## Khi load
-- **`/review-document`** (review-document-agent): soi product (FEAT/AC + BR) + design xem AC có testable, BR có logical, scope có rõ — trả issues cho user feed feedback.
+- **`/domain`** (review-document-agent): soi product (FEAT/AC + BR) + design xem AC có testable, BR có logical, scope có rõ — trả issues cho user feed feedback.
 - **`/domain`** (apply-cr-agent): analyze CR impact lên scope/AC/BR → vùng cần re-design.
 
 Input: `docs/architecture/{PROJECT.md, feat/FEAT-*.md, business-rules/BR-*.md}` + (apply-cr) `tracking/change-requests/{cr-id}-*.md`.

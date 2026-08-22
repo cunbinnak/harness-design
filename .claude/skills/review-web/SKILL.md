@@ -14,7 +14,7 @@ npm run -s typecheck
 npm run -s lint
 npx axe-core (hoặc CI a11y job)   # a11y scan
 git diff --name-only main...HEAD
-# Styling/design-fidelity (BẮT BUỘC — bắt 'FE trần'):
+# Styling/domain-fidelity (BẮT BUỘC — bắt 'FE trần'):
 find src -name "*.css" -o -name "*.scss" | wc -l        # phải > 0 (hoặc tailwind/CSS-in-JS)
 grep -rl "className=" src | wc -l                        # số file dùng className
 grep -rE -- "--color-|--font-|--space-|theme\." src      # design token (CSS var) theo ux §4 có được dùng?

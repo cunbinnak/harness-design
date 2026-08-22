@@ -1,84 +1,93 @@
 ---
 name: domain
-description: "Viết tài liệu nghiệp vụ: TỰ SUY thiếu gì viết nấy (Epic → Feature → BR → Journey/Persona) → trình bạn duyệt → ký → dịch sang bản kỹ thuật → sang Design. Không cần mode."
-argument-hint: "(không arg — tự suy)  ·  hoặc gợi ý phạm vi: \"đặt lịch\""
-when_state: [DOMAIN_AUTHORING, DESIGN]
-sets_stage: DOMAIN_AUTHORING
+description: "Viết NỐT nửa sau tài liệu: FEAT/AC/BR → thiết kế (ADR/HLD/API/data-model/UX) → chia wave → rà chéo toàn bộ. Chạy một mạch, dừng ở REVIEW chờ bạn duyệt. Không mode, không cờ."
+argument-hint: "(không arg — chạy tiếp từ stage đang đứng)  ·  hoặc gợi ý phạm vi: \"đặt lịch\""
+when_state: [DOMAIN_AUTHORING, DESIGN, PLAN, REVIEW]
 spawn:
-  agent: "domain-po-agent · domain-ba-agent · domain-translator-agent"
-  skills: [domain-po, domain-ba, domain-translator, business-analysis]
-gates: [{type: domain_gate}, {type: domain_signed}, {type: domain_stamped}, {type: domain_no_jargon}, {type: translation_parity}]
+  agent: "domain-po-agent · domain-ba-agent · domain-translator-agent · solution-architect-agent · ux-designer-agent · program-planner-agent · review-document-agent"
+  skills: [domain-po, domain-ba, domain-translator, technical-design, ux-design, implementation-plan, business-analysis]
+gates: "mỗi chốt giữ nguyên gate cũ của nó (xem bảng dưới)"
 ---
 
-# /domain — tài liệu nghiệp vụ
+# /domain — nốt nửa sau tài liệu
 
-Gộp 5 lệnh cũ. **Không có mode** — thiếu gì thì viết nấy, suy từ Discovery đã chốt.
+`/discover` cho nửa đầu (persona + ma trận quyền · capability · boundary · PROJECT). Lệnh này viết **nốt phần còn lại** rồi dừng ở `REVIEW` chờ bạn duyệt — `/approve-document` là chỗ **kết thúc**, tương đương khoá scope.
 
-## Tự suy viết gì
+## Hành lang
+
+| # | Chốt | `harness <id> complete` | Gate giữ nguyên |
+|---|---|---|---|
+| 1 | Epic / Feature / BR / Journey (business, plain VN) | `domain-po` · `domain-ba` (lặp) | `domain_no_jargon` |
+| 2 | Ký business | `domain-approve` | `domain_stamped` |
+| 3 | Dịch sang bản kỹ thuật | `domain-translate` | `domain_signed` · `translation_parity` |
+| 4 | Đóng lớp nghiệp vụ | `domain-end` | `domain_gate` |
+| 5 | Thiết kế: ADR · HLD · API · data-model · events · tích hợp | `design` | — |
+| 6 | UX — **chỉ khi có boundary web/mobile** | `design-ux` | — |
+| 7 | Đóng thiết kế | `design-end` | `design_gate` · **`edge_cases_decided`** · `todo_resolved` · `contract_graph_parity` · `api_transport` |
+| 8 | Chia wave: WAVE-SEQUENCE + wave-{N} + MATRIX + KG | `plan` | `plan_gate` · `planning_lint` · `plan_integrity` · `matrix_coherence` · `wave_sequence_lint` |
+| 9 | **Rà chéo toàn bộ** | `review-document` (no-arg) | ghi `tracking/doc-review-findings.md` |
+
+Xong chốt 9 → dừng ở `REVIEW`. Bạn đọc, duyệt bằng `/approve-document`.
+
+## Luật của hành lang
+
+1. **Chốt đỏ → DỪNG NGAY tại đó.** Báo gate nào đỏ, thiếu gì. KHÔNG bỏ qua, KHÔNG `force`.
+2. **Gọi lại `/domain` = chạy tiếp từ chốt đang đứng** (suy từ `stage`, không hỏi).
+3. **Chỉ chốt 1 được hỏi.** Từ chốt 3 trở đi gặp mơ hồ → `py scripts/decide.py` rồi đi tiếp, KHÔNG dừng hỏi. Thứ cần hỏi lẽ ra đã hỏi ở `/discover` và chốt 1.
+4. Chốt 6 **tự suy**: kind boundary có `web`/`mobile` thì chạy, backend-only thì bỏ qua **và nói rõ là bỏ qua** — không im lặng vắng mặt.
+5. Mỗi sub-agent spawn bằng `py scripts/build_prompt.py <chốt> …`, nguyên văn output.
+
+## Chốt 1 — chỗ DUY NHẤT của lệnh này được hỏi
+
+Tự suy viết gì, không cần mode:
 
 ```
-đọc  docs/discovery/{capability-map, persona-pool, hypothesis-log}.md
-     + docs/domain/ đang có gì
-     ↓
-capability chưa Epic nào phủ        → viết Epic
-Epic chưa đủ ≥2 Feature             → viết Feature
-Feature nhắc rule chưa có BR        → viết BR
-persona chưa có Journey             → viết Journey
-     ↓  (thứ tự này là phụ thuộc, không phải sở thích:
-        Feature cần Epic cha, BR cần Feature dẫn nó)
-trình user → sửa → LẶP tới khi user OK
-     ↓
-user OK = CHỮ KÝ → ký (status APPROVED) → dịch sang docs/architecture/ → DESIGN
+đọc docs/discovery/{capability-map, persona-pool, hypothesis-log} + docs/domain/ đang có gì
+  capability chưa Epic nào phủ      → viết Epic
+  Epic chưa đủ ≥2 Feature           → viết Feature
+  Feature nhắc rule chưa có BR      → viết BR
+  persona chưa có Journey           → viết Journey
 ```
+
+Hai chế độ hỏi như `/discover`: mục **khám phá** (luồng nghiệp vụ, ca biên, ai làm gì khi nào) hỏi bằng **hội thoại mở**, KHÔNG `AskUserQuestion`; mục **quyết định** (chọn giữa hai cách xử đã đếm được) mới dùng `AskUserQuestion` kèm đánh đổi.
+
+**Hỏi TRƯỚC khi viết.** Draft đã thành hình thì câu trả lời sau đó chỉ còn là sửa vặt — người ta ngại phủ nhận thứ đã viết ra.
 
 Không suy được (Discovery chưa đủ) → **STOP, báo user quay lại `/discover`**. Đừng bịa Epic từ hư không.
 
-## Hỏi thế nào
+## Ba lớp, đúng thứ tự
 
-Đây vẫn là chỗ **được hỏi**, và hỏi nhiều là đúng. Hai chế độ như Discovery:
-
-| Loại | Cách hỏi |
-|---|---|
-| **Khám phá** — luồng nghiệp vụ, ca biên, ai làm gì khi nào | hội thoại **mở**. KHÔNG `AskUserQuestion` — option mớm lời |
-| **Quyết định** — chọn giữa hai cách xử đã đếm được | `AskUserQuestion` + đánh đổi |
-
-**Hỏi TRƯỚC khi viết**, không viết xong rồi mới hỏi. Draft viết ra rồi thì câu trả lời sau đó chỉ còn là sửa vặt — người ta ngại phủ nhận thứ đã thành hình.
-
-## Ba tầng, đúng thứ tự
-
-| Tầng | Ở đâu | Ai làm |
+| Lớp | Ở đâu | Ai làm |
 |---|---|---|
-| **Business** — plain VN, không jargon | `docs/domain/{epics,feat,business-rules,journeys,personas}/` | `domain-po-agent` (Epic/Feature/Journey) · `domain-ba-agent` (BR/Persona) |
-| **Chữ ký** — `status: APPROVED` | cùng file | bạn OK → `py scripts/domain_approve.py` stamp |
-| **Engineering** — bản dịch cho kỹ sư | `docs/architecture/{epics,feat,business-rules}/` | `domain-translator-agent` |
+| **Business** — plain VN, không jargon | `docs/domain/**` | `domain-po-agent` · `domain-ba-agent` |
+| **Chữ ký** — `status: APPROVED` | cùng file | bạn OK → `py scripts/domain_approve.py` |
+| **Engineering** — bản dịch cho kỹ sư | `docs/architecture/{epics,feat,business-rules}` | `domain-translator-agent` |
 
 **Ký TRƯỚC, dịch SAU.** Dịch bản chưa ký là dịch thứ còn đổi.
 
-## Chạy
+## Chốt 9 — rà chéo, thứ từng chốt riêng lẻ không thấy
 
-```bash
-py scripts/build_prompt.py domain-po --mode <EPIC|FEATURE|JOURNEY>   # hoặc domain-ba --mode <BR|PERSONA>
-py scripts/harness.py domain-po complete '{...}'
-# ... lặp tới khi đủ + user OK
-py scripts/domain_approve.py <id|all>
-py scripts/harness.py domain-approve complete '{...}'
-py scripts/build_prompt.py domain-translate
-py scripts/harness.py domain-translate complete '{...}'
-py scripts/harness.py domain-end complete '{...}'          # → DESIGN
+```
+capability ↔ FEAT       mọi năng lực có ≥1 FEAT phủ? (bắt thiếu luồng nền: đăng nhập, phân quyền)
+persona    ↔ FEAT       mọi persona có FEAT phục vụ?
+ma trận    ↔ AC         mỗi ô `cấm` có ≥1 AC âm?
+FEAT       ↔ BR         AC "lỗi nghiệp vụ" trỏ về BR có thật?
+FEAT       ↔ HLD/API    mọi FEAT có boundary + contract?
+HLD §6.1                ca biên còn ô trống nào?
+wave plan  ↔ FEAT       mọi FEAT in-scope có wave? wave nào phụ thuộc thứ chưa giao?
+"Câu hỏi cho Author"    còn câu nào treo?
 ```
 
-## Luật
+Gap **BLOCKER/MAJOR** → ghi `tracking/doc-review-findings.md`, **vá trước**, đừng đẩy sang cho bạn phát hiện hộ. Gate `doc_review` @ `/approve-document` chặn nếu còn gap open.
 
-- **NGÔN NGỮ NGHIỆP VỤ THUẦN** ở `docs/domain/`: cấm tên class/SQL/API-path/HTTP-status/schema/endpoint. Gate `domain_no_jargon` chặn lúc ký.
-- **Dịch KHÔNG sáng tác**: translator clone narrative + map sang format eng + để field kỹ thuật dạng `TBD (DESIGN)`. KHÔNG tự nghĩ AC/scope mới. Gate `translation_parity` đối chiếu.
-- **`status: DRAFT` tới khi bạn OK.** Agent KHÔNG tự approve.
-- Feature: **≥4 AC dạng BDD** (Cho/Khi/Thì) mô tả hành vi nghiệp vụ — happy + validation + error + a11y.
-- Epic: **≥2 Feature** (ít hơn thì gộp vào Epic khác).
+## Lùi về đây
 
-## Lùi về đây từ DESIGN
+`/domain` gọi được từ `DESIGN`/`PLAN`/`REVIEW` (back-edge) khi cần sửa doc đã phase-lock. Sửa business xong phải **ký lại + dịch lại**, rồi chạy tiếp các chốt sau (re-gate).
 
-`/domain` gọi được từ `DESIGN` (back-edge) khi cần sửa narrative/AC — doc business bị phase-lock ở DESIGN. Sửa xong phải **ký lại + dịch lại**, rồi `/design` tiến lại (re-gate).
+## Forbidden
 
-## Done
-
-Gate `domain_gate` (≥1 epic + ≥1 feat + ≥1 BR ở `docs/architecture/`) xanh → `DESIGN`.
+- Bỏ qua chốt vì "chắc xanh rồi" — gate là thứ trả lời câu đó.
+- **Jargon ở `docs/domain/`**: cấm tên class/SQL/API-path/HTTP-status/endpoint. Gate `domain_no_jargon` chặn lúc ký.
+- **Dịch mà SÁNG TÁC**: translator clone narrative + map sang format eng + để field kỹ thuật `TBD (DESIGN)`. KHÔNG tự nghĩ AC/scope mới. Gate `translation_parity` đối chiếu.
+- Agent **tự approve**. `status: DRAFT` tới khi bạn OK.
+- Code sản phẩm. Mockup HTML là tài liệu chốt giao diện, không phải nền code.

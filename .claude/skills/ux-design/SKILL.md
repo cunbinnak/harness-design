@@ -1,12 +1,12 @@
 ---
 name: ux-design
-description: UX/UI cho FE boundary (stage DESIGN, /design, ux-designer-agent — tách vai khỏi solution-architect) — user flow, MOCKUP HTML tĩnh per screen (design bằng HTML, không ASCII), UI states đầy đủ, design tokens + Visual polish, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md + mockups/{boundary}/*.html + design-tokens.css.
+description: UX/UI cho FE boundary (stage DESIGN, /domain, ux-designer-agent — tách vai khỏi solution-architect) — user flow, MOCKUP HTML tĩnh per screen (design bằng HTML, không ASCII), UI states đầy đủ, design tokens + Visual polish, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md + mockups/{boundary}/*.html + design-tokens.css.
 ---
 
 # UX Design Skill
 
 ## Khi load
-Command **`/design`** (stage DESIGN, self-loop) — agent chuyên môn **`ux-designer-agent`**, tách vai khỏi solution-architect (`/design` lo hệ thống/contract). Chạy SAU khi `/design` đã chốt boundary + `api-{be}.md` (UX consume contract, không bịa endpoint).
+Command **`/domain`** (stage DESIGN, self-loop) — agent chuyên môn **`ux-designer-agent`**, tách vai khỏi solution-architect (`/domain` lo hệ thống/contract). Chạy SAU khi `/domain` đã chốt boundary + `api-{be}.md` (UX consume contract, không bịa endpoint).
 Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md` (user story + AC) + `JOURNEY/PERSONA` + `api-{be}.md` (contract boundary phục vụ).
 
 ## Deliverable
@@ -19,10 +19,10 @@ Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md
 
 ## Design system trước khi vẽ
 - Project có design system / **ADR ui-kit** → TUÂN THEO (layout, color, component pattern, mobile nav).
-- Chưa có → **đề xuất chốt 1 component library trưởng thành** (React → mặc định **Ant Design 5**; hoặc MUI/Chakra theo ý user) — báo user chốt để `/design` (solution-architect) ghi **ADR ui-kit** (adr/ không thuộc quyền ux-designer). KHÔNG tự chế design system từ số 0. Library đã chốt = visual language chuẩn cho CẢ mockup lẫn app.
+- Chưa có → **đề xuất chốt 1 component library trưởng thành** (React → mặc định **Ant Design 5**; hoặc MUI/Chakra theo ý user) — báo user chốt để `/domain` (solution-architect) ghi **ADR ui-kit** (adr/ không thuộc quyền ux-designer). KHÔNG tự chế design system từ số 0. Library đã chốt = visual language chuẩn cho CẢ mockup lẫn app.
 - **Mockup mô phỏng đúng visual language của library đã chốt** (mockup là HTML tĩnh nên không nhúng antd thật — nhưng radius/màu/spacing/kiểu component phải nhìn NHƯ antd; dev sau đó dùng antd thật, token map qua `ConfigProvider`/theme → mockup và app hội tụ).
 - KHÔNG hardcode color/spacing/typography → **reference design tokens** (design-tokens.css chỉnh theo palette của library đã chốt).
-- **Shared design tokens:** tạo/giữ `docs/architecture/ux/design-tokens.css` (SoT 1 file dùng chung MỌI web boundary, theo `TEMPLATE.design-tokens.css`: `--color-*`/`--font-*`/`--space-*`/`--radius-*` + dark/hc theme). ux-{boundary}.md §4 tham chiếu token NÀY (không bịa palette per-boundary). Web FE consume qua `var(--...)`; mobile map `ThemeData`/`ColorScheme`. Gate `web_styling` ép plain-CSS phải dùng `var(--...)`.
+- **Shared design tokens:** tạo/giữ `docs/architecture/ux/domain-tokens.css` (SoT 1 file dùng chung MỌI web boundary, theo `TEMPLATE.design-tokens.css`: `--color-*`/`--font-*`/`--space-*`/`--radius-*` + dark/hc theme). ux-{boundary}.md §4 tham chiếu token NÀY (không bịa palette per-boundary). Web FE consume qua `var(--...)`; mobile map `ThemeData`/`ColorScheme`. Gate `web_styling` ép plain-CSS phải dùng `var(--...)`.
 
 ## Chuẩn chuyên nghiệp + ANTI-PATTERNS (bắt buộc — mockup xấu = fail review)
 **BƯỚC 0 bắt buộc: MỞ `ux/mockups/EXAMPLE.reference.html` trong browser** — thư viện ARCHETYPE màn dùng cho MỌI đề bài (1 Dashboard · 2 Bảng danh sách · 3 Form · 4 Trang chi tiết · 5 Timeline/lịch tài nguyên · 6 Feedback states). Mỗi màn sắp vẽ: xác định thuộc archetype nào (hoặc ghép archetype nào) → đối chiếu section đó về bố cục/mật độ/màu/states — đó là mức chất lượng TỐI THIỂU. KHÔNG copy nội dung — chỉ neo phong cách. Vẽ xong tự so: thua bài mẫu = làm lại trước khi trình user.
@@ -55,7 +55,7 @@ Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/run-wave đối chi�
 2. **SCREEN-MAP trước** (mục lục màn): từ FEAT `has_ui_touchpoint` + journeys derive danh sách MÀN → gán boundary theo luật (hint → persona → hỏi) → ghi bảng SCREEN-MAP.md. Đây là kế hoạch thiết kế — user thấy được toàn cảnh màn nào thuộc đâu trước khi vẽ.
 3. **Thiết kế TỪNG MÀN** (đơn vị công việc — đi theo SCREEN-MAP, ưu tiên màn trong flow FEAT Must):
    - Đọc đúng tài liệu của màn: FEAT:AC trong row + `api-{be}.md` mà flow gọi + journey liên quan.
-   - **Mockup HTML** (`mockups/{boundary}/{screen}.html`): THIẾT KẾ giao diện hoàn chỉnh — app shell + nội dung screen thật, compose từ token, link `../../design-tokens.css`. Mockup là SoT về look — làm "đẹp" ở ĐÂY theo §Visual polish, không tả suông, không skeleton chờ điền.
+   - **Mockup HTML** (`mockups/{boundary}/{screen}.html`): THIẾT KẾ giao diện hoàn chỉnh — app shell + nội dung screen thật, compose từ token, link `../../domain-tokens.css`. Mockup là SoT về look — làm "đẹp" ở ĐÂY theo §Visual polish, không tả suông, không skeleton chờ điền.
    - **Component states đầy đủ**: default / hover / disabled / loading / error / empty — state chính render trong mockup, bảng behavior ở ux-*.md.
    - **API calls**: trigger → endpoint → method → loading state, khớp `api-{be}.md`.
    - **Validation FE-side**: field · required · rule · error message.
