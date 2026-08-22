@@ -212,6 +212,39 @@ Một trong: APPROVE | APPROVE WITH MINOR COMMENTS | REQUEST CHANGES | NEEDS CLA
 ## Reviewer Anti-patterns (KHÔNG làm)
 - Chỉ review formatting; rewrite cả solution khi không được yêu cầu; đánh preference là BLOCKER; bỏ qua convention sẵn có; đề xuất dependency mới không lý do; comment mơ hồ ("refactor this"); approve happy-path-only cho flow critical; bỏ qua test/tenant/security/transaction risk.
 
+
+## Kỷ luật khi review — bốn luật, áp cho MỌI finding
+
+**1. Mỗi finding phải nói được HẬU QUẢ THẬT.** Không phải "vi phạm mục X", mà *chuyện gì xảy ra
+với người dùng thật*: mất dữ liệu · lộ dữ liệu · sai kết quả · AC không chạy được · wave trước gãy.
+**Viết không nổi câu hậu quả thì đó không phải finding** — đó là ý thích. Luật này thay cho một
+danh sách cấm dài: nó tự loại nhận xét vặt (đặt tên cho đẹp hơn, tách file cho gọn, trừu tượng hoá
+"để sau dễ mở rộng") mà không cần liệt kê từng loại.
+
+**2. Trục nào sạch thì NÓI SẠCH.** Soi hết một mục mà không thấy gì đáng nêu → ghi thẳng
+"mục này ổn". **Đừng bịa một nhận xét cho có** để báo cáo trông chăm chỉ. Findings rác làm loãng
+findings thật, và người đọc sẽ bắt đầu bỏ qua cả danh sách.
+
+**3. MỞ FILE RA ĐỌC, đừng suy từ tên.** Tên hàm `validateOrder` không chứng minh nó validate gì.
+Mọi finding phải chỉ được `file:dòng` cụ thể, và dòng đó phải đã được đọc thật.
+
+**4. Không chắc thì NÓI không chắc, kèm cách kiểm chứng.** `severity: QUESTION` + một câu
+"kiểm bằng cách nào". Đoán bừa làm MAIN mất thời gian đuổi theo thứ không tồn tại — đắt hơn hẳn
+việc bỏ sót một finding nhỏ.
+
+## Trục dễ quên: LỆCH THỨ ĐÃ CHỐT
+
+Ngoài "code có đúng spec không", soi thêm **code có đi ngược quyết định đã ghi không**:
+
+- `tracking/decisions.md` — code làm khác một dòng quyết định mà **không có dòng mới đè lên**
+  (`Ghi chú: thay cho <ngày>`). Đổi ý thì được, đổi lặng lẽ thì không.
+- `docs/architecture/adr/ADR-*.md` — dùng thư viện/kiểu kiến trúc khác ADR đã chốt.
+- `hld-{boundary}.md` §6.1 — ca biên đã quyết mà code không chặn. **Chặn ở UI KHÔNG tính**:
+  phải có ràng buộc ở DB hoặc kiểm ở tầng server.
+- `archive/wave-*/DELIVERED.md` — surface wave trước bị đổi/xoá thay vì chỉ thêm vào.
+
+Đây là loại lệch mà mọi checklist kỹ thuật ở trên đều mù, vì code trông vẫn "đúng chuẩn".
+
 ## Loop & kết luận
 - Còn **BLOCKER/MAJOR** hoặc gate (build/lint/test/coverage) fail → review GHI findings vào `review-findings.md` (KHÔNG tự spawn). **MAIN** đọc findings → spawn `fix-{prefix}-{boundary}-agent` (Mode B) → re-spawn review → loop tới sạch. Gate `no_open_findings` chặn `/run-wave complete` tới khi findings BLOCKER/MAJOR đóng hết (lưới an toàn).
 - Verdict → kết quả: `review_result = pass` chỉ khi `blocker == 0` + gate pass + verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}; `review_result` là evidence cho gate `/run-wave`.

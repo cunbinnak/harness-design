@@ -97,5 +97,23 @@ Mỗi AC sinh TC cho các nhánh sau (bỏ nhánh không áp dụng):
 5. **Traceability 2 chiều**: mọi AC `Must` → ≥1 TC (không AC mồ côi); mọi TC → đúng 1 AC (không TC thừa không trace).
 6. **Forbidden trong narrative TC** (steps/expected cell vẫn được dùng selector/payload cho automation): không gắn tên class/SQL/DOM selector vào cột `expected` — TC mô tả behavior, sống lâu hơn implementation.
 
+## Ba luật giữ cho bộ test có giá trị
+
+**1. Tên TC phải nói được HỎNG GÌ khi nó đỏ.**
+`không cho đặt hai lịch trùng khung giờ` — đọc tên là biết mất gì. `test booking 2` thì lúc đỏ
+phải mở TC ra đọc mới hiểu, và người vội sẽ bỏ qua nó.
+
+**2. CẤM test khẳng định lại chính hiện thực.**
+TC chỉ lặp lại những gì code đang làm (đọc code rồi viết `expected` bằng đúng hành vi quan sát
+được) thì **đổi code là đổi TC, không bắt được lỗi nào**. `expected` phải suy ra từ **AC/BR**, không
+từ code. Dấu hiệu: viết `expected` mà phải mở source ra xem — dừng lại, mở `FEAT-*.md` ra thay.
+
+**3. TC không tái hiện được thì không phải TC.**
+Dữ liệu tự tạo trong TC, không dựa vào thứ sẵn có trong DB; chạy thứ tự nào cũng ra một kết quả.
+TC phập phù rồi sẽ bị bỏ qua, và một TC bị bỏ qua kéo cả bộ mất uy tín.
+
+> **Phát hiện code sai lúc thiết kế TC → GHI vào review-findings, KHÔNG sửa code.** Thiết kế test
+> mà đi sửa code là mất người kiểm độc lập: người viết bài thi không được sửa bài làm.
+
 ## Done
 - Mọi AC `Must` trace ≥1 TC (2 chiều); coverage matrix phủ 100%; endpoint nhạy cảm có error paths + tenant isolation + idempotency + concurrency; event boundary có TC idempotent/DLQ; dedupe-check trước khi thêm TC (reuse vs create ghi `note`); priority + tags gán đúng theo `SEVERITY-TEST-TAXONOMY`.
