@@ -1080,7 +1080,7 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
         "\nAgent: **test-execute-agent** · Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API/UI/e2e). **KHÔNG build source · KHÔNG mvn/npm/gradle/vitest · KHÔNG đo coverage** (đó là việc DEV ở start-dev).",
         state_bundle(state),
         NON_NEGOTIABLES,
-        skills_block(["test-execute", "specialist-testing", "infra-local-dev"]),
+        skills_block(["test-execute", "specialist-testing", "browse", "infra-local-dev"]),
         docs_to_read([
             ("Test registry", f"tracking/{wave_id}/test-case-registry.md"),
             ("docker-compose", "docs/architecture/infra/docker-compose.yml"),
@@ -1265,6 +1265,12 @@ def build_bug_hunt(state: dict, matrix: list[dict], opts: dict) -> str:
     ])
 
 
+DOGFOOD_BATCHES = (
+    ("1", "DB SẠCH — đọc là chính", ("edge", "newbie", "picky")),
+    ("2", "DB CÓ DỮ LIỆU — ghi và phá", ("rushed", "breaker", "mobile")),
+)
+
+
 def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
     """/dogfood: MAIN điều phối 6 lăng kính persona x 2 đợt trên hệ ĐANG CHẠY.
 
@@ -1315,7 +1321,7 @@ def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
         "Soi hệ ĐANG CHẠY bằng 6 lăng kính persona — tìm thứ `test-case-registry` KHÔNG phủ. "
         "`test-execute` chỉ chạy được test-case ai đó đã nghĩ ra trước; lượt này đi tìm cảnh rỗng "
         "câm, lỗi bị nuốt im lặng, bấm hai lần ra hai bản ghi, vai A chạm dữ liệu vai B.",
-        skills_block(["dogfood"]),
+        skills_block(["dogfood", "browse"]),
         docs_to_read([
             ("URL/endpoint hệ đang chạy (KHÔNG đoán)", f"tracking/{wave_id}/health-proof.json"),
             ("Persona + ma trận vai × hành động + gán 6 vai", "docs/discovery/persona-pool.md"),
@@ -1431,9 +1437,43 @@ def size_stats(prompt: str) -> dict:
 # CLI
 # ========================================================================
 
+def _selftest() -> int:
+    """Dựng thử MỌI builder. Phép kiểm rẻ nhất, và là phép kiểm đáng ra phải có từ đầu.
+
+    VÌ SAO CÓ: một lượt dọn code chết cắt nhầm hằng `DOGFOOD_BATCHES` nằm giữa hai hàm, và
+    `build_dogfood` gãy `NameError` **suốt nhiều commit mà toàn bộ suite vẫn xanh** — vì không phép
+    kiểm nào dựng thử prompt. Builder hỏng chỉ lộ ra lúc MAIN thật sự spawn, tức là muộn nhất có thể.
+
+    Không kiểm NỘI DUNG prompt (thứ đó thuộc về người đọc) — chỉ kiểm nó DỰNG ĐƯỢC và không rỗng.
+    """
+    state = state_mod.load_state()
+    matrix = [{"boundary_id": "demo", "id": "demo", "kind": "backend", "prefix": "dm",
+               "features": ["FEAT-A-001"], "owned_paths": ["services/dm-demo/**"]}]
+    opts = {"boundary": "demo", "wave": "1", "disc_wave": "D0", "mode": "FEATURE",
+            "tc": "TC-001", "input": "x", "feedback": "", "target": "", "target_file": ""}
+    bad: list[str] = []
+    for cmd in sorted(BUILDERS):
+        try:
+            out = BUILDERS[cmd](state, matrix, opts)
+            if not isinstance(out, str) or len(out) < 200:
+                bad.append(f"{cmd}: prompt rỗng/quá ngắn ({len(out) if isinstance(out, str) else '?'})")
+        except Exception as e:
+            bad.append(f"{cmd}: {type(e).__name__}: {e}")
+    if bad:
+        for b in bad:
+            print(f"FAIL {b}", file=sys.stderr)
+        return 1
+    print(f"OK: build_prompt.py selftest passed ({len(BUILDERS)} builder dựng được)")
+    return 0
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+
+    # `--selftest` xử TRƯỚC argparse: nó không có `command`, mà argparse thì bắt buộc.
+    if "--selftest" in sys.argv[1:]:
+        return _selftest()
 
     ap = argparse.ArgumentParser()
     ap.add_argument("command", choices=sorted(BUILDERS.keys()))

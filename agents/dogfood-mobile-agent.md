@@ -5,6 +5,12 @@ command: dogfood
 primary_skill: dogfood
 lens: "màn hình nhỏ / client yếu"
 batch: 2
+# Trình duyệt RIÊNG cho vai này — server inline bật khi sub-agent chạy, tắt khi xong.
+# Trỏ chung một server thì các vai tranh nhau một tab: vai này bấm, vai kia mất trang.
+mcpServers:
+  browser:
+    command: npm
+    args: ["exec", "--yes", "@playwright/mcp@latest", "--", "--isolated", "--viewport-size", "390,844"]
 ---
 
 # Dogfood — vai màn hình nhỏ (đợt 2, DB CÓ DỮ LIỆU)

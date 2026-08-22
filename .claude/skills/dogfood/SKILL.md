@@ -5,6 +5,9 @@ description: Skill của 6 dogfood-{vai}-agent (chốt cuối /run-wave, hoặc 
 
 # Dogfood Skill
 
+
+> **Cách MỞ trình duyệt: skill `browse`.** Mỗi vai có trình duyệt riêng (khai `mcpServers` inline trong frontmatter agent). Ở đó có công thức theo lăng kính — màn nhỏ · mạng lỗi · bấm hai lần trong 50ms · nhập bậy + phân quyền A↛B · **đo computed style đối chiếu token** — và ba thứ dùng làm bằng chứng (`browser_snapshot` · `browser_take_screenshot` · `browser_console_messages`).
+
 ## Khi load
 `/dogfood` ở stage MANUAL_TEST — sau `/run-wave`. Đây là **chỗ thay cho việc người phải tự ngồi chọc vào hệ**: 6 lăng kính dùng thử trên hệ ĐANG CHẠY thật, ghi bug `origin=manual`.
 

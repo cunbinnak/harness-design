@@ -43,7 +43,8 @@
       "Write",
       "Bash",
       "WebFetch(domain:localhost)",
-      "WebFetch(domain:127.0.0.1)"
+      "WebFetch(domain:127.0.0.1)",
+      "mcp__browser"
     ],
     "defaultMode": "acceptEdits"
   },
@@ -242,5 +243,7 @@
         ]
       }
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "$comment": "Playwright MCP: `mcp__browser` allow TRẦN (allow mọi tool browser_*) — thiếu rule này thì mỗi lời gọi `browser_*` là một lần bấm Yes, còn SUB-AGENT chạy headless bị TỪ CHỐI IM LẶNG (không hỏi được ai), nên 6 vai dogfood không mở nổi trình duyệt trong khi gate vẫn đòi screenshot + computed style. `enableAllProjectMcpServers` duyệt sẵn server khai ở `.mcp.json` và trong frontmatter agent."
 }
