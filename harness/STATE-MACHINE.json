@@ -131,7 +131,7 @@
       "read_only_spawn_always": true
     },
     "TEST_EXECUTE": {
-      "description": "Build service local + run auto test, log bug (origin=auto) vào bugs.md. KHÔNG fix ở đây. Transition MANUAL_TEST sau khi chạy (pass HAY fail).",
+      "description": "Chạy auto TC black-box trên hệ đang chạy, ghi test-report.md. KHÔNG fix ở đây. Transition MANUAL_TEST sau khi chạy (pass HAY fail).",
       "allowed_commands": [],
       "allowed_spawn": true,
       "read_only_spawn_always": true,
@@ -141,11 +141,9 @@
       }
     },
     "MANUAL_TEST": {
-      "description": "UAT. /dogfood chạy 6 lăng kính persona trên hệ đang chạy (thay việc ngồi chọc tay); /log-bug ghi 1 bug lẻ; /fix-bugs xử; /test-execute re-run; /end-wave khi sạch.",
+      "description": "UAT. /dogfood chạy 6 lăng kính persona trên hệ đang chạy (thay việc ngồi chọc tay); phát hiện ghi dogfood-report.md cột `Xử`; TC fail thì sửa rồi /test-execute re-run; /end-wave khi sạch.",
       "allowed_commands": [
-        "fix-bugs",
         "dogfood",
-        "log-bug",
         "test-execute",
         "end-wave"
       ],
@@ -249,7 +247,7 @@
         "test_result": "any"
       },
       "auto": true,
-      "note": "Auto-transition khi test-execute complete (có test_result, pass HAY fail). Bug auto fix qua /fix-bugs ở MANUAL_TEST."
+      "note": "Auto-transition khi test-execute complete (có test_result, pass HAY fail). TC fail → sửa rồi chạy lại test-execute; kết quả chỉ nằm ở test-report.md."
     },
     {
       "from": "MANUAL_TEST",
@@ -260,25 +258,7 @@
           "min": 2
         }
       },
-      "note": "6 lăng kính persona x 2 đợt (chia theo trạng thái DB) trên hệ ĐANG CHẠY. Gate health_proof: dogfood trên hệ chết còn tệ hơn không dogfood, vì để lại vết 'đã kiểm'. Ở lại MANUAL_TEST; bug ghi origin=manual, fix qua /fix-bugs."
-    },
-    {
-      "from": "MANUAL_TEST",
-      "to": "MANUAL_TEST",
-      "trigger": "log-bug",
-      "evidence_required": {
-        "bug_id": "any"
-      },
-      "note": "Log 1 bug manual (UAT) qua log-bug-agent → append row bugs.md (origin=manual). Ở lại MANUAL_TEST."
-    },
-    {
-      "from": "MANUAL_TEST",
-      "to": "MANUAL_TEST",
-      "trigger": "fix-bugs",
-      "evidence_required": {
-        "bug_id": "any"
-      },
-      "note": "In-state loop, agent chain fix + review"
+      "note": "6 lăng kính persona x 2 đợt (chia theo trạng thái DB) trên hệ ĐANG CHẠY. Gate health_proof: dogfood trên hệ chết còn tệ hơn không dogfood, vì để lại vết 'đã kiểm'. Ở lại MANUAL_TEST; phát hiện ghi vào dogfood-report.md cột `Xử`."
     },
     {
       "from": "MANUAL_TEST",
@@ -289,7 +269,7 @@
           "min": 1
         }
       },
-      "note": "Re-run full auto suite từ MANUAL_TEST sau /fix-bugs. Chạy xong _auto về MANUAL_TEST; còn bug → fix tiếp; sạch → end-wave."
+      "note": "Re-run full auto suite từ MANUAL_TEST sau khi sửa. Chạy xong _auto về MANUAL_TEST; còn bug → fix tiếp; sạch → end-wave."
     },
     {
       "from": "MANUAL_TEST",
@@ -297,10 +277,9 @@
       "trigger": "end-wave",
       "evidence_required": {
         "uat_signed": true,
-        "no_open_bugs": true,
         "test_result": "pass"
       },
-      "note": "uat_signed + test_result=pass (lần test-execute cuối xanh, ép re-run sau fix) + no_open_bugs"
+      "note": "uat_signed + test_result=pass (lần test-execute cuối xanh, ép re-run sau fix)"
     },
     {
       "from": "DONE",
@@ -309,7 +288,7 @@
       "evidence_required": {
         "wave_n": "any"
       },
-      "note": "Mở wave kế sau khi snapshot wave vừa đóng (scripts/next_wave.py). KHÔNG gate lại — /end-wave ngay trước đã gác đủ (uat_signed + test_passed + no_open_bugs + features_complete + dogfood_done). KHÔNG reset gì: test_result/review_results giữ nguyên nhưng mang dấu wave cũ nên gate wave mới tự đỏ lại."
+      "note": "Mở wave kế sau khi snapshot wave vừa đóng (scripts/next_wave.py). KHÔNG gate lại — /end-wave ngay trước đã gác đủ (uat_signed + test_passed + features_complete + dogfood_done). KHÔNG reset gì: test_result/review_results giữ nguyên nhưng mang dấu wave cũ nên gate wave mới tự đỏ lại."
     },
     {
       "from": "DONE",

@@ -258,15 +258,6 @@ def main() -> int:
         )
         passed.append(ok) if ok else failed.append("test-execute + auto")
 
-        # MANUAL_TEST -> MANUAL_TEST (fix-bugs in-state)
-        ok = step(
-            "MANUAL_TEST fix-bugs (loop)",
-            "fix-bugs",
-            {"bug_id": "BUG-001"},
-            "MANUAL_TEST",
-        )
-        passed.append(ok) if ok else failed.append("fix-bugs manual")
-
         # MANUAL_TEST -> MANUAL_TEST (dogfood: 6 lăng kính x 2 đợt, in-state)
         # health_proof đọc proof file THẬT (test riêng ở gates.py selftest) → smoke force-bypass,
         # đúng triết lý: smoke verify TRANSITION, nội dung gate test hermetic.
@@ -279,8 +270,8 @@ def main() -> int:
         )
         passed.append(ok) if ok else failed.append("dogfood")
 
-        # MANUAL_TEST -> DONE (end-wave, no open bugs)
-        # bugs.md doesn't exist or has no entries → check_no_open_bugs returns True
+        # MANUAL_TEST -> DONE (end-wave)
+        # Không còn sổ bug: TC fail chặn qua test_passed (derive từ test-report.md).
         # dogfood_done đọc tracking/{wave}/dogfood-report.md THẬT → force-bypass như trên.
         ok = step(
             "MANUAL_TEST -> DONE",

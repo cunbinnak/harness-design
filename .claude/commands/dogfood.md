@@ -6,7 +6,7 @@ when_state: [MANUAL_TEST]
 sets_stage: MANUAL_TEST
 spawn:
   agent: "dogfood-{lens}-agent (6 vai, 2 đợt x 3 vai)"
-  skills: [dogfood, bug-logging]
+  skills: [dogfood]
 gates: [{type: health_proof}]
 ---
 
@@ -34,8 +34,8 @@ Cần thêm, thiếu thì STOP: `docs/discovery/persona-pool.md` có **ma trận
 4. **Đợi đủ 3 vai trả kết quả**, rồi **seed lại** dữ liệu mẫu.
 5. **Đợt 2 (DB CÓ DỮ LIỆU)** — spawn 3 vai trong MỘT lượt: `rushed` · `breaker` · `mobile`.
 6. Gộp phát hiện → soi **dấu hiệu dogfood giả** (skill `dogfood`) → vai nào dính thì cho chạy lại vai đó.
-7. Ghi bug vào `tracking/wave-{N}/bugs.md` qua skill `bug-logging`, `origin=manual`.
-8. Báo user tổng hợp. Có bug → `/run-wave` (tự sửa + re-test). Sạch → `/next-wave`.
+7. Gộp phát hiện vào `tracking/wave-{N}/dogfood-report.md` §2 — **mỗi dòng một ô `Xử`** (`sửa ngay` · `chưa xử` · `wave sau`); ô trống = chưa ai quyết, gate đếm.
+8. Báo user tổng hợp. Còn dòng `sửa ngay` → `/run-wave` (tự sửa + chạy lại test). Sạch → `/next-wave`.
 
 Có arg (`/dogfood breaker`) → chỉ chạy lại vai đó, bỏ qua chia đợt.
 
@@ -67,12 +67,12 @@ Thiếu vế đầu = suy từ code chứ chưa chạy. Vế cuối không dẫn
 
 ## Forbidden
 
-- **KHÔNG fix** — ghi bug rồi dừng. Fix ở chốt sửa bug của `/run-wave` để nhân quả rõ ràng.
+- **KHÔNG tự fix** — ghi dòng vào §2 rồi dừng. MAIN điều phối lượt sửa để nhân quả rõ ràng.
 - **KHÔNG sửa `test-case-registry.md`** cho khớp thứ vừa thấy.
 - **KHÔNG sửa doc spec** — phase-lock chặn; sửa spec cho khớp code là đúng anti-pattern harness sinh ra để chống.
-- **KHÔNG teardown infra** — giữ UP cho lượt sửa bug + re-test. Teardown khi hết WAVE-SEQUENCE (`/next-wave`).
+- **KHÔNG teardown infra** — giữ UP cho lượt sửa + chạy lại test. Teardown khi hết WAVE-SEQUENCE (`/next-wave`).
 - Vai dogfood **KHÔNG hỏi user** — trả phát hiện + đề xuất, quyền quyết ở phiên chính.
 
 ## Crash / resume
 
-Re-run `/dogfood` (hoặc `/dogfood <vai>`). Bug đã ghi không ghi lại — `bug-logging` đối chiếu trước khi append.
+Re-run `/dogfood` (hoặc `/dogfood <vai>`). Phát hiện đã có dòng thì không ghi lại — đối chiếu §2 trước khi append.

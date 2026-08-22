@@ -13,17 +13,17 @@
 
 | Artifact | File | Thang | Vòng đời | Gate đọc |
 |---|---|---|---|---|
-| Bug | `tracking/wave-{N}/bugs.md` | `sev: high \| medium \| low` | test-execute (auto) / UAT (manual) sinh → fix qua /fix-bugs → close. Sống tới end-wave. | `no_open_bugs` đọc cột `status` (KHÔNG đọc `sev`) |
+| Phát hiện dogfood | `tracking/wave-{N}/dogfood-report.md` §2 | ô `Xử`: `sửa ngay` \| `chưa xử` \| `wave sau` | 6 lăng kính sinh → quyết ngay tại chỗ. `chưa xử` mang sang wave sau với ô `Xử` bỏ trống. | `dogfood_done` đọc ô `Xử` (**ô trống = chưa ai quyết**) |
 | Review finding | `tracking/wave-{N}/review-findings.md` | `severity: BLOCKER \| MAJOR \| MINOR \| NIT \| QUESTION` | review-dev ghi → fix Mode B → resolved. Ephemeral pre-handoff (theo wave). | `no_open_findings` đọc cột `severity` + `status` |
 | Test case | `tracking/wave-{N}/test-case-registry.md` | `pri: P0 \| P1 \| P2` | test-plan sinh → test-execute chạy. | (không gate trực tiếp; điều phối thứ tự fix) |
 
 Điểm mấu chốt về gate (đọc kỹ trước khi đổi enum bất kỳ):
 
-- `check_no_open_bugs` (gates.py) parse bảng `bugs.md`, lọc row có `id` khớp `bug-\d+` và `status ∉ {closed, fixed, wontfix}`. Nó KHÔNG nhìn `sev`. Vì vậy mọi bug `sev` (high/med/low) còn `open`/`in_progress` đều chặn end-wave như nhau — severity ở đây chỉ để phân loại + ưu tiên fix, KHÔNG đổi hành vi gate.
+- `check_dogfood_done` (gates.py) đọc §2 của `dogfood-report.md`: **ô `Xử` trống** → đỏ · khai `sửa ngay` mà cột `Ở đâu` trống → đỏ · đẩy `wave sau` mà không nói vì sao → đỏ. Nó không phân loại nặng nhẹ: thứ nó ép là **có quyết định**, không phải quyết định nào.
 - `check_no_open_findings` parse bảng `review-findings.md`, CHỈ chặn row có `severity ∈ {blocker, major}` và `status ∉ {resolved, accepted, wontfix, closed, fixed}`. `MINOR/NIT/QUESTION` KHÔNG chặn.
-- `check_test_passed` (end-wave) đọc `STATE.test_result == pass` — độc lập 3 thang trên.
+- `check_test_passed` (end-wave) đọc `STATE.test_result` (derive từ `test-report.md`) — còn TC đỏ thì không đóng wave được. **Đây là thứ thay chỗ cho gate `no_open_bugs` cũ**: kết quả test là nguồn duy nhất, không cần sổ bug song song.
 
-Hệ quả thiết kế: 2 ngưỡng chặn ship khác nhau (review-dev chặn ở BLOCKER/MAJOR; end-wave chặn ở mọi bug open). Bảng map §2 căn 2 ngưỡng này về cùng 1 trục "hậu quả" để phán đoán nhất quán.
+Hệ quả thiết kế: 2 ngưỡng chặn ship khác nhau (review-dev chặn ở BLOCKER/MAJOR; end-wave chặn khi còn TC đỏ). Bảng map §2 căn 2 ngưỡng này về cùng 1 trục "hậu quả" để phán đoán nhất quán.
 
 ---
 
@@ -53,7 +53,7 @@ Ví dụ: "Log spam mỗi request ở test env"; "Error message tiếng Anh thay
 
 Đọc theo dòng: 1 mức hậu quả (S1-S4) ánh xạ sang giá trị enum của từng artifact harness. Cột "Chặn ship?" cho biết gate nào sẽ chặn.
 
-| Hậu quả | bug `sev` (bugs.md) | review `severity` (review-findings.md) | TC `pri` (test-case-registry.md) | Chặn ship? |
+| Hậu quả | phát hiện dogfood (ô `Xử`) | review `severity` (review-findings.md) | TC `pri` (test-case-registry.md) | Chặn ship? |
 |---|---|---|---|---|
 | S1 Critical / ship-blocker | `high` | `BLOCKER` | `P0` | review-dev: CHẶN (BLOCKER open). end-wave: CHẶN (bug open). |
 | S2 Major / pre-ship | `high` hoặc `medium` (xem note) | `MAJOR` | `P0` hoặc `P1` | review-dev: CHẶN (MAJOR open). end-wave: CHẶN (bug open). |
@@ -203,10 +203,10 @@ Clone rút gọn từ ZIP TAG-TAXONOMY, bỏ phần index-file generation (`rein
 
 | Nơi | Dùng gì từ file này |
 |---|---|
-| `.claude/skills/bug-logging/SKILL.md` + `tracking/_templates/TEMPLATE.bugs.md` | bug `sev: high\|medium\|low` → §1+§2 (map S1-S4) + §2.1 (TC fail → sev) |
+| `tracking/_templates/TEMPLATE.dogfood-report.md` | ô `Xử` (`sửa ngay`/`chưa xử`/`wave sau`) → §1+§2 (map S1-S4) + §2.1 (TC fail → sev) |
 | `.claude/skills/test-plan/SKILL.md` + `tracking/_templates/TEMPLATE.test-case-registry.md` | TC `pri: P0\|P1\|P2` → §3; test_type/`group` → §4; tag → §5 |
 | `.claude/skills/review-{backend,bff,web,mobile}/SKILL.md` + `tracking/_templates/TEMPLATE.review-findings.md` | `severity: BLOCKER\|MAJOR\|MINOR\|NIT\|QUESTION` → §1+§2 |
-| `scripts/gates.py` (`check_no_open_bugs`, `check_no_open_findings`, `check_test_passed`) | §0 giải thích gate đọc cột nào → đừng đổi enum value đang được parse |
+| `scripts/gates.py` (`check_dogfood_done`, `check_no_open_findings`, `check_test_passed`) | §0 giải thích gate đọc cột nào → đừng đổi enum value đang được parse |
 | `tracking/README.md` | §0 (3 thang) + §2 (mapping) làm reference |
 
 Không đổi enum value đang parse (gates.py). File này là tầng ngữ nghĩa thống nhất phía trên enum sẵn có.

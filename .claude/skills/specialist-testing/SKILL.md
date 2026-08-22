@@ -28,7 +28,7 @@ Bổ sung TC chuyên sâu = **thêm row** vào bảng `tracking/wave-{N}/test-ca
   - Consumer-driven (Pact hoặc tương đương): consumer định nghĩa expectation → provider verification chạy ở CI provider.
   - Provider state setup cho từng interaction; verify path/method/field/enum/error code/response shape + event payload schema.
   - **Backward-compat (additive-only)**: thêm field optional / enum value OK; remove/rename/đổi type/bắt buộc field mới = **breaking → FAIL** (bắt sớm trước khi vỡ consumer).
-- **regression**: `TC-R*` chốt lại bug đã fix (link `ref_bug=BUG-NNN`) — chống tái phát. Tag `@regression`.
+- **regression**: `TC-R*` chốt lại lỗi đã sửa (link `ref_tc=TC-NNN`) — chống tái phát. Tag `@regression`.
 - **isolation**: unit/integration biên domain (mock infra) cho logic phức tạp / invariant.
 - **performance** (khi NFR latency): k6, threshold = SLO từ `PROJECT.md` NFR (p95/p99 + error rate). Phân loại: **smoke** (vài VU, sanity) · **load** (tải kỳ vọng) · **stress** (tìm điểm gãy) · **soak** (chạy dài → phát hiện memory leak).
   ```javascript

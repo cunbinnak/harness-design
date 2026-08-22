@@ -447,59 +447,10 @@ def check_wave_in_matrix(evidence: dict, field: str = "wave_n", root: Path | Non
     return False, f"wave {wave_n} không có boundary nào trong MATRIX (waves có sẵn: {sorted(waves)})"
 
 
-_CLOSED_STATUSES = ("closed", "fixed", "wontfix")
-
-
-def _bugs_open_from_table(text: str) -> list[str] | None:
-    """Format BẢNG: header có cột 'bug' (hoặc 'id') + 'status'; mỗi bug = 1 row.
-    Trả list bug-id có status ∉ closed/fixed; None nếu KHÔNG tìm thấy bảng hợp lệ."""
-    bug_idx = status_idx = None
-    open_bugs: list[str] = []
-    for line in text.splitlines():
-        s = line.strip()
-        if not s.startswith("|"):
-            continue
-        cells = [c.strip() for c in s.strip("|").split("|")]
-        low = [c.lower() for c in cells]
-        if status_idx is None:  # tìm header row
-            if "status" in low and ("bug" in low or "id" in low):
-                status_idx = low.index("status")
-                bug_idx = low.index("bug") if "bug" in low else low.index("id")
-            continue
-        if all(set(c) <= set("-: ") for c in cells if c):  # separator |---|
-            continue
-        if len(cells) > max(bug_idx, status_idx):
-            bug, st = cells[bug_idx], cells[status_idx].lower()
-            if re.fullmatch(r"bug-\d+", bug, re.IGNORECASE) and st not in _CLOSED_STATUSES:
-                open_bugs.append(bug)
-    return open_bugs if status_idx is not None else None
-
-
-def _bugs_open_from_headings(text: str) -> list[str]:
-    """Format cũ: '## BUG-NNN' + dòng 'status: ...' (fallback tương thích ngược)."""
-    pattern = re.compile(r"^##\s+(BUG-\d+)[^\n]*\n(?:.*\n)*?status:\s*(\w+)", re.MULTILINE)
-    return [m.group(1) for m in pattern.finditer(text) if m.group(2).lower() not in _CLOSED_STATUSES]
-
-
-def check_no_open_bugs(state: dict) -> tuple[bool, str]:
-    """Parse tracking/wave-{N}/bugs.md (format bảng, fallback heading cũ), count bug status ∉ closed/fixed."""
-    wave_id = (state.get("wave") or {}).get("id")
-    if not wave_id:
-        return True, ""  # no wave → no bugs
-    bugs_file = REPO_ROOT / "tracking" / wave_id / "bugs.md"
-    if not bugs_file.exists():
-        return True, ""  # no bugs.md → no open bugs
-    text = bugs_file.read_text(encoding="utf-8")
-    open_bugs = _bugs_open_from_table(text)
-    if open_bugs is None:  # không phải bảng → thử format heading cũ
-        open_bugs = _bugs_open_from_headings(text)
-    if open_bugs:
-        return False, f"còn {len(open_bugs)} bug open: {open_bugs}"
-    return True, ""
-
-
 _FINDING_CLOSED_STATUSES = ("resolved", "accepted", "wontfix", "closed", "fixed")
 _FINDING_BLOCKING_SEV = ("blocker", "major")
+
+
 
 
 def _findings_open_from_table(text: str, id_pattern: str = r"rf-\d+") -> list[str] | None:
@@ -650,7 +601,7 @@ def results_stale(state: dict, field: str) -> str | None:
 def check_test_passed(state: dict) -> tuple[bool, str]:
     """end-wave: lần /test-execute cuối phải `pass` VÀ thuộc đúng wave hiện tại.
 
-    Sau /fix-bugs, field này GIỮ NGUYÊN `fail` của lần test trước (fix không đụng) → buộc
+    Sau một lượt sửa, field này GIỮ NGUYÊN `fail` của lần test trước (sửa không đụng) → buộc
     re-run /test-execute cho xanh mới end-wave được. Ép vòng fix ↔ re-run tới khi suite xanh hẳn."""
     stale = results_stale(state, "test_result")
     if stale:
@@ -1493,20 +1444,19 @@ def _test_log_text(wave_id: str, tc: str, root: Path) -> str:
         return ""
 
 
-def _bugs_tc_refs(wave_id: str, root: Path) -> set[str]:
-    """TC-id (upper) được tham chiếu ở cột 'TC' của bugs.md → biết FAIL nào đã log bug.
+def _failure_documented(wave_id: str, tc: str, root: Path) -> bool:
+    """TC FAIL đã ghi được NGUYÊN NHÂN chưa — đọc log của chính TC đó.
 
-    Mirror ZIP lint_execution invariant: mỗi TC FAIL phải có ≥1 bug reference (chống "fail mà
-    không log bug = miss bug"). Cột TC có thể chứa nhiều id / '—'.
+    Trước đây phép này đòi mỗi FAIL có một row `BUG-NNN` trong `bugs.md`. Sổ bug đã bỏ: kết quả
+    test vốn đã nằm ở `test-report.md`, sổ bug chỉ là bản sao thứ hai của cùng một sự thật và hai
+    bản sao thì sớm muộn lệch nhau. Thứ thật sự cần chặn vẫn còn nguyên — "FAIL rồi để đó, không
+    ai biết vì sao" — nên đổi sang đòi **log của TC đó có dấu vết lỗi thật**, và `test_passed`
+    @end-wave vẫn chặn đóng wave khi còn FAIL. Sửa xong thì chạy lại, report tự xanh.
     """
-    bugs = root / "tracking" / wave_id / "bugs.md"
-    if not bugs.is_file():
-        return set()
-    refs: set[str] = set()
-    for r in _parse_md_table_rows(bugs.read_text(encoding="utf-8", errors="ignore"), ("bug", "tc")):
-        for m in re.finditer(r"tc-[\w-]+", r.get("tc") or "", re.IGNORECASE):
-            refs.add(m.group(0).upper())
-    return refs
+    txt = _test_log_text(wave_id, tc, root).lower()
+    return any(k in txt for k in (
+        "error", "exception", "traceback", "assert", "expected", "status: 5", "status: 4",
+        "-> 5", "-> 4", "lỗi", "nguyên nhân"))
 
 
 def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
@@ -1539,7 +1489,6 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
         return True, ""  # wave manual-only → không có gì để verify
     results = _report_results(rep.read_text(encoding="utf-8", errors="ignore"))
     deferred = _wave_deferred_tokens(wave_id, root)
-    bug_refs = _bugs_tc_refs(wave_id, root)
     health_ok = _health_ok_boundaries(wave_id, root)
     problems: list[str] = []
     inscope = ran = 0
@@ -1578,9 +1527,13 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
                 f"{tc} (boundary={boundary}, web): {res} nhưng thiếu screenshot "
                 f"`tracking/{wave_id}/screenshots/{tc}*.png` (Playwright page.screenshot — bằng chứng UI thật render)"
             )
-        # ZIP lint_execution invariant: FAIL phải log bug (chống "fail mà không log = miss bug")
-        if res == "fail" and tc not in bug_refs:
-            problems.append(f"{tc}: FAIL nhưng KHÔNG có bug nào reference (cột TC) trong bugs.md → miss bug")
+        # FAIL phải để lại NGUYÊN NHÂN trong log — chống "fail rồi để đó, không ai biết vì sao".
+        # (Trước đây đòi một row BUG-NNN; sổ bug đã bỏ vì trùng với test-report.)
+        if res == "fail" and not _failure_documented(wave_id, tc, root):
+            problems.append(
+                f"{tc}: FAIL nhưng log không có dấu vết lỗi (error/exception/assert/status) — "
+                "FAIL phải đọc ra được NGUYÊN NHÂN, nếu không thì không ai sửa được. "
+                "Sửa xong chạy lại test-execute, report tự xanh")
     if inscope > 0 and ran == 0 and not problems:
         problems.append("0 auto-TC in-scope thực sự chạy (tất cả skip) — test ảo, service phải UP để test")
     if problems:
@@ -2397,7 +2350,7 @@ def check_dogfood_done(state: dict, evidence: dict | None = None,
                        root: Path | None = None) -> tuple[bool, str]:
     """/end-wave: wave phải đã qua MỘT lượt dogfood đủ 2 đợt trên hệ đang chạy.
 
-    Vì sao cần gate riêng dù đã có test_passed + no_open_bugs: hai cái đó chỉ nói "test-case ĐÃ VIẾT
+    Vì sao cần gate riêng dù đã có test_passed: nó chỉ nói "test-case ĐÃ VIẾT
     thì pass". Chúng mù với thứ không ai viết TC cho — cảnh rỗng câm, lỗi bị nuốt im lặng, bấm hai
     lần ra hai bản ghi, vai A chạm dữ liệu vai B. Một wave có thể xanh sạch cả ba gate kia mà chưa
     ai từng mở sản phẩm ra dùng thử.
@@ -2419,7 +2372,7 @@ def check_dogfood_done(state: dict, evidence: dict | None = None,
     if not f.is_file():
         return False, (
             f"chưa có {rel} — wave chưa qua lượt /dogfood nào. "
-            "test_passed + no_open_bugs chỉ nói 'TC đã viết thì pass', chúng mù với thứ không ai "
+            "test_passed chỉ nói 'TC đã viết thì pass', nó mù với thứ không ai "
             "viết TC cho (cảnh rỗng câm, lỗi nuốt im lặng, bấm hai lần ra hai bản ghi, "
             "vai A chạm dữ liệu vai B). Chạy /dogfood rồi /end-wave lại"
         )
@@ -3336,7 +3289,7 @@ def check_api_transport_consistency(evidence: dict | None = None, root: Path | N
 
 # Per-command gate rules. Each rule = {kind, ...params}.
 # kind ∈ {flag, all_boundaries_reviewed, int_min, non_empty, artifact_glob, in_state_list,
-#         file_exists, wave_in_matrix, no_open_bugs, no_open_findings, infra_proof, test_passed,
+#         file_exists, wave_in_matrix, no_open_findings, infra_proof, test_passed,
 #         discovery_wave, domain_gate, design_gate, plan_gate, matrix_coherence,
 #         ui_test_present, registry_scope, test_evidence, web_styling, ...}.
 # (coverage per-kind nay gộp trong all_boundaries_reviewed — check_coverage* giữ làm helper unit-tested.)
@@ -3448,12 +3401,6 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "int_min", "field": "test_cases_count", "min": 1},
         {"kind": "test_evidence"},  # auto-TC phải có bằng chứng đã chạy thật (report+log+network-call); deferred bỏ qua
     ],
-    "fix-bugs": [
-        {"kind": "non_empty", "field": "bug_id"},
-    ],
-    "log-bug": [
-        {"kind": "non_empty", "field": "bug_id"},  # log-bug-agent ghi row → trả bug_id
-    ],
     "dogfood": [
         # Hệ phải ĐANG CHẠY THẬT. Dogfood trên hệ chết còn tệ hơn không dogfood: nó không tìm ra
         # gì, nhưng để lại vết "đã kiểm" mà end-wave sẽ tin.
@@ -3463,7 +3410,6 @@ GATE_RULES: dict[str, list[dict]] = {
     "end-wave": [
         {"kind": "flag", "field": "uat_signed", "expected": True},
         {"kind": "test_passed"},  # lần test-execute cuối phải pass (STATE) → ép re-run sau fix
-        {"kind": "no_open_bugs"},
         {"kind": "features_complete"},  # WIP=1 ship-gate (L07): KHÔNG feat nào `active` (làm dở) — VCR-ở-điểm-ship
         {"kind": "dogfood_done"},  # đã soi bằng 6 lăng kính persona, không chỉ chạy TC đã viết
         {"kind": "backward_compat"},
@@ -3471,7 +3417,7 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "next-wave": [
         # KHÔNG gate lại: /end-wave chạy ngay trước đã gác đủ (uat_signed · test_passed ·
-        # no_open_bugs · features_complete · dogfood_done). Gate hai lần cùng một điều kiện chỉ
+        # features_complete · dogfood_done). Gate hai lần cùng một điều kiện chỉ
         # tạo chỗ để hai bản sao lệch nhau.
         {"kind": "non_empty", "field": "wave_n"},
     ],
@@ -3505,8 +3451,6 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_challenge_doc(state, evidence)
         if kind == "decisions_min":
             return check_decisions_min(state, evidence)
-        if kind == "no_open_bugs":
-            return check_no_open_bugs(state)
         if kind == "no_open_findings":
             return check_no_open_findings(state)
         if kind == "doc_review":
@@ -3734,26 +3678,6 @@ def _selftest() -> int:
     finally:
         if _orig is not None:
             _mf.write_text(_orig, encoding="utf-8")
-
-    # no_open_bugs: parse bảng (bug=row) — đếm status ∉ closed/fixed
-    tbl = (
-        "# Bugs\n\n"
-        "| BUG | title | status | origin | boundary |\n"
-        "|-----|-------|--------|--------|----------|\n"
-        "| BUG-001 | a | closed | auto | order |\n"
-        "| BUG-002 | b | open | manual | order |\n"
-        "| BUG-003 | c | fixed | auto | web |\n"
-        "| BUG-004 | d | wontfix | manual | web |\n"   # S3/S4 defer — KHÔNG chặn end-wave
-    )
-    assert _bugs_open_from_table(tbl) == ["BUG-002"], _bugs_open_from_table(tbl)
-    # cột đảo thứ tự vẫn parse đúng (theo header)
-    tbl2 = "| status | bug |\n|--|--|\n| open | BUG-009 |\n| closed | BUG-010 |\n"
-    assert _bugs_open_from_table(tbl2) == ["BUG-009"], _bugs_open_from_table(tbl2)
-    # không có bảng → None (để fallback)
-    assert _bugs_open_from_table("no table here") is None
-    # fallback heading cũ vẫn hoạt động
-    old = "## BUG-007 — x\nstatus: open\n\n## BUG-008 — y\nstatus: closed\n"
-    assert _bugs_open_from_headings(old) == ["BUG-007"], _bugs_open_from_headings(old)
 
     # no_open_findings: chỉ BLOCKER/MAJOR status=open mới chặn; MINOR/accepted/resolved bỏ qua
     ftbl = (
@@ -4127,19 +4051,23 @@ def _selftest() -> int:
         assert check_test_evidence(_te_state, root=_troot)[0] is True, "in-scope có network-call + deferred bỏ qua → pass"
         # derive: in-scope TC-I01 pass → 'pass' (TC-I02 deferred không tính)
         assert derive_test_result(_te_state, root=_troot) == "pass"
-        # (d) TC-I01 FAIL trong report nhưng KHÔNG log bug → fail (ZIP invariant: miss bug)
+        # (d) TC-I01 FAIL nhưng log KHÔNG đọc ra nguyên nhân → fail.
+        #     Trước đây phép này đòi một row BUG-NNN trong bugs.md; sổ bug đã bỏ vì trùng với
+        #     test-report. Thứ cần chặn vẫn nguyên: "FAIL rồi để đó, không ai biết vì sao".
         (_tw / "test-report.md").write_text(
             "| TC | Result |\n|----|--------|\n| TC-I01 | FAIL |\n", encoding="utf-8")
+        (_tlogs / "TC-I01.log").write_text("POST /v1/holds -> 200\nchạy xong\n", encoding="utf-8")
         ok, msg = check_test_evidence(_te_state, root=_troot)
-        assert (not ok) and "TC-I01" in msg and "miss bug" in msg, f"FAIL không log bug phải fail: {msg}"
-        # (d2) FAIL CÓ bug reference TC-I01 trong bugs.md → evidence pass (fail là bug hợp lệ đã log)
-        (_tw / "bugs.md").write_text(
-            "| BUG | title | status | TC |\n|-----|-------|--------|----|\n"
-            "| BUG-001 | x | open | TC-I01 |\n", encoding="utf-8")
-        assert check_test_evidence(_te_state, root=_troot)[0] is True, "TC fail + đã log bug → evidence pass"
-        # nhưng derive = 'fail' (in-scope không all-pass) → end-wave sẽ chặn
+        assert (not ok) and "TC-I01" in msg and "NGUYÊN NHÂN" in msg, \
+            f"FAIL không nêu nguyên nhân phải fail: {msg}"
+        # (d2) log CÓ dấu vết lỗi thật → evidence pass (fail đã đọc ra được vì sao)
+        (_tlogs / "TC-I01.log").write_text(
+            "POST /v1/holds -> 500\nAssertionError: expected 201, got 500\n", encoding="utf-8")
+        assert check_test_evidence(_te_state, root=_troot)[0] is True, \
+            "FAIL có nguyên nhân → evidence pass"
+        # nhưng derive = 'fail' (in-scope không all-pass) → end-wave vẫn chặn
         assert derive_test_result(_te_state, root=_troot) == "fail"
-        (_tw / "bugs.md").unlink()
+        (_tlogs / "TC-I01.log").write_text("POST /v1/holds -> 200\nOK\n", encoding="utf-8")
         # (e) tag @deferred nhưng KHÔNG khai báo wave plan → coi in-scope → đòi bằng chứng (đóng loophole)
         _reg_abuse = _reg.replace("| @FEAT-001 | |", "| @FEAT-001 @deferred | deferred (né test) |")
         (_tw / "test-case-registry.md").write_text(_reg_abuse, encoding="utf-8")

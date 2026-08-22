@@ -96,7 +96,7 @@
 | "Domain model + business rule per boundary?" | `knowledge-base/{boundary}.knowledge-graph.yaml` |
 | "Test cases wave hiện tại?" | `tracking/wave-{N}/test-case-registry.md` |
 | "Feat nào xong / đang dở (clock-in)?" | `tracking/wave-{N}/feature-state.md` (HARNESS-derive: passing/active/not_started per FEAT; `py scripts/capture_feature_state.py` refresh) |
-| "Bug đang open?" | `tracking/wave-{N}/bugs.md` |
+| "TC nào đang đỏ?" | `tracking/wave-{N}/test-report.md` + `test-logs/<TC>.log` (nguyên nhân thật). **KHÔNG có sổ bug** — kết quả test chỉ nằm ở report; sửa xong chạy lại chốt test-execute, report tự xanh |
 | "Skills cho `kind` nào?" | `scripts/build_prompt.py` — `PRIMARY_SKILLS_PER_KIND` + `SCAFFOLD_REF_SKILLS_PER_KIND` (kernel đọc, không phải doc) |
 | "Skills cho ``kind`` nào ở đâu?" | ``.claude/skills/<skill-name>/SKILL.md`` (auto-load on-demand bởi Claude Code) |
 | "Cấu hình local dev (docker-compose)?" | `docs/architecture/infra/docker-compose.yml` |
@@ -122,8 +122,8 @@
 | Cũ | Giờ ở đâu |
 |---|---|
 | `/decide` | `py scripts/decide.py`, nhắc trong NON-NEGOTIABLES của mọi prompt spawn. Mơ hồ → chọn phương án **dẫn về một tài liệu cụ thể** → ghi (kèm cột *giả định*) → đi tiếp. Script **từ chối** dòng không dẫn được về artifact nào |
-| `/log-bug` | skill `bug-logging` — auto từ test + dogfood; bạn báo trong chat thì MAIN ghi |
-| `/fix-bugs` | một chốt trong `/run-wave` |
+| `/log-bug` | **bỏ hẳn, không thay bằng gì.** TC đỏ nằm ở `test-report.md`; phát hiện dogfood nằm ở `dogfood-report.md` §2 kèm ô `Xử`. Sổ bug là bản sao thứ ba của cùng một sự thật |
+| `/fix-bugs` | lượt sửa trong `/run-wave`: `build_prompt.py fix --tc TC-NNN` → sửa → chạy lại `test-execute`. Không chốt riêng, không sổ phải đóng bằng tay |
 | `/apply-cr` | thay đổi = wave sau (`/domain` vốn đã là back-edge) |
 | `/design` · `/plan` · `/review-document` | ba chốt bên trong `/domain` (thiết kế · chia wave · rà chéo) |
 

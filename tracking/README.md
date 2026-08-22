@@ -12,7 +12,6 @@ tracking/
 ├── _templates/
 │   ├── TEMPLATE.test-case-registry.md (test-plan agent fill)
 │   ├── TEMPLATE.test-report.md        (test-execute agent fill)
-│   ├── TEMPLATE.bugs.md               (test-execute + fix-bugs append)
 │   ├── TEMPLATE.review-findings.md    (review-dev: review ghi, fix set resolved)
 │   ├── TEMPLATE.qc-signoff.md         (end-wave agent fill)
 │   └── TEMPLATE.cr.md                 (user create CR)
@@ -25,7 +24,6 @@ tracking/
 │   │   ├── TC-*.log
 │   │   └── screenshots/
 │   ├── review-findings.md             (review-dev pre-handoff, ephemeral theo wave)
-│   ├── bugs.md
 │   └── qc-signoff.md
 └── wave-002/
     └── ...
@@ -40,23 +38,21 @@ tracking/
 | `test-logs/TC-*.log` | `/test-execute` | Per-TC append | Proof per TC: cmd, response, result |
 | `test-logs/screenshots/*.png` | `/test-execute` | UI tests | UI test evidence (Playwright/Cypress) |
 | `review-findings.md` | `/review-dev` (review-{kind}-agent ghi) | review append/update row + fix set `resolved` | Findings review pre-handoff dạng **bảng** (1 row/finding); gate `no_open_findings` |
-| `bugs.md` | `/test-execute` (auto) + `/log-bug` (manual) + `/fix-bugs` (close) | Append per bug (row) | Bug tickets dạng **bảng** (1 row/bug) |
 | `qc-signoff.md` | `/end-wave` (end-wave-agent) | Final signoff | UAT result + stakeholder approval |
-| `change-requests/CR-*.md` | User manual | `/apply-cr` agent fill plan | CR affecting this wave's scope |
 
-## Bugs.md format
+## Ba sổ, ba loại sự thật
 
-**Format BẢNG — mỗi bug = 1 HÀNG** (theo `_templates/TEMPLATE.bugs.md`):
+Không có sổ bug. Kết quả test vốn đã nằm ở `test-report.md`; thêm một sổ `BUG-NNN` chỉ là bản sao
+thứ hai của cùng một sự thật, và hai bản sao thì sớm muộn lệch nhau.
 
-```markdown
-| BUG | title | status | origin | sev | boundary | TC | AC | reproduce | expected | actual | error log | root cause | fix |
-|-----|-------|--------|--------|-----|----------|----|----|-----------|----------|--------|-----------|------------|-----|
-| BUG-001 | empty payload → 500 | closed | auto | high | order-mgmt | TC-I02 | FEAT-001:AC-2 | `POST /orders -d '{}'` | 400 | 500 | `got 500` | thiếu @Valid | +@Valid |
-```
+| Sổ | Ai ghi | Chứa gì | Gate đọc |
+|---|---|---|---|
+| `test-report.md` + `test-logs/<TC>.log` | máy chạy ra | TC nào đỏ, **vì sao đỏ** (status + assert/exception) | `test_evidence` (FAIL phải đọc ra được nguyên nhân) · `test_passed` (còn đỏ thì không đóng wave) |
+| `dogfood-report.md` §2 | người/agent quyết | phát hiện + **ô `Xử`** (`sửa ngay` · `chưa xử` · `wave sau`) | `dogfood_done` (ô trống = chưa ai quyết) |
+| `review-findings.md` | review-agent | finding trước bàn giao, sống theo wave | `no_open_findings` (BLOCKER/MAJOR) |
 
-- Auto-bug (test-execute) bắt buộc đủ `TC` + `AC` + `error log` (excerpt `test-logs/{TC}.log`).
-
-**Gate `no_open_bugs`** parse cột `status` của bảng → reject `/end-wave` nếu còn bug `status ∈ {open, in_progress}`.
+Lượt sửa: `py scripts/build_prompt.py fix --tc TC-NNN --boundary <b>` → sửa → chạy lại chốt
+`test-execute`. Report tự xanh, **không sổ nào phải đóng bằng tay**.
 
 ## Review-findings.md format
 

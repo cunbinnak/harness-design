@@ -194,7 +194,7 @@ test_scope:
 - [ ] `tracking/wave-{{NNN}}/test-case-registry.md` có ≥ 1 TC per AC.
 - [ ] Auto test xanh (`test-execute` → `test_result=pass`), không bug auto open.
 - [ ] Exit signal đạt: {{demo_target / bd_increment_milestone / ui_increment_milestone}} (§2 demo signature).
-- [ ] UAT signed off (gate `end-wave`: `uat_signed`). No open bug (`no_open_bugs`). KG mọi boundary cập nhật.
+- [ ] UAT signed off (gate `end-wave`: `uat_signed`). Không còn TC đỏ (`test_passed`). KG mọi boundary cập nhật.
 
 ---
 

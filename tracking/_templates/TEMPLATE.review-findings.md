@@ -19,4 +19,4 @@
 - **file** ghi `path:line` khi xác định được dòng — giúp fix nhắm đúng chỗ, không quét cả file.
 - **type**: `rule` (convention `rules-{kind}`) · `BR`/`AC` (FEAT) · `arch` (layer/structure) · `security` · `test` (coverage/thiếu test) · `other`.
 - Fix Mode B (spawn bởi MAIN) đọc các row `status=open` của boundary → sửa → set `status=resolved`. KHÔNG đụng row `accepted`/`wontfix`.
-- File này **ephemeral theo wave** (pre-handoff), khác `bugs.md` (bug auto/manual từ test-execute/UAT, sống tới end-wave).
+- File này **sống theo wave** (trước bàn giao): rà sạch thì đóng, không mang sang wave sau. Khác `test-report.md` (kết quả TC, máy chạy ra) và `dogfood-report.md` (phát hiện + quyết định xử). Ba sổ, ba loại sự thật, không chỗ nào chép chỗ nào.

@@ -114,8 +114,8 @@ Một số state có internal agent behavior, không cần command từ user:
 | State | Internal behavior |
 |-------|-------------------|
 | REVIEW_DEV | review-{kind}-agent ghi review-findings.md + trả open_findings; MAIN (orchestrator) đọc → spawn fix Mode B → re-review tới open_findings==0 (gate no_open_findings chặn complete) |
-| TEST_EXECUTE | test-execute-agent run + log bug (origin=auto) vào bugs.md. KHÔNG fix → transition MANUAL_TEST (pass HAY fail); bug auto fix qua /run-wave |
-| MANUAL_TEST | **/run-wave "<mô tả>"**: spawn log-bug-agent → append row `origin=manual` vào bugs.md (suy boundary từ FEAT/UX/màn). **/run-wave** (sweep no-arg = fix mọi bug open; hoặc <bug-id>): MAIN spawn fix-{boundary}-agent (Mode A) → re-run TC + scoped test verify → close (KHÔNG gọi review-agent). **/run-wave re-run được** từ đây → chạy lại full auto suite; TC fail lại = reopen bug, regression mới = bug mới. Lặp tới sạch → /next-wave (no_open_bugs) |
+| TEST_EXECUTE | test-execute-agent chạy TC black-box, ghi test-report.md + nguyên nhân vào test-logs/. KHÔNG fix → transition MANUAL_TEST (pass HAY fail); bug auto fix qua /run-wave |
+| MANUAL_TEST | **/dogfood**: 6 lăng kính ghi phát hiện vào `dogfood-report.md` §2 kèm ô `Xử` (suy boundary từ FEAT/UX/màn). **/run-wave** (sweep no-arg = fix mọi bug open; hoặc <bug-id>): MAIN spawn fix-{boundary}-agent (Mode A) → re-run TC + scoped test verify → close (KHÔNG gọi review-agent). **/run-wave re-run được** từ đây → chạy lại full auto suite; TC fail lại = reopen bug, regression mới = bug mới. Lặp tới sạch → /next-wave (no_open_bugs) |
 
 ## Hooks (9 events)
 

@@ -9,11 +9,10 @@ Usage:
   py scripts/build_prompt.py <command> [options]
 
 Options:
-  --boundary X        # for start-dev, review-dev, dev-handoff, fix-bugs
+  --boundary X        # for start-dev, review-dev, dev-handoff
   --disc-wave D       # for discovery-start|end (D0|D1|D2|D3)
   --mode M            # for domain-po (EPIC|FEATURE|JOURNEY) | domain-ba (BR|PERSONA)
   --wave N            # for start-wave
-  --bug-id BUG-NNN    # for fix-bugs
   --stats             # print size breakdown instead of full prompt
   --save PATH         # write to file (and to stdout)
 """
@@ -94,7 +93,7 @@ Dòng cuối message PHẢI là JSON object đúng schema dưới:
 ```json
 {
   "completed": ["FEAT-XXX:AC-1"],
-  "deferred": [{"item":"...", "reason":"...", "tracked_in":"BUG-NNN"}],
+  "deferred": [{"item":"...", "reason":"...", "tracked_in":"wave sau | RF-NNN"}],
   "needs_review": [{"file":"path", "concern":"..."}],
   "files_changed": ["path1"],
   "kg_appended": ["entity:Order", "decision:DEC-001"],
@@ -798,7 +797,7 @@ def _prior_waves(state: dict) -> list[str]:
 def build_boundary_command(
     state: dict, matrix: list[dict], opts: dict, command: str
 ) -> str:
-    """Generic builder for boundary-scoped commands: start-dev, review-dev, fix-bugs."""
+    """Generic builder for boundary-scoped commands: start-dev, review-dev."""
     boundary_id = opts.get("boundary") or state.get("active_boundary") or "<unknown>"
     boundary = find_boundary(matrix, boundary_id) or {}
     kind = boundary.get("kind", "backend")
@@ -957,24 +956,33 @@ def build_boundary_command(
             "Append learnings.gotchas vào KG nếu phát hiện pattern xấu (KHÔNG đụng phần design).",
             "Return RETURN SCHEMA với `review_result: pass|fail`, **`open_findings: <số row BLOCKER/MAJOR status=open>`**, `coverage_pct`.",
         ]
-    elif command == "fix-bugs":
-        bug_id = opts.get("bug_id") or "<BUG-NNN>"
-        agent_name = f"fix-{prefix}-{boundary_id}-agent (Mode A — bug-id)"
-        skills = PRIMARY_SKILLS_PER_KIND.get(kind, []) + ["bug-logging"]
+    elif command == "fix":
+        # KHÔNG có sổ bug. Nguồn của một lượt sửa là TC FAIL trong `test-report.md` + log của
+        # chính TC đó — kết quả test vốn đã nằm ở đó, thêm một sổ `BUG-NNN` chỉ là bản sao thứ hai
+        # của cùng một sự thật, và hai bản sao thì sớm muộn lệch nhau.
+        tc_id = opts.get("tc") or "<TC-NNN>"
+        agent_name = f"fix-{prefix}-{boundary_id}-agent"
+        skills = PRIMARY_SKILLS_PER_KIND.get(kind, [])
         # Refs cho fix = scaffold (structure/config/logging) + ref_skills boundary (MATRIX). KHÔNG review (fix không gọi review-agent).
         ref_skills = (
             SCAFFOLD_REF_SKILLS_PER_KIND.get(kind, [])
             + list(boundary.get("ref_skills") or [])
         )
         task_list = [
-            f"Read `tracking/wave-{{N}}/bugs.md` (bảng) → tìm **row `{bug_id}`**.",
-            "Đọc cột reproduce + expected + actual + error log + TC + AC.",
-            "**Reproduce đúng TC fail** (xác nhận thấy bug) TRƯỚC khi sửa.",
-            f"Fix code trong `{service_folder}/` theo rules-{kind} — tối thiểu, đúng root cause.",
-            "Verify: **build XANH (no compile error)** + **re-run CHÍNH TC fail** → pass + scoped test pass (regression). **KHÔNG gọi review-agent** (sub-agent không spawn được sub-agent; review-agent là của REVIEW_DEV).",
-            f"Test pass → set ô `status` của row `{bug_id}` = `closed` + thêm regression `TC-R*` trong bảng bugs.md.",
-            "Append FM (failure mode) vào KG.",
-            "Return RETURN SCHEMA với `bug_id`, `fix_verified: true`.",
+            f"Đọc `tracking/{wave_id}/test-report.md` → row **`{tc_id}`**; đọc "
+            f"`tracking/{wave_id}/test-logs/{tc_id}.log` lấy nguyên nhân thật "
+            "(status + assert/exception), và `test-case-registry.md` lấy FEAT/AC mà TC này phủ.",
+            f"**Reproduce đúng `{tc_id}`** (tự chạy lại, thấy nó đỏ) TRƯỚC khi sửa — sửa một thứ "
+            "chưa tái hiện được là đoán.",
+            f"Fix code trong `{service_folder}/` theo rules-{kind} — **tối thiểu, đúng root cause**, "
+            "giữ business intent của FEAT. KHÔNG sửa lan ra ngoài phạm vi TC này.",
+            "**KHÔNG sửa test-case cho khớp code.** TC sai thì đó là phát hiện riêng — báo lại, "
+            "đừng lặng lẽ nới TC để nó xanh.",
+            f"Verify: build XANH + **chạy lại chính `{tc_id}`** → pass + scoped test pass "
+            "(regression). **KHÔNG gọi review-agent** (sub-agent không spawn được sub-agent).",
+            "Append failure-mode vào KG (`failure_modes`) — chỗ này hỏng vì sao, lần sau tránh thế nào.",
+            f"Return RETURN SCHEMA. `completed` ghi `{tc_id}`; MAIN sẽ chạy lại chốt test-execute, "
+            "report tự xanh — KHÔNG có sổ nào phải đóng bằng tay.",
         ]
     else:
         agent_name = "<unknown>"
@@ -1053,8 +1061,8 @@ def build_test_plan(state: dict, matrix: list[dict], opts: dict) -> str:
         tasks_block([
             "Invoke skill `test-plan`. **Đọc template `tracking/_templates/TEMPLATE.test-case-registry.md`** (đúng đường dẫn này) → copy cấu trúc cột, KHÔNG tự tạo format mới.",
             "Foreach FEAT in wave: foreach AC: tạo TC-* entry.",
-            f"**Deferred-scope:** đọc mục `## Deferred to later waves` trong `docs/plans/{wave_id}.md` + review-findings wontfix → TC cho AC/feature deferred đánh tag `@deferred` + `note: deferred wave-N`. Các TC này test-execute sẽ skip(deferred), KHÔNG tính bug/fail (đạt test_result=pass tự nhiên). Defer phải khai báo ở wave plan mới có hiệu lực (tag đơn lẻ vô tác dụng).",
-            "**Scope (gate `registry_scope`):** auto-TC CHỈ trace FEAT thuộc wave plan ≤ wave hiện tại (registry tích luỹ — FEAT wave trước hợp lệ để regression). FEAT chỉ ở wave TƯƠNG LAI → KHÔNG sinh TC (over-scope = test feature chưa build = bug rác). FEAT/AC deferred mà row thiếu tag @deferred → gate chặn.",
+            f"**Deferred-scope:** đọc mục `## Deferred to later waves` trong `docs/plans/{wave_id}.md` + review-findings wontfix → TC cho AC/feature deferred đánh tag `@deferred` + `note: deferred wave-N`. Các TC này test-execute sẽ skip(deferred), KHÔNG tính fail (đạt test_result=pass tự nhiên). Defer phải khai báo ở wave plan mới có hiệu lực (tag đơn lẻ vô tác dụng).",
+            "**Scope (gate `registry_scope`):** auto-TC CHỈ trace FEAT thuộc wave plan ≤ wave hiện tại (registry tích luỹ — FEAT wave trước hợp lệ để regression). FEAT chỉ ở wave TƯƠNG LAI → KHÔNG sinh TC (over-scope = test một feature chưa build). FEAT/AC deferred mà row thiếu tag @deferred → gate chặn.",
             "**UI coverage (gate `ui_test_present`):** mỗi WEB boundary trong wave phải có ≥1 auto-TC UI in-scope (type=auto, group=e2e, boundary=<web>) — Playwright load màn hình chính + assert style token áp dụng (computed style ≠ browser default) + screenshot. KHÔNG được để UI toàn manual/deferred.",
             "**AC coverage (gate `ac_coverage`):** MỌI `### AC-n` của FEAT in-scope wave phải có ≥1 TC trace `FEAT-N:AC-M` (cột feature+AC; auto hoặc manual; token deferred bỏ qua) — AC thiếu TC = mồ côi, gate chặn. Ngược lại KHÔNG trace AC không tồn tại (stale).",
             f"Write to `tracking/{wave_id}/test-case-registry.md` (per skill format).",
@@ -1070,10 +1078,10 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
     wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
         "# SPAWN PROMPT — chốt test-execute",
-        "\nAgent: **test-execute-agent** · Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API/UI/e2e) + log bug (origin=auto). **KHÔNG build source · KHÔNG mvn/npm/gradle/vitest · KHÔNG đo coverage** (đó là việc DEV ở start-dev). KHÔNG fix (fix qua fix-bugs).",
+        "\nAgent: **test-execute-agent** · Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API/UI/e2e). **KHÔNG build source · KHÔNG mvn/npm/gradle/vitest · KHÔNG đo coverage** (đó là việc DEV ở start-dev).",
         state_bundle(state),
         NON_NEGOTIABLES,
-        skills_block(["test-execute", "specialist-testing", "bug-logging", "infra-local-dev"]),
+        skills_block(["test-execute", "specialist-testing", "infra-local-dev"]),
         docs_to_read([
             ("Test registry", f"tracking/{wave_id}/test-case-registry.md"),
             ("docker-compose", "docs/architecture/infra/docker-compose.yml"),
@@ -1084,13 +1092,13 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
             "Infra + service đã UP từ `/dev-handoff` (giữ UP) — **KHÔNG tự dựng**; sanity reachable, down → STOP báo chạy lại `/dev-handoff`.",
             "**SEED data tiền-đề — BẮT BUỘC trước khi chạy TC cần data:** đọc cột `pre-condition`/`test-data` của TC → tạo prerequisite (token/tenant/entity) **qua API thật** (POST tạo theo `api-{boundary}.md`) — black-box, KHÔNG insert DB tay nếu có endpoint. Reference/sample data (lookup, slot…) đã seed ở `docs/architecture/infra/init/*.sql` lúc dev-handoff. Sau TC → **cleanup** record vừa tạo (isolation, deterministic). TC cần data mà không seed = KHÔNG được `skip`/`pass` khống (phải seed rồi chạy thật).",
             "Foreach TC `type=auto` (P0 trước) — **black-box trên hệ thống đang chạy**: **API smoke** (gọi endpoint thật → assert status/shape/field) + **UI/e2e** (Playwright/integration_test). KHÔNG build source, KHÔNG đo coverage (việc DEV). Service/UI chưa up → `skip` (ghi lý do service-down vào log) — nhưng skip bị ĐỐI CHIẾU health-proof.json: proof nói UP mà skip = gate chặn; service chết thật → re-run `py scripts/capture_infra_proof.py` cập nhật proof trước khi skip.",
-            f"**TC trên WEB boundary (UI/e2e):** Playwright mở trang thật (log `GET <url> -> status` từ page.goto) + **screenshot MỖI TC (pass hay fail)** vào `tracking/{wave_id}/screenshots/{{TC}}.png` (gate test_evidence check PNG thật) + **assert style token áp dụng** (computed style element chính khớp design-tokens, KHÔNG phải browser default — trang trắng/unstyled = FAIL + bug layer=frontend đính screenshot).",
-            "TC tag `@deferred` (AC/feature đã khai báo deferred ở wave plan) → `skip(deferred)`, **KHÔNG log bug, KHÔNG tính fail** (out-of-scope wave này).",
+            f"**TC trên WEB boundary (UI/e2e):** Playwright mở trang thật (log `GET <url> -> status` từ page.goto) + **screenshot MỖI TC (pass hay fail)** vào `tracking/{wave_id}/screenshots/{{TC}}.png` (gate test_evidence check PNG thật) + **assert style token áp dụng** (computed style element chính khớp design-tokens, KHÔNG phải browser default — trang trắng/unstyled = FAIL, đính screenshot vào log).",
+            "TC tag `@deferred` (AC/feature đã khai báo deferred ở wave plan) → `skip(deferred)`, **KHÔNG tính fail** (out-of-scope wave này).",
             f"Append result vào `tracking/{wave_id}/test-report.md` (mỗi TC: result + network-call `METHOD path -> status`). **Bằng chứng bắt buộc (gate test_evidence):** mỗi auto-TC in-scope phải có log thật ở `tracking/{wave_id}/test-logs/{{TC}}.log`; group integration/e2e/perf/security phải có dòng `METHOD path -> status` trong log; skip phải nêu lý do service-down (không mâu thuẫn health-proof); TC web boundary phải có screenshot. Thiếu = gate chặn (nghi test ảo).",
-            f"Fail → append row vào bảng `tracking/{wave_id}/bugs.md` (origin: auto, đủ TC/AC/error-log). **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/fix-bugs` ở MANUAL_TEST.",
+            f"Fail → ghi ĐỦ NGUYÊN NHÂN vào `tracking/{wave_id}/test-logs/<TC>.log` (status thật + assert/exception, không chỉ 'failed'). Gate `test_evidence` đòi log đọc ra được VÌ SAO — không có thì không ai sửa nổi. **KHÔNG có sổ bug**: kết quả chỉ nằm ở `test-report.md`; sửa xong chạy lại chốt này, report tự xanh.",
             "**KHÔNG teardown infra** — giữ UP cho MANUAL_TEST; teardown ở `/done-wave`.",
             "**MAIN chạy `py scripts/capture_feature_state.py`** (sau khi report có) → HARNESS ghi `tracking/{wave_id}/feature-state.md` (derive trạng thái mỗi FEAT: passing/active/not_started từ AC↔TC↔report). Agent KHÔNG ghi tay (hook chặn). Đây là clock-in cho session sau + đầu vào cho gate ship (bước kế).",
-            "Return RETURN SCHEMA với `test_result: pass|fail`, `test_cases_count`, `bugs_logged: [...]`. `build`/`lint` = `pass` (n/a — black-box KHÔNG build); BỎ QUA `coverage_pct` (KHÔNG đo ở đây). **Harness DERIVE `test_result` từ test-report.md** (auto-TC in-scope all-pass → pass; còn lại → fail) — tự-khai pass mà report có fail sẽ bị end-wave chặn.",
+            "Return RETURN SCHEMA với `test_result: pass|fail`, `test_cases_count`. `build`/`lint` = `pass` (n/a — black-box KHÔNG build); BỎ QUA `coverage_pct` (KHÔNG đo ở đây). **Harness DERIVE `test_result` từ test-report.md** (auto-TC in-scope all-pass → pass; còn lại → fail) — tự-khai pass mà report có fail sẽ bị end-wave chặn.",
             "Harness auto-transition TEST_EXECUTE → MANUAL_TEST sau khi chạy (pass HAY fail).",
         ]),
         RETURN_SCHEMA_TEMPLATE,
@@ -1107,13 +1115,11 @@ def build_end_wave(state: dict, matrix: list[dict], opts: dict) -> str:
         NON_NEGOTIABLES,
         skills_block(["infra-local-dev"]),
         docs_to_read([
-            ("Bugs", f"tracking/{wave_id}/bugs.md"),
             ("Test report", f"tracking/{wave_id}/test-report.md"),
             ("QC signoff", f"tracking/{wave_id}/qc-signoff.md"),
             ("docker-compose", "docs/architecture/infra/docker-compose.yml"),
         ]),
         tasks_block([
-            f"Verify `tracking/{wave_id}/bugs.md` không còn bug status != closed.",
             f"Write `tracking/{wave_id}/qc-signoff.md` với checklist + UAT signoff.",
             "Update KG execution_history per boundary: status=COMPLETED + end_date + deliverables.",
             "**Tắt service (UAT đã xong ở MANUAL_TEST):** `docker compose -f docs/architecture/infra/docker-compose.yml stop` "
@@ -1203,67 +1209,6 @@ def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
     return "\n\n".join(parts)
 
 
-def build_fix_bugs_sweep(state: dict, matrix: list[dict], opts: dict) -> str:
-    """fix-bugs KHÔNG có --bug-id: sweep MỌI bug open. MAIN đọc bugs.md → loop spawn fix per bug."""
-    wave_id = (state.get("wave") or {}).get("id") or "<wave>"
-    parts = [
-        f"# SPAWN PROMPT — chốt fix-bugs (SWEEP — mọi bug open trong {wave_id})",
-        state_bundle(state, {"mode": "fix-sweep"}),
-        NON_NEGOTIABLES,
-        "## MỤC TIÊU\n"
-        "Fix **MỌI bug đang mở** trong `bugs.md` (`status ∈ {open, in_progress}`). Tự động — KHÔNG cần user báo từng ID.",
-        docs_to_read([("Bugs", f"tracking/{wave_id}/bugs.md")]),
-        "## CÁCH CHẠY — BẠN (MAIN) ĐIỀU PHỐI (fix-agent làm việc nặng)\n"
-        f"1. Đọc `tracking/{wave_id}/bugs.md` → lấy MỌI row `status ∈ {{open, in_progress}}` (cột `BUG` + `boundary`).\n"
-        "2. Với MỖI bug (tuần tự):\n"
-        "```\npy scripts/build_prompt.py fix-bugs --bug-id <BUG-NNN> --boundary <boundary trong row>\n```\n"
-        "   → spawn `fix-{prefix}-{boundary}-agent` (Mode A) với prompt đó → fix re-run TC verify → set row `status=closed`.\n"
-        "3. Xong bug này mới sang bug kế. Hết bug open → done.\n"
-        "4. MAIN CHỈ điều phối (đọc bugs.md + spawn tuần tự); KHÔNG tự fix code.",
-        "## KẾT THÚC\n"
-        "- Mọi bug open → closed: báo user.\n"
-        "- Bug nào fix mãi không được → STOP, báo user (KHÔNG để loop vô hạn).",
-    ]
-    return "\n\n".join(parts)
-
-
-def build_log_bug(state: dict, matrix: list[dict], opts: dict) -> str:
-    """log-bug "<mô tả>": spawn log-bug-agent ghi 1 bug manual vào bugs.md (UAT)."""
-    wave_id = (state.get("wave") or {}).get("id") or "<wave>"
-    desc = opts.get("description") or opts.get("input") or "<mô tả bug — user truyền qua log-bug>"
-    parts = [
-        "# SPAWN PROMPT — chốt log-bug",
-        "\nAgent: **log-bug-agent** · Ghi 1 bug `manual` vào bugs.md từ mô tả UAT (KHÔNG fix).",
-        state_bundle(state, {"mode": "log-bug"}),
-        NON_NEGOTIABLES,
-        f"## MÔ TẢ BUG (từ user)\n\n> {desc}",
-        skills_block(["bug-logging"]),
-        docs_to_read([
-            ("Bugs (lấy BUG-NNN kế tiếp)", f"tracking/{wave_id}/bugs.md"),
-            ("FEAT (suy AC + boundary)", "docs/architecture/feat/FEAT-*.md"),
-            ("UX (suy màn → boundary FE)", "docs/architecture/ux/ux-*.md"),
-            ("MATRIX (danh sách boundary)", "harness/SERVICE-BOUNDARY-MATRIX.json"),
-        ]),
-        tasks_block([
-            "Invoke skill `bug-logging` (format bảng + ID increment).",
-            f"Đọc `tracking/{wave_id}/bugs.md` → `BUG-NNN` kế tiếp (max id + 1).",
-            "Parse mô tả → `title` / `reproduce` / `expected` / `actual`. `sev=medium` nếu mô tả không nêu.",
-            "**Suy `boundary`** từ nội dung + màn/context trong mô tả (đối chiếu FEAT/UX/MATRIX). KHÔNG rõ → hỏi user đúng 1 câu 'bug thuộc boundary nào'.",
-            "Map `AC` (`FEAT-N:AC-M`) nếu xác định được FEAT liên quan; else để rỗng.",
-            f"**Append 1 row** vào bảng `tracking/{wave_id}/bugs.md`: `origin=manual`, `status=open`, đủ title/boundary/reproduce/expected/actual/sev.",
-            "Return RETURN SCHEMA với `bug_id: BUG-NNN`.",
-        ]),
-        RETURN_SCHEMA_TEMPLATE,
-    ]
-    return "\n\n".join(parts)
-
-
-DOGFOOD_BATCHES = (
-    ("1", "DB SẠCH — đọc là chính", ("edge", "newbie", "picky")),
-    ("2", "DB CÓ DỮ LIỆU — ghi và phá", ("rushed", "breaker", "mobile")),
-)
-
-
 def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
     """/dogfood: MAIN điều phối 6 lăng kính persona x 2 đợt trên hệ ĐANG CHẠY.
 
@@ -1300,7 +1245,7 @@ def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
             "(thiếu seed là một phát hiện của chính lượt này).\n"
             "3. Gộp phát hiện → soi **dấu hiệu dogfood giả** (skill `dogfood`) → vai nào dính thì "
             "cho chạy lại vai đó trước khi đi tiếp.\n"
-            "4. Ghi bug (`origin=manual`) + viết báo cáo tổng.\n\n"
+            "4. Gộp phát hiện vào `dogfood-report.md` §2, MỖI dòng có ô `Xử`.\n\n"
             "**KHÔNG mở đợt 2 khi đợt 1 chưa xong.** Các vai dùng chung một hệ và một DB: thả cả 6 "
             "cùng lúc là vai này ghi đè cảnh vai kia đang nhìn, và trạng thái rỗng chết ngay khi có "
             "bản ghi đầu tiên."
@@ -1314,14 +1259,15 @@ def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
         "Soi hệ ĐANG CHẠY bằng 6 lăng kính persona — tìm thứ `test-case-registry` KHÔNG phủ. "
         "`/test-execute` chỉ chạy được test-case ai đó đã nghĩ ra trước; lượt này đi tìm cảnh rỗng "
         "câm, lỗi bị nuốt im lặng, bấm hai lần ra hai bản ghi, vai A chạm dữ liệu vai B.",
-        skills_block(["dogfood", "bug-logging"]),
+        skills_block(["dogfood"]),
         docs_to_read([
             ("URL/endpoint hệ đang chạy (KHÔNG đoán)", f"tracking/{wave_id}/health-proof.json"),
             ("Persona + ma trận vai × hành động + gán 6 vai", "docs/discovery/persona-pool.md"),
             ("Luồng lõi + AC của wave", f"docs/plans/{wave_id}.md"),
             ("AC chi tiết", "docs/architecture/feat/FEAT-*.md"),
             ("Giao diện đã chốt (nếu có UI)", "docs/architecture/ux/design-tokens.css"),
-            ("Bugs (lấy BUG-NNN kế tiếp)", f"tracking/{wave_id}/bugs.md"),
+            ("Khuôn báo cáo + bảng `Xử`", "tracking/_templates/TEMPLATE.dogfood-report.md"),
+            ("Wave sau nhận gì (đối chiếu khi đẩy `wave sau`)", "docs/plans/WAVE-SEQUENCE.md"),
             ("FEAT/AC các wave TRƯỚC đã giao (hợp đồng regression)",
              "archive/wave-*/DELIVERED.md"),
         ]),
@@ -1347,13 +1293,16 @@ def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
         "Tôi thấy      : <thứ hiện ra / mã lỗi / response thật>\n"
         "Tôi mong đợi  : <thứ lẽ ra phải xảy ra + dẫn về AC/FEAT/ô ma trận>\n```\n"
         "Thiếu vế đầu = suy từ code chứ chưa chạy. Vế cuối không dẫn được về tài liệu = ý kiến "
-        "cá nhân, không phải bug.",
+        "cá nhân, không phải phát hiện.",
         tasks_block([
             f"Viết `tracking/{wave_id}/dogfood-report.md` — **nêu rõ đủ 6 lăng kính và đủ 2 đợt** "
             "(gate `dogfood_done` @end-wave đọc đúng file này; thiếu vai/thiếu đợt → đỏ).",
-            f"Append bug vào `tracking/{wave_id}/bugs.md` qua skill `bug-logging` (`origin=manual`). "
-            "Lỗi phân quyền → `sev=blocker`, không có ngoại lệ.",
-            "**KHÔNG fix** (fix qua `/fix-bugs`). **KHÔNG sửa test-case-registry**. "
+            "Mỗi phát hiện MỘT DÒNG ở §2 với ô `Xử` — từ vựng ĐÓNG: `sửa ngay` · `chưa xử` · "
+            "`wave sau`. **Ô trống = chưa ai quyết**, gate đếm. Thủng phân quyền · gãy luồng "
+            "wave trước · mất dữ liệu → `sửa ngay`, không có ngoại lệ.",
+            "§3 Kết luận điền bằng **SỐ** (AC x/y làm được THẬT · x/y ô `cấm` đã thử · x/y luồng "
+            "wave trước còn chạy), không phải tính từ.",
+            "**KHÔNG tự fix** (MAIN điều phối lượt sửa). **KHÔNG sửa test-case-registry**. "
             "**KHÔNG sửa doc spec** (phase-lock chặn). **KHÔNG teardown infra**.",
             "Return RETURN SCHEMA với `batches_done: 2`.",
         ]),
@@ -1385,11 +1334,7 @@ BUILDERS = {
     "dev-handoff": build_dev_handoff,
     "test-plan": build_test_plan,
     "test-execute": build_test_execute,
-    "fix-bugs": lambda s, m, o: (
-        build_boundary_command(s, m, o, "fix-bugs") if o.get("bug_id")
-        else build_fix_bugs_sweep(s, m, o)
-    ),
-    "log-bug": build_log_bug,
+    "fix": lambda s, m, o: build_boundary_command(s, m, o, "fix"),
     "dogfood": build_dogfood,
     "end-wave": build_end_wave,
     "done-wave": build_done_wave,
@@ -1438,11 +1383,10 @@ def main() -> int:
     ap.add_argument("--disc-wave", dest="disc_wave", help="for discovery-start|end (D0|D1|D2|D3)")
     ap.add_argument("--mode", help="for domain-po (EPIC|FEATURE|JOURNEY) | domain-ba (BR|PERSONA)")
     ap.add_argument("--target", help="for domain-approve (EP-/FEAT-/BR-... id, hoặc bỏ trống = all)")
-    ap.add_argument("--bug-id", dest="bug_id")
+    ap.add_argument("--tc", dest="tc", help="for fix — TC-NNN đang FAIL trong test-report")
     ap.add_argument("--cr-id", dest="cr_id")
     ap.add_argument("--input")
     ap.add_argument("--feedback", help="for review-document revision mode")
-    ap.add_argument("--description", dest="description", help="for log-bug — mô tả bug manual")
     ap.add_argument("--target-file", dest="target_file", help="for review-document --file")
     ap.add_argument("--stats", action="store_true")
     ap.add_argument("--save")
@@ -1451,14 +1395,13 @@ def main() -> int:
     opts = {
         "boundary": args.boundary,
         "wave": args.wave,
-        "bug_id": args.bug_id,
+        "tc": args.tc,
         "cr_id": args.cr_id,
         "input": args.input,
         "disc_wave": args.disc_wave,
         "mode": args.mode,
         "target": args.target,
         "feedback": args.feedback,
-        "description": args.description,
         "target_file": args.target_file,
     }
 

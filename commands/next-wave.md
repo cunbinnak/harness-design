@@ -5,7 +5,7 @@ argument-hint: "(không arg)"
 when_state: [MANUAL_TEST, DONE]
 spawn:
   agent: "end-wave-agent (đóng mềm) · done-wave-agent (teardown khi hết wave)"
-gates: [{type: flag, field: uat_signed, expected: true}, {type: test_passed}, {type: no_open_bugs}, {type: features_complete}, {type: dogfood_done}]
+gates: [{type: flag, field: uat_signed, expected: true}, {type: test_passed}, {type: features_complete}, {type: dogfood_done}]
 ---
 
 # /next-wave — khép vòng

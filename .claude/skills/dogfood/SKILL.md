@@ -1,6 +1,6 @@
 ---
 name: dogfood
-description: Dùng thử sản phẩm ĐANG CHẠY bằng 6 lăng kính persona, hai đợt theo trạng thái DB — thay cho MANUAL_TEST thủ công. Mỗi vai đóng một persona thật từ persona-pool, vai breaker chạy đủ ma trận vai × hành động. Bug ghi origin=manual. KHÔNG fix (fix ở chốt sửa bug của /run-wave).
+description: Dùng thử sản phẩm ĐANG CHẠY bằng 6 lăng kính persona, hai đợt theo trạng thái DB — thay cho MANUAL_TEST thủ công. Mỗi vai đóng một persona thật từ persona-pool, vai breaker chạy đủ ma trận vai × hành động. Mỗi phát hiện một dòng ở dogfood-report §2 kèm ô Xử (sửa ngay / chưa xử / wave sau) — ô trống là chưa ai quyết. KHÔNG tự fix.
 ---
 
 # Dogfood Skill
@@ -86,10 +86,10 @@ Mọi lỗi phân quyền là **blocker**, không có ngoại lệ — nó là l
 
 ## Ranh giới
 
-- **KHÔNG fix.** Ghi bug rồi dừng — fix qua `/run-wave`, để nhân quả rõ ràng.
+- **KHÔNG tự fix.** Ghi dòng vào §2 rồi dừng — MAIN điều phối lượt sửa, để nhân quả rõ ràng.
 - **KHÔNG sửa test-case-registry** cho khớp thứ vừa thấy.
 - **KHÔNG sửa doc spec** — phase-lock chặn, và sửa spec cho khớp code là đúng anti-pattern harness sinh ra để chống.
-- **KHÔNG teardown infra** — giữ UP cho lượt sửa bug + re-test.
+- **KHÔNG teardown infra** — giữ UP cho lượt sửa + chạy lại test.
 - Sản phẩm không có UI → các vai gọi API trực tiếp; `picky` soi shape response + error envelope thay cho giao diện; `mobile` soi độ trễ từ client yếu thay cho layout.
 
 ## Xử phát hiện — MỖI dòng phải có quyết định

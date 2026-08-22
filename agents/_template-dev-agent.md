@@ -89,7 +89,7 @@ Dòng cuối message PHẢI là JSON đúng schema:
 ```json
 {
   "completed": ["FEAT-NNN:AC-M"],
-  "deferred": [{"item":"...", "reason":"...", "tracked_in":"BUG-NNN"}],
+  "deferred": [{"item":"...", "reason":"...", "tracked_in":"wave sau | RF-NNN"}],
   "needs_review": [{"file":"path", "concern":"..."}],
   "files_changed": ["services/{{prefix}}-{{boundary}}/..."],
   "kg_appended": ["entity:OrderAggregate", "br:BR-ORDER-001"],

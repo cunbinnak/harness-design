@@ -10,14 +10,14 @@ description: Sinh test-case-registry.md cho wave — TC per AC + enterprise cove
 
 > **Vai trò: THIẾT KẾ test case** (viết spec vào registry) — KHÔNG viết code test, KHÔNG chạy. Code test do **dev** viết khi code (mỗi AC có test, `rules §N`); `/run-wave` chạy + bổ sung test còn thiếu so với registry.
 
-## Scope = wave plan (gate `registry_scope` — chống over-scope sinh bug rác)
+## Scope = wave plan (gate `registry_scope` — chống over-scope: test một feature chưa build)
 Auto-TC **chỉ được trace FEAT thuộc wave plan ≤ wave hiện tại** (`docs/plans/wave-*.md` — registry tích luỹ nên FEAT wave trước vẫn hợp lệ để regression). FEAT chỉ xuất hiện ở wave TƯƠNG LAI / chưa plan → **KHÔNG sinh TC** (test-execute sẽ chạy vào feature chưa build → fail → bug rác chặn end-wave). FEAT/AC nằm trong `## Deferred to later waves` → TC **bắt buộc tag `@deferred`** (thiếu tag = gate chặn).
 
 ## Deferred-scope (để end-wave close sạch tự nhiên)
 Đọc `## Deferred to later waves` trong `docs/plans/wave-{N}.md` + `tracking/wave-{N}/review-findings.md` (status wontfix/accepted có lý do defer). Mọi AC/feature **đã chủ động hoãn sang wave sau** (vd auth/idempotency/event ở wave-1 chỉ-CRUD):
 - TC tương ứng VẪN viết (để wave sau reuse) nhưng đánh **tag `@deferred`** + `note: deferred wave-N` + KHÔNG đặt `pri P0`.
 - Defer **chỉ có hiệu lực khi feature/AC đó được khai báo trong `## Deferred to later waves` của wave plan** — tag `@deferred` đơn lẻ (không khai báo) sẽ bị test-execute coi in-scope và vẫn phải chạy (chống lạm dụng tag để né test).
-- Hệ quả: test-execute `skip(deferred)` không log bug; `test_result` (harness derive) chỉ tính in-scope → đạt `pass` tự nhiên khi in-scope xanh, KHÔNG cần ép `test_result=pass` thủ công.
+- Hệ quả: test-execute `skip(deferred)` không tính fail; `test_result` (harness derive) chỉ tính in-scope → đạt `pass` tự nhiên khi in-scope xanh, KHÔNG cần ép `test_result=pass` thủ công.
 
 ## UI coverage bắt buộc (gate `ui_test_present` — web boundary phải được MỞ thật)
 Mỗi **web boundary trong wave** phải có **≥1 auto-TC UI in-scope** (`type=auto`, `boundary=<web-boundary>`, group `e2e`; thêm `accessibility` nếu wave full-stack FE). Nội dung tối thiểu của TC UI:

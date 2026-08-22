@@ -1,6 +1,6 @@
 ---
 name: test-execute
-description: Chạy auto TC BLACK-BOX trên hệ thống ĐANG CHẠY (API qua curl/REST client, UI/e2e qua Playwright, perf k6) — KHÔNG build source, KHÔNG mvn/gradle/vitest, KHÔNG đo coverage (đó là việc DEV). Ghi test-report.md, log bug (origin auto). KHÔNG fix — fix qua /run-wave ở MANUAL_TEST.
+description: Chạy auto TC BLACK-BOX trên hệ thống ĐANG CHẠY (API qua curl/REST client, UI/e2e qua Playwright, perf k6) — KHÔNG build source, KHÔNG mvn/gradle/vitest, KHÔNG đo coverage (đó là việc DEV). Ghi test-report.md + nguyên nhân của mỗi FAIL vào test-logs. KHÔNG fix — MAIN điều phối lượt sửa.
 ---
 
 # Test Execute Skill
@@ -18,7 +18,7 @@ description: Chạy auto TC BLACK-BOX trên hệ thống ĐANG CHẠY (API qua c
    - **TC trên web boundary (UI/e2e) — bằng chứng bắt buộc:** (a) log `GET <url> -> <status>` từ `page.goto`; (b) **screenshot mỗi TC (pass HAY fail)** → `tracking/wave-{N}/screenshots/{TC-ID}.png` (`page.screenshot({fullPage:true})`) — gate `test_evidence` check PNG thật; (c) **assert style thật** chống unstyled: computed style element chính (vd `getComputedStyle(header).backgroundColor`) phải khớp design token, KHÔNG phải browser default (nền trắng + Times New Roman = unstyled → FAIL + log bug).
    - `skip` CHỈ khi service/UI thật sự **down** (ghi lý do "service chưa up" **vào log file**), KHÔNG fail/fake. **Skip bị đối chiếu `health-proof.json`**: proof nói service UP mà skip "service-down" → gate chặn; service chết thật giữa chừng → re-run `py scripts/capture_infra_proof.py` cập nhật proof rồi mới skip. **Thiếu UI driver (Playwright) KHÔNG phải lý do skip** — provision là bước setup bắt buộc, nhưng **reuse-first: kiểm tra đã cài chưa TRƯỚC khi tải** (`npx playwright install chromium` tự bỏ qua nếu browser đã có trong cache `~/.cache/ms-playwright`; đừng xoá cache để tải lại). Cài fail thật → log bug `layer=infra`, KHÔNG skip cho qua.
    - Append kết quả vào `tracking/wave-{N}/test-report.md`: `TC-ID: pass|fail|skip` + timestamp + duration + **network-call** (`<METHOD> <path> → <status>`) + log tail. Log chi tiết → `tracking/wave-{N}/test-logs/{TC-ID}.log`.
-4. Foreach fail → **append 1 row** vào bảng `tracking/wave-{N}/bugs.md` (skill `bug-logging`) với **routing metadata đủ để fix Mode A KHÔNG đoán mò** (bảng §Bug routing). **dedup theo TC — re-run cùng TC fail lại thì UPDATE row cũ, KHÔNG tạo row mới**. **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/run-wave` ở MANUAL_TEST.
+4. Foreach fail → ghi ĐỦ NGUYÊN NHÂN (status thật + assert/exception) vào `tracking/wave-{N}/test-logs/{TC}.log`. Gate `test_evidence` đòi log đọc ra được VÌ SAO — FAIL không nêu được nguyên nhân thì không ai sửa nổi. **KHÔNG có sổ bug**: kết quả chỉ nằm ở `test-report.md`; chạy lại TC đó sau khi sửa thì report tự xanh. **KHÔNG spawn fix, KHÔNG loop** — MAIN điều phối lượt sửa.
 
 > **Gate `test_evidence` sẽ chặn complete nếu thiếu bằng chứng đã-chạy** (không phải vì TC fail — fail là bug hợp lệ). Mỗi auto-TC in-scope phải: (a) có result trong test-report; (b) group integration/e2e/perf/security khi pass|fail phải có dòng `METHOD path -> status` trong `test-logs/{TC}.log`; (c) skip phải nêu lý do service-down trong log **và không mâu thuẫn `health-proof.json`** (proof nói UP → không được skip); (d) **TC result=FAIL phải có ≥1 bug reference nó ở cột `TC` của bugs.md** (chống "fail mà quên log bug = miss bug"); (e) **TC trên web boundary khi pass|fail phải có screenshot thật** ở `tracking/wave-{N}/screenshots/{TC}*.png` (PNG/JPEG magic-bytes — chống UI-test khống). **test_result do HARNESS DERIVE từ report** (auto-TC in-scope all-pass → pass) — tự khai pass mà report có fail in-scope sẽ bị end-wave chặn.
 
@@ -41,21 +41,25 @@ description: Chạy auto TC BLACK-BOX trên hệ thống ĐANG CHẠY (API qua c
 - **Connectivity pre-check** mỗi target: unreachable → TC `skip` (lý do "service chưa up") + (nếu critical) STOP, KHÔNG giả vờ pass.
 - **Network call bắt buộc** cho group ∈ {integration, e2e, performance, security}: log `<METHOD> <path> → <status>` (vd `POST /v1/auth/login → 200`) — không có = không tính đã chạy.
 - **Evidence**: mỗi pass/fail có log tail thật trong `test-logs/`; TC web boundary (pass HAY fail) **bắt buộc screenshot** vào `screenshots/{TC}.png`; fail (e2e) thêm video nếu có.
-- **UI render check**: trang load được ≠ trang ĐÚNG. Assert computed style theo token (màu nền/chữ/spacing) + không lỗi console nghiêm trọng; trang trắng/unstyled/vỡ layout = FAIL + bug (`layer=frontend`, đính screenshot).
+- **UI render check**: trang load được ≠ trang ĐÚNG. Assert computed style theo token (màu nền/chữ/spacing) + không lỗi console nghiêm trọng; trang trắng/unstyled/vỡ layout = FAIL (ghi `tầng hỏng: frontend`, đính screenshot).
 
-## Bug routing metadata (cột bắt buộc cho `origin: auto` — đủ tín hiệu fix Mode A)
-| Cột | Nguồn | Vì sao |
+## Log của một FAIL — phải đủ để người khác sửa mà không đoán
+
+Không có sổ bug; **`test-logs/{TC}.log` chính là chỗ mang thông tin định tuyến**. Thiếu vế nào thì
+lượt sửa phải đi đoán lại vế đó.
+
+| Ghi gì | Lấy từ đâu | Vì sao cần |
 |---|---|---|
-| `origin` | `auto` (test-execute) / `manual` (UAT) | dev filter nguồn |
-| `boundary` | từ `TC.boundary` registry | route đúng dev boundary |
-| `layer` | judgement: backend / frontend / integration / data / infra | route đúng tầng (vd FE↔BE mismatch = integration) |
-| `sev` | hậu quả thực tế khi fail → `SEVERITY-TEST-TAXONOMY §2.1` (KHÔNG suy máy móc từ pri) | ưu tiên fix |
-| `TC` | TC-ID detect ra bug | link verify |
-| `AC` | `TC.ac` registry (`FEAT-N:AC-M`) | biết AC nào vỡ |
-| reproduce / expected / actual | từ TC + observed | dev repro exact |
-| `error log` | excerpt từ `test-logs/{TC}.log` | stack trace / status sai |
+| boundary | `TC.boundary` trong registry | biết spawn fix cho boundary nào |
+| tầng hỏng | tự phán đoán: backend / frontend / integration / data / infra | FE↔BE lệch nhau là `integration`, không phải lỗi của một bên |
+| TC + AC | registry (`FEAT-N:AC-M`) | biết AC nào vỡ, sửa xong verify lại đúng cái đó |
+| reproduce | request/thao tác chính xác đã chạy | tái hiện được mới sửa được |
+| expected vs actual | TC + thứ quan sát thật | phân biệt "code sai" với "TC sai" |
+| **status + stack/assert** | response thật + stack trace | gate `test_evidence` đọc đúng chỗ này |
 
-> sev gán theo HẬU QUẢ (data loss/auth bypass → high; UX defect → medium; cosmetic/edge → low), không từ TC pri máy móc — bảng lookup `SEVERITY-TEST-TAXONOMY §2.1`. Gate `no_open_bugs` đọc cột `status` (KHÔNG đọc `sev`), nên mọi bug open đều chặn end-wave như nhau.
+> Hậu quả nặng nhẹ (mất dữ liệu · thủng phân quyền → chặn ngay; lỗi hình thức → sau) ghi thành
+> một câu trong log, tra `SEVERITY-TEST-TAXONOMY §2.1`. Nó KHÔNG đổi hành vi gate — `test_passed`
+> chặn khi **còn bất kỳ TC đỏ nào**, không phân biệt nặng nhẹ; nặng nhẹ chỉ để xếp thứ tự sửa.
 
 ## Coverage — KHÔNG đo ở đây
 Coverage (unit/integration) là của **DEV** — đã gate ở chốt review + dựng-chạy-thật của `/run-wave` (per-kind: backend 80 / bff 70 / web·mobile 60). test-execute là **black-box smoke/e2e trên hệ thống đang chạy**, KHÔNG build source, **KHÔNG đo/gate coverage**.
@@ -69,16 +73,16 @@ Coverage (unit/integration) là của **DEV** — đã gate ở chốt review + 
 
 ## Exit (auto-transition — KHÔNG cần command từ user)
 - Chạy xong (pass HAY fail) → return `{test_result: "pass"|"fail", test_cases_count: N, bugs_logged: [...]}` (KHÔNG coverage_pct — black-box) → harness auto-transition `TEST_EXECUTE → MANUAL_TEST` (kể cả còn bug auto). **Harness DERIVE lại `test_result` từ test-report.md** (in-scope auto-TC all-pass → pass; deferred bỏ qua) — giá trị honest này là cái end-wave gate đọc.
-- Fail → bug đã log (origin=auto) trong bugs.md → fix qua `/run-wave` ở MANUAL_TEST. Gate `no_open_bugs` (end-wave) đảm bảo đóng hết mới ship.
+- Fail → nguyên nhân đã ghi ở `test-logs/{TC}.log` → MAIN điều phối lượt sửa, ở MANUAL_TEST. Gate `no_open_bugs` (end-wave) đảm bảo đóng hết mới ship.
 - **KHÔNG teardown infra** — giữ UP cho MANUAL_TEST (UAT + `/run-wave` re-run TC); teardown ở `/next-wave`.
-- **Re-run từ MANUAL_TEST** (sau lượt sửa bug): `/run-wave` chạy lại được để verify full suite. Dedup theo TC — TC fail lại → **reopen** (UPDATE row cũ = `status open`); TC pass → giữ `closed`; regression mới → log BUG mới. Lặp fix ↔ re-run tới khi sạch mới `/next-wave`.
+- **Re-run từ MANUAL_TEST** (sau lượt sửa): `/run-wave` chạy lại được để verify full suite. Dedup theo TC — TC fail lại → **reopen** (UPDATE row cũ = `status open`); TC pass → giữ `closed`; regression mới → log BUG mới. Lặp fix ↔ re-run tới khi sạch mới `/next-wave`.
 
 ## QC sign-off (tổng kết wave — trước/khi end-wave)
-Sau khi suite xanh + bug đóng hết, ghi quyết định ship vào `tracking/wave-{N}/qc-signoff.md` (`TEMPLATE.qc-signoff.md`):
-- **APPROVED**: không bug open; coverage đạt ngưỡng per-kind → ship-ready.
+Sau khi suite xanh, ghi quyết định ship vào `tracking/wave-{N}/qc-signoff.md` (`TEMPLATE.qc-signoff.md`):
+- **APPROVED**: không TC đỏ; coverage đạt ngưỡng per-kind → ship-ready.
 - **CONDITIONAL**: còn S3/S4 backlog đã `wontfix` + lý do, hoặc gap nhỏ → ship + list điều kiện verify wave sau.
-- **REJECTED**: còn bug S1/S2 open hoặc exit criteria fail → block, quay lại fix.
+- **REJECTED**: còn TC đỏ hoặc exit criteria fail → block, quay lại fix.
 
-> `/next-wave` gate: `uat_signed` + `test_result=pass` + `no_open_bugs`. QC sign-off là tài liệu quyết định; gate đọc STATE/bugs.md, không parse sign-off.
+> `/next-wave` gate: `uat_signed` + `test_result=pass`. QC sign-off là tài liệu quyết định; gate đọc STATE/bugs.md, không parse sign-off.
 
-> Format report: `tracking/_templates/TEMPLATE.test-report.md`. Bug model 1-file: `tracking/_templates/TEMPLATE.bugs.md`. Sign-off: `tracking/_templates/TEMPLATE.qc-signoff.md`. Test chuyên sâu (contract/perf/security) → skill `specialist-testing`.
+> Format report: `tracking/_templates/TEMPLATE.test-report.md`. Ba sổ (test-report · dogfood-report · review-findings) — chi tiết ở `tracking/README.md`. Sign-off: `tracking/_templates/TEMPLATE.qc-signoff.md`. Test chuyên sâu (contract/perf/security) → skill `specialist-testing`.

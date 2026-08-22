@@ -22,7 +22,7 @@
 | Passed | {N_pass} |
 | Failed | {N_fail} |
 | Skipped (N/A) | {N_skip} |
-| Bugs logged | {N_bugs} (origin=auto; KHÔNG fix ở đây — fix qua /fix-bugs) |
+| TC đỏ | {N_fail} — nguyên nhân ở `test-logs/<TC>.log`; KHÔNG fix ở đây |
 | Screenshots captured | {N_screenshots} |
 | Overall | **PASS** (all P0 pass) / **FAIL** (any P0 fail) |
 
@@ -83,11 +83,11 @@ Expected: HTTP 400 (validation error)
 Actual: HTTP 500 (internal server error)
 Body (500 chars): {"error":"NullPointerException at OrderService.validate"...}
 
-Bug logged: BUG-001 (tracking/wave-{N}/bugs.md#BUG-001)
+Nguyên nhân: tracking/wave-{N}/test-logs/TC-001.log
 Origin: auto
 Severity: high (validation should not 500)
 Boundary: order-mgmt
-Status: open (test-execute CHỈ log, KHÔNG fix; fix qua /fix-bugs ở MANUAL_TEST)
+test-execute CHỈ chạy + ghi nguyên nhân, KHÔNG fix. MAIN điều phối lượt sửa rồi chạy lại chốt này.
 ```
 
 ---

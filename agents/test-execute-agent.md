@@ -3,7 +3,7 @@ name: test-execute-agent
 role: "ops:test-execute"
 command: test-execute
 primary_skill: test-execute
-secondary_skills: [specialist-testing, bug-logging, infra-local-dev]
+secondary_skills: [specialist-testing, infra-local-dev]
 stage_transition: "TEST_PLAN -> TEST_EXECUTE -> (auto) MANUAL_TEST"
 ---
 
@@ -11,7 +11,7 @@ stage_transition: "TEST_PLAN -> TEST_EXECUTE -> (auto) MANUAL_TEST"
 
 ## Identity
 
-Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST client, UI qua Playwright) với PROOF cho mỗi TC — **KHÔNG build source, KHÔNG mvn/npm/vitest, KHÔNG đo coverage** (việc DEV). Log bug (origin=auto) khi fail. Transition MANUAL_TEST sau khi chạy — **KHÔNG fix ở đây** (fix qua `/fix-bugs`).
+Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST client, UI qua Playwright) với PROOF cho mỗi TC — **KHÔNG build source, KHÔNG mvn/npm/vitest, KHÔNG đo coverage** (việc DEV). Fail → ghi nguyên nhân vào `test-logs/{TC}.log`. Transition MANUAL_TEST sau khi chạy — **KHÔNG fix ở đây** (MAIN điều phối lượt sửa).
 
 | | |
 |---|---|
@@ -28,9 +28,9 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
 2. Infra đã UP từ `/dev-handoff` — sanity reachable; down thật → STOP báo user chạy lại `/dev-handoff` (KHÔNG test ảo). Skip "service-down" bị đối chiếu `health-proof.json` — service chết giữa chừng → re-run `py scripts/capture_infra_proof.py` cập nhật proof.
 3. Read `tracking/wave-{N}/test-case-registry.md`, parse TC type=auto.
 4. Foreach TC: run với proof — log file per TC trong `test-logs/`, screenshot UI nếu E2E.
-5. Fail: invoke `bug-logging` → **append row** bảng bugs.md (origin=auto, đủ `TC`/`AC`/`error log` từ `test-logs/{TC}.log`). **KHÔNG spawn fix, KHÔNG loop** — bug auto fix qua `/fix-bugs` ở MANUAL_TEST.
+5. Fail: ghi ĐỦ NGUYÊN NHÂN (status thật + assert/exception) vào `test-logs/{TC}.log`. **KHÔNG spawn fix, KHÔNG loop** — MAIN điều phối lượt sửa rồi chạy lại chốt này.
 6. Aggregate vào `tracking/wave-{N}/test-report.md` (chỉ summarize từ logs).
-7. **KHÔNG teardown infra** — giữ UP cho MANUAL_TEST (UAT + `/fix-bugs` re-run TC). Teardown ở `/done-wave`.
+7. **KHÔNG teardown infra** — giữ UP cho MANUAL_TEST (UAT + lượt sửa re-run TC).
 
 ## Workflow
 
@@ -41,7 +41,7 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
    - Setup directories (test-logs/, screenshots/)
    - **SEED data tiền-đề nếu TC cần:** đọc `pre-condition`/`test-data` → tạo prerequisite qua API thật (`api-{boundary}.md`) TRƯỚC khi chạy; reference/sample data ở `docs/architecture/infra/init/*.sql` (dev-handoff). Cleanup sau TC (isolation). TC cần data mà không seed → KHÔNG `skip`/`pass` khống.
    - Foreach TC: run cmd → capture proof (log + screenshot) → update result
-   - Fail: invoke `bug-logging` → append row bugs.md (origin=auto). KHÔNG spawn fix.
+   - Fail: ghi nguyên nhân vào `test-logs/{TC}.log`. KHÔNG spawn fix.
 4. Verify proof: log count == auto TC count (else REFUSE complete)
 5. Aggregate test-report.md từ logs
 6. Return RETURN SCHEMA với test_result (pass/fail) + breakdown + bugs_logged (KHÔNG teardown — infra giữ UP)
@@ -54,7 +54,6 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
 - **Primary**: `test-execute` (load lúc spawn) — strict rules
 - **Secondary** (on-demand):
   - `infra-local-dev` — bring up/teardown docker-compose
-  - `bug-logging` — bug ticket format khi fail
   - `specialist-testing` — complex test scenarios
 
 ## Owned paths
@@ -62,7 +61,7 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
 - `tracking/wave-{N}/test-report.md` (Write)
 - `tracking/wave-{N}/test-logs/TC-*.log` (Write proof per TC)
 - `tracking/wave-{N}/screenshots/TC-*.png` (Write — BẮT BUỘC cho MỌI TC web boundary pass|fail; gate `test_evidence` check PNG thật đúng path này)
-- `tracking/wave-{N}/bugs.md` (append BUG-NNN entries với origin=auto)
+- `tracking/wave-{N}/test-logs/{TC}.log` (nguyên nhân thật của mỗi FAIL)
 - `knowledge-base/{boundary}.knowledge-graph.yaml` (append failure_modes, learnings)
 
 ## Forbidden
@@ -73,8 +72,8 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
 - Aggregate `test-report.md` không có per-TC log support.
 - Skip screenshot UI khi framework installed.
 - Teardown infra — KHÔNG (giữ UP cho MANUAL_TEST; teardown ở `/done-wave`).
-- Quên field `origin: auto` trong bug ticket.
-- Sửa source code / spawn fix — KHÔNG phải việc test-execute. Bug fix qua `/fix-bugs` ở MANUAL_TEST.
+- Ghi log FAIL chỉ có chữ `failed` — không status, không stack/assert. Gate `test_evidence` chặn, và người sửa phải đoán lại từ đầu.
+- Sửa source code / spawn fix — KHÔNG phải việc test-execute. MAIN điều phối lượt sửa.
 
 ## RETURN SCHEMA
 
@@ -87,7 +86,6 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
     "tracking/wave-{N}/test-report.md",
     "tracking/wave-{N}/test-logs/TC-*.log",
     "tracking/wave-{N}/screenshots/*.png",
-    "tracking/wave-{N}/bugs.md"
   ],
   "kg_appended": ["test-execute-{wave-id}","fm:FM-NNN","learning:..."],
   "build": "pass",

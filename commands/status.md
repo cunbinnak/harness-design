@@ -22,7 +22,7 @@ In ra: `stage` · `wave` · `active_boundary` · `wave_boundaries` · `allowed_c
 |---|---|
 | Gate D-wave còn thiếu gì | `py scripts/discovery_gate.py <D0..D3>` |
 | FEAT nào xong / đang dở | `tracking/{wave}/feature-state.md` (refresh: `py scripts/capture_feature_state.py`) |
-| Bug đang mở | `tracking/{wave}/bugs.md` |
+| TC đang đỏ | `tracking/{wave}/test-report.md` |
 | Wave trước đã giao gì | `archive/wave-*/DELIVERED.md` |
 | Năng lực nào chưa giao | `docs/discovery/capability-map.md` §1 cột `Trạng thái` |
 | Quyết định đã ghi khi mơ hồ | `tracking/decisions.md` |

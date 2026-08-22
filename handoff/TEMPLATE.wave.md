@@ -8,7 +8,7 @@
 > - API spec → `docs/architecture/api/`
 > - Test cases → `tracking/wave-{N}/test-case-registry.md`
 > - Test results → `tracking/wave-{N}/test-report.md`
-> - Bugs → `tracking/wave-{N}/bugs.md`
+> - TC đỏ → `tracking/wave-{N}/test-report.md` · phát hiện dùng thử → `dogfood-report.md` §2
 
 ---
 
@@ -56,19 +56,14 @@ Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
 
 ## 5. UAT Instructions (ở MANUAL_TEST — TRƯỚC `end-wave`)
 
-> Stakeholder/QA verify ở stage MANUAL_TEST. Bug log → `tracking/wave-{N}/bugs.md` với `origin: manual`.
+> Stakeholder/QA verify ở stage MANUAL_TEST. Phát hiện ghi vào `tracking/wave-{N}/dogfood-report.md` §2 kèm ô `Xử`.
 
 1. App URL: `http://localhost:{PORT}` (xem §2 service inventory)
 2. Test credentials: (lấy từ `.env` dev account)
 3. Manual test cases: `tracking/wave-{N}/test-case-registry.md` — filter `type: manual`
 4. Ghi kết quả manual vào `tracking/wave-{N}/test-report.md` (§Manual Tests)
-5. Nếu phát hiện bug → thêm **1 ROW** vào bảng `tracking/wave-{N}/bugs.md`:
-   ```markdown
-   | BUG | title | status | origin | sev | boundary | AC | reproduce | expected | actual |
-   |-----|-------|--------|--------|-----|----------|----|-----------|----------|--------|
-   | BUG-NNN | {title} | open | manual | medium | {prefix}-{boundary} | FEAT-N:AC-M | {steps} | {kỳ vọng} | {thực tế} |
-   ```
-   Báo dev → `/fix-bugs <BUG-NNN>` (fix → re-run test verify, in-state MANUAL_TEST).
+5. Nếu phát hiện vấn đề → thêm **1 DÒNG** vào `tracking/wave-{N}/dogfood-report.md` §2, có đủ *thao tác đã làm* / *thấy gì trên màn hình* và **ô `Xử`** (`sửa ngay` · `chưa xử` · `wave sau`). Ô trống = chưa ai quyết, gate `dogfood_done` đếm.
+   Lượt sửa: `py scripts/build_prompt.py fix --tc <TC> --boundary <b>` → sửa → chạy lại chốt `test-execute`.
 6. Clean → `/end-wave` (UAT signed → DONE) → `/done-wave` (teardown + reset).
 
 ## 6. Known issues & deferred

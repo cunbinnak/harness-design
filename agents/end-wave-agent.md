@@ -17,13 +17,13 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, **tắ
 |---|---|
 | Command | `/end-wave` |
 | Stage trigger | MANUAL_TEST -> DONE |
-| Pre-condition | `bugs.md` không còn open bug + `STATE.test_result=pass` (lần test-execute cuối xanh) + UAT signed |
+| Pre-condition | `STATE.test_result=pass` (lần test-execute cuối xanh, derive từ `test-report.md`) + UAT signed |
 
 **KHÔNG phải:** done-wave (hard close, `down --volumes` xoá data). End-wave `stop` service (dừng container, GIỮ image+volume) — UAT đã xong ở MANUAL_TEST nên không cần service chạy; image+volume giữ để wave kế reuse khởi động nhanh.
 
 ## Trách nhiệm
 
-1. Verify bảng `tracking/wave-{N}/bugs.md` không còn bug `status ∈ {open, in_progress}` (gate `no_open_bugs` parse cột `status`) **VÀ** `STATE.test_result=pass` (gate `test_passed` — sau fix phải re-run `/test-execute` cho xanh; còn `fail`/stale → bị chặn).
+1. Verify `tracking/wave-{N}/test-report.md` không còn TC `fail` (gate `test_passed` derive từ cột `status`) **VÀ** `STATE.test_result=pass` (gate `test_passed` — sau fix phải re-run `/test-execute` cho xanh; còn `fail`/stale → bị chặn).
 2. Verify hoặc write `tracking/wave-{N}/qc-signoff.md` với UAT checklist + stakeholder signoff + date.
 3. Update KG per boundary execution_history: `status: COMPLETED` + `end_date` + `deliverables[]`.
 4. Append release summary vào `handoff/wave-{N}.md` (summary, learnings, link tracking).
@@ -32,7 +32,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, **tắ
 ## Workflow
 
 ```
-1. Parse tracking/wave-{N}/bugs.md → verify 0 open bug
+1. Parse tracking/wave-{N}/test-report.md → verify 0 TC fail
 2. Read or create tracking/wave-{N}/qc-signoff.md với:
    - UAT TC results (pass/fail per test)
    - Stakeholder signature + date
@@ -58,7 +58,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, **tắ
 
 - Hard-teardown infra (`docker-compose down` / `down --volumes`) — đó là done-wave (xoá container/volume). End-wave chỉ `stop` (giữ image+volume cho wave kế reuse).
 - Reset STATE — đó là done-wave.
-- End wave khi còn open bug — phải `/fix-bugs` clean trước.
+- End wave khi còn TC fail — phải sửa + chạy lại test-execute cho xanh trước.
 - Skip QC signoff — stakeholder approval bắt buộc.
 
 ## RETURN SCHEMA
@@ -78,7 +78,6 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, **tắ
   "lint": "pass",
   "test": "pass",
   "uat_signed": true,
-  "no_open_bugs": true,
   "infra_stopped": true,
   "stakeholder": "...",
   "signoff_date": "2026-05-29"

@@ -96,7 +96,7 @@ notes: "All bugs fixed and regression verified."
 
 - [x] All P0 auto TCs pass (test-execute)
 - [x] All P0 manual TCs pass (UAT)
-- [x] No open bug (status != open trong bugs.md)
+- [x] Không còn TC `fail` trong `test-report.md` (gate `test_passed` derive từ đó)
 - [x] Stakeholder sign-off
 - [x] NFR verified vs PROJECT.md targets
 - [x] handoff/wave-{N}.md updated với release summary

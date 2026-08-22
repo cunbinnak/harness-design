@@ -398,7 +398,7 @@ def validate_return_schema(parsed: dict) -> tuple[bool, list[str]]:
 # trùng từ tiếng Anh thường) — KHÔNG thêm "design"/"plan" bare (false-positive). domain-po/ba/translate
 # + test-plan/test-execute thêm theo yêu cầu "ép MAIN dùng build_prompt, KHÔNG tự build prompt spawn".
 DEV_SPAWN_KEYWORDS = (
-    "start-dev", "fix-bugs", "review-dev",
+    "start-dev", "fix", "review-dev",
     "domain-po", "domain-ba", "domain-translate",
     "test-plan", "test-execute", "design-ux",
 )
@@ -493,7 +493,7 @@ def _selftest() -> int:
     # KHÔNG khoá: infra (docker-compose update ở dev-handoff), KG, tracking, services, arch root
     assert phase_lock_violation("docs/architecture/infra/docker-compose.yml", "DEV_HANDOFF") is None
     assert phase_lock_violation("knowledge-base/x.knowledge-graph.yaml", "DEV") is None
-    assert phase_lock_violation("tracking/wave-001/bugs.md", "TEST_EXECUTE") is None
+    assert phase_lock_violation("tracking/wave-001/test-report.md", "TEST_EXECUTE") is None
     assert phase_lock_violation("services/demo-x/src/A.java", "DEV") is None
     assert phase_lock_violation("docs/architecture/ARCHITECTURE-PRINCIPLES.md", "PLAN") is None
     # proof file harness-đo: agent KHÔNG được ghi tay (FM-PROOF-FORGE); tracking khác vẫn tự do
@@ -503,7 +503,7 @@ def _selftest() -> int:
     assert is_proof_file("tracking/wave-001/feature-state.md") is True  # HARNESS-derive, agent không ghi tay
     assert is_proof_file("tracking\\wave-001\\health-proof.json") is True  # path Windows
     assert is_proof_file("tracking/wave-001/test-report.md") is False
-    assert is_proof_file("tracking/wave-001/bugs.md") is False
+    assert is_proof_file("tracking/wave-001/test-report.md") is False
     assert is_proof_file("tracking/doc-review-findings.md") is False
     assert is_proof_file("docs/health-proof.json") is False
     # next-step hint contextual (arg + back-edge)

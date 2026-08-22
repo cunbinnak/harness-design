@@ -120,7 +120,7 @@ SNAPSHOT_FILES = ("harness/STATE.json", "harness/SERVICE-BOUNDARY-MATRIX.json",
 def snapshot(n: int) -> tuple[int, Path]:
     """Đóng gói TOÀN BỘ tài liệu + thực thi của wave N → archive/wave-N/. Trả (số file, đích).
 
-    Copy chứ không move: bản sống ở lại, `/fix-bugs` và người đọc vẫn dùng đường cũ.
+    Copy chứ không move: bản sống ở lại, lượt sửa và người đọc vẫn dùng đường cũ.
     Copy chứ không tóm tắt: wave sau cần bản gốc để biết wave trước hứa gì, không cần lời kể.
     """
     dst = archive_dir(n)
@@ -567,7 +567,7 @@ def _selftest() -> int:
         with tempfile.TemporaryDirectory() as td:
             REPO_ROOT = Path(td)
             (REPO_ROOT / "tracking" / "wave-001").mkdir(parents=True)
-            (REPO_ROOT / "tracking" / "wave-001" / "bugs.md").write_text("x", encoding="utf-8")
+            (REPO_ROOT / "tracking" / "wave-001" / "test-report.md").write_text("x", encoding="utf-8")
             (REPO_ROOT / "tracking" / "wave-001" / "test-report.md").write_text("y", encoding="utf-8")
 
             st = {"wave": {"id": "wave-001", "number": 1},
@@ -588,9 +588,9 @@ def _selftest() -> int:
                 "### AC-1\n### AC-2\n", encoding="utf-8")
             n_files, dst = snapshot(1)
             check("snapshot chép cả THỰC THI lẫn ĐẶC TẢ (bản sống còn nguyên)",
-                  (dst / "tracking/wave-001/bugs.md").is_file()
+                  (dst / "tracking/wave-001/test-report.md").is_file()
                   and (dst / "docs/architecture/feat/FEAT-A-001.md").is_file()
-                  and (REPO_ROOT / "tracking/wave-001/bugs.md").is_file()
+                  and (REPO_ROOT / "tracking/wave-001/test-report.md").is_file()
                   and (REPO_ROOT / "docs/architecture/feat/FEAT-A-001.md").is_file(),
                   f"n_files={n_files}, có: {[p.name for p in dst.rglob('*') if p.is_file()]}")
 

@@ -24,7 +24,7 @@ Không arg → chạy tiếp từ chốt đang đứng (suy từ `stage`).
 
 > Gate từng chốt: `py scripts/gates.py --list` (SoT = `GATE_RULES`; đừng chép vào đây — bản chép trôi ngay lần đổi gate kế).
 
-Xong chốt 7 → dừng ở `MANUAL_TEST`. Còn bug → hành lang tự sửa (spawn fix tuần tự → `test-execute` lại). Sạch + UAT ký → `/next-wave`.
+Xong chốt 7 → dừng ở `MANUAL_TEST`. Còn TC đỏ / dòng `sửa ngay` → hành lang tự sửa (spawn fix tuần tự → `test-execute` lại). Sạch + UAT ký → `/next-wave`.
 
 ## Luật
 
