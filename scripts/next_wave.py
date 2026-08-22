@@ -305,6 +305,36 @@ def carry_open_findings(n: int) -> list[str]:
     return [(r.get("#") or "").strip() for r in carried]
 
 
+def unplanned_deferrals(n: int) -> list[str]:
+    """Dòng dogfood `wave sau` của wave n mà WAVE-SEQUENCE.md chưa nhắc tới. Trả list mã.
+
+    VÌ SAO TÁCH ĐÔI — chỗ GHI và chỗ NHẬN không cùng một lúc mở:
+      ghi   `tracking/wave-N/dogfood-report.md`  (không khoá, /dogfood ghi được ngay lúc thấy)
+      nhận  `docs/plans/WAVE-SEQUENCE.md`        (phase-lock: chỉ mở ở PLAN/REVIEW)
+
+    Bắt /dogfood ghi thẳng vào WAVE-SEQUENCE là ra luật không tuân thủ nổi — hook chặn ở
+    MANUAL_TEST. Nên đối chiếu ở đây, lúc mở wave, và **cảnh báo chứ không chặn**: từ chối một
+    phát hiện vẫn là quyền của người, nhưng từ chối trong im lặng thì wave sau không biết mình
+    đứng trên nền gì. Muốn nhận thật thì lùi `/domain` (chốt chia-wave) — khoá mở ở đó.
+    """
+    src = REPO_ROOT / "tracking" / f"wave-{n:03d}" / "dogfood-report.md"
+    seq = REPO_ROOT / "docs" / "plans" / "WAVE-SEQUENCE.md"
+    if not src.is_file():
+        return []
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import gates
+
+    plan_txt = gates.read_live(seq) if seq.is_file() else ""
+    out = []
+    for r in gates._parse_md_table_rows(gates.read_live(src), ("xử",)):
+        rid = (r.get("#") or "").strip()
+        if not rid or "{{" in rid:
+            continue
+        if (r.get("xử") or "").strip().lower().startswith("wave sau") and rid not in plan_txt:
+            out.append(rid)
+    return out
+
+
 def rearm_bc_ledger() -> int:
     """Bỏ tick ĐÚNG §3 của sổ tương thích ngược → wave nào rà wave đó. Trả số dòng đã bỏ tick.
 
@@ -373,6 +403,16 @@ def do_go(state: dict, n: int) -> int:
         print(f"  ok  sổ tương thích ngược: bỏ tick {n_bc} mục §3 — wave mới rà lại "
               "(§1 sổ hợp đồng GIỮ NGUYÊN, tích luỹ vĩnh viễn)")
 
+    unplanned = unplanned_deferrals(n)
+    if unplanned:
+        print(f"  !!  dogfood: {len(unplanned)} phát hiện đẩy `wave sau` mà WAVE-SEQUENCE.md "
+              f"CHƯA nhắc tới ({', '.join(unplanned[:6])}).")
+        print("      Đẩy sang wave sau mà không có chỗ nhận thì là bỏ đi, chỉ gọi tên khác thôi.")
+        print("      Muốn nhận thật → lùi `/domain` (chốt chia-wave) thêm vào WAVE-SEQUENCE; "
+              "`docs/plans/**` chỉ mở khoá ở đó.")
+        print("      Không chặn — từ chối là quyền của bạn, nhưng từ chối trong im lặng thì "
+              "wave sau không biết mình đứng trên nền gì.")
+
     carried = carry_open_findings(n)
     if carried:
         print(f"  ok  dogfood: mang {len(carried)} phát hiện `chưa xử` sang wave {n + 1} "
@@ -387,7 +427,8 @@ def do_go(state: dict, n: int) -> int:
     bs, has_next = plan(n)
     if not has_next:
         print(f"\n  Hết WAVE-SEQUENCE — wave {n} là wave cuối. KHÔNG tự mở wave mới.")
-        print("  Còn việc trong docs/plans/BACKLOG.md → /plan lập kế hoạch increment kế.")
+        print("  Còn phát hiện `wave sau` chưa được nhận → lùi `/domain` (chốt chia-wave) "
+              "để thêm vào WAVE-SEQUENCE.md.")
         return 0
 
     nxt = n + 1

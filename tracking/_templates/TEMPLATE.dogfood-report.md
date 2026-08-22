@@ -35,7 +35,7 @@ wave: "{{WAVE_ID}}"
 > | Lệch `DESIGN-SYSTEM.md` / mockup user đã chốt: màu-cỡ ngoài token · thiếu trạng thái bắt buộc · sai khuôn rỗng/lỗi/đang tải | `sửa ngay` về **token**; cố ý giữ khác → `py scripts/decide.py` một dòng |
 > | Nhỏ, sửa dưới 15 phút | `sửa ngay` |
 > | Cần nhiều thời gian **nhưng trong scope wave này** | `chưa xử` — cột `Ở đâu` phải nói rõ đang nằm chỗ nào |
-> | **Ngoài scope đã khoá** | `wave sau` — cột `Ở đâu` phải dẫn tới dòng trong `docs/plans/WAVE-SEQUENCE.md` |
+> | **Ngoài scope đã khoá** | `wave sau` — cột `Ở đâu` nói **vì sao ngoài scope** + **cần gì để làm**. KHÔNG ghi thẳng vào `WAVE-SEQUENCE.md` được (phase-lock chặn `docs/plans/**` ở đây); `/next-wave` sẽ đối chiếu và nhắc, muốn nhận thật thì lùi `/domain` chốt chia-wave |
 
 | # | Lăng kính | FEAT/AC | Thao tác đã làm | Thấy gì trên màn hình | Xử | Ở đâu |
 |---|---|---|---|---|---|---|

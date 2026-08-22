@@ -2338,7 +2338,11 @@ def check_dogfood_done(state: dict, evidence: dict | None = None,
             blank.append(rid)
         elif v.startswith("sửa ngay") and not where:
             open_now.append(rid)                       # khai sửa ngay mà không dẫn được vết sửa
-        elif v.startswith("wave sau") and "wave-sequence" not in where.lower():
+        elif v.startswith("wave sau") and not where:
+            # KHÔNG đòi dẫn tới WAVE-SEQUENCE.md ở đây: `docs/plans/**` bị phase-lock chặn ở
+            # MANUAL_TEST (chỗ /dogfood chạy), nên đòi vậy là ra luật không tuân thủ nổi.
+            # Ghi ở đây (không khoá) — NHẬN ở chốt chia-wave của /domain (khoá mở). /next-wave
+            # đếm dòng `wave sau` chưa có mặt trong WAVE-SEQUENCE và cảnh báo lúc mở wave.
             later_no_ref.append(rid)
     bad = []
     if blank:
@@ -2348,9 +2352,10 @@ def check_dogfood_done(state: dict, evidence: dict | None = None,
         bad.append(f"{len(open_now)} dòng khai `sửa ngay` mà cột `Ở đâu` trống "
                    f"({', '.join(open_now[:6])}) — sửa rồi thì dẫn được ra commit/TC")
     if later_no_ref:
-        bad.append(f"{len(later_no_ref)} dòng đẩy `wave sau` mà không dẫn tới "
-                   f"`WAVE-SEQUENCE.md` ({', '.join(later_no_ref[:6])}) — đẩy sang wave sau mà "
-                   "không có chỗ nhận thì là bỏ đi, gọi tên khác thôi")
+        bad.append(f"{len(later_no_ref)} dòng đẩy `wave sau` mà cột `Ở đâu` trống "
+                   f"({', '.join(later_no_ref[:6])}) — phải nói **vì sao ngoài scope** và **cần "
+                   "gì để làm**, nếu không thì wave sau đọc một dòng cụt, không dựng lại nổi "
+                   "bối cảnh. `/next-wave` sẽ đối chiếu các dòng này với WAVE-SEQUENCE.md")
     if bad:
         return False, f"{rel}:\n      " + "\n      ".join(bad)
     return True, ""

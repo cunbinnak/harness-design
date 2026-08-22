@@ -108,12 +108,16 @@ một trong ba — **ô trống nghĩa là chưa ai quyết**, không phải "kh
 | Lệch design system / mockup user đã chốt: màu-cỡ ngoài token · thiếu trạng thái bắt buộc · sai khuôn rỗng/lỗi/đang tải | `sửa ngay` **về token**; cố ý giữ khác → `py scripts/decide.py` một dòng |
 | Nhỏ, sửa dưới 15 phút | `sửa ngay` |
 | Cần nhiều thời gian **nhưng trong scope wave này** | `chưa xử` — cột `Ở đâu` nói rõ đang nằm chỗ nào |
-| **Ngoài scope đã khoá** | `wave sau` — cột `Ở đâu` dẫn tới dòng trong `docs/plans/WAVE-SEQUENCE.md` |
+| **Ngoài scope đã khoá** | `wave sau` — cột `Ở đâu` nói **vì sao ngoài scope** + **cần gì để làm** |
 
 `sửa ngay` xong thì chạy lại phần vừa sửa — sửa mà không dùng lại là chưa biết đã sửa được chưa.
 
 Gate `dogfood_done` đọc đúng bảng này: thiếu ô `Xử` · khai `sửa ngay` mà không dẫn được vết sửa ·
-đẩy `wave sau` mà không có chỗ nhận → đỏ. Không có sổ bug riêng: **kết quả test nằm ở
+đẩy `wave sau` mà không nói lý do → đỏ.
+
+**Chỗ GHI khác chỗ NHẬN.** `docs/plans/**` bị phase-lock chặn ở đây, nên đừng cố ghi thẳng vào
+`WAVE-SEQUENCE.md` — ghi lý do vào bảng này là đủ. `/next-wave` đối chiếu và nhắc dòng nào chưa
+có chỗ nhận; muốn nhận thật thì lùi `/domain` (chốt chia-wave) — khoá chỉ mở ở đó. Không có sổ bug riêng: **kết quả test nằm ở
 `test-report.md`, quyết định xử nằm ở đây**, hai chỗ không chép lẫn nhau.
 
 ## Done
