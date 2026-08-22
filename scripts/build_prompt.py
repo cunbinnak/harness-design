@@ -68,7 +68,7 @@ NON_NEGOTIABLES = """## NON-NEGOTIABLES
 1. Đọc `harness/STATE.json` trước mọi tool call (xem header `[HARNESS ...]` injected).
 2. Edit chỉ trong `owned_paths` của `active_boundary` — hook block ngoài.
 3. Stage transition CHỈ qua slash command, KHÔNG sửa `stage` trong STATE.json bằng tay.
-4. Quyết định non-trivial → artifact ngay (ADR / FEAT / CR / KG).
+4. Quyết định non-trivial → artifact ngay (ADR / FEAT / BR / KG).
    **Gặp mơ hồ giữa lúc làm — KHÔNG đoán im lặng, KHÔNG dừng hỏi:** chọn phương án hợp lý nhất
    **theo một tài liệu cụ thể** rồi ghi vết và đi tiếp:
    `py scripts/decide.py --what "..." --why "... (FEAT-X-001 §3)" --assume "..." --reversible yes|hard|no`
@@ -76,7 +76,8 @@ NON_NEGOTIABLES = """## NON-NEGOTIABLES
    không dẫn về đâu được nghĩa là chưa đủ căn cứ để tự quyết, phải đọc lại spec.
    KHÔNG ghi cho: đặt tên biến, chia file, thư viện tiện ích nhỏ (ghi mọi thứ thì sổ thành nhật ký,
    không ai đọc, mất luôn tác dụng).
-5. Cross-boundary change → `/apply-cr` + `/review-document` (chỉ từ DONE state).
+5. Cross-boundary change → phải qua chốt rà chéo của `/domain` + `/approve-document` TRƯỚC
+   khi code. Sau khi wave đã ship: thay đổi = **wave sau**, KHÔNG sửa tại chỗ.
 6. Không bypass test (`--no-verify`, skip), không hardcode secrets.
 7. **TUÂN THỦ skill được giao**: convention `rules-{kind}` + cấu trúc/layout `ref-{kind}-pattern` (đúng kiến trúc HLD §4) + template tương ứng. KHÔNG tự bịa cấu trúc/đặt tên/đổi build tool ngoài skill+ADR. Review/gate sẽ reject nếu lệch."""
 
@@ -329,7 +330,7 @@ def build_discovery_start(state: dict, matrix: list[dict], opts: dict) -> str:
             "**Chốt `service_prefix`** (kebab ngắn) → trả trong RETURN SCHEMA `service_prefix`.",
         ]
     parts = [
-        f"# SPAWN PROMPT — /discovery-start {wave}",
+        f"# SPAWN PROMPT — chốt discovery-start {wave}",
         f"\nAgent: **{spec['agent']}** ({spec['role']}) · Skill: `{spec['skill']}` · Output: {spec['output']}",
         state_bundle(state, {"discovery_wave": wave, "input": opts.get("input")}),
         NON_NEGOTIABLES,
@@ -359,7 +360,7 @@ def build_discovery_start(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_discovery_end(state: dict, matrix: list[dict], opts: dict) -> str:
     """Chốt Discovery (chỉ ở DISC_D3): gate D3 → DOMAIN_AUTHORING."""
     parts = [
-        "# SPAWN PROMPT — /discovery-end (chốt Discovery)",
+        "# SPAWN PROMPT — chốt discovery-end (chốt Discovery)",
         "\n**Instant action (no sub-agent)** — verify gate D3 + transition → DOMAIN_AUTHORING.",
         state_bundle(state, {"discovery_wave": "D3"}),
         NON_NEGOTIABLES,
@@ -377,8 +378,8 @@ def build_discovery_end(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 # ------------------------------------------------------------------------
-# DOMAIN 2 lớp (clone ZIP A1): po/ba author BUSINESS plain VN vào docs/domain/ → /domain-approve KÝ
-# → /domain-translate DỊCH sang eng docs/architecture/ (gate translation_parity giữ 1-1).
+# DOMAIN 2 lớp (clone ZIP A1): po/ba author BUSINESS plain VN vào docs/domain/ → domain-approve KÝ
+# → domain-translate DỊCH sang eng docs/architecture/ (gate translation_parity giữ 1-1).
 # ------------------------------------------------------------------------
 
 DOMAIN_MODES = {
@@ -415,7 +416,7 @@ DOMAIN_MODES = {
                          ("Journey persona tham gia", "docs/domain/journeys/JOURNEY-*.md")]},
     # WIREFRAME bỏ: wireframe = UX = ux/ (DESIGN phase technical-design lo, không phải DOMAIN artifact riêng).
 }
-# po viết EPIC/FEATURE/JOURNEY · ba viết BR/PERSONA (tách lệnh /domain-po, /domain-ba).
+# po viết EPIC/FEATURE/JOURNEY · ba viết BR/PERSONA (tách lệnh domain-po, domain-ba).
 DOMAIN_PO_MODES = ("EPIC", "FEATURE", "JOURNEY")
 DOMAIN_BA_MODES = ("BR", "PERSONA")
 
@@ -435,7 +436,7 @@ def build_domain_author(state: dict, matrix: list[dict], opts: dict) -> str:
                 "(KHÔNG metric kỹ thuật) + §MVP scope (link FEAT) + §Ngoài phạm vi. "
                 "**`feature_refs` PHẢI link ≥2 FEAT** (ZIP planning-rules: <2 → granularity sai, merge). `target_capability` + `priority`.",
         "FEATURE": "**≥4 AC** BDD (Cho/Khi/Thì) + `epic_ref` + `feat_type` (user_facing|platform) "
-                   "+ `business_rule_refs` (link BR; thiếu → /domain-ba BR trước) + `has_ui_touchpoint`. "
+                   "+ `business_rule_refs` (link BR; thiếu → domain-ba BR trước) + `has_ui_touchpoint`. "
                    "§Ngoài phạm vi (QC dựa vào). AC mô tả HÀNH VI NGHIỆP VỤ thuần.",
         "BR": "§Phát biểu quy tắc + §Lý do (reference nguồn: luật/policy/contract/decision) + §Khi nào áp dụng "
               "+ **≥2 ví dụ cụ thể** (1 happy + 1 vi phạm — QC seed test). `severity` CORNERSTONE/NORMAL + `related_features`.",
@@ -445,7 +446,7 @@ def build_domain_author(state: dict, matrix: list[dict], opts: dict) -> str:
                    "**Anti-persona BẮT BUỘC** (ai KHÔNG phải target). `persona_pool_ref`.",
     }[mode]
     parts = [
-        f"# SPAWN PROMPT — /{cmd} {mode}",
+        f"# SPAWN PROMPT — chốt /{cmd} {mode}",
         f"\nAgent: **{spec['agent']}** ({spec['role']}) · Skill: `{spec['skill']}` · Output: `{spec['out']}` (BUSINESS plain VN)",
         state_bundle(state, {"domain_mode": mode}),
         NON_NEGOTIABLES,
@@ -472,7 +473,7 @@ def build_domain_author(state: dict, matrix: list[dict], opts: dict) -> str:
 
 def build_domain_end(state: dict, matrix: list[dict], opts: dict) -> str:
     parts = [
-        "# SPAWN PROMPT — /domain-end (gate DOMAIN_AUTHORING → DESIGN)",
+        "# SPAWN PROMPT — chốt domain-end (gate DOMAIN_AUTHORING → DESIGN)",
         "\n**Instant action** — verify gate + transition.",
         state_bundle(state),
         NON_NEGOTIABLES,
@@ -484,7 +485,7 @@ def build_domain_end(state: dict, matrix: list[dict], opts: dict) -> str:
         "4. Override (user đồng ý): `py scripts/harness.py domain-end complete '{\"force\":true,\"reason\":\"<lý do>\"}'` → ghi audit tracking/decisions.md.",
         "## Sau DOMAIN (vào DESIGN)\n\nProduct (epic/feat/BR) đã có ở docs/architecture/. Stage → DESIGN. "
         "Chạy `/design` (technical-design: ADR/HLD/API/data-model/UX/events/integrations) → `/plan` "
-        "(implementation-plan: WAVE-SEQUENCE+MATRIX+KG) → REVIEW → /approve-document → /start-wave 1.",
+        "(implementation-plan: WAVE-SEQUENCE+MATRIX+KG) → REVIEW → /approve-document → start-wave 1.",
     ]
     return "\n\n".join(parts)
 
@@ -493,7 +494,7 @@ def build_domain_approve(state: dict, matrix: list[dict], opts: dict) -> str:
     """KÝ business doc (target rỗng = all). Instant action: jargon-check + stamp `status: APPROVED`."""
     target = opts.get("target") or "all"
     parts = [
-        f"# SPAWN PROMPT — /domain-approve {target}",
+        f"# SPAWN PROMPT — chốt domain-approve {target}",
         "\n**Instant action** — business-owner KÝ business doc (ký TRƯỚC, dịch SAU).",
         state_bundle(state, {"approve_target": target}),
         NON_NEGOTIABLES,
@@ -511,7 +512,7 @@ def build_domain_approve(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_domain_translate(state: dict, matrix: list[dict], opts: dict) -> str:
     """DỊCH business (docs/domain/, đã ký) → eng (docs/architecture/) — spawn domain-translator."""
     parts = [
-        "# SPAWN PROMPT — /domain-translate",
+        "# SPAWN PROMPT — chốt domain-translate",
         "\nAgent: **domain-translator-agent** · Skill: `domain-translator` · business → engineering spec.",
         state_bundle(state),
         NON_NEGOTIABLES,
@@ -527,7 +528,7 @@ def build_domain_translate(state: dict, matrix: list[dict], opts: dict) -> str:
             "Invoke skill `domain-translator`. CHỈ dịch khi gate `domain_signed` pass (mọi business doc `status: APPROVED`).",
             "Foreach business doc ở `docs/domain/` → DỊCH sang eng artifact tương ứng `docs/architecture/{epics,feat,business-rules,journeys,personas}/` "
             "theo eng template: GIỮ NGUYÊN Ý nghiệp vụ, THÊM độ chính xác kỹ thuật (BDD AC chuẩn, field/enum/error code, ref-id). KHÔNG bịa scope mới.",
-            "Truy vết: eng doc frontmatter `source: docs/domain/<file>` + `domain_source_id: <id>` — BẮT BUỘC (gate `translation_parity` @/domain-end đối chiếu 1-1: business đã ký thiếu eng doc = bỏ sót; eng doc không source = mồ côi). Giữ id (FEAT-x business → FEAT-x eng). DỊCH ĐỦ 100% doc đã ký, không bỏ sót cái nào.",
+            "Truy vết: eng doc frontmatter `source: docs/domain/<file>` + `domain_source_id: <id>` — BẮT BUỘC (gate `translation_parity` @domain-end đối chiếu 1-1: business đã ký thiếu eng doc = bỏ sót; eng doc không source = mồ côi). Giữ id (FEAT-x business → FEAT-x eng). DỊCH ĐỦ 100% doc đã ký, không bỏ sót cái nào.",
             "Interactive nếu business doc mơ hồ (≤5 câu); KHÔNG tự quyết scope nghiệp vụ — hỏi user.",
             "Xong → `py scripts/harness.py domain-translate complete '{}'`. Return RETURN SCHEMA `files_changed` (eng docs sinh ra).",
             "Sau dịch: `/domain-end` (gate `domain_gate`: eng epic+feat+BR tồn tại) → DESIGN.",
@@ -538,9 +539,9 @@ def build_domain_translate(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_design(state: dict, matrix: list[dict], opts: dict) -> str:
-    """Technical design (stage DESIGN) — solution-architect: hệ thống/contract (UX = /design-ux riêng)."""
+    """Technical design (stage DESIGN) — solution-architect: hệ thống/contract (UX = design-ux riêng)."""
     parts = [
-        "# SPAWN PROMPT — /design",
+        "# SPAWN PROMPT — chốt design",
         "\nAgent: **solution-architect-agent** · Skill: `technical-design` · Stage DESIGN → PLAN. **KHÔNG design UX/UI** — đó là `/design-ux` (ux-designer-agent).",
         state_bundle(state),
         NON_NEGOTIABLES,
@@ -550,7 +551,7 @@ def build_design(state: dict, matrix: list[dict], opts: dict) -> str:
             ("Boundary map (topology + quan hệ — D3)", "docs/discovery/BOUNDARY-MAP.md"),
             ("Charter từng boundary (mission/owned-data/capabilities/deps — D3)", "docs/discovery/boundaries/*/CHARTER.md"),
             ("Epic (capability grouping — DOMAIN)", "docs/architecture/epics/EP-*.md"),
-            ("FEAT (AC + business_rule_refs — eng, dịch từ business qua /domain-translate)", "docs/architecture/feat/FEAT-*.md"),
+            ("FEAT (AC + business_rule_refs — eng, dịch từ business qua domain-translate)", "docs/architecture/feat/FEAT-*.md"),
             ("Business rules (domain invariant → API error catalog + data-model — DOMAIN)", "docs/architecture/business-rules/BR-*.md"),
             ("Journey + Persona (UX context cho FE boundary — DOMAIN)", "docs/architecture/journeys/JOURNEY-*.md + docs/architecture/personas/PERSONA-*.md"),
             ("Event-storming D2 raw (OPTIONAL ref — đã fold vào FEAT/BR/domain; CHỈ đọc khi cần truy nguồn domain event/hot-spot, KHÔNG bắt buộc)", "docs/discovery/event-storming/ES-*.md"),
@@ -559,10 +560,10 @@ def build_design(state: dict, matrix: list[dict], opts: dict) -> str:
         tasks_block([
             "Invoke skill `technical-design`.",
             "Đọc boot sequence trên (targeted) + template từng artifact TRƯỚC khi author.",
-            "Produce per boundary: ADR (≥3), HLD, API, data-model (backend), events (nếu phát/nhận); + integrations (≥1) + infra/docker-compose skeleton. **UX (ux-{boundary}.md + design-tokens.css) KHÔNG làm ở đây** — user chạy `/design-ux` (ux-designer-agent) sau khi api-{be}.md sẵn; FE boundary ở /design chỉ cần HLD.",
+            "Produce per boundary: ADR (≥3), HLD, API, data-model (backend), events (nếu phát/nhận); + integrations (≥1) + infra/docker-compose skeleton. **UX (ux-{boundary}.md + design-tokens.css) KHÔNG làm ở đây** — user chạy `/design-ux` (ux-designer-agent) sau khi api-{be}.md sẵn; FE boundary ở design chỉ cần HLD.",
             "Boundary decomposition + kind/stack lấy từ Charter + BOUNDARY-MAP (D3); FEAT/BR (DOMAIN) → API error catalog + data-model invariant.",
-            "**TRẢ NỢ TODO-engineer (gate `todo_resolved` @/design-end):** mọi marker `TODO engineer`/`TBD (DESIGN)` translator để lại trong eng feat/BR (nhất là BR `enforcement_location`, FEAT `consumes_contracts`) phải được ĐIỀN ở stage này; chưa chốt thật → ghi Open question có chủ, KHÔNG để TBD.",
-            "**Contract graph khớp MATRIX (gate `contract_graph_parity` @/plan):** api-*.md frontmatter `producer`/`consumers[]`, INTEG-INT `consumer`/`producer`, events subscriber phải dùng đúng boundary_id — 3 nguồn này sẽ bị đối chiếu với MATRIX depends_on, khai lệch = chặn ở /plan.",
+            "**TRẢ NỢ TODO-engineer (gate `todo_resolved` @design-end):** mọi marker `TODO engineer`/`TBD (DESIGN)` translator để lại trong eng feat/BR (nhất là BR `enforcement_location`, FEAT `consumes_contracts`) phải được ĐIỀN ở stage này; chưa chốt thật → ghi Open question có chủ, KHÔNG để TBD.",
+            "**Contract graph khớp MATRIX (gate `contract_graph_parity` @plan):** api-*.md frontmatter `producer`/`consumers[]`, INTEG-INT `consumer`/`producer`, events subscriber phải dùng đúng boundary_id — 3 nguồn này sẽ bị đối chiếu với MATRIX depends_on, khai lệch = chặn ở plan.",
             "Iterate với user tới khi confirm. **Chưa vừa ý → user chạy lại `/design`** = re-spawn refine (self-loop DESIGN→DESIGN, KHÔNG advance). Idempotent: update artifact đã có, KHÔNG blind-append.",
             "Khi user OK TOÀN BỘ: return RETURN SCHEMA `user_confirmed: true` → nhắc user chạy `/design-ux` (nếu có FE boundary + chưa làm UX) rồi **`/design-end`** (gate per-boundary completeness) → DESIGN→PLAN. KHÔNG tự advance bằng `/design`.",
         ]),
@@ -574,7 +575,7 @@ def build_design(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_design_ux(state: dict, matrix: list[dict], opts: dict) -> str:
     """UX/UI design (stage DESIGN, self-loop) — ux-designer-agent chuyên môn, tách khỏi solution-architect."""
     parts = [
-        "# SPAWN PROMPT — /design-ux",
+        "# SPAWN PROMPT — chốt design-ux",
         "\nAgent: **ux-designer-agent** · Skill: `ux-design` · Stage DESIGN (self-loop) — UX/UI cho FE boundary. "
         "KHÔNG đụng ADR/HLD/API/data-model/events/INTEG (đó là `/design`).",
         state_bundle(state),
@@ -595,11 +596,11 @@ def build_design_ux(state: dict, matrix: list[dict], opts: dict) -> str:
             "Invoke skill `ux-design`.",
             "**design-tokens.css TRƯỚC** (SoT `--color-*`/`--font-*`/`--space-*` + dark/hc theme, theo TEMPLATE — 1 file dùng chung MỌI web boundary; gate `design_gate` đòi khi có web boundary).",
             "**SCREEN-MAP TRƯỚC KHI VẼ** (`docs/architecture/ux/SCREEN-MAP.md` — gate design_gate parse): đơn vị thiết kế = MÀN. Derive danh sách màn từ FEAT `has_ui_touchpoint` + journeys → gán màn→boundary theo luật (FEAT `target_experience_hint`/`target_boundary_hint` → persona của experience trong BOUNDARY-MAP/CHARTER → mơ hồ thì HỎI USER, không đoán) → bảng `| screen | route | boundary | feat | mockup | note |`. Mỗi FEAT có UI phải có ≥1 màn; màn dùng chung = 1 row nhiều FEAT.",
-            "**THIẾT KẾ TỪNG MÀN BẰNG HTML — không template, không ASCII:** đi theo SCREEN-MAP, mỗi màn 1 file `docs/architecture/ux/mockups/{boundary}/{screen}.html`. Khi vẽ 1 màn chỉ đọc tài liệu CỦA MÀN ĐÓ (FEAT:AC trong row + `api-{be}.md` mà flow gọi). Bạn là DESIGNER — tự dựng giao diện HOÀN CHỈNH như trang web thật (app shell + nội dung thật, đẹp theo §Visual polish). **CHUẨN CHUYÊN NGHIỆP = §Chuẩn chuyên nghiệp + ANTI-PATTERNS của skill (benchmark SaaS thương mại, mô phỏng visual language của library ở ADR ui-kit — vd Ant Design): BƯỚC 0 mở `EXAMPLE.reference.html` neo chất lượng; LUẬT MÀU neutral-first (nền trung tính — CẤM sơn semantic lên mảng lớn, ô trống im lặng, booking = primary-soft không phải đỏ, danger chỉ cho lỗi); cấm text-link lặp mọi ô/link gạch chân thay button/bảng HTML mộc/booking không span theo thời lượng. Vẽ xong TỰ SO với bài mẫu — thua hoặc phạm anti-pattern = làm lại, không trình user.** Luật (mockups/README.md): HTML TĨNH mở file:// xem được (không JS/build/CDN) · style CHỈ `var(--...)` link `../../design-tokens.css` (thiếu token → thêm vào design-tokens.css, không bịa tại chỗ) · nội dung thật không lorem · state phụ (loading/empty/error) = section cùng file · responsive media query · đủ :hover/:focus-visible. Gate `design_gate`: mọi row SCREEN-MAP → mockup TỒN TẠI + dùng token; web boundary 0 màn = chặn.",
+            "**THIẾT KẾ TỪNG MÀN BẰNG HTML — không template, không ASCII:** đi theo SCREEN-MAP, mỗi màn 1 file `docs/architecture/ux/mockups/{boundary}/{screen}.html`. Khi vẽ 1 màn chỉ đọc tài liệu CỦA MÀN ĐÓ (FEAT:AC trong row + `api-{be}.md` mà flow gọi). Bạn là DESIGNER — tự dựng giao diện HOÀN CHỈNH như trang web thật (app shell + nội dung thật, đẹp theo §Visual polish). **CHUẨN CHUYÊN NGHIỆP = §Chuẩn chuyên nghiệp + ANTI-PATTERNS của skill (benchmark SaaS thương mại, mô phỏng visual language của library ở ADR ui-kit — vd Ant Design): BƯỚC 0 mở `EXAMPLE.reference.html` neo chất lượng; LUẬT MÀU neutral-first (nền trung tính — CẤM sơn semantic lên mảng lớn, ô trống im lặng, booking = primary-soft không phải đỏ, danger chỉ cho lỗi); cấm text-link lặp mọi ô/link gạch chân thay button/bảng HTML mộc/booking không span theo thời lượng. Vẽ xong TỰ SO với bài mẫu — thua hoặc phạm anti-pattern = làm lại, không trình user.** Luật (mockups/README.md): HTML TĨNH mở file:// xem được (không JS/build/CDN) · style CHỈ `var(--...)` link `../..design-tokens.css` (thiếu token → thêm vào design-tokens.css, không bịa tại chỗ) · nội dung thật không lorem · state phụ (loading/empty/error) = section cùng file · responsive media query · đủ :hover/:focus-visible. Gate `design_gate`: mọi row SCREEN-MAP → mockup TỒN TẠI + dùng token; web boundary 0 màn = chặn.",
             "Foreach FE boundary (kind web/mobile): `ux-{boundary}.md` — BEHAVIOR đi kèm mockup, viết thẳng theo outline trong skill (không template): tổng quan · user flow per FEAT Must · per-screen (link mockup + states default/hover/disabled/loading/error/empty + API calls khớp `api-{be}.md` + validation map error.code→field) · permission UI · global patterns · a11y WCAG 2.1 AA · edge cases. KHÔNG chép giá trị token vào .md (design-tokens.css là SoT duy nhất). §Visual polish thể hiện TRONG mockup.",
             "Thiếu endpoint/contract để vẽ flow → ghi Open question cho architect (user chạy `/design` bổ sung), KHÔNG tự bịa.",
             "Trình user: nhắc MỞ mockup trong browser (đường dẫn từng file) để duyệt look & feel. Iterate tới khi confirm. **Chưa vừa ý → user chạy lại `/design-ux`** (self-loop, KHÔNG advance). Idempotent: update file đã có.",
-            "Khi user OK: return RETURN SCHEMA `user_confirmed: true` → cả /design lẫn /design-ux xong → user chạy `/design-end`.",
+            "Khi user OK: return RETURN SCHEMA `user_confirmed: true` → cả design lẫn design-ux xong → user chạy `/design-end`.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
     ]
@@ -609,7 +610,7 @@ def build_design_ux(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_design_end(state: dict, matrix: list[dict], opts: dict) -> str:
     """Advance DESIGN→PLAN: verify design_gate (per-boundary completeness) rồi transition. KHÔNG spawn author mới."""
     parts = [
-        "# SPAWN PROMPT — /design-end",
+        "# SPAWN PROMPT — chốt design-end",
         "\nĐóng stage DESIGN → PLAN sau khi user đã vừa ý technical design. Verify gate rồi transition — KHÔNG spawn agent author mới.",
         state_bundle(state),
         tasks_block([
@@ -625,7 +626,7 @@ def build_design_end(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_plan(state: dict, matrix: list[dict], opts: dict) -> str:
     """Implementation plan (stage PLAN) — tái dùng skill implementation-plan + program-planner-agent."""
     parts = [
-        "# SPAWN PROMPT — /plan",
+        "# SPAWN PROMPT — chốt plan",
         "\nAgent: **program-planner-agent** · Skill: `implementation-plan` · Stage PLAN → REVIEW.",
         state_bundle(state),
         NON_NEGOTIABLES,
@@ -649,7 +650,7 @@ def build_plan(state: dict, matrix: list[dict], opts: dict) -> str:
             "Iterate với user tới khi confirm.",
             "**Phủ 100% FEAT (gate `plan_integrity`):** mọi FEAT-*.md phải vào `features[]` của đúng 1 boundary trong MATRIX — FEAT bỏ sót = mồ côi = gate chặn (chủ động hoãn/bỏ → frontmatter `status: deferred|dropped`).",
             "**Contract graph (gate `contract_graph_parity`):** MATRIX `depends_on`/`consumed_by` phải khớp 2 chiều với api-*.md `consumers[]` + INTEG-INT + events subscribers — cạnh gọi nhau không có contract doc / contract khai cạnh không có trong MATRIX = chặn.",
-            "Sau confirm: return RETURN SCHEMA `user_confirmed: true`. Gate /plan: WAVE-SEQUENCE + MATRIX + wave files + KG + lint (integrity/coherence/contract-graph) → transition PLAN→REVIEW. Rồi /approve-document → /start-wave 1.",
+            "Sau confirm: return RETURN SCHEMA `user_confirmed: true`. Gate plan: WAVE-SEQUENCE + MATRIX + wave files + KG + lint (integrity/coherence/contract-graph) → transition PLAN→REVIEW. Rồi /approve-document → start-wave 1.",
         ]),
         RETURN_SCHEMA_TEMPLATE,
     ]
@@ -689,7 +690,7 @@ def build_review_document(state: dict, matrix: list[dict], opts: dict) -> str:
             "mỗi gap 1 row `DR-NNN | severity | concern | file | status` (severity BLOCKER/MAJOR/MINOR; status=open). "
             "**Luôn ghi file kể cả KHÔNG có gap** (bảng rỗng) — gate /approve-document đọc file này; thiếu file = review chưa chạy = chặn approve.",
             "Return issues[] (file + concern + severity). KHÔNG sửa doc nguồn — user feed `/review-document \"<feedback>\"` "
-            "(revision mode) hoặc lùi `/domain-po`·`/domain-ba` author bổ sung (→ /domain-approve → /domain-translate) để vá gap BLOCKER/MAJOR.",
+            "(revision mode) hoặc lùi `/domain-po`·`/domain-ba` author bổ sung (→ domain-approve → domain-translate) để vá gap BLOCKER/MAJOR.",
         ]
         section_label = (
             "## SANITY-CHECK TASK (gap / mâu thuẫn / thiếu độ phủ)\n\n"
@@ -701,7 +702,7 @@ def build_review_document(state: dict, matrix: list[dict], opts: dict) -> str:
         )
 
     parts = [
-        f"# SPAWN PROMPT — /review-document ({mode})",
+        f"# SPAWN PROMPT — chốt review-document ({mode})",
         f"\nAgent: **review-document-agent** · Mode: `{mode}`",
         state_bundle(state, {"mode": mode, "has_feedback": has_feedback}),
         NON_NEGOTIABLES,
@@ -736,11 +737,11 @@ def build_review_document(state: dict, matrix: list[dict], opts: dict) -> str:
 
 def build_approve_document(state: dict, matrix: list[dict], opts: dict) -> str:
     parts = [
-        "# SPAWN PROMPT — /approve-document",
+        "# SPAWN PROMPT — chốt /approve-document",
         "\n**Instant action** — KHÔNG spawn sub-agent. Pure CLI complete.",
         state_bundle(state),
         NON_NEGOTIABLES,
-        "## TASK\n\n1. Ask user explicit confirm.\n2. User reply 'yes' → run `py scripts/approve_document.py` (stamp `status: APPROVED` vào adr/hld/data-model/ux/integrations; `status: ACTIVE` vào api/events — KHÔNG stamp tay) RỒI `py scripts/harness.py approve-document complete '{\"approved\":true}'` (gate `doc_stamped` verify stamp đã xảy ra).\n3. User reply 'no' → cancel, suggest /review-document.\n4. Sau approve: report 'Approved. Run /start-wave 1 để mở wave đầu tiên.'\n\n"
+        "## TASK\n\n1. Ask user explicit confirm.\n2. User reply 'yes' → run `py scripts/approve_document.py` (stamp `status: APPROVED` vào adr/hld/data-model/ux/integrations; `status: ACTIVE` vào api/events — KHÔNG stamp tay) RỒI `py scripts/harness.py approve-document complete '{\"approved\":true}'` (gate `doc_stamped` verify stamp đã xảy ra).\n3. User reply 'no' → cancel, suggest review-document.\n4. Sau approve: report 'Approved. Run start-wave 1 để mở wave đầu tiên.'\n\n"
         "> **Gate `doc_review`:** lệnh này bị CHẶN nếu `/review-document` (no-arg, sanity-check) chưa chạy "
         "(thiếu `tracking/doc-review-findings.md`) hoặc còn gap **BLOCKER/MAJOR** open. Vá gap (revision loop "
         "hoặc lùi `/domain-po`·`/domain-ba` → ký → translate) tới sạch. Edge thật → `'{\"approved\":true,\"force\":true,\"reason\":\"<lý do>\"}'` "
@@ -752,7 +753,7 @@ def build_approve_document(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_start_wave(state: dict, matrix: list[dict], opts: dict) -> str:
     wave_n = int(opts.get("wave") or 1)
     parts = [
-        f"# SPAWN PROMPT — /start-wave {wave_n}",
+        f"# SPAWN PROMPT — chốt start-wave {wave_n}",
         f"\nAgent: **start-wave-agent** · Materialize per-boundary agents + KG skeleton, rồi seed phần design vào KG từ docs đã chốt — wave-{wave_n:03d}.",
         state_bundle(state, {"wave_n": wave_n}),
         NON_NEGOTIABLES,
@@ -861,8 +862,11 @@ def build_boundary_command(
             _feat_task = (
                 "Implement **TUẦN TỰ TỪNG FEAT MỘT (WIP=1)** đúng thứ tự MATRIX `features`: "
                 + _feat_order
-                + ". Với MỖI feat (làm xong hẳn feat này mới sang feat kế): implement MỌI AC + enforce MỌI BR của nó "
-                "→ viết + chạy test CỦA FEAT ĐÓ **XANH** → commit → sang feat kế. "
+                + ". Với MỖI feat (làm xong hẳn feat này mới sang feat kế): đi **TỪNG AC MỘT** — "
+                "`implement AC → TỰ BẤM THỬ Ở LOCAL (gọi API / bấm màn thật, KHÔNG phải đọc lại code) "
+                "→ commit` — hết AC thì enforce MỌI BR của feat → viết + chạy test CỦA FEAT ĐÓ **XANH** "
+                "→ sang feat kế. Bấm thử từng AC là chỗ rẻ nhất để lộ ra chỗ hiểu sai spec; gộp cả feat "
+                "rồi mới thử thì lúc đỏ không biết AC nào sai. "
                 "**KHÔNG mở nhiều feat song song, KHÔNG bỏ feat dở dang nhảy sang feat khác** — "
                 "gate `features_complete` @end-wave DERIVE `feature-state.md` và CHẶN SHIP nếu còn feat `active` "
                 "(làm dở nửa chừng), nên feat làm dở = wave không đóng được. "
@@ -871,12 +875,69 @@ def build_boundary_command(
         else:
             _feat_task = (
                 f"(MATRIX `features` RỖNG — intake chưa gắn) Fallback: đọc `docs/plans/{wave_id}.md` "
-                f"§'Features in scope' → lọc dòng `Boundary == {boundary_id}` = tập FEAT; đọc AC từng `FEAT-*.md` rồi implement."
+                f"§'Features in scope' → lọc dòng `Boundary == {boundary_id}` = tập FEAT. "
+                "Rồi làm **TUẦN TỰ TỪNG FEAT MỘT (WIP=1)**, trong mỗi feat đi **TỪNG AC MỘT**: "
+                "`implement AC → TỰ BẤM THỬ Ở LOCAL (gọi API / bấm màn thật, KHÔNG phải đọc lại code) "
+                "→ commit` — hết AC thì enforce MỌI BR của feat → viết + chạy test CỦA FEAT ĐÓ **XANH** "
+                "→ sang feat kế. KHÔNG mở nhiều feat song song, KHÔNG bỏ feat dở nhảy sang feat khác."
             )
+        # Ba khối dưới là thứ giữ cho phần LÀM bám sát FEAT. Thiếu chúng thì agent vẫn "xong feat"
+        # được mà chưa từng bấm thử AC nào, vẫn đắp tính năng lên một đường chưa thông, và vẫn coi
+        # ma trận quyền / ca biên / token là tài liệu tham khảo thay vì ràng buộc.
+        _ui_kind = kind in ("web", "mobile", "bff")
+        _step34 = ("một màn rỗng render được\n"
+                   "     4. một thao tác ghi xuống DB rồi đọc lại lên được — dù xấu"
+                   if kind in ("web", "mobile") else
+                   "một endpoint trả được dữ liệu thật từ DB\n"
+                   "     4. một thao tác ghi xuống DB rồi đọc lại lên được — dù xấu")
+        _skeleton = (
+            "**ĐƯỜNG ĐI XUYÊN SUỐT TRƯỚC — chưa thông thì KHÔNG làm gì khác.** Thứ tự bắt buộc:\n"
+            "     1. service lên được ở local (theo `infra-local-dev`)\n"
+            "     2. health check trả 200, phân biệt *sống* với *sẵn sàng nhận việc*\n"
+            f"     3. {_step34}\n"
+            "     5. commit\n"
+            "  Bốn bước đầu xong là rủi ro lớn nhất đã qua. Đắp tính năng lên một đường chưa thông thì "
+            "lúc hỏng không biết hỏng ở tầng nào — và `health_proof` chỉ soi việc này ở dev-handoff, "
+            "tức là SAU khi đã viết hết code."
+        )
+        _bind = (
+            "**BÁM VÀO ĐÂU — mỗi tài liệu ràng buộc MỘT thứ, không phải đọc tham khảo:**\n"
+            "  - `FEAT-*.md` §AC = **spec**. KHÔNG hạ AC cho dễ làm — phase-lock chặn sửa file, đừng "
+            "lách bằng cách implement hẹp hơn. Làm không nổi → `decide.py` + báo lại, đừng lặng lẽ làm thiếu.\n"
+            "  - `BR-*.md` + KG `business_rules` → enforce **ở server**, không phải ở tầng gọi.\n"
+            "  - `docs/discovery/persona-pool.md` §Ma trận vai × hành động → **mỗi ô `cấm` phải bị chặn "
+            "ở server**. Không tự quyết lại quyền. **Chặn ở UI KHÔNG tính.**\n"
+            f"  - `hld-{boundary_id}.md` §4 ranh giới tầng → logic sai tầng là **lỗi**, không phải chuyện "
+            "phong cách. ArchUnit là thứ ép nó.\n"
+            f"  - `hld-{boundary_id}.md` §6.1 ca biên đã quyết → xử **ngay khi làm phần liên quan**, "
+            "đừng để dồn lại cuối.\n"
+            "  - `tracking/BC-LEDGER.md` §1 (wave ≥2) → surface đã giao là hợp đồng; đụng tới thì theo "
+            "luật cộng-trước-xoá-sau ở §2."
+        )
+        if _ui_kind:
+            _bind += (
+                "\n  - `docs/architecture/ux/design-tokens.css` → **việc ĐẦU TIÊN khi đụng UI**: đổ bảng "
+                "token vào theme của stack, rồi MỌI màu/cỡ chữ/khoảng cách lấy từ đó. Token là thứ duy "
+                "nhất được **chép nguyên** từ thiết kế sang code. Gõ thẳng `#hex` cho nhanh là giết đúng "
+                "tác dụng của design token: phản hồi \"chữ nhỏ quá\" lẽ ra sửa MỘT token rồi lan ra mọi màn.\n"
+                "  - `ux/DESIGN-SYSTEM.md` §4 kho component → chỉ lắp từ danh sách đó, **đủ trạng thái bắt "
+                "buộc** của từng khối (thiếu \"đang gửi\" = người dùng bấm hai lần).\n"
+                "  - `ux/SCREEN-MAP.md` + `mockups/` → user **đã chốt** bản đó: đúng thông tin bắt buộc, "
+                "đúng thứ tự ưu tiên, đủ ba khuôn rỗng/lỗi/đang tải. Làm khác đi → `decide.py` một dòng."
+            )
+        _not_now = (
+            "**KHÔNG làm ở chốt này:** tối ưu hiệu năng · làm UI đẹp hơn mức đủ dùng · viết test cho hàm "
+            "tiện ích · thêm tính năng \"tiện tay\" ngoài AC · refactor ngoài phạm vi feat đang làm. "
+            "Thấy việc đáng làm mà ngoài AC → `decide.py` hoặc đẩy wave sau, đừng chèn vào đây. "
+            "Mỗi thứ chèn thêm là một thứ review và test phải soi mà không AC nào đòi."
+        )
         task_list += [
+            _skeleton,
+            _bind,
             _feat_task,
+            _not_now,
             "Run scoped build/test (mvn -pl ./ test cho backend; npm test cho bff/web; flutter test cho mobile) — **phải XANH mới được return**: compile error / test fail → sửa tới khi pass. KHÔNG return khi build/lint/test=fail (SubagentStop + Stop hook sẽ block).",
-            "KG: phần design (entities/business_rules/events/permissions) đã seed ở /start-wave — chỉ UPDATE nếu implement khác design (kèm sửa data-model); APPEND phần kinh nghiệm (learnings/gotchas/failure_modes/decisions) khi phát sinh.",
+            "KG: phần design (entities/business_rules/events/permissions) đã seed ở start-wave — chỉ UPDATE nếu implement khác design (kèm sửa data-model); APPEND phần kinh nghiệm (learnings/gotchas/failure_modes/decisions) khi phát sinh.",
             "Return RETURN SCHEMA.",
         ]
     elif command == "review-dev":
@@ -917,7 +978,7 @@ def build_boundary_command(
         task_list = ["<unknown command>"]
 
     parts = [
-        f"# SPAWN PROMPT — /{command} --boundary {boundary_id}",
+        f"# SPAWN PROMPT — chốt /{command} --boundary {boundary_id}",
         f"\nAgent: **{agent_name}** · kind: `{kind}` · service folder: `{service_folder}`",
         state_bundle(state, {"command_boundary": boundary_id, "kind": kind}),
         NON_NEGOTIABLES,
@@ -942,7 +1003,7 @@ def build_dev_handoff(state: dict, matrix: list[dict], opts: dict) -> str:
     boundary_id = opts.get("boundary") or state.get("active_boundary") or "<unknown>"
     wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
-        f"# SPAWN PROMPT — /dev-handoff",
+        f"# SPAWN PROMPT — chốt dev-handoff",
         f"\nAgent: **dev-handoff-agent** · Verify infra + handoff ready.",
         state_bundle(state, {"command_boundary": boundary_id}),
         NON_NEGOTIABLES,
@@ -958,7 +1019,7 @@ def build_dev_handoff(state: dict, matrix: list[dict], opts: dict) -> str:
             "Update docs/architecture/infra/docker-compose.yml thêm service mới (nếu chưa có) + env khớp app đọc.",
             f"`docker-compose up -d --build` → services healthy + **verify cross-boundary connectivity** (caller→callee qua service name theo INTEG-INT/depends_on). **Tận dụng lại service wave trước:** `up -d` idempotent — service đã có (wave trước `end-wave` chỉ `stop`, GIỮ image+volume) → khởi động lại NHANH từ image+volume cũ; chỉ boundary MỚI/đổi mới build+tạo. KHÔNG `down` trước (giữ data wave trước).",
             f"**MAIN/orchestrator chạy `py scripts/capture_infra_proof.py`** (HARNESS đo) → `tracking/{wave_id}/docker-ps.json` (infra_proof) + `health-proof.json` (health_proof: curl /health/ready 2xx) + `api-proof.json` (fetch OpenAPI `/v3/api-docs` mỗi backend — gate api_contract_proof so endpoint runtime vs `api-{{boundary}}.md`; fetch fail = backend thiếu springdoc → fix-agent bổ sung theo ref-backend-config). Service chưa UP → exit !=0.",
-            "**Service chưa healthy → `docker compose logs <svc>` chẩn ROOT-CAUSE:** (a) lỗi compose/env → sửa docker-compose.yml + up lại; (b) **lỗi code/migration/config/Dockerfile trong `services/{boundary}/`** (tên/kiểu cột migration sai, thiếu HealthController, healthcheck curl trên image không có curl…) → **STOP, báo MAIN spawn `fix-{boundary}-agent` (Mode B)** kèm root-cause → fix → re-run /dev-handoff. KHÔNG tự sửa code.",
+            "**Service chưa healthy → `docker compose logs <svc>` chẩn ROOT-CAUSE:** (a) lỗi compose/env → sửa docker-compose.yml + up lại; (b) **lỗi code/migration/config/Dockerfile trong `services/{boundary}/`** (tên/kiểu cột migration sai, thiếu HealthController, healthcheck curl trên image không có curl…) → **STOP, báo MAIN spawn `fix-{boundary}-agent` (Mode B)** kèm root-cause → fix → re-run dev-handoff. KHÔNG tự sửa code.",
             f"Verify build local boundary `{boundary_id}` pass (đọc kết quả, KHÔNG sửa source).",
             f"**Ghi `handoff/{wave_id}.md` §1-§4** (Summary · Service inventory: service/port/health · Start local · Endpoints) theo `handoff/TEMPLATE.wave.md`. (§5 end-wave, §6 done-wave.)",
             "Return RETURN SCHEMA với `coverage_pct`, `review_result: pass`, `docker_compose_ok: true`, `connectivity_ok: true`.",
@@ -971,7 +1032,7 @@ def build_dev_handoff(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_test_plan(state: dict, matrix: list[dict], opts: dict) -> str:
     wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
-        "# SPAWN PROMPT — /test-plan",
+        "# SPAWN PROMPT — chốt test-plan",
         "\nAgent: **test-plan-agent** · Sinh test-case-registry cho wave.",
         state_bundle(state),
         NON_NEGOTIABLES,
@@ -993,7 +1054,7 @@ def build_test_plan(state: dict, matrix: list[dict], opts: dict) -> str:
             "**AC coverage (gate `ac_coverage`):** MỌI `### AC-n` của FEAT in-scope wave phải có ≥1 TC trace `FEAT-N:AC-M` (cột feature+AC; auto hoặc manual; token deferred bỏ qua) — AC thiếu TC = mồ côi, gate chặn. Ngược lại KHÔNG trace AC không tồn tại (stale).",
             f"Write to `tracking/{wave_id}/test-case-registry.md` (per skill format).",
             "Cover P0 (blocker), P1 (must-have), P2 (nice-to-have).",
-            "Return RETURN SCHEMA với `test_cases_count: N`, `docker_compose_ok: true`, `connectivity_ok: true` (infra status kế thừa từ /dev-handoff — verify stack còn UP; gate test-plan: 2 flag + infra_proof + health_proof + contract_test_present + ui_test_present + registry_scope).",
+            "Return RETURN SCHEMA với `test_cases_count: N`, `docker_compose_ok: true`, `connectivity_ok: true` (infra status kế thừa từ dev-handoff — verify stack còn UP; gate test-plan: 2 flag + infra_proof + health_proof + contract_test_present + ui_test_present + registry_scope).",
         ]),
         RETURN_SCHEMA_TEMPLATE,
     ]
@@ -1003,8 +1064,8 @@ def build_test_plan(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
     wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
-        "# SPAWN PROMPT — /test-execute",
-        "\nAgent: **test-execute-agent** · Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API/UI/e2e) + log bug (origin=auto). **KHÔNG build source · KHÔNG mvn/npm/gradle/vitest · KHÔNG đo coverage** (đó là việc DEV ở /start-dev). KHÔNG fix (fix qua /fix-bugs).",
+        "# SPAWN PROMPT — chốt test-execute",
+        "\nAgent: **test-execute-agent** · Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API/UI/e2e) + log bug (origin=auto). **KHÔNG build source · KHÔNG mvn/npm/gradle/vitest · KHÔNG đo coverage** (đó là việc DEV ở start-dev). KHÔNG fix (fix qua fix-bugs).",
         state_bundle(state),
         NON_NEGOTIABLES,
         skills_block(["test-execute", "specialist-testing", "bug-logging", "infra-local-dev"]),
@@ -1035,7 +1096,7 @@ def build_test_execute(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_end_wave(state: dict, matrix: list[dict], opts: dict) -> str:
     wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
-        "# SPAWN PROMPT — /end-wave",
+        "# SPAWN PROMPT — chốt end-wave",
         "\nAgent: **end-wave-agent** · Soft close wave sau UAT signed.",
         state_bundle(state),
         NON_NEGOTIABLES,
@@ -1063,7 +1124,7 @@ def build_end_wave(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_done_wave(state: dict, matrix: list[dict], opts: dict) -> str:
     wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     parts = [
-        "# SPAWN PROMPT — /done-wave",
+        "# SPAWN PROMPT — chốt done-wave",
         "\nAgent: **done-wave-agent** · Hard close, teardown infra.",
         state_bundle(state),
         NON_NEGOTIABLES,
@@ -1086,7 +1147,7 @@ def build_done_wave(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
-    """Wave-scoped /review-dev (không --boundary): orchestrator cho main loop review TUẦN TỰ mọi boundary trong wave."""
+    """Wave-scoped review-dev (không --boundary): orchestrator cho main loop review TUẦN TỰ mọi boundary trong wave."""
     wave_boundaries = state.get("wave_boundaries") or []
     wave_id = (state.get("wave") or {}).get("id") or "<wave>"
     rows = []
@@ -1101,11 +1162,11 @@ def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
         )
         steps = "\n".join(f"py scripts/build_prompt.py review-dev --boundary {bid}   # → spawn review-{k}-agent" for bid, k in rows)
     else:
-        table = "_(wave_boundaries rỗng — chạy /start-wave trước)_"
+        table = "_(wave_boundaries rỗng — chạy start-wave trước)_"
         steps = "# (không có boundary)"
 
     parts = [
-        f"# SPAWN PROMPT — /review-dev (WAVE-SCOPED: {wave_id})",
+        f"# SPAWN PROMPT — chốt review-dev (WAVE-SCOPED: {wave_id})",
         state_bundle(state, {"mode": "wave-review"}),
         NON_NEGOTIABLES,
         "## MỤC TIÊU\n"
@@ -1138,10 +1199,10 @@ def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_fix_bugs_sweep(state: dict, matrix: list[dict], opts: dict) -> str:
-    """/fix-bugs KHÔNG có --bug-id: sweep MỌI bug open. MAIN đọc bugs.md → loop spawn fix per bug."""
+    """fix-bugs KHÔNG có --bug-id: sweep MỌI bug open. MAIN đọc bugs.md → loop spawn fix per bug."""
     wave_id = (state.get("wave") or {}).get("id") or "<wave>"
     parts = [
-        f"# SPAWN PROMPT — /fix-bugs (SWEEP — mọi bug open trong {wave_id})",
+        f"# SPAWN PROMPT — chốt fix-bugs (SWEEP — mọi bug open trong {wave_id})",
         state_bundle(state, {"mode": "fix-sweep"}),
         NON_NEGOTIABLES,
         "## MỤC TIÊU\n"
@@ -1162,11 +1223,11 @@ def build_fix_bugs_sweep(state: dict, matrix: list[dict], opts: dict) -> str:
 
 
 def build_log_bug(state: dict, matrix: list[dict], opts: dict) -> str:
-    """/log-bug "<mô tả>": spawn log-bug-agent ghi 1 bug manual vào bugs.md (UAT)."""
+    """log-bug "<mô tả>": spawn log-bug-agent ghi 1 bug manual vào bugs.md (UAT)."""
     wave_id = (state.get("wave") or {}).get("id") or "<wave>"
-    desc = opts.get("description") or opts.get("input") or "<mô tả bug — user truyền qua /log-bug>"
+    desc = opts.get("description") or opts.get("input") or "<mô tả bug — user truyền qua log-bug>"
     parts = [
-        "# SPAWN PROMPT — /log-bug",
+        "# SPAWN PROMPT — chốt log-bug",
         "\nAgent: **log-bug-agent** · Ghi 1 bug `manual` vào bugs.md từ mô tả UAT (KHÔNG fix).",
         state_bundle(state, {"mode": "log-bug"}),
         NON_NEGOTIABLES,
@@ -1212,14 +1273,14 @@ def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
         only = None
 
     if only:
-        head = f"# SPAWN PROMPT — /dogfood (CHẠY LẠI một vai: `{only}`)"
+        head = f"# SPAWN PROMPT — chốt /dogfood (CHẠY LẠI một vai: `{only}`)"
         plan = (
             "## CÁCH CHẠY\n"
             f"Chỉ spawn lại `dogfood-{only}-agent` với đúng bộ đầu vào ở §ĐẦU VÀO MỖI VAI. "
             "Bỏ qua chia đợt — DB đang ở trạng thái nào thì ghi rõ trạng thái đó vào báo cáo."
         )
     else:
-        head = "# SPAWN PROMPT — /dogfood (6 lăng kính persona · 2 đợt)"
+        head = "# SPAWN PROMPT — chốt /dogfood (6 lăng kính persona · 2 đợt)"
         rows = "\n".join(
             f"{n}. **Đợt {n} — {label}**: spawn `"
             + "` · `".join(f"dogfood-{l}-agent" for l in lenses)
@@ -1284,7 +1345,7 @@ def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
         "cá nhân, không phải bug.",
         tasks_block([
             f"Viết `tracking/{wave_id}/dogfood-report.md` — **nêu rõ đủ 6 lăng kính và đủ 2 đợt** "
-            "(gate `dogfood_done` @/end-wave đọc đúng file này; thiếu vai/thiếu đợt → đỏ).",
+            "(gate `dogfood_done` @end-wave đọc đúng file này; thiếu vai/thiếu đợt → đỏ).",
             f"Append bug vào `tracking/{wave_id}/bugs.md` qua skill `bug-logging` (`origin=manual`). "
             "Lỗi phân quyền → `sev=blocker`, không có ngoại lệ.",
             "**KHÔNG fix** (fix qua `/fix-bugs`). **KHÔNG sửa test-case-registry**. "
@@ -1369,15 +1430,15 @@ def main() -> int:
     ap.add_argument("command", choices=sorted(BUILDERS.keys()))
     ap.add_argument("--boundary")
     ap.add_argument("--wave", type=int)
-    ap.add_argument("--disc-wave", dest="disc_wave", help="for /discovery-start|end (D0|D1|D2|D3)")
-    ap.add_argument("--mode", help="for /domain-po (EPIC|FEATURE|JOURNEY) | /domain-ba (BR|PERSONA)")
-    ap.add_argument("--target", help="for /domain-approve (EP-/FEAT-/BR-... id, hoặc bỏ trống = all)")
+    ap.add_argument("--disc-wave", dest="disc_wave", help="for discovery-start|end (D0|D1|D2|D3)")
+    ap.add_argument("--mode", help="for domain-po (EPIC|FEATURE|JOURNEY) | domain-ba (BR|PERSONA)")
+    ap.add_argument("--target", help="for domain-approve (EP-/FEAT-/BR-... id, hoặc bỏ trống = all)")
     ap.add_argument("--bug-id", dest="bug_id")
     ap.add_argument("--cr-id", dest="cr_id")
     ap.add_argument("--input")
-    ap.add_argument("--feedback", help="for /review-document revision mode")
-    ap.add_argument("--description", dest="description", help="for /log-bug — mô tả bug manual")
-    ap.add_argument("--target-file", dest="target_file", help="for /review-document --file")
+    ap.add_argument("--feedback", help="for review-document revision mode")
+    ap.add_argument("--description", dest="description", help="for log-bug — mô tả bug manual")
+    ap.add_argument("--target-file", dest="target_file", help="for review-document --file")
     ap.add_argument("--stats", action="store_true")
     ap.add_argument("--save")
     args = ap.parse_args()

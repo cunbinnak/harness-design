@@ -41,15 +41,28 @@ Không argument.
 
 ```
 1. Read harness/STATE.json → verify stage == REVIEW
-2. Báo user:
-   "Confirm approve toàn bộ artifacts (Discovery + DOMAIN + DESIGN + PLAN)?
+2. Báo user danh sách phải đọc:
+   "Confirm approve toàn bộ (Discovery + DOMAIN + DESIGN + PLAN)?
    - PROJECT.md
    - FEAT-*.md (N files)
    - ADR + HLD + API + data-model + UX + events + integrations
    - WAVE-SEQUENCE.md + wave-001.md
    - SERVICE-BOUNDARY-MATRIX.json
-   
+
    Sau approve, /run-wave sẽ được phép. Gõ 'yes' để confirm, 'no' để cancel."
+
+2b. CÓ boundary web/mobile → mời xem GIAO DIỆN ở đây (đây là lần DUY NHẤT; /domain
+    KHÔNG dừng cho việc này nữa):
+    - đưa đường dẫn từng mockup, nói rõ **mở thẳng bằng trình duyệt** (`file://`,
+      không cần server); chỉ ra màn nên xem trước = màn đầu của luồng FEAT Must
+    - mời đi hết một luồng như persona chính, xem đủ ba khuôn rỗng/lỗi/đang tải
+    - phản hồi **hình thức** ("chữ nhỏ quá", "màu chìm quá") → sửa **TOKEN** ở
+      `design-tokens.css` để lan ra mọi màn. KHÔNG sửa tay từng file mockup —
+      sửa tay là mất tác dụng của design token và pha code thừa hưởng mớ lệch
+    - ghi từng lượt phản hồi vào `SCREEN-MAP.md` §Chốt; user nói chốt → ghi
+      `Chốt bởi user: <ngày ISO>` (gate `mockup_signed` đọc đúng dòng này)
+    Backend-only → bỏ qua 2b **và nói rõ là bỏ qua**.
+
 3. Đợi user reply.
 4. Nếu user "yes":
    - Run: py scripts/approve_document.py        (stamp status APPROVED/ACTIVE vào doc design/contract)

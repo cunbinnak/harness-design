@@ -137,9 +137,8 @@ Mỗi command tự document trong `.claude/commands/<name>.md` (sync từ `comma
 
 | Hook | Bạn cần biết (chi tiết → PROTOCOL.md) |
 |---|---|
-| `SessionStart` · `UserPromptSubmit` · `Notification` | Inject header `[HARNESS stage=… \| next: …]` + **reset turn-flag** mỗi turn |
+| `SessionStart` · `UserPromptSubmit` · `Notification` | Inject header `[HARNESS stage=… \| next: …]` mỗi turn |
 | `PreToolUse(Bash)` — gate | Deny `harness <cmd> complete` nếu sai `allowed_commands` hoặc fail gate — §Gate evidence |
-| `PreToolUse(Bash)` — turn-flag (#11) | Chỉ **1** `harness complete`/user-turn (chống MAIN tự nối lệnh); gate-fail KHÔNG tiêu cờ — §Turn-flag |
 | `PreToolUse(Write\|Edit)` | Block kernel files + 3 proof file (chỉ `capture_infra_proof.py` sinh, FM-PROOF-FORGE) + doc phase-locked ngoài stage sở hữu + `services/**` khi dev-handoff-agent (#12) |
 | `PreToolUse(Task)` | Block spawn command-agent bằng prompt tự viết (E-6: phải dùng `build_prompt.py`); Explore free |
 | `PreToolUse(Skill\|SlashCommand)` | Chặn CHỈ `SlashCommand` chạy harness cmd ∈ GATE_RULES (MAIN tự nối pipeline); `Skill` tool cho qua (sub-agent load convention); user **gõ tay** không ảnh hưởng |

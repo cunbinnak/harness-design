@@ -20,7 +20,7 @@ Không arg → chạy tiếp từ chốt đang đứng (suy từ `stage`).
 | 3 | Dịch sang bản kỹ thuật | `domain-translate` |
 | 4 | Đóng lớp nghiệp vụ | `domain-end` |
 | 5 | ADR · HLD · API · data-model · events · tích hợp | `design` |
-| 6 | UX — **chỉ khi kind có web/mobile**: DESIGN-SYSTEM **trước** → mockup → **DỪNG cho user xem** → chốt | `design-ux` |
+| 6 | UX — **chỉ khi kind có web/mobile**: DESIGN-SYSTEM **trước** → mockup → đi tiếp (user xem+chốt ở `/approve-document`) | `design-ux` |
 | 7 | Đóng thiết kế | `design-end` |
 | 8 | WAVE-SEQUENCE + wave-{N} + MATRIX + KG | `plan` |
 | 9 | Rà chéo toàn bộ | `review-document` (no-arg) |
@@ -34,7 +34,9 @@ Xong chốt 9 → dừng ở `REVIEW`, chờ `/approve-document`.
 1. Chốt đỏ → **DỪNG tại đó**, báo thiếu gì. KHÔNG bỏ qua, KHÔNG `force`.
 2. **Chỉ chốt 1 được hỏi.** Từ chốt 3 gặp mơ hồ → `py scripts/decide.py` rồi đi tiếp.
 3. Chốt 6 tự suy theo kind boundary; backend-only → bỏ qua **và nói rõ là bỏ qua**.
-   Có UI: vẽ xong **DỪNG**, mời user mở mockup bằng trình duyệt và bấm thử. Phản hồi hình thức → sửa **token**, không sửa tay từng màn. User chốt → ghi `Chốt bởi user: <ISO>` vào `SCREEN-MAP.md` (gate `mockup_signed` @`/approve-document` đòi dòng này).
+   Có UI: vẽ xong **đi tiếp**, KHÔNG dừng. Giao diện chỉ được user xem và chốt MỘT lần, ở
+   `/approve-document` — chỗ họ vốn đang đọc cả bộ tài liệu. Chốt 6 chỉ để lại thứ đáng xem:
+   đường dẫn mockup + màn nên xem trước, ghi vào `SCREEN-MAP.md` §Chốt. User chốt → ghi `Chốt bởi user: <ISO>` vào `SCREEN-MAP.md` (gate `mockup_signed` @`/approve-document` đòi dòng này).
 4. Spawn bằng `py scripts/build_prompt.py <chốt> …`, nguyên văn output.
 
 ## Chốt 1 — tự suy viết gì

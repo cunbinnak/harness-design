@@ -96,17 +96,27 @@ Mockup chỉ được **lắp từ kho §4** và dùng `var(--…)` từ SoT. C�
 
 Gate `design_system_closed` @ `/domain` chốt 7 kiểm cả bốn mục.
 
-## Chốt mockup — DỪNG cho user xem
+## Chốt mockup — KHÔNG dừng ở đây
 
-Vẽ xong toàn bộ màn trong SCREEN-MAP thì **DỪNG**, không đi tiếp:
+Vẽ xong toàn bộ màn trong SCREEN-MAP thì **đi tiếp luôn** sang chốt kế. Việc user xem và chốt
+giao diện xảy ra **một lần duy nhất, ở `/approve-document`** — nơi họ vốn đang đọc cả bộ tài liệu.
+Dừng thêm một lần giữa `/domain` là hỏi cùng một câu hai lần ở hai chỗ.
 
-1. Đưa user danh sách đường dẫn mockup, nói rõ **mở thẳng bằng trình duyệt** (`file://`, không cần server). Gợi ý màn nên xem trước: màn đầu tiên của luồng FEAT Must.
-2. Mời đi hết một luồng như persona chính — bấm được, thấy đủ state (rỗng/lỗi/đang tải).
-3. Ghi từng lượt phản hồi vào `SCREEN-MAP.md` §Chốt.
-4. **Phản hồi về hình thức** ("chữ nhỏ quá", "màu chìm quá") → sửa **TOKEN** ở `design-tokens.css` rồi để nó lan ra mọi màn. **KHÔNG sửa tay từng file mockup** — sửa tay là mất đúng tác dụng của việc có design token, và pha code sẽ thừa hưởng mớ lệch đó.
-5. Lặp tới khi user nói **chốt** → ghi `Chốt bởi user: <ngày ISO>` vào `SCREEN-MAP.md`.
+Việc của chốt này là **để lại thứ đáng xem**:
 
-Gate `mockup_signed` @ `/approve-document` đòi đúng dòng đó khi có boundary web/mobile. Chưa chốt = chưa mở cổng wave được.
+1. Ghi vào `SCREEN-MAP.md` §Chốt: danh sách đường dẫn mockup + **mở thẳng bằng trình duyệt**
+   (`file://`, không cần server) + màn nên xem trước (màn đầu của luồng FEAT Must) + đi thử theo
+   persona nào.
+2. Mỗi màn phải bấm được và thấy đủ ba khuôn (rỗng · lỗi · đang tải) — không có thì không có gì
+   để user đánh giá, và họ sẽ chốt một thứ chưa tồn tại.
+3. Để trống dòng `Chốt bởi user:` — `/approve-document` điền.
+
+Khi user phản hồi ở `/approve-document`: **hình thức** ("chữ nhỏ quá", "màu chìm quá") → sửa
+**TOKEN** ở `design-tokens.css` rồi để nó lan ra mọi màn. **KHÔNG sửa tay từng file mockup** —
+sửa tay là mất đúng tác dụng của design token, và pha code thừa hưởng nguyên mớ lệch đó.
+
+Gate `mockup_signed` @ `/approve-document` đòi dòng `Chốt bởi user: <ISO>` khi có boundary
+web/mobile. Chưa chốt = chưa mở cổng wave.
 
 Khuôn ghi ở cuối `SCREEN-MAP.md`:
 

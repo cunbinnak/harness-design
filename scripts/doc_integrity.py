@@ -24,7 +24,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 SURFACES = ["CLAUDE.md", "README.md", "SETUP-GUIDE.md", "AGENTS.md",
             "harness/PROTOCOL.md", "commands", ".claude/skills", "agents",
-            "tracking/README.md", "knowledge-base/README.md", "docs/architecture/README.md"]
+            "tracking/README.md", "knowledge-base/README.md", "docs/architecture/README.md",
+            # build_prompt.py không phải tài liệu người đọc, nhưng chuỗi trong nó ĐƯỢC NHỒI vào
+            # prompt của MỌI sub-agent — lệnh ma ở đây tệ hơn ở README: agent đọc rồi tin là có.
+            "scripts/build_prompt.py"]
 # Câu khai SỐ LƯỢNG lệnh. Bắt hẹp — chỉ ba dạng người thật viết — vì đây là chỗ dễ báo oan nhất
 # (tài liệu đầy "7 chốt", "17 state", "2 lớp doc"). Báo oan một lần là công cụ bị tắt.
 COUNT_CLAIM = re.compile(
