@@ -181,6 +181,16 @@ def complete(command: str, evidence_str: str | dict) -> dict:
     if todo:
         transitions_msg += ("\n\nKhông kiểm tự động được — tự xác nhận:\n  · "
                             + "\n  · ".join(todo))
+    # Chốt vừa xanh thì nói luôn chốt kế — không thì mỗi lần xong một chốt lại phải đi tra
+    # `allowed_commands` sang tài liệu để biết gõ gì tiếp.
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "hooks"))
+        import policies as _pol
+        _hint = _pol.next_step_hint(state)
+        if _hint:
+            transitions_msg += f"\n\nChốt kế: {_hint}"
+    except Exception:
+        pass
     return _ok(transitions_msg)
 
 
@@ -460,6 +470,40 @@ USAGE = """Usage:
 """
 
 
+def _print_next_step(state: dict | None = None) -> None:
+    """In CHỐT KẾ + gate còn đỏ, cho NGƯỜI đọc.
+
+    Gợi ý này vốn chỉ tới được agent: hook `UserPromptSubmit` nhồi header
+    `[HARNESS stage=… | next: …]` mỗi lượt. Người gõ CLI thì nhận về JSON thuần — biết đang ở đâu
+    mà không biết đi đâu, phải tự tra `allowed_commands` sang tài liệu. Cùng một sự thật, hai người
+    đọc, chỉ một người được nghe.
+
+    Kèm gate còn đỏ của chốt được phép: biết TRƯỚC còn thiếu gì, đỡ chạy rồi mới bị chặn.
+    Fail-open: thiếu hooks/policies → im lặng, `show` vẫn chạy.
+    """
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "hooks"))
+        import policies
+    except Exception:
+        return
+    st = state if state is not None else load_state()
+    try:
+        hint = policies.next_step_hint(st)
+    except Exception:
+        return
+    if hint:
+        print(f"\nChốt kế: {hint}")
+    try:
+        for cmd_id in allowed_commands(st):
+            ok, errs = gates.check_for_command(cmd_id, st, {})
+            if not ok:
+                head = errs[0].split("\n")[0]
+                more = f" (+{len(errs) - 1} nữa)" if len(errs) > 1 else ""
+                print(f"  {cmd_id}: còn đỏ — {head[:110]}{more}")
+    except Exception:
+        pass
+
+
 def main(argv: list[str] | None = None) -> int:
     # Force UTF-8 stdout on Windows (cp1252 default breaks Unicode messages)
     if hasattr(sys.stdout, "reconfigure"):
@@ -477,6 +521,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if cmd == "show":
         print(json.dumps(summary(), indent=2, ensure_ascii=False))
+        _print_next_step()
         return 0
 
     if cmd == "validate":

@@ -28,7 +28,7 @@ STAGE_NEXT_GUIDE = {
     "DISC_D0": "/discover D1 (gate D0 → sang D1) · hoặc /discover D0 (đào thêm hypothesis)",
     "DISC_D1": "/discover D2 (gate D1 → sang D2) · hoặc /discover D1 (đào thêm capability/persona/ma trận quyền)",
     "DISC_D2": "/discover D3 (gate D2 → sang D3) · hoặc /discover D2 (đào thêm event-storming)",
-    "DISC_D3": "/discover (D3 đạt gate → chốt sang DOMAIN) · hoặc /discover D3 (đào thêm charter/PROJECT)",
+    "DISC_D3": "/discover (D3 đạt gate → ký lớp khám phá, sang DOMAIN) → rồi `/domain` · hoặc /discover D3 (đào thêm charter/PROJECT)",
     "DOMAIN_AUTHORING": "/domain (hành lang nửa sau: nghiệp vụ → ký → dịch → thiết kế → chia wave → rà chéo, dừng ở REVIEW)",
     "DESIGN": "/domain (chạy tiếp: thiết kế → chia wave → rà chéo). LÙI sửa nghiệp vụ: /domain từ DOMAIN (re-ký + re-dịch)",
     "PLAN": "/domain (chạy tiếp: chia wave → rà chéo → REVIEW)",
@@ -39,7 +39,7 @@ STAGE_NEXT_GUIDE = {
     "DEV_HANDOFF": "/run-wave (chạy tiếp: sinh test case)",
     "TEST_PLAN": "/run-wave (chạy tiếp: chạy test)",
     "TEST_EXECUTE": "(tự động → MANUAL_TEST sau khi chạy)",
-    "MANUAL_TEST": "/run-wave (sửa bug + re-test, và dogfood nếu chưa) · /dogfood <vai> (chạy lại 1 vai) · /next-wave (khi UAT ký + sạch bug)",
+    "MANUAL_TEST": "/run-wave (sửa TC còn đỏ + chạy lại test, và dogfood nếu chưa) · /dogfood <vai> (chạy lại 1 lăng kính) · /next-wave (khi UAT ký + test xanh + dogfood không còn dòng `sửa ngay`)",
     "DONE": "/next-wave (snapshot + mở wave kế; hết wave thì teardown)",
 }
 
