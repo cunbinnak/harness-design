@@ -114,8 +114,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="decide.py",
         description="Ghi 1 quyết định vào tracking/decisions.md",
-        epilog="Không dẫn được về tài liệu nào → chưa đủ căn cứ để tự quyết. Đọc lại spec, "
-               "hoặc hỏi user nếu đang ở stage còn được hỏi.",
+        epilog="Không dẫn được về tài liệu nào → chưa đủ căn cứ để tự quyết: ĐỌC LẠI SPEC. "
+               "Hỏi user CHỈ được ở /discover (D0-D3); từ /domain trở đi thì không — bí thật "
+               "thì ghi tracking/blockers.md rồi chuyển việc khác.",
     )
     ap.add_argument("--what", required=True, help="quyết định, CỤ THỂ và làm được ('Xoá mềm cho đơn hàng')")
     ap.add_argument("--why", required=True, help="lý do — PHẢI dẫn về tài liệu (FEAT-…/ADR-…/hld-….md §3)")
@@ -133,8 +134,11 @@ def main(argv: list[str] | None = None) -> int:
         errs.append(
             "--why không dẫn về tài liệu nào. Quyết định phải bám một artifact có thật: "
             "FEAT-…/BR-…/ADR-…/CR-… · tên file (hld-x.md, PROJECT.md) · hoặc trích mục (§3).\n"
-            "  Không dẫn được về đâu = chưa đủ căn cứ để tự quyết: đọc lại spec, "
-            "hoặc hỏi user nếu stage hiện tại còn được hỏi.")
+            "  Không dẫn được về đâu = chưa đủ căn cứ để tự quyết → **đọc lại spec**.\n"
+            "  Hỏi user CHỈ được ở /discover (D0-D3). Từ /domain trở đi câu trả lời nằm ở tài "
+            "liệu khám phá (hypothesis-log · persona-pool · capability-map · ES-* · "
+            "BOUNDARY-MAP · CHARTER · PROJECT.md); tìm không ra và cũng không suy nổi thì đó "
+            "là BLOCKER — ghi tracking/blockers.md, chuyển việc khác, báo gộp cuối lượt.")
     if len(args.assume.strip()) < 10:
         errs.append("--assume quá ngắn — đây là cột người review soi đầu tiên. "
                     "Thật sự không mang giả định nào thì quyết định đó hiển nhiên, không cần ghi.")

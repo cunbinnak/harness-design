@@ -2180,6 +2180,9 @@ def check_backward_compat(state: dict, evidence: dict | None = None,
 
 CHALLENGE_LOG = "tracking/challenge-log.md"
 DECISIONS_LOG = "tracking/decisions.md"
+# Stage của lượt LÀM TÀI LIỆU — nơi agent KHÔNG được hỏi user, nên buộc phải để lại vết
+# ở sổ quyết định. `decide.py` ghi stage vào cột `Stage · Wave` nên đối chiếu được.
+DOC_STAGES = ("DOMAIN_AUTHORING", "DESIGN", "PLAN", "REVIEW")
 WAVE_MARK_RE = re.compile(r"quyết định của (wave-\d+) nằm DƯỚI dòng này", re.IGNORECASE)
 
 
@@ -2349,7 +2352,21 @@ def check_decisions_min(state: dict, evidence: dict | None = None,
             and not l.strip("| ").lower().startswith("ngày")
             and not WAVE_MARK_RE.search(l)]
     if len(rows) >= 2:
-        return True, ""
+        # Đếm ĐỦ SỐ thôi thì chưa đủ: hai quyết định của `/discover` làm gate xanh, còn cả lượt
+        # `/domain` (nghiệp vụ → dịch → thiết kế → chia wave) đoán im lặng vẫn qua. Mà `/domain`
+        # mới là chỗ **không được hỏi user** — nó buộc phải để lại vết ở đây, nếu không thì cơ chế
+        # "thay việc hỏi bằng việc ghi" chỉ tồn tại trên giấy.
+        doc_rows = [r for r in rows if any(s in r for s in DOC_STAGES)]
+        if doc_rows:
+            return True, ""
+        return False, (
+            f"{DECISIONS_LOG} có {len(rows)} quyết định nhưng **không dòng nào của lượt làm tài "
+            "liệu** (cột `Stage · Wave` không có DOMAIN_AUTHORING/DESIGN/PLAN/REVIEW).\n      "
+            "`/domain` là chỗ KHÔNG ĐƯỢC hỏi user — mơ hồ thì phải ghi lại. Đi trọn nghiệp vụ → "
+            "dịch → thiết kế → chia wave mà không vướng chỗ nào đáng ghi là chuyện khó tin; "
+            "nhiều khả năng đã đoán im lặng.\n      "
+            f"Ghi bằng {tip}"
+        )
     scope = "dưới mốc wave hiện tại" if start else "trong sổ"
     return False, (
         f"{DECISIONS_LOG} mới có {len(rows)}/2 quyết định {scope}. Cả một lượt làm tài liệu mà "
