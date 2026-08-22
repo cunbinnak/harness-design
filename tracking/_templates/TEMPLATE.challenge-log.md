@@ -14,7 +14,18 @@ scope: cross-wave
 > Vì sao có: review-dev bắt lỗi SAU khi code xong — lúc đó cái giá đã trả rồi. Challenge bắt đúng
 > chỗ "tưởng đã hiểu mà chưa", trước khi nó thành code.
 >
-> Gate `challenge_passed` đòi ≥1 dòng PASS **của wave hiện tại** trước khi rời DEV.
+> **HAI lượt chất vấn, hai giai đoạn khác nhau** — cột `Giai đoạn`:
+>
+> | Giai đoạn | Khi nào | Đòi gì | Câu không trả lời được nghĩa là |
+> |---|---|---|---|
+> | `tài liệu` | trước `/approve-document` (KHOÁ SCOPE) | **≥3 câu khó nhất**, trả lời **CHỈ bằng những gì đã ghi trong tài liệu** | **một lỗ trong tài liệu** — vá rồi mới chấm PASS, đừng chấm PASS bằng kiến thức ngoài |
+> | `code` | trước dòng code đầu tiên của một boundary | ≥1 câu, dựa trên FEAT/HLD/BR thật | mình tưởng đã hiểu spec mà chưa |
+>
+> Lượt `tài liệu` là lượt đắt nhất: khoá scope xong thì mọi lỗ tài liệu phải trả bằng code sai.
+> Lượt `code` bắt chỗ đọc hiểu lệch — rẻ hơn, nhưng muộn hơn.
+>
+> Gate `challenge_doc` @ `/approve-document` · gate `challenge_passed` @ chốt review-dev.
+> Cả hai lọc theo wave: dòng của wave trước KHÔNG gánh hộ wave này.
 
 ## Câu hỏi thế nào là tốt
 
@@ -33,6 +44,7 @@ Ra câu dễ cho qua là tự lừa mình — và cái giá trả ở dogfood.
 
 ## Log
 
-| Ngày | Wave | Mảng việc | Câu hỏi | Trả lời (dẫn về đâu) | Phán quyết |
-|---|---|---|---|---|---|
-| {{ISO}} | {{wave-001}} | {{boundary/feat}} | {{câu hỏi khó}} | {{trả lời + file/mục dẫn ra nó}} | PASS |
+| Ngày | Wave | Giai đoạn | Mảng việc | Câu hỏi | Trả lời (dẫn về đâu) | Phán quyết |
+|---|---|---|---|---|---|---|
+| {{ISO}} | {{wave-001}} | tài liệu | {{lớp doc}} | {{câu hỏi khó}} | {{trả lời + file/mục dẫn ra nó}} | PASS |
+| {{ISO}} | {{wave-001}} | code | {{boundary/feat}} | {{câu hỏi khó}} | {{trả lời + file/mục dẫn ra nó}} | PASS |

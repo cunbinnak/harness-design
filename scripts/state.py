@@ -175,6 +175,12 @@ def complete(command: str, evidence_str: str | dict) -> dict:
     apply_effects(command, evidence, state)
 
     save_state(state, updated_by=f"complete:{command}")
+    # Chốt xanh KHÔNG có nghĩa là đã phủ hết. In thẳng thứ máy không kiểm được, để "gate xanh"
+    # đừng bị đọc thành lời bảo đảm — giấu chỗ mù đi thì không ai đi làm nốt phần đó.
+    todo = gates.manual_checks(command)
+    if todo:
+        transitions_msg += ("\n\nKhông kiểm tự động được — tự xác nhận:\n  · "
+                            + "\n  · ".join(todo))
     return _ok(transitions_msg)
 
 

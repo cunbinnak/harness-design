@@ -78,8 +78,13 @@ NON_NEGOTIABLES = """## NON-NEGOTIABLES
    không ai đọc, mất luôn tác dụng).
 5. Cross-boundary change → phải qua chốt rà chéo của `/domain` + `/approve-document` TRƯỚC
    khi code. Sau khi wave đã ship: thay đổi = **wave sau**, KHÔNG sửa tại chỗ.
-6. Không bypass test (`--no-verify`, skip), không hardcode secrets.
-7. **TUÂN THỦ skill được giao**: convention `rules-{kind}` + cấu trúc/layout `ref-{kind}-pattern` (đúng kiến trúc HLD §4) + template tương ứng. KHÔNG tự bịa cấu trúc/đặt tên/đổi build tool ngoài skill+ADR. Review/gate sẽ reject nếu lệch."""
+6. **Chặn cứng sau khi đã tự thử hết cách** → ghi một dòng `tracking/blockers.md` (cột
+   `Đã thử gì` phải có nội dung — trống thì chưa phải blocker, mới là chưa thử đủ), rồi
+   **CHUYỂN SANG VIỆC KHÁC NGAY** và báo gộp cuối lượt. KHÔNG ngồi chờ, KHÔNG dừng cả lượt
+   vì một chỗ tắc. Đây là chỗ dừng hợp lệ khác với mơ hồ (→ `decide.py`) và ngoài scope
+   (→ wave sau).
+7. Không bypass test (`--no-verify`, skip), không hardcode secrets.
+8. **TUÂN THỦ skill được giao**: convention `rules-{kind}` + cấu trúc/layout `ref-{kind}-pattern` (đúng kiến trúc HLD §4) + template tương ứng. KHÔNG tự bịa cấu trúc/đặt tên/đổi build tool ngoài skill+ADR. Review/gate sẽ reject nếu lệch."""
 
 
 RETURN_SCHEMA_TEMPLATE = """## RETURN SCHEMA

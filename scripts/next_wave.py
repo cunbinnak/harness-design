@@ -305,6 +305,51 @@ def carry_open_findings(n: int) -> list[str]:
     return [(r.get("#") or "").strip() for r in carried]
 
 
+def open_blockers() -> list[str]:
+    """Dòng blocker còn `mở` trong tracking/blockers.md. Trả mô tả ngắn từng dòng.
+
+    Sổ blocker KHÔNG bị reset khi mở wave (cùng lựa chọn với VIPER: `STATE.md` không reset nên
+    bảng Blocker tự đi theo vòng). Đếm và **nhắc, không chặn** — một blocker treo qua wave là thứ
+    đáng biết TRƯỚC khi cam kết scope wave mới, nhưng quyết định vẫn là của người.
+    """
+    f = REPO_ROOT / "tracking" / "blockers.md"
+    if not f.is_file():
+        return []
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import gates
+
+    out = []
+    for r in gates._parse_md_table_rows(gates.read_live(f), ("blocker", "trạng thái")):
+        if (r.get("trạng thái") or "").strip().lower() != "mở":
+            continue
+        desc = (r.get("blocker") or "").strip()
+        if desc and "{{" not in desc:
+            out.append(f"{(r.get('wave') or '?').strip()}: {desc[:70]}")
+    return out
+
+
+def mark_decisions(next_n: int) -> bool:
+    """Ghi mốc `(wave-N)` vào cuối decisions.md. Trả True nếu đã ghi.
+
+    VÌ SAO — sổ quyết định là append-only và KHÔNG bị reset (đúng như wave trước). Không có mốc thì
+    hai quyết định ghi ở wave 1 làm gate `decisions_min` xanh cho mọi wave về sau: sổ đầy mà wave 5
+    chưa từng ghi dòng nào vẫn qua. Mốc biến "đếm cả sổ" thành "đếm dưới mốc cuối" — hàng rào
+    đếm-theo-wave, cùng họ với dấu wave ở test_result và `Vòng mở` của VIPER.
+    """
+    f = REPO_ROOT / "tracking" / "decisions.md"
+    if not f.is_file():
+        return False
+    wave = f"wave-{next_n:03d}"
+    line = (f"| — | — | — MỐC — | quyết định của {wave} nằm DƯỚI dòng này "
+            f"(gate `decisions_min` chỉ đếm dưới mốc cuối) | — | — | — |")
+    body = f.read_text(encoding="utf-8")
+    if line in body:
+        return False
+    with f.open("a", encoding="utf-8") as fh:
+        fh.write(("" if body.endswith("\n") else "\n") + line + "\n")
+    return True
+
+
 def unplanned_deferrals(n: int) -> list[str]:
     """Dòng dogfood `wave sau` của wave n mà WAVE-SEQUENCE.md chưa nhắc tới. Trả list mã.
 
@@ -402,6 +447,18 @@ def do_go(state: dict, n: int) -> int:
     if n_bc:
         print(f"  ok  sổ tương thích ngược: bỏ tick {n_bc} mục §3 — wave mới rà lại "
               "(§1 sổ hợp đồng GIỮ NGUYÊN, tích luỹ vĩnh viễn)")
+
+    blk = open_blockers()
+    if blk:
+        print(f"  !!  còn {len(blk)} blocker đang MỞ, mang sang wave {n + 1}:")
+        for b in blk[:5]:
+            print(f"        {b}")
+        print("      Sổ blocker không bị reset. Gỡ hoặc đóng trước khi cam kết scope wave "
+              "mới — không chặn, nhưng cam kết trên nền còn tắc thì wave mới tắc theo.")
+
+    if mark_decisions(n + 1):
+        print(f"  ok  decisions: ghi mốc wave {n + 1} — gate `decisions_min` chỉ đếm "
+              "dưới mốc cuối, quyết định wave cũ không xanh hộ wave mới")
 
     unplanned = unplanned_deferrals(n)
     if unplanned:

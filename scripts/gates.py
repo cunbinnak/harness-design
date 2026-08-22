@@ -2226,6 +2226,122 @@ def check_backward_compat(state: dict, evidence: dict | None = None,
 # ========================================================================
 
 CHALLENGE_LOG = "tracking/challenge-log.md"
+DECISIONS_LOG = "tracking/decisions.md"
+WAVE_MARK_RE = re.compile(r"quyết định của (wave-\d+) nằm DƯỚI dòng này", re.IGNORECASE)
+
+
+def _challenge_rows(root: Path, wave_id: str | None, phase: str) -> list[list[str]] | None:
+    """Dòng challenge của `phase` ('tài liệu' | 'code'), lọc theo wave. None = chưa có file."""
+    f = root / CHALLENGE_LOG
+    if not f.is_file():
+        return None
+    out = []
+    for line in read_live(f).splitlines():
+        s = line.strip()
+        if not s.startswith("|") or "{{" in s or set(s) <= set("|- "):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if len(cells) < 7 or cells[0].lower().startswith("ngày"):
+            continue
+        if cells[2].lower() != phase:
+            continue
+        if wave_id and cells[1] != wave_id:
+            continue
+        out.append(cells)
+    return out
+
+
+def check_challenge_doc(state: dict, evidence: dict | None = None,
+                        root: Path | None = None) -> tuple[bool, str]:
+    """KHOÁ SCOPE: phải có ≥3 challenge `tài liệu` PASS trước khi duyệt.
+
+    VÌ SAO CÓ LƯỢT RIÊNG cho tài liệu, dù đã có `challenge_passed` trước khi code: hai lượt bắt hai
+    loại lỗi khác nhau, và lượt tài liệu là lượt ĐẮT NHẤT khi bỏ. Khoá scope xong thì mọi lỗ trong
+    tài liệu phải trả bằng code sai — challenge trước-khi-code chỉ bắt được "tôi đọc hiểu lệch",
+    không bắt được "tài liệu này chưa hề nói tới chuyện đó".
+
+    Luật chấm: trả lời **CHỈ bằng những gì đã ghi trong tài liệu**. Câu nào phải viện tới kiến thức
+    ngoài hay phải đoán = **một lỗ tài liệu** → vá rồi mới chấm PASS. Chấm PASS bằng kiến thức
+    ngoài là biến phép thử thành nghi thức.
+
+    ≥3 vì một câu dễ trúng chỗ mình vốn đã nắm; ba câu mới buộc phải đi tìm chỗ mình chưa chắc.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    wave_id = (state.get("wave") or {}).get("id")
+    rows = _challenge_rows(root, wave_id, "tài liệu")
+    hint = ("Nguồn câu hỏi tốt: mâu thuẫn giữa hai AC · ca biên HLD chưa chặn được · ô `cấm` trong "
+            "ma trận vai × hành động mà thiết kế chưa chặn ở server · trạng thái bắt buộc của "
+            "component mà API chưa phân biệt nổi · thứ trong FEAT nhưng NGOÀI scope wave này")
+    if rows is None:
+        return False, (f"chưa có {CHALLENGE_LOG} — chép từ "
+                       f"tracking/_templates/TEMPLATE.challenge-log.md. {hint}")
+    if len(rows) < 3:
+        return False, (
+            f"{CHALLENGE_LOG} mới có {len(rows)}/3 challenge `tài liệu`"
+            + (f" của {wave_id}" if wave_id else "")
+            + ". Trước khi KHOÁ SCOPE phải tự ra **3 câu khó nhất** và trả lời **chỉ bằng những "
+              "gì đã ghi trong tài liệu**.\n      "
+            + hint
+            + "\n      Câu nào phải đoán hoặc phải viện kiến thức ngoài = MỘT LỖ TÀI LIỆU — vá "
+              "rồi mới chấm PASS. Một câu dễ trúng chỗ mình vốn đã nắm; ba câu mới buộc đi tìm "
+              "chỗ mình chưa chắc"
+        )
+    failed = [r for r in rows if "fail" in r[-1].lower()]
+    passed = [r for r in rows if "pass" in r[-1].lower()]
+    if len(passed) < 3:
+        return False, (
+            f"{CHALLENGE_LOG}: {len(failed)} challenge `tài liệu` FAIL, mới {len(passed)}/3 PASS. "
+            "FAIL nghĩa là tài liệu chưa trả lời được — vá tài liệu, ra câu khác, trả lời lại. "
+            "KHÔNG khoá scope trên một bộ tài liệu chưa đứng nổi trước câu hỏi của chính mình"
+        )
+    return True, ""
+
+
+def check_decisions_min(state: dict, evidence: dict | None = None,
+                        root: Path | None = None) -> tuple[bool, str]:
+    """KHOÁ SCOPE: ≥2 quyết định đã ghi, đếm DƯỚI mốc wave hiện tại.
+
+    VÌ SAO — `decide.py` tồn tại nhưng KHÔNG chỗ nào đòi. Một lượt làm tài liệu trọn vẹn (khám phá →
+    nghiệp vụ → thiết kế → chia wave) mà không ghi nổi hai chỗ mơ hồ là chuyện khó tin: nghĩa là
+    agent đã ĐOÁN IM LẶNG. Sổ rỗng không chứng minh được là không có mơ hồ, nó chỉ chứng minh
+    không ai ghi.
+
+    Đếm DƯỚI MỐC `(wave-N)` — `/next-wave` ghi mốc khi mở wave. Không có mốc thì đếm cả sổ (wave 1
+    chưa có mốc nào). Thiếu cơ chế này thì hai quyết định của wave 1 xanh hộ mọi wave về sau.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    f = root / DECISIONS_LOG
+    tip = ("`py scripts/decide.py --what \"...\" --why \"... (FEAT-X-001 §3)\" "
+           "--assume \"...\" --reversible yes|hard|no`")
+    if not f.is_file():
+        return False, (f"chưa có {DECISIONS_LOG} — cả lượt làm tài liệu không ghi nổi một chỗ mơ hồ "
+                       f"nào? Ghi bằng {tip}")
+    lines = read_live(f).splitlines()
+    start = 0
+    for i, line in enumerate(lines):
+        if WAVE_MARK_RE.search(line):
+            start = i + 1                      # chỉ đếm dưới MỐC CUỐI
+    rows = [l for l in lines[start:]
+            if l.strip().startswith("|") and "{{" not in l
+            and not set(l.strip()) <= set("|- ")
+            and not l.strip("| ").lower().startswith("ngày")
+            and not WAVE_MARK_RE.search(l)]
+    if len(rows) >= 2:
+        return True, ""
+    scope = "dưới mốc wave hiện tại" if start else "trong sổ"
+    return False, (
+        f"{DECISIONS_LOG} mới có {len(rows)}/2 quyết định {scope}. Cả một lượt làm tài liệu mà "
+        "không ghi nổi hai chỗ mơ hồ nghĩa là đã ĐOÁN IM LẶNG — sổ rỗng không chứng minh được "
+        "là không có mơ hồ, nó chỉ chứng minh không ai ghi.\n      "
+        "Tối thiểu nên có: lý do chọn stack (ADR nào, vì sao không phương án kia) + một chỗ spec "
+        f"mơ hồ đã tự quyết.\n      Ghi bằng {tip}"
+    )
 
 
 def check_challenge_passed(state: dict, evidence: dict | None = None,
@@ -3278,6 +3394,11 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "flag", "field": "feedback_processed", "expected": True},
     ],
     "approve-document": [
+        # Đây là KHOÁ SCOPE. Hai gate dưới là thứ chặn "khoá một bộ tài liệu chưa ai chất vấn":
+        # challenge_doc bắt lỗ TRONG tài liệu (khác challenge_passed — cái đó bắt lỗi đọc hiểu,
+        # muộn hơn và rẻ hơn); decisions_min bắt ĐOÁN IM LẶNG suốt lượt làm tài liệu.
+        {"kind": "challenge_doc"},
+        {"kind": "decisions_min"},
         # Giao diện phải được NGƯỜI xem: cả tầng design-tokens + web_styling + vai picky đang
         # bảo vệ một bản thiết kế mà chưa ai duyệt. Backend-only → vacuous pass.
         {"kind": "mockup_signed"},
@@ -3380,6 +3501,10 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_file_exists(rule["path"])
         if kind == "wave_in_matrix":
             return check_wave_in_matrix(evidence, rule.get("field", "wave_n"))
+        if kind == "challenge_doc":
+            return check_challenge_doc(state, evidence)
+        if kind == "decisions_min":
+            return check_decisions_min(state, evidence)
         if kind == "no_open_bugs":
             return check_no_open_bugs(state)
         if kind == "no_open_findings":
@@ -3467,6 +3592,38 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
     except KeyError as e:
         return False, f"Rule {kind} missing field: {e}"
     return False, f"Unknown gate kind: {kind!r}"
+
+
+# Thứ gate KHÔNG kiểm được — in ra khi chốt xanh, để "gate xanh" đừng bị đọc thành "đã phủ hết".
+#
+# VÌ SAO CÓ BẢNG NÀY. Gate im lặng về chỗ nó mù là dạng nói dối bằng cách bỏ sót: chốt xanh đọc như
+# một lời bảo đảm, trong khi nó chỉ bảo đảm đúng phần máy đếm được. Mọi thứ dưới đây đều là thứ
+# CHỈ người xác nhận được — liệt kê ra thì người biết mình còn nợ gì; giấu đi thì không ai đi làm.
+MANUAL_CHECKS: dict[str, tuple[str, ...]] = {
+    "approve-document": (
+        "bạn đã ĐỌC tài liệu chứ không chỉ bấm duyệt — gate chỉ đếm được là file có tồn tại và có "
+        "dấu đã ký",
+        "có UI: đã MỞ mockup bằng trình duyệt và bấm thử một luồng, không chỉ nhìn ảnh",
+    ),
+    "dev-handoff": (
+        "luồng lõi bấm được end-to-end ở local, không phải đọc code rồi suy ra là chạy",
+    ),
+    "test-execute": (
+        "TC chạy trên hệ ĐANG CHẠY (gọi API/UI thật), không phải chạy unit test rồi khai là e2e",
+    ),
+    "dogfood": (
+        "6 lăng kính thật sự MỞ và BẤM, không phải đọc code rồi suy ra — dấu hiệu giả: cả 6 báo "
+        "'không thấy vấn đề gì' ngay lượt đầu",
+        "phép thử phân quyền A↛B đã chạy thật ở local",
+    ),
+    "end-wave": (
+        "đã thử khôi phục backup / rollback ít nhất một lần, nếu môi trường cho phép",
+    ),
+}
+
+
+def manual_checks(command_id: str) -> tuple[str, ...]:
+    return MANUAL_CHECKS.get(command_id, ())
 
 
 def check_for_command(
