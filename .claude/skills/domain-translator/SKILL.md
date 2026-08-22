@@ -1,12 +1,12 @@
 ---
 name: domain-translator
-description: DỊCH business doc (docs/domain/, đã ký) → engineering artifact (docs/architecture/). Clone ZIP agent-domain-translator. DỊCH KHÔNG SÁNG TÁC — clone narrative + map sang format eng + thêm field engineer dạng TODO; KHÔNG tự nghĩ AC/scope mới. Spawn qua /domain-translate.
+description: DỊCH business doc (docs/domain/, đã ký) → engineering artifact (docs/architecture/). Clone ZIP agent-domain-translator. DỊCH KHÔNG SÁNG TÁC — clone narrative + map sang format eng + thêm field engineer dạng TODO; KHÔNG tự nghĩ AC/scope mới. Spawn qua /domain.
 ---
 
 # Domain Translator Skill (clone ZIP `agent-domain-translator`, adapt single-repo)
 
 ## Khi load
-`/domain-translate` (stage DOMAIN_AUTHORING) — chỉ chạy sau khi **mọi business doc đã KÝ** (gate `domain_signed`). Cầu nối **business → engineering**, single-repo: nguồn `docs/domain/` (business, plain VN, no jargon) → đích `docs/architecture/` (eng).
+`/domain` (stage DOMAIN_AUTHORING) — chỉ chạy sau khi **mọi business doc đã KÝ** (gate `domain_signed`). Cầu nối **business → engineering**, single-repo: nguồn `docs/domain/` (business, plain VN, no jargon) → đích `docs/architecture/` (eng).
 
 > **Bạn là translator — KHÔNG sáng tác.** Chỉ DỊCH business artifact sang format eng (kèm field engineer cần: `consumes_contracts: []`, `enforcement_location: TBD (DESIGN)`, …). **KHÔNG inject content mới** (không tự nghĩ AC/scope không có ở business). Thiếu chi tiết kỹ thuật → để **TODO engineer** (DESIGN điền), KHÔNG tự bịa.
 
@@ -34,7 +34,7 @@ description: DỊCH business doc (docs/domain/, đã ký) → engineering artifa
 - Giữ NGUYÊN id (FEAT-x business → FEAT-x eng).
 
 ## Workflow
-1. Verify mọi business doc `status: APPROVED` (gate `domain_signed`) — chưa đủ → STOP, về `/domain-approve`.
+1. Verify mọi business doc `status: APPROVED` (gate `domain_signed`) — chưa đủ → STOP, về `/domain`.
 2. Foreach business doc → dịch sang eng artifact tương ứng (clone + add TODO-engineer + source). KHÔNG sáng tác.
 3. Mơ hồ / thiếu thông tin nghiệp vụ để dịch đúng → **AskUserQuestion (≤3)**, KHÔNG tự quyết scope.
 4. Append row `tracking/translation-log.md`: `| date | TR-<n> | <source-id> | <target-paths> | translator-v1 | <decisions> |`.
@@ -48,4 +48,4 @@ description: DỊCH business doc (docs/domain/, đã ký) → engineering artifa
 
 ## Done
 - Mỗi business doc đã ký có eng doc tương ứng `docs/architecture/` (giữ id + `source` + `domain_source_id` + TODO-engineer). translation-log có row.
-- **Gate `translation_parity` (@/domain-end) đối chiếu 1-1 bằng máy:** business đã ký thiếu eng doc = bỏ sót (chặn); eng doc epics/feat/BR không có `source: docs/domain/...` = mồ côi (chặn) — dịch ĐỦ 100%, không bỏ sót. Gate `/domain-end` (`domain_gate`) → DESIGN.
+- **Gate `translation_parity` (@/domain) đối chiếu 1-1 bằng máy:** business đã ký thiếu eng doc = bỏ sót (chặn); eng doc epics/feat/BR không có `source: docs/domain/...` = mồ côi (chặn) — dịch ĐỦ 100%, không bỏ sót. Gate `/domain` (`domain_gate`) → DESIGN.

@@ -1,13 +1,13 @@
 ---
 name: business-analysis
-description: Lens phân tích AC/BR — kiểm AC testable + BR logical + scope rõ. Dùng bởi /review-document (review product DOMAIN/DESIGN) + /apply-cr (analyze CR impact). Process flow / use case / edge case làm phương pháp.
+description: Lens phân tích AC/BR — kiểm AC testable + BR logical + scope rõ. Dùng bởi /review-document (review product DOMAIN/DESIGN) + /domain (phân tích tác động khi đổi phạm vi). Process flow / use case / edge case làm phương pháp.
 ---
 
 # Business Analysis Skill
 
 ## Khi load
 - **`/review-document`** (review-document-agent): soi product (FEAT/AC + BR) + design xem AC có testable, BR có logical, scope có rõ — trả issues cho user feed feedback.
-- **`/apply-cr`** (apply-cr-agent): analyze CR impact lên scope/AC/BR → vùng cần re-design.
+- **`/domain`** (apply-cr-agent): analyze CR impact lên scope/AC/BR → vùng cần re-design.
 
 Input: `docs/architecture/{PROJECT.md, feat/FEAT-*.md, business-rules/BR-*.md}` + (apply-cr) `tracking/change-requests/{cr-id}-*.md`.
 
@@ -16,7 +16,7 @@ Input: `docs/architecture/{PROJECT.md, feat/FEAT-*.md, business-rules/BR-*.md}` 
 2. **Business rules `BR-*`** — phát biểu rõ + nguồn (policy/regulation/stakeholder) + ≥2 ví dụ; `related_features` ≥1.
 3. **Scope rõ** — §Ngoài phạm vi đủ để QC biết KHÔNG test gì; bounded context rõ (boundary thật chốt ở DESIGN/PLAN).
 
-> DOMAIN (`/domain-po`·`/domain-ba` author business → ký → `/domain-translate` sinh eng) sở hữu FEAT/BR; skill này là LENS kiểm chất lượng (review) + phân tích thay đổi (CR) — KHÔNG tự author FEAT.
+> DOMAIN (`/domain`: author business → ký → dịch sinh eng) sở hữu FEAT/BR; skill này là LENS kiểm chất lượng (review) + phân tích thay đổi (CR) — KHÔNG tự author FEAT.
 
 ## Phương pháp phân tích (để ra AC/BR/boundaries chất lượng)
 1. **Research** — chỉ khi domain phức tạp/chưa rõ và có WebSearch/WebFetch: business process pattern của industry, edge case/failure đã documented, compliance/regulatory. KHÔNG bịa nguồn.

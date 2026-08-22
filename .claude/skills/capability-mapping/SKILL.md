@@ -6,7 +6,7 @@ description: Discovery D1 (capability-mapper) — từ hypothesis-log sinh perso
 # Capability Mapping Skill (D1)
 
 ## Khi load
-`/discovery-start D1` — agent `capability-mapper-agent` (Business + Architecture co-author). Map **personas → capabilities → outcomes** và xác định **candidate domains** (input cho D2 event-storming).
+`/discover D1` — agent `capability-mapper-agent` (Business + Architecture co-author). Map **personas → capabilities → outcomes** và xác định **candidate domains** (input cho D2 event-storming).
 
 Input: `docs/discovery/hypothesis-log.md` (D0).
 
@@ -62,7 +62,7 @@ Cách dựng:
 ## Capability-map là bảng SỐNG, không chết sau D1
 
 Cột `Wave giao` để `_PLAN_` ở D1 (chưa chốt được khi chưa chia wave), PLAN điền — cắt lát được
-(`1 (scaffold), 3 (đầy đủ)`). Cột `Trạng thái` cập nhật ở `/end-wave`. Nhờ hai cột này trả lời được
+(`1 (scaffold), 3 (đầy đủ)`). Cột `Trạng thái` cập nhật ở `/next-wave`. Nhờ hai cột này trả lời được
 "còn bao nhiêu năng lực chưa giao" từ MỘT file, không phải đọc lại mọi wave.
 
 ## Quy tắc
@@ -93,5 +93,5 @@ sửa nhất khi nghe đọc lại — vì nhìn bảng mới thấy mình vừa
 - [ ] Anti-capability listed.
 
 ## Done
-- persona-pool + capability-map pass gate D1; đã playback; user confirm → `/discovery-start D2`.
+- persona-pool + capability-map pass gate D1; đã playback; user confirm → `/discover D2`.
 - Return `wave: "D1"`, `user_confirmed: true`.

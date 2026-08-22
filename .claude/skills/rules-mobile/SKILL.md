@@ -8,7 +8,7 @@ description: Convention bắt buộc khi code mobile (Flutter/Dart hoặc tươn
 > **Primary skill** cho `kind=mobile` (invoke ngay khi spawn dev/fix/review).
 
 ## Khi load
-Sub-agent `kind=mobile` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
+Sub-agent `kind=mobile` — chốt code · sửa bug · review của `/run-wave`.
 
 ## Data layer — theo thiết kế dự án (xem integrations design)
 - **Default — REST trực tiếp backend**: client (Dio/http) gọi contract `api-{backend}.md`; interceptor gắn auth + map error.

@@ -18,11 +18,11 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 
 ## Deliverable của /plan (đúng cái gate plan verify)
 1. **`docs/plans/WAVE-SEQUENCE.md`** — **roadmap toàn dự án** theo `TEMPLATE.WAVE-SEQUENCE.md`: chia **toàn bộ** boundary/FEAT thành **nhiều wave** theo phụ thuộc. Mỗi wave: goal + boundaries in scope + features + **dependencies (cần gì từ wave trước)** + estimated effort + exit criteria. (Wave 1, Wave 2, Wave 3, …)
-2. **`docs/plans/wave-001.md` … `wave-00N.md`** — chi tiết **MỌI wave** (mỗi wave 1 file theo `TEMPLATE.wave.md`): boundaries in scope, FEAT + AC count, thứ tự dev (foundation trước), cross-wave dependency, exit criteria. *(Scope đổi về sau → refine wave-{N}.md qua `/apply-cr`.)*
+2. **`docs/plans/wave-001.md` … `wave-00N.md`** — chi tiết **MỌI wave** (mỗi wave 1 file theo `TEMPLATE.wave.md`): boundaries in scope, FEAT + AC count, thứ tự dev (foundation trước), cross-wave dependency, exit criteria. *(Scope đổi về sau → refine wave-{N}.md qua `/domain`.)*
 3. **`harness/SERVICE-BOUNDARY-MATRIX.json`** — materialize từ decomposition: **≥ 1 boundary**, mỗi boundary `{boundary_id, kind, prefix, tech{language,framework,data_store}, wave, features[], ref_skills[], depends_on, consumed_by}` (+ `owned_paths`/`repo_url` nếu có).
-   - `features[]` = FEAT-id boundary đảm nhận → nguồn cho `STATE.wave_features` khi `/start-wave` (mỗi FEAT gắn đúng boundary + wave).
+   - `features[]` = FEAT-id boundary đảm nhận → nguồn cho `STATE.wave_features` khi `/run-wave` (mỗi FEAT gắn đúng boundary + wave).
    - `ref_skills[]` = **situational ref skill** boundary cần (ngoài scaffold pattern/config/logging tự động) — suy từ design step 3: boundary **phát/nhận event** (có `events/{boundary}-events.md`) → thêm ref event; **dùng cache/lock** → ref cache; nhu cầu khác (search, grpc…) → ref tương ứng. Tra tên skill có sẵn ở `.claude/skills/ref-{kind}-*`. Để rỗng `[]` nếu chỉ CRUD thuần. *(Đây là nơi DUY NHẤT quyết ref per-boundary → materialize vào dev agent + build_prompt.)*
-4. **KG skeleton per boundary** — `knowledge-base/{boundary}.knowledge-graph.yaml` (chỉ `metadata`; các section còn RỖNG). **KHÔNG điền entities/business_rules/events ở đây** — docs còn sửa qua `/review-document`. Phần design được **seed ở `/start-wave`** từ docs cuối (sau approve); phần kinh nghiệm do dev/fix/review append.
+4. **KG skeleton per boundary** — `knowledge-base/{boundary}.knowledge-graph.yaml` (chỉ `metadata`; các section còn RỖNG). **KHÔNG điền entities/business_rules/events ở đây** — docs còn sửa qua `/review-document`. Phần design được **seed ở `/run-wave`** từ docs cuối (sau approve); phần kinh nghiệm do dev/fix/review append.
 
 > **MATRIX là kernel file** (PreToolUse chặn Write/Edit tay) — KHÔNG ghi bằng Write tool. Materialize qua script:
 > ```bash
@@ -58,4 +58,4 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 - [ ] **Không có `TBD` / section trống mơ hồ** — chỗ chưa chốt ghi `Open question` (cần ai quyết + vì sao).
 
 ## Done
-- WAVE-SEQUENCE + **wave-{N}.md cho mọi wave** + MATRIX (≥1 boundary) + KG skeleton (khớp gate plan_gate); user đã confirm → PLAN → REVIEW (rồi /approve-document → /start-wave).
+- WAVE-SEQUENCE + **wave-{N}.md cho mọi wave** + MATRIX (≥1 boundary) + KG skeleton (khớp gate plan_gate); user đã confirm → PLAN → REVIEW (rồi /approve-document → /run-wave).

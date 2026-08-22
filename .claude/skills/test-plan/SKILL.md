@@ -6,9 +6,9 @@ description: Sinh test-case-registry.md cho wave — TC per AC + enterprise cove
 # Test Plan Skill
 
 ## Khi load
-`test-plan-agent` ở `/test-plan` (state TEST_PLAN). Input: `FEAT-*.md` (AC) + `BR-*.md` (rule enforce) + `api-{boundary}.md` + `PROJECT.md` (NFR) + `JOURNEY-*.md` (e2e) + `ux-{boundary}.md` (a11y).
+`test-plan-agent` ở `/run-wave` (state TEST_PLAN). Input: `FEAT-*.md` (AC) + `BR-*.md` (rule enforce) + `api-{boundary}.md` + `PROJECT.md` (NFR) + `JOURNEY-*.md` (e2e) + `ux-{boundary}.md` (a11y).
 
-> **Vai trò: THIẾT KẾ test case** (viết spec vào registry) — KHÔNG viết code test, KHÔNG chạy. Code test do **dev** viết khi code (mỗi AC có test, `rules §N`); `/test-execute` chạy + bổ sung test còn thiếu so với registry.
+> **Vai trò: THIẾT KẾ test case** (viết spec vào registry) — KHÔNG viết code test, KHÔNG chạy. Code test do **dev** viết khi code (mỗi AC có test, `rules §N`); `/run-wave` chạy + bổ sung test còn thiếu so với registry.
 
 ## Scope = wave plan (gate `registry_scope` — chống over-scope sinh bug rác)
 Auto-TC **chỉ được trace FEAT thuộc wave plan ≤ wave hiện tại** (`docs/plans/wave-*.md` — registry tích luỹ nên FEAT wave trước vẫn hợp lệ để regression). FEAT chỉ xuất hiện ở wave TƯƠNG LAI / chưa plan → **KHÔNG sinh TC** (test-execute sẽ chạy vào feature chưa build → fail → bug rác chặn end-wave). FEAT/AC nằm trong `## Deferred to later waves` → TC **bắt buộc tag `@deferred`** (thiếu tag = gate chặn).
@@ -38,7 +38,7 @@ UI TC để `type=manual` hết / tag `@deferred` để né → gate chặn (reg
 - Mỗi TC trace ≥1 `FEAT-N:AC-M` (+ `BR-N` nếu enforce rule). KHÔNG TC mồ côi (không trace AC nào — trừ `TC-S*` smoke infra).
 - Mọi AC của FEAT in-scope → ≥1 TC (không AC mồ côi). Bảng **Coverage matrix** chứng minh: AC → TC list + count.
 - Đọc FEAT § "Tiêu chí chấp nhận" (heading `### AC-n`, BDD Cho/Khi/Thì) → mỗi AC ánh xạ ≥1 TC. Parse đếm AC, so với count TC linked → assert phủ 100%.
-- **Gate `ac_coverage` parse `### AC-n` trong FEAT-*.md vs cột feature+AC registry:** AC in-scope (trừ token deferred) không có TC = chặn; TC trace AC không tồn tại trong FEAT (sau `/apply-cr` đổi AC) = stale = chặn — coverage matrix không còn là lời hứa.
+- **Gate `ac_coverage` parse `### AC-n` trong FEAT-*.md vs cột feature+AC registry:** AC in-scope (trừ token deferred) không có TC = chặn; TC trace AC không tồn tại trong FEAT (sau `/domain` đổi AC) = stale = chặn — coverage matrix không còn là lời hứa.
 
 ## Cumulative registry + DEDUPE (registry sống qua wave)
 - Registry là **pool tích luỹ** — TC từ wave trước GIỮ NGUYÊN, wave mới chỉ thêm/reuse.
@@ -46,7 +46,7 @@ UI TC để `type=manual` hết / tag `@deferred` để né → gate chặn (reg
 - TC-ID không tái dùng cho nội dung khác (immutable). Regression `TC-R*` link `ref_bug` (bug đã fix) — chống tái phát.
 
 ## Remap khi AC đổi (qa-translator concept — single-repo, KHÔNG cần command mới)
-Khi `/apply-cr` refine AC của FEAT đã có TC:
+Khi `/domain` refine AC của FEAT đã có TC:
 - AC **xoá hẳn** / **mâu thuẫn lớn** (behavior đảo) → đánh dấu TC `note: STALE (FEAT-N AC đổi W{cr})` + re-author TC mới thay thế (giữ row cũ làm history, không xoá).
 - AC **refine nhỏ** (reword / thêm precondition / thêm negative) → update steps/expected của TC tại chỗ, ghi `note: remap W{cr}`.
 - AC **không đổi** → no-op. Coverage matrix re-verify sau remap.

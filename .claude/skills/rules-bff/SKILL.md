@@ -8,7 +8,7 @@ description: Convention bắt buộc khi code BFF (Apollo Server / GraphQL gatew
 > **Primary skill** cho `kind=bff` (invoke ngay khi spawn dev/fix/review). BFF không có ref-skill riêng — config + pattern inline ở đây.
 
 ## Khi load
-Sub-agent `kind=bff` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
+Sub-agent `kind=bff` — chốt code · sửa bug · review của `/run-wave`.
 
 ## Vai trò
 BFF = GraphQL gateway: aggregate nhiều backend REST (`api-{backend}.md`) thành 1 graph cho FE. KHÔNG chứa business logic — chỉ orchestrate + shape data.
@@ -21,7 +21,7 @@ BFF = GraphQL gateway: aggregate nhiều backend REST (`api-{backend}.md`) thàn
 5. **Error mapping**: HTTP status backend → GraphQL error `extensions.code` (`UNAUTHENTICATED` / `FORBIDDEN` / `BAD_USER_INPUT` / `INTERNAL`).
 6. **Cache**: Redis key cho sensitive data PHẢI include `userId`/`tenantId` (tránh leak cross-tenant).
 7. **Test**: Vitest unit (resolver + mapper) + integration mock backend; coverage ≥ **70%**.
-8. **KG** (`knowledge-base/{boundary}.knowledge-graph.yaml`): design (events/permissions/dependencies) **đã seed ở `/start-wave`**; append phần kinh nghiệm khi phát sinh — DataLoader/cache-key strategy → `learnings.patterns`; quyết định kỹ thuật → `decisions`. Dùng đúng sections của `TEMPLATE.knowledge-graph.yaml` (không tự đặt section mới).
+8. **KG** (`knowledge-base/{boundary}.knowledge-graph.yaml`): design (events/permissions/dependencies) **đã seed ở `/run-wave`**; append phần kinh nghiệm khi phát sinh — DataLoader/cache-key strategy → `learnings.patterns`; quyết định kỹ thuật → `decisions`. Dùng đúng sections của `TEMPLATE.knowledge-graph.yaml` (không tự đặt section mới).
 
 ## Anti-patterns (review flag)
 - Business logic (tính giá, eligibility) trong resolver → phải ở backend.

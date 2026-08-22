@@ -6,7 +6,7 @@ description: Ghi bug vào 1 file bugs.md theo format gate parse được, để 
 # Bug Logging Skill
 
 ## Khi load
-`test-execute-agent` (bug `origin: auto`) và `/fix-bugs` chain (bug `origin: manual` từ MANUAL_TEST).
+`test-execute-agent` (bug `origin: auto`) và `/run-wave` chain (bug `origin: manual` từ MANUAL_TEST).
 
 ## Output: `tracking/wave-{N}/bugs.md` (1 FILE chung — **format BẢNG, mỗi bug = 1 HÀNG**)
 Template: `tracking/_templates/TEMPLATE.bugs.md`. Log bug = **append 1 row** vào bảng.

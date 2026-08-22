@@ -11,7 +11,7 @@ description: Convention bắt buộc khi code web frontend (React/Vite/Next…).
 > - File cấu hình (package.json, env, build, Dockerfile FE) → `ref-frontend-config`.
 
 ## Khi load
-Sub-agent `kind=web` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
+Sub-agent `kind=web` — chốt code · sửa bug · review của `/run-wave`.
 
 ## Data layer — theo thiết kế dự án (xem integrations design)
 - **Default — REST trực tiếp backend**: client (Axios/fetch) gọi contract `docs/architecture/api/api-{backend}.md`; interceptor gắn auth + map error. Types khớp DTO trong API spec.

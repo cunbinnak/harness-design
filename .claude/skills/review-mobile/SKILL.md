@@ -5,7 +5,7 @@ description: Self-review mobile — analyze, data layer khớp design, offline i
 
 # Review Mobile Skill
 
-> Checklist source-of-truth cho `review-mobile-agent` ở `/review-dev`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
+> Checklist source-of-truth cho `review-mobile-agent` ở `/run-wave`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
 
 ## Lệnh chạy
 ```bash

@@ -1,12 +1,12 @@
 ---
 name: domain-ba
-description: DOMAIN ba-author — viết BUSINESS Business-rule/Persona (plain VN) vào docs/domain/{business-rules,personas}. Loop tới khi user OK + hỏi "Câu hỏi cho Author" ngay. Spawn qua /domain-ba <BR|PERSONA>. KHÔNG approve/translate.
+description: DOMAIN ba-author — viết BUSINESS Business-rule/Persona (plain VN) vào docs/domain/{business-rules,personas}. Loop tới khi user OK + hỏi "Câu hỏi cho Author" ngay. Spawn qua /domain. KHÔNG approve/translate.
 ---
 
 # Domain BA-Author Skill
 
 ## Khi load
-`/domain-ba BR|PERSONA` — vai **Business Analyst**. Author **NGÔN NGỮ NGHIỆP VỤ THUẦN** vào **`docs/domain/`** (lớp business — A1). BR = ràng buộc nghiệp vụ; PERSONA = chi tiết hóa persona-pool (D1). Chi tiết kỹ thuật để `/domain-translate` sinh ở eng layer.
+`/domain BR|PERSONA` — vai **Business Analyst**. Author **NGÔN NGỮ NGHIỆP VỤ THUẦN** vào **`docs/domain/`** (lớp business — A1). BR = ràng buộc nghiệp vụ; PERSONA = chi tiết hóa persona-pool (D1). Chi tiết kỹ thuật để `/domain` sinh ở eng layer.
 
 > **Wireframe KHÔNG thuộc DOMAIN**: wireframe = UX = `docs/architecture/ux/` — do DESIGN lo.
 
@@ -17,7 +17,7 @@ description: DOMAIN ba-author — viết BUSINESS Business-rule/Persona (plain V
 | PERSONA | `docs/domain/personas/PERSONA-<PREFIX>-NNN.md` | `docs/domain/personas/TEMPLATE.persona.md` |
 
 ## Boot sequence (targeted)
-1. STATE + `agents/domain-ba-agent.md`
+1. STATE + `agents/domain-agent.md`
 2. Feature dùng rule `docs/domain/feat/FEAT-*.md`
 3. Hot-spot từ event-storming `docs/discovery/event-storming/ES-*.md`
 4. Template (có mục **"Câu hỏi cho Author"**)
@@ -31,10 +31,10 @@ description: DOMAIN ba-author — viết BUSINESS Business-rule/Persona (plain V
 - **Loop tới khi OK:** draft → trình user → sửa → lặp; dừng khi user OK. KHÔNG one-shot.
 
 ## Quy tắc
-- ID `BR-/PERSONA-<PREFIX>-NNN`. Cross-ref bằng ID. `status: DRAFT` — **KHÔNG tự approve** (ký là `/domain-approve`).
+- ID `BR-/PERSONA-<PREFIX>-NNN`. Cross-ref bằng ID. `status: DRAFT` — **KHÔNG tự approve** (ký là `/domain`).
 - **NGHIỆP VỤ THUẦN — KHÔNG jargon** (cấm class/SQL/API/HTTP-status; nơi enforce để DESIGN/translate chốt). Gate `domain_no_jargon` chặn lúc ký.
 - KHÔNG ghi epic/feat (po) hay `docs/architecture/**`. KHÔNG tạo `knowledge-base/*.yaml`.
 - Question budget ~5.
 
 ## Done
-- BR/Persona đúng template + (BR) ≥2 ví dụ + nguồn + `status: DRAFT` + đã hỏi "Câu hỏi cho Author" + user OK. Xong cả bộ → `/domain-approve` → `/domain-translate` → `/domain-end`.
+- BR/Persona đúng template + (BR) ≥2 ví dụ + nguồn + `status: DRAFT` + đã hỏi "Câu hỏi cho Author" + user OK. Xong cả bộ → `/domain`.

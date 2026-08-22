@@ -12,17 +12,17 @@ gates: [{type: health_proof}]
 
 # /dogfood — "tự dùng trước khi bảo là xong"
 
-Stage MANUAL_TEST, sau `/test-execute`. **Không đổi stage** — chạy lại được bao nhiêu lần tuỳ ý.
+Stage MANUAL_TEST, sau chốt chạy test của `/run-wave`. **Không đổi stage** — chạy lại được bao nhiêu lần tuỳ ý.
 
 ## Vì sao có lệnh này
 
-`/test-execute` chạy **test-case đã viết**, nên nó chỉ tìm được thứ ai đó đã nghĩ ra trước. MANUAL_TEST sinh ra để bù đúng khoảng đó — chỗ con người ngồi chọc vào hệ và thấy thứ không ai viết TC cho. Lệnh này tự động hoá đúng việc ngồi chọc đó, không thay thế `/test-execute`.
+Chốt chạy test của `/run-wave` chỉ chạy **test-case đã viết**, nên nó chỉ tìm được thứ ai đó đã nghĩ ra trước. MANUAL_TEST sinh ra để bù đúng khoảng đó — chỗ con người ngồi chọc vào hệ và thấy thứ không ai viết TC cho. Lệnh này tự động hoá đúng việc ngồi chọc đó, không thay thế nó.
 
 Thứ dogfood tìm được mà registry không: cảnh rỗng không nói gì · lỗi bị nuốt im lặng · bấm hai lần ra hai bản ghi · vai A chạm được dữ liệu vai B · nút chính tràn khỏi màn hình nhỏ.
 
 ## Điều kiện vào (gate `health_proof`)
 
-Hệ phải **đang chạy thật** — `tracking/wave-{N}/health-proof.json` do `capture_infra_proof.py` sinh. Hệ chết → STOP, chạy lại `/dev-handoff`. **Không dogfood ảo**: một lượt dogfood trên hệ không chạy còn tệ hơn không chạy lượt nào, vì nó để lại vết "đã kiểm".
+Hệ phải **đang chạy thật** — `tracking/wave-{N}/health-proof.json` do `capture_infra_proof.py` sinh. Hệ chết → STOP, chạy lại `/run-wave` (chốt dựng chạy thật). **Không dogfood ảo**: một lượt dogfood trên hệ không chạy còn tệ hơn không chạy lượt nào, vì nó để lại vết "đã kiểm".
 
 Cần thêm, thiếu thì STOP: `docs/discovery/persona-pool.md` có **ma trận vai × hành động** (danh sách phép thử của vai `breaker`) + bảng **gán 6 vai ↔ persona + đợt**. Cả hai là output gate D1 nên bình thường đã có.
 
@@ -35,7 +35,7 @@ Cần thêm, thiếu thì STOP: `docs/discovery/persona-pool.md` có **ma trận
 5. **Đợt 2 (DB CÓ DỮ LIỆU)** — spawn 3 vai trong MỘT lượt: `rushed` · `breaker` · `mobile`.
 6. Gộp phát hiện → soi **dấu hiệu dogfood giả** (skill `dogfood`) → vai nào dính thì cho chạy lại vai đó.
 7. Ghi bug vào `tracking/wave-{N}/bugs.md` qua skill `bug-logging`, `origin=manual`.
-8. Báo user tổng hợp. Có bug → `/fix-bugs`. Sạch → `/end-wave`.
+8. Báo user tổng hợp. Có bug → `/run-wave` (tự sửa + re-test). Sạch → `/next-wave`.
 
 Có arg (`/dogfood breaker`) → chỉ chạy lại vai đó, bỏ qua chia đợt.
 
@@ -67,10 +67,10 @@ Thiếu vế đầu = suy từ code chứ chưa chạy. Vế cuối không dẫn
 
 ## Forbidden
 
-- **KHÔNG fix** — ghi bug rồi dừng. Fix qua `/fix-bugs` để nhân quả rõ ràng.
+- **KHÔNG fix** — ghi bug rồi dừng. Fix ở chốt sửa bug của `/run-wave` để nhân quả rõ ràng.
 - **KHÔNG sửa `test-case-registry.md`** cho khớp thứ vừa thấy.
 - **KHÔNG sửa doc spec** — phase-lock chặn; sửa spec cho khớp code là đúng anti-pattern harness sinh ra để chống.
-- **KHÔNG teardown infra** — giữ UP cho `/fix-bugs` re-run. Teardown ở `/done-wave`.
+- **KHÔNG teardown infra** — giữ UP cho lượt sửa bug + re-test. Teardown khi hết WAVE-SEQUENCE (`/next-wave`).
 - Vai dogfood **KHÔNG hỏi user** — trả phát hiện + đề xuất, quyền quyết ở phiên chính.
 
 ## Crash / resume

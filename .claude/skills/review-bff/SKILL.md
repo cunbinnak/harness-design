@@ -5,7 +5,7 @@ description: Self-review BFF — schema additive, DataLoader (no N+1), cache key
 
 # Review BFF Skill
 
-> Checklist source-of-truth cho `review-bff-agent` ở `/review-dev`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
+> Checklist source-of-truth cho `review-bff-agent` ở `/run-wave`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
 
 ## Lệnh chạy
 ```bash

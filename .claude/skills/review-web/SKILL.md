@@ -5,7 +5,7 @@ description: Self-review web frontend — a11y, no biz logic, data layer khớp 
 
 # Review Web Skill
 
-> Checklist source-of-truth cho `review-web-agent` ở `/review-dev`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
+> Checklist source-of-truth cho `review-web-agent` ở `/run-wave`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
 
 ## Lệnh chạy
 ```bash

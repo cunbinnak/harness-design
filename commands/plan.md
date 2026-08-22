@@ -30,7 +30,7 @@ gates: [{type: plan_gate}, {type: planning_lint}, {type: plan_integrity}, {type:
 - `wave_sequence_lint`: validate `docs/plans/WAVE-SEQUENCE.md` §wave-NNN YAML (port ZIP `wave-sequence-validate.py`): `wave_class`/`wave_strategy` enum · `target_count_per_layer ≤ 3` · strategy layer-purity (horizontal-be cấm FE target, horizontal-fe cấm boundary target) · vertical → FEAT có `parent_epic` · `inherited_active` trỏ file tồn tại. Warning (rare-combo/exit_signal/test_scope coherence) KHÔNG chặn. `force:true,reason` bypass.
 
 ## Sau PLAN (vào REVIEW)
-Stage → REVIEW. `/review-document` (chỉnh nếu cần) → `/approve-document` → `/start-wave 1`.
+Stage → REVIEW. `/review-document` (chỉnh nếu cần) → `/approve-document` → `/run-wave 1`.
 
 ## Forbidden
 - Sửa design/product docs. Code trong services/. Tự đổi stage tay.

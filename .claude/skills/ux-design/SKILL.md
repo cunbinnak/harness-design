@@ -1,12 +1,12 @@
 ---
 name: ux-design
-description: UX/UI cho FE boundary (stage DESIGN, /design-ux, ux-designer-agent — tách vai khỏi solution-architect) — user flow, MOCKUP HTML tĩnh per screen (design bằng HTML, không ASCII), UI states đầy đủ, design tokens + Visual polish, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md + mockups/{boundary}/*.html + design-tokens.css.
+description: UX/UI cho FE boundary (stage DESIGN, /design, ux-designer-agent — tách vai khỏi solution-architect) — user flow, MOCKUP HTML tĩnh per screen (design bằng HTML, không ASCII), UI states đầy đủ, design tokens + Visual polish, a11y WCAG 2.1 AA, permission-based UI. Sinh ux-{boundary}.md + mockups/{boundary}/*.html + design-tokens.css.
 ---
 
 # UX Design Skill
 
 ## Khi load
-Command **`/design-ux`** (stage DESIGN, self-loop) — agent chuyên môn **`ux-designer-agent`**, tách vai khỏi solution-architect (`/design` lo hệ thống/contract). Chạy SAU khi `/design` đã chốt boundary + `api-{be}.md` (UX consume contract, không bịa endpoint).
+Command **`/design`** (stage DESIGN, self-loop) — agent chuyên môn **`ux-designer-agent`**, tách vai khỏi solution-architect (`/design` lo hệ thống/contract). Chạy SAU khi `/design` đã chốt boundary + `api-{be}.md` (UX consume contract, không bịa endpoint).
 Input: `PROJECT.md` (persona, platform, design system / ADR ui-kit) + `FEAT-*.md` (user story + AC) + `JOURNEY/PERSONA` + `api-{be}.md` (contract boundary phục vụ).
 
 ## Deliverable
@@ -42,7 +42,7 @@ Benchmark: mockup phải trông như **sản phẩm SaaS thương mại** (chu�
 - **Responsive bắt buộc kiểm**: thu browser <768px phải ra layout mobile tử tế (card/stack), không phải bảng tràn ngang.
 
 ## Visual polish (spec CỤ THỂ để dev implement được "đẹp" — không chung chung)
-Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/test-execute đối chiếu được):
+Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/run-wave đối chiếu được):
 - **App shell**: layout khung chuẩn (header + nav + content + footer) dùng chung mọi screen — screen chỉ đổi content, KHÔNG mỗi trang một khung.
 - **Spacing rhythm**: MỌI padding/margin/gap từ `--space-*` (scale 4/8px) — cấm số lẻ tùy tiện; mật độ nhất quán (form row gap, card padding, section gap ghi rõ token nào).
 - **Type scale**: heading/body/label dùng `--font-size-*` + `--font-weight-*`; mỗi screen có hierarchy rõ (1 h1, section h2, không nhảy cấp).

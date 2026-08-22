@@ -6,7 +6,7 @@ description: Setup + verify infra local cho test handoff — docker-compose serv
 # Infra Local Dev Skill
 
 ## Khi load
-`dev-handoff-agent` ở `/dev-handoff` (state DEV_HANDOFF). **Mục tiêu:** khi DONE, `test-execute` agent chạy được local — app boundary + DB/Redis/Kafka **healthy**, schema **migrated**.
+`dev-handoff-agent` ở `/run-wave` (state DEV_HANDOFF). **Mục tiêu:** khi DONE, `test-execute` agent chạy được local — app boundary + DB/Redis/Kafka **healthy**, schema **migrated**.
 Input: `docs/architecture/infra/docker-compose.yml` (skeleton từ DESIGN `/design`) + boundaries trong wave (MATRIX) + `data-model-{boundary}.md` (migrations).
 
 ## Output: `docs/architecture/infra/docker-compose.yml` (1 vị trí chuẩn)
@@ -65,7 +65,7 @@ docker volume ls                                    # volume DB đã tồn tại
 ```
 - **Image nền đã có local** → Docker tự dùng cache; **KHÔNG** `docker pull`/`--pull` ép tải lại. Chỉ kéo image THIẾU (compose tự kéo khi up).
 - **Service đã UP+healthy và code boundary KHÔNG đổi** → KHÔNG rebuild/restart thừa. `docker compose up -d --build` dùng layer-cache: chỉ rebuild app boundary có source đổi; infra đang chạy giữ nguyên.
-- **KHÔNG** `docker compose down --volumes` / `docker system prune` / xoá image để "cho sạch" — chỉ teardown ở `/done-wave`. Reset chỉ khi thật sự hỏng (nêu lý do).
+- **KHÔNG** `docker compose down --volumes` / `docker system prune` / xoá image để "cho sạch" — chỉ teardown ở `/next-wave`. Reset chỉ khi thật sự hỏng (nêu lý do).
 - **Volume/network đã tồn tại → tái dùng**, không nhân bản; không tạo container tên khác cho cùng vai trò.
 
 ## Verify (BẮT BUỘC chạy lệnh + đọc output, không chỉ viết file)

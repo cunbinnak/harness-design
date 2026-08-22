@@ -1,20 +1,20 @@
 ---
 name: dogfood
-description: Dùng thử sản phẩm ĐANG CHẠY bằng 6 lăng kính persona, hai đợt theo trạng thái DB — thay cho MANUAL_TEST thủ công. Mỗi vai đóng một persona thật từ persona-pool, vai breaker chạy đủ ma trận vai × hành động. Bug ghi origin=manual. KHÔNG fix (fix qua /fix-bugs).
+description: Dùng thử sản phẩm ĐANG CHẠY bằng 6 lăng kính persona, hai đợt theo trạng thái DB — thay cho MANUAL_TEST thủ công. Mỗi vai đóng một persona thật từ persona-pool, vai breaker chạy đủ ma trận vai × hành động. Bug ghi origin=manual. KHÔNG fix (fix ở chốt sửa bug của /run-wave).
 ---
 
 # Dogfood Skill
 
 ## Khi load
-`/dogfood` ở stage MANUAL_TEST — sau `/test-execute`. Đây là **chỗ thay cho việc người phải tự ngồi chọc vào hệ**: 6 lăng kính dùng thử trên hệ ĐANG CHẠY thật, ghi bug `origin=manual`.
+`/dogfood` ở stage MANUAL_TEST — sau `/run-wave`. Đây là **chỗ thay cho việc người phải tự ngồi chọc vào hệ**: 6 lăng kính dùng thử trên hệ ĐANG CHẠY thật, ghi bug `origin=manual`.
 
-`/test-execute` chạy **test-case đã viết** — nó chỉ tìm được thứ ai đó nghĩ ra trước. Dogfood đi tìm thứ **không có trong registry**: màn rỗng không nói gì, lỗi bị nuốt im lặng, bấm hai lần ra hai bản ghi, vai A chạm được dữ liệu vai B. Hai việc khác nhau, không thay thế nhau.
+`/run-wave` chạy **test-case đã viết** — nó chỉ tìm được thứ ai đó nghĩ ra trước. Dogfood đi tìm thứ **không có trong registry**: màn rỗng không nói gì, lỗi bị nuốt im lặng, bấm hai lần ra hai bản ghi, vai A chạm được dữ liệu vai B. Hai việc khác nhau, không thay thế nhau.
 
 ## Điều kiện vào
 
 | Cần | Ở đâu | Thiếu thì |
 |---|---|---|
-| Hệ đang chạy thật | `tracking/wave-{N}/health-proof.json` | STOP — chạy lại `/dev-handoff`, KHÔNG dogfood ảo |
+| Hệ đang chạy thật | `tracking/wave-{N}/health-proof.json` | STOP — chạy lại `/run-wave`, KHÔNG dogfood ảo |
 | Persona + ma trận quyền | `docs/discovery/persona-pool.md` | STOP — ma trận là danh sách phép thử của vai breaker |
 | Gán 6 vai ↔ persona + đợt | `persona-pool.md §Gán persona cho vai dogfood` | Mặc định: mọi vai đóng persona chính |
 | Luồng lõi + AC của wave | `docs/plans/wave-{N}.md` + `docs/architecture/feat/FEAT-*.md` | STOP |
@@ -86,13 +86,13 @@ Mọi lỗi phân quyền là **blocker**, không có ngoại lệ — nó là l
 
 ## Ranh giới
 
-- **KHÔNG fix.** Ghi bug rồi dừng — fix qua `/fix-bugs`, để nhân quả rõ ràng.
+- **KHÔNG fix.** Ghi bug rồi dừng — fix qua `/run-wave`, để nhân quả rõ ràng.
 - **KHÔNG sửa test-case-registry** cho khớp thứ vừa thấy.
 - **KHÔNG sửa doc spec** — phase-lock chặn, và sửa spec cho khớp code là đúng anti-pattern harness sinh ra để chống.
-- **KHÔNG teardown infra** — giữ UP cho `/fix-bugs` re-run.
+- **KHÔNG teardown infra** — giữ UP cho lượt sửa bug + re-test.
 - Sản phẩm không có UI → các vai gọi API trực tiếp; `picky` soi shape response + error envelope thay cho giao diện; `mobile` soi độ trễ từ client yếu thay cho layout.
 
 ## Done
 - Đủ 2 đợt, mỗi vai một báo cáo có bằng chứng bộ ba.
 - Bug ghi vào `tracking/wave-{N}/bugs.md` (`origin=manual`), blocker đánh dấu rõ.
-- Báo user tổng hợp → `/fix-bugs` nếu có bug, `/end-wave` nếu sạch.
+- Báo user tổng hợp → `/run-wave` nếu có bug (tự sửa + re-test), `/next-wave` nếu sạch.

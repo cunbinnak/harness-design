@@ -6,7 +6,7 @@ description: Discovery D0 (Business Authority) — KHAI THÁC SÂU ý tưởng p
 # Discovery Hypothesis Skill (D0)
 
 ## Khi load
-`/discovery-start D0` — agent `discovery-hypothesis-agent` (vai **Business Authority**): biến ý tưởng/brief project thành **bức tranh tổng quan dạng giả thuyết** để đồng thuận vấn đề + đối tượng + cược gì, TRƯỚC khi đi vào capability (D1) / event-storming (D2) / boundary (D3).
+`/discover D0` — agent `discovery-hypothesis-agent` (vai **Business Authority**): biến ý tưởng/brief project thành **bức tranh tổng quan dạng giả thuyết** để đồng thuận vấn đề + đối tượng + cược gì, TRƯỚC khi đi vào capability (D1) / event-storming (D2) / boundary (D3).
 
 Input: mô tả project user truyền (`$ARGUMENTS`). Không có → mở bằng câu hỏi mở, KHÔNG bằng option.
 
@@ -99,5 +99,5 @@ Chỗ user không trả lời được, hoặc chưa quyết: (1) tìm trong tà
 - KHÔNG icon/emoji trong tài liệu.
 
 ## Done
-- `hypothesis-log.md` pass gate D0 + đã playback + user confirm → `/discovery-start D1`.
+- `hypothesis-log.md` pass gate D0 + đã playback + user confirm → `/discover D1`.
 - Return RETURN SCHEMA `wave: "D0"`, `user_confirmed: true`.

@@ -11,11 +11,11 @@ Dùng khi review thay đổi code backend Java/Spring Boot. Reviewer đánh giá
 Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi được yêu cầu rõ.
 
 ## Harness integration
-- Invoke bởi `review-backend-agent` ở `/review-dev` (state REVIEW_DEV). Đây là **source of truth**.
+- Invoke bởi `review-backend-agent` ở `/run-wave` (state REVIEW_DEV). Đây là **source of truth**.
 - Quy trình: chạy build/test scoped (**Gradle default**: `./gradlew test jacocoTestReport checkstyleMain`; Maven `mvn -q test jacoco:report` nếu ADR chọn Maven) + `git diff --name-only main...HEAD` → đi qua **Review Checklist** bên dưới → phân loại severity.
 - **Coverage** theo kind (backend ≥ 80%) — dưới ngưỡng = BLOCKER.
 - Có **BLOCKER/MAJOR** hoặc build/test/coverage fail → **GHI row vào `tracking/{wave}/review-findings.md`** (KHÔNG tự spawn fix). **MAIN** đọc findings → spawn `fix-{prefix}-{boundary}-agent` (Mode B) → re-review. Review chỉ đánh giá + ghi findings + trả `open_findings`.
-- Kết thúc: `review_result = pass` chỉ khi `open_findings == 0` (không còn BLOCKER/MAJOR), gate (coverage/build/test) pass, và verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}. (Field JSON trả về theo `RETURN_SCHEMA_TEMPLATE` ở `build_prompt.py` + task_list `/review-dev` — skill KHÔNG định nghĩa schema.)
+- Kết thúc: `review_result = pass` chỉ khi `open_findings == 0` (không còn BLOCKER/MAJOR), gate (coverage/build/test) pass, và verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}. (Field JSON trả về theo `RETURN_SCHEMA_TEMPLATE` ở `build_prompt.py` + task_list `/run-wave` — skill KHÔNG định nghĩa schema.)
 
 ## Vai trò reviewer
 Đóng vai **senior backend reviewer**. Tập trung rủi ro gây: sai business behavior; vi phạm security/tenant; data inconsistency; breaking change API/event/DB contract; performance production; xử lý trùng; thiếu validation; thiếu test; maintainability. KHÔNG chỉ comment code style.
@@ -127,7 +127,7 @@ Skill này **chỉ để review**. KHÔNG rewrite/implement code trừ khi đư�
 - [ ] Cover: success / validation fail / not found / permission denied / tenant boundary / invalid state transition / duplicate-idempotency / external fail / event publish / transaction rollback / edge.
 - [ ] **Unit**: AAA (given-when-then); tên test mô tả hành vi+điều kiện+kỳ vọng; **assert behavior** (không assert implementation detail); mock external đúng ranh giới (không mock class đang test, không over-mock); assert đúng exception + error code; **deterministic** (inject Clock/seed, không time/random/network thật); branch coverage có nghĩa.
 - [ ] **Integration**: DB/cache thật (Testcontainers); contract API (status + envelope) + tenant isolation.
-- [ ] **Schema-drift (BLOCKER — chống lộ ở handoff):** có ≥1 integration test **BOOT Spring context trên Testcontainers Postgres + migration + `ddl-auto: validate`**; **entity ↔ migration nhất quán** (tên cột, kiểu: `varchar(n)`↔`CHAR(n)`, `TIMESTAMPTZ`↔`Instant`, nullable). Thiếu test boot-context hoặc lệch entity↔migration → BLOCKER (đây là lỗi escape dev+review tới `/dev-handoff` connect DB mới lộ).
+- [ ] **Schema-drift (BLOCKER — chống lộ ở handoff):** có ≥1 integration test **BOOT Spring context trên Testcontainers Postgres + migration + `ddl-auto: validate`**; **entity ↔ migration nhất quán** (tên cột, kiểu: `varchar(n)`↔`CHAR(n)`, `TIMESTAMPTZ`↔`Instant`, nullable). Thiếu test boot-context hoặc lệch entity↔migration → BLOCKER (đây là lỗi escape dev+review tới `/run-wave` connect DB mới lộ).
 - [ ] Đổi business logic → có thêm/cập nhật test; KHÔNG xoá test có ý nghĩa; không test rỗng / chỉ `assertDoesNotThrow`.
 
 ### O. Maintainability
@@ -213,6 +213,6 @@ Một trong: APPROVE | APPROVE WITH MINOR COMMENTS | REQUEST CHANGES | NEEDS CLA
 - Chỉ review formatting; rewrite cả solution khi không được yêu cầu; đánh preference là BLOCKER; bỏ qua convention sẵn có; đề xuất dependency mới không lý do; comment mơ hồ ("refactor this"); approve happy-path-only cho flow critical; bỏ qua test/tenant/security/transaction risk.
 
 ## Loop & kết luận
-- Còn **BLOCKER/MAJOR** hoặc gate (build/lint/test/coverage) fail → review GHI findings vào `review-findings.md` (KHÔNG tự spawn). **MAIN** đọc findings → spawn `fix-{prefix}-{boundary}-agent` (Mode B) → re-spawn review → loop tới sạch. Gate `no_open_findings` chặn `/review-dev complete` tới khi findings BLOCKER/MAJOR đóng hết (lưới an toàn).
-- Verdict → kết quả: `review_result = pass` chỉ khi `blocker == 0` + gate pass + verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}; `review_result` là evidence cho gate `/dev-handoff`.
+- Còn **BLOCKER/MAJOR** hoặc gate (build/lint/test/coverage) fail → review GHI findings vào `review-findings.md` (KHÔNG tự spawn). **MAIN** đọc findings → spawn `fix-{prefix}-{boundary}-agent` (Mode B) → re-spawn review → loop tới sạch. Gate `no_open_findings` chặn `/run-wave complete` tới khi findings BLOCKER/MAJOR đóng hết (lưới an toàn).
+- Verdict → kết quả: `review_result = pass` chỉ khi `blocker == 0` + gate pass + verdict ∈ {APPROVE, APPROVE WITH MINOR COMMENTS}; `review_result` là evidence cho gate `/run-wave`.
 - **Schema JSON trả về KHÔNG định nghĩa ở skill** — dùng `RETURN_SCHEMA_TEMPLATE` (`build_prompt.py`, chèn vào mọi spawn) + field command-specific (`review_result`) do task_list thêm.

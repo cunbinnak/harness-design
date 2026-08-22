@@ -1,6 +1,6 @@
 ---
 name: approve-document
-description: "User mark doc OK (approved=true) + stamp status APPROVED/ACTIVE vào doc design/contract (approve_document.py). KHÔNG đổi state. Cho phép /start-wave"
+description: "User mark doc OK (approved=true) + stamp status APPROVED/ACTIVE vào doc design/contract (approve_document.py). KHÔNG đổi state. Cho phép /run-wave"
 argument-hint: "(no arguments)"
 when_state: [REVIEW]
 sets_stage: REVIEW
@@ -16,15 +16,15 @@ gates: [{type: doc_review}, {type: doc_stamped}, {type: flag, field: approved, e
 
 User explicit approve toàn bộ intake artifacts sau khi đã review (qua `/review-document` revision loop) và happy. Command này KHÔNG spawn sub-agent (instant action): set `approved=true` trong STATE **và stamp trạng thái duyệt vào frontmatter doc** qua `py scripts/approve_document.py` — adr/hld/data-model/ux/integrations → `status: APPROVED`; api/events (contract) → `status: ACTIVE` (DEPRECATED giữ nguyên). Không chạy script = gate `doc_stamped` chặn (doc duyệt rồi mà vẫn hiện DRAFT = approve chay).
 
-Sau khi approved → có thể chạy `/start-wave` (gate check `approved=true`).
+Sau khi approved → có thể chạy `/run-wave <N>` (gate check `approved=true`).
 
-> Lifecycle status theo lớp: business `docs/domain` ký ở `/domain-approve` (`APPROVED`); eng product (epics/feat/BR) = `TRANSLATED→ENRICHED`; design/contract = stamp ở ĐÂY; plans giữ `PLANNED` (lifecycle wave: IN_PROGRESS/COMPLETED do wave chạy).
+> Lifecycle status theo lớp: business `docs/domain` ký ở bước ký của `/domain` (`APPROVED`); eng product (epics/feat/BR) = `TRANSLATED→ENRICHED`; design/contract = stamp ở ĐÂY; plans giữ `PLANNED` (lifecycle wave: IN_PROGRESS/COMPLETED do wave chạy).
 
 ## Gate `doc_review` (ép sanity-check trước approve)
 
 `scripts/gates.py check_doc_review` đọc `tracking/doc-review-findings.md` (do `/review-document` no-arg ghi):
 - **Thiếu file** → doc-review sanity-check CHƯA chạy → **chặn** (chạy `/review-document` no-arg trước).
-- Còn gap **BLOCKER/MAJOR** `status` open → **chặn** (vá qua revision loop hoặc lùi `/domain-po`·`/domain-ba` → ký → translate).
+- Còn gap **BLOCKER/MAJOR** `status` open → **chặn** (vá qua revision loop hoặc lùi `/domain` → ký → dịch).
 - Mọi gap đóng / chỉ MINOR open → pass.
 
 > Mirror `review-dev` `no_open_findings` (cho code) — nhưng cho TÀI LIỆU: bắt **thiếu năng lực nền (vd auth/login)** trước khi commit-to-build. Edge thật → `'{"approved":true,"force":true,"reason":"<lý do>"}'` (bypass + audit `tracking/decisions.md`).
@@ -49,12 +49,12 @@ Không argument.
    - WAVE-SEQUENCE.md + wave-001.md
    - SERVICE-BOUNDARY-MATRIX.json
    
-   Sau approve, /start-wave sẽ được phép. Gõ 'yes' để confirm, 'no' để cancel."
+   Sau approve, /run-wave sẽ được phép. Gõ 'yes' để confirm, 'no' để cancel."
 3. Đợi user reply.
 4. Nếu user "yes":
    - Run: py scripts/approve_document.py        (stamp status APPROVED/ACTIVE vào doc design/contract)
    - Run: py scripts/harness.py approve-document complete '{"approved":true}'   (gate doc_stamped verify stamp)
-   - Báo user: "Approved. Run /start-wave 1 để mở wave đầu tiên."
+   - Báo user: "Approved. Chạy /run-wave 1 để mở wave đầu tiên."
 5. Nếu user "no":
    - Báo: "Cancelled. Tiếp tục /review-document nếu cần chỉnh."
 ```
@@ -63,7 +63,7 @@ Không argument.
 
 - State KHÔNG đổi (REVIEW → REVIEW).
 - Set `approved=true` trong STATE qua complete evidence.
-- `/start-wave` gate check `approved=true` → pass.
+- `/run-wave` gate check `approved=true` ở chốt dựng wave → pass.
 
 ## Forbidden
 
@@ -74,5 +74,5 @@ Không argument.
 ## Sau approve
 
 Allowed commands ở REVIEW state:
-- `/start-wave <N>` → transition REVIEW → WAVE_OPEN, materialize.
+- `/run-wave <N>` → chốt 1 transition REVIEW → WAVE_OPEN, materialize.
 - `/review-document` vẫn allow (nếu user reconsider, revise thêm).

@@ -6,7 +6,7 @@ description: Discovery D2 (event-stormer) — facilitate event storming cho 1 do
 # Event Storming Skill (D2)
 
 ## Khi load
-`/discovery-start D2` — agent `event-stormer-agent` (Architecture + Business). Facilitate event storming cho **MỘT domain mỗi lần**, theo candidate domains ở `capability-map.md §3`. Interactive — dùng AskUserQuestion nhiều.
+`/discover D2` — agent `event-stormer-agent` (Architecture + Business). Facilitate event storming cho **MỘT domain mỗi lần**, theo candidate domains ở `capability-map.md §3`. Interactive — dùng AskUserQuestion nhiều.
 
 Input: `docs/discovery/capability-map.md §3` (candidate domains) + `persona-pool.md` (actors).
 
@@ -36,7 +36,7 @@ Mỗi ES file:
 - REFINE mode: ES file đã có → đọc + tìm delta, KHÔNG rewrite from scratch.
 
 ## Flow
-- 1 spawn = 1 domain. Nhiều domain → main gọi `/discovery-start D2` lặp (mỗi lần 1 domain) tới khi mọi candidate domain có ES.
+- 1 spawn = 1 domain. Nhiều domain → main gọi `/discover D2` lặp (mỗi lần 1 domain) tới khi mọi candidate domain có ES.
 - Interactive (AskUserQuestion ≤5). Sau confirm: return `wave: "D2"`, `user_confirmed: true`, `files_changed: [ES-...]`.
 
 ## Quality checklist
@@ -46,4 +46,4 @@ Mỗi ES file:
 - [ ] ≥1 aggregate (§5) + ≥1 external (§6) + hot-spots flagged (§7) + open-questions cho Authority (§9).
 
 ## Done
-- Mọi candidate domain có ES file pass gate D2; user confirm → `/discovery-start D3` (tiến wave, gate D2 verify lúc đó).
+- Mọi candidate domain có ES file pass gate D2; user confirm → `/discover D3` (tiến wave, gate D2 verify lúc đó).

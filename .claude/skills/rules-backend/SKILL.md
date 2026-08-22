@@ -12,7 +12,7 @@ description: Convention bắt buộc khi code backend boundary (Java 21 / Spring
 > - Situational (theo boundary): Kafka → `ref-backend-kafka` · Redis → `ref-backend-redis` · logging → `ref-backend-logging` · downstream HTTP → `ref-backend-restclient`.
 
 ## Khi load
-Sub-agent `kind=backend` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
+Sub-agent `kind=backend` — chốt code · sửa bug · review của `/run-wave`.
 
 ## Quy ước bắt buộc
 1. **Kiến trúc**: theo loại đã chốt trong **ADR backend-architecture** (Layered hoặc DDD tactical) — cấu trúc thư mục + layer responsibilities xem `ref-backend-pattern`. **Layer/package rule enforce bằng ArchUnit test** (`ref-backend-pattern §7.5`, bắt buộc trong scaffold — gate `code_compliance`): vi phạm = `gradle test` ĐỎ, không đợi review.
@@ -23,7 +23,7 @@ Sub-agent `kind=backend` ở `/start-dev`, `/fix-bugs`, `/review-dev`.
 6. **Cross-boundary**: KHÔNG import code từ `services/{prefix}-{other}/`; gọi qua HTTP/event theo `docs/architecture/integrations/INTEG-*.md`.
 7. **Config**: secrets qua env; không hardcode (chi tiết `ref-backend-config`).
 8. **Test**: unit (domain/application) + integration (api + DB testcontainer); coverage ≥ **80%**.
-9. **KG** (`knowledge-base/{boundary}.knowledge-graph.yaml`): phần design (entities/business_rules/events/permissions) **đã seed ở `/start-wave`** từ docs — chỉ **update khi implement KHÁC design** (kèm sửa data-model cho khớp); **append phần kinh nghiệm** (learnings/gotchas/decisions/failure_modes) khi phát sinh. KHÔNG tái tạo lại design từ đầu.
+9. **KG** (`knowledge-base/{boundary}.knowledge-graph.yaml`): phần design (entities/business_rules/events/permissions) **đã seed ở `/run-wave`** từ docs — chỉ **update khi implement KHÁC design** (kèm sửa data-model cho khớp); **append phần kinh nghiệm** (learnings/gotchas/decisions/failure_modes) khi phát sinh. KHÔNG tái tạo lại design từ đầu.
 
 ## Entity (JPA — Java/Spring)
 1. **KHÔNG `@Data` / `@EqualsAndHashCode` / `@ToString` (all-field) trên `@Entity`** — equals/hashCode all-field break trong `Set`/`Map` (hashCode đổi sau persist) + StackOverflow ở quan hệ bidirectional; toString all-field trigger lazy-load oan + log lộ dữ liệu.
@@ -226,7 +226,7 @@ payment:
 - Thêm/cập nhật test khi đổi business logic; coverage ≥ **80%**. KHÔNG xoá test cũ trừ khi được yêu cầu rõ; test wave trước PHẢI pass (regression). KHÔNG `@Disabled` thiếu blocker ref.
 - **Unit** (logic thuần: service/guard/validator/handler): `@ExtendWith(MockitoExtension.class)`, mock mọi dependency ngoài class test. KHÔNG DB/Redis/Kafka/HTTP, KHÔNG Spring context, **KHÔNG H2**.
 - **Integration**: **TestContainers PostgreSQL** (DB thật) — **KHÔNG H2** (H2 thiếu JSONB, dialect khác ẩn migration/schema bug); Kafka container; REST qua MockMvc.
-- **BẮT BUỘC ≥1 integration test BOOT Spring context trên Testcontainers Postgres + chạy MIGRATION + `ddl-auto: validate`** → Hibernate validate **entity ↔ schema** lúc boot: **sai tên cột / kiểu cột (vd `varchar(3)` ↔ `CHAR(3)`, `TIMESTAMPTZ` ↔ `Instant`) = test ĐỎ NGAY ở DEV** (không để lộ tới `/dev-handoff` lúc connect DB). Đây là chốt bắt schema-drift mà unit/mock + review tĩnh không thấy.
+- **BẮT BUỘC ≥1 integration test BOOT Spring context trên Testcontainers Postgres + chạy MIGRATION + `ddl-auto: validate`** → Hibernate validate **entity ↔ schema** lúc boot: **sai tên cột / kiểu cột (vd `varchar(3)` ↔ `CHAR(3)`, `TIMESTAMPTZ` ↔ `Instant`) = test ĐỎ NGAY ở DEV** (không để lộ tới `/run-wave` lúc connect DB). Đây là chốt bắt schema-drift mà unit/mock + review tĩnh không thấy.
 - Naming `should_{expected}_when_{condition}`. Cover: success / validation fail / not found / permission fail / tenant boundary / idempotency / edge.
 
 ## Coding checklist — verify trước khi báo done

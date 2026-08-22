@@ -6,11 +6,11 @@ description: Discovery D3 (charter-author) — identify boundary từ event-stor
 # Boundary Charter Skill (D3)
 
 ## Khi load
-`/discovery-start D3` — agent `charter-author-agent` (Architecture Authority). Vai trò kép:
+`/discover D3` — agent `charter-author-agent` (Architecture Authority). Vai trò kép:
 1. **Identify boundary** từ aggregates/domains ở D2 → `BOUNDARY-MAP.md` + `CHARTER.md` per boundary.
 2. **Derive PROJECT.md** (PRD) → sang DOMAIN_AUTHORING.
 
-> **KHÔNG sinh FEAT/Epic/BR ở D3**: DOMAIN (stage sau) sở hữu product — po/ba author BUSINESS vào `docs/domain/` (`/domain-po`·`/domain-ba`) → ký (`/domain-approve`) → `/domain-translate` dịch sang eng `docs/architecture/`. D3 chỉ charter + BOUNDARY-MAP + PROJECT.md.
+> **KHÔNG sinh FEAT/Epic/BR ở D3**: DOMAIN (stage sau) sở hữu product — `/domain` author BUSINESS vào `docs/domain/` → ký → dịch sang eng `docs/architecture/` (một lệnh, ba bước). D3 chỉ charter + BOUNDARY-MAP + PROJECT.md.
 
 Input: `hypothesis-log.md` + `capability-map.md` + `persona-pool.md` + `event-storming/ES-*.md`.
 
@@ -32,11 +32,11 @@ Input: `hypothesis-log.md` + `capability-map.md` + `persona-pool.md` + `event-st
 ## Quy tắc
 - KHÔNG invent capability/boundary ngoài discovery — refer back D0-D2.
 - 1 spawn có thể tạo nhiều boundary CHARTER (D3 identification), nhưng giữ data ownership không overlap.
-- KHÔNG tạo `knowledge-base/*.yaml` (KG do implementation-plan/start-wave sau).
+- KHÔNG tạo `knowledge-base/*.yaml` (KG do implementation-plan/run-wave sau).
 - Idempotent re-run.
 
 ## Sang DOMAIN authoring
-Sau D3 + `/discovery-end` (gate pass → DOMAIN_AUTHORING): PROJECT.md + charter boundaries đã có → user chạy `/domain-po <EPIC|FEATURE|JOURNEY>` · `/domain-ba <BR|PERSONA>` (author business `docs/domain/`, self-loop) → `/domain-approve` (ký) → `/domain-translate` (dịch eng) → `/domain-end` (gate ≥1 eng epic+feat+BR + translation_parity) → `/design` → `/design-end` → `/plan` → `/approve-document` → `/start-wave 1`.
+Sau D3 + `/discover` (gate pass → DOMAIN_AUTHORING): PROJECT.md + charter boundaries đã có → user chạy `/domain` — tự suy thiếu gì viết nấy, lặp tới khi OK, rồi ký + dịch (gate ≥1 eng epic+feat+BR + translation_parity) → `/design` (refine tới khi vừa ý, `--end` chốt) → `/plan` → `/approve-document` → `/run-wave 1`.
 
 ## Quality checklist
 - [ ] BOUNDARY-MAP ≥1 row non-placeholder.
@@ -46,4 +46,4 @@ Sau D3 + `/discovery-end` (gate pass → DOMAIN_AUTHORING): PROJECT.md + charter
 - [ ] KHÔNG sinh FEAT/Epic/BR (để DOMAIN).
 
 ## Done
-- BOUNDARY-MAP + CHARTER + PROJECT.md pass gate D3; user confirm → `/discovery-end` (không arg) → DOMAIN_AUTHORING.
+- BOUNDARY-MAP + CHARTER + PROJECT.md pass gate D3; user confirm → `/discover` (không arg) → DOMAIN_AUTHORING.
