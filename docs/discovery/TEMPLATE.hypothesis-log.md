@@ -54,13 +54,26 @@ Bằng chứng: {{như trên}}
 
 > Mỗi giả thuyết phải falsifiable. Expected outcome = tín hiệu đo được. Test method = cách kiểm chứng. ≥3 row TESTABLE để rời D0.
 
-| ID | Statement (falsifiable) | Expected outcome (đo được) | Test method (experiment/interview/data) | Bằng chứng (vì sao tin điều này) | Linked persona/cap (D1) | Status |
-|---|---|---|---|---|---|---|
-| H1 | {{Nếu làm X thì Y đổi — có thể bị bác bỏ}} | {{tín hiệu vs baseline}} | {{pilot A/B · phỏng vấn · đối chiếu data}} | {{chuyện thật/con số/hiện vật khiến đặt cược này}} | _D1_ | TESTABLE |
-| H2 | {{TBD}} | {{TBD}} | {{TBD}} | {{TBD}} | _D1_ | TESTABLE |
-| H3 | {{TBD}} | {{TBD}} | {{TBD}} | {{TBD}} | _D1_ | TESTABLE |
+| ID | Statement (falsifiable) | Ngưỡng (SỐ, ghi TRƯỚC) | Cách đo | Bằng chứng (vì sao tin điều này) | Wave đo | Số thật | Status |
+|---|---|---|---|---|---|---|---|
+| H1 | {{Nếu làm X thì Y đổi — có thể bị bác bỏ}} | {{≥30% trong 2 tuần — con số, không phải "tăng đáng kể"}} | {{event nào đếm · so với baseline nào}} | {{chuyện thật/con số/hiện vật khiến đặt cược này}} | {{wave-001}} | | TESTABLE |
+| H2 | {{TBD}} | {{TBD}} | {{TBD}} | {{TBD}} | {{TBD}} | | TESTABLE |
+| H3 | {{TBD}} | {{TBD}} | {{TBD}} | {{TBD}} | {{TBD}} | | TESTABLE |
 
-Status: `TESTABLE → PROVEN | DISPROVEN | PIVOTED` (cập nhật qua change-log §7).
+`Status`: `TESTABLE → PROVEN | DISPROVEN | CHƯA ĐỦ DỮ LIỆU | PIVOTED`.
+
+> **`Ngưỡng` phải là SỐ và phải ghi TRƯỚC khi nhìn dữ liệu.** "Tăng đáng kể" không bác bỏ được cái
+> gì — giả thuyết nào cũng đúng nếu ngưỡng viết sau. Sửa ngưỡng sau khi thấy số là cách tự lừa mình
+> một cách lịch sự; muốn đổi thì ghi một dòng ở §7 kèm lý do, để lần sau còn đọc lại được.
+>
+> **`Cách đo` phải trỏ tới thứ có thật**: một event trong `tracking/PRODUCTION-READY.md` nhóm 4, hoặc
+> một truy vấn cụ thể. Không cài chỗ đo thì giả thuyết vĩnh viễn nằm ở `TESTABLE` — và cả sổ này
+> thành danh sách phỏng đoán không ai đối chứng.
+>
+> **`CHƯA ĐỦ DỮ LIỆU` là kết luận hợp lệ.** Ép ra `PROVEN`/`DISPROVEN` khi số chưa đủ còn tệ hơn
+> không kết luận: nó đóng một câu hỏi vẫn đang mở.
+>
+> `/next-wave` đối chiếu cột `Wave đo` — wave đóng mà giả thuyết của wave đó còn `TESTABLE` thì nhắc.
 
 > Cột `Bằng chứng` trống = giả thuyết bịa từ suy luận, không từ thực tế Authority kể. Gate D0 chặn.
 

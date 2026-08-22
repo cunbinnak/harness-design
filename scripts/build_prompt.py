@@ -77,7 +77,8 @@ NON_NEGOTIABLES = """## NON-NEGOTIABLES
    không ai đọc, mất luôn tác dụng).
 5. Cross-boundary change → phải qua chốt rà chéo của `/domain` + `/approve-document` TRƯỚC
    khi code. Sau khi wave đã ship: thay đổi = **wave sau**, KHÔNG sửa tại chỗ.
-6. **Chặn cứng sau khi đã tự thử hết cách** → ghi một dòng `tracking/blockers.md` (cột
+6. **Chặn cứng sau khi đã tự thử hết cách** → ghi một dòng `tracking/blockers.md` (chưa có
+   file thì chép từ `tracking/_templates/TEMPLATE.blockers.md`; cột
    `Đã thử gì` phải có nội dung — trống thì chưa phải blocker, mới là chưa thử đủ), rồi
    **CHUYỂN SANG VIỆC KHÁC NGAY** và báo gộp cuối lượt. KHÔNG ngồi chờ, KHÔNG dừng cả lượt
    vì một chỗ tắc. Đây là chỗ dừng hợp lệ khác với mơ hồ (→ `decide.py`) và ngoài scope
@@ -421,8 +422,6 @@ DOMAIN_MODES = {
     # WIREFRAME bỏ: wireframe = UX = ux/ (DESIGN phase technical-design lo, không phải DOMAIN artifact riêng).
 }
 # po viết EPIC/FEATURE/JOURNEY · ba viết BR/PERSONA (tách lệnh domain-po, domain-ba).
-DOMAIN_PO_MODES = ("EPIC", "FEATURE", "JOURNEY")
-DOMAIN_BA_MODES = ("BR", "PERSONA")
 
 
 def build_domain_author(state: dict, matrix: list[dict], opts: dict) -> str:

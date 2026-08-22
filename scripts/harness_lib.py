@@ -34,23 +34,3 @@ def save_json(path, data) -> None:
 def utc_now_iso() -> str:
     """Timestamp ISO-8601 UTC (cho meta.updated_at)."""
     return datetime.now(timezone.utc).isoformat()
-
-
-def load_yaml(path):
-    """Đọc + parse YAML (cần pyyaml). Dùng cho KG yaml nếu cần."""
-    try:
-        import yaml  # type: ignore
-    except ImportError as e:  # pragma: no cover
-        raise RuntimeError("pyyaml chưa cài — `pip install pyyaml` để dùng load_yaml") from e
-    return yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-
-
-def save_yaml(path, data) -> None:
-    """Ghi YAML (giữ unicode, không sort key)."""
-    try:
-        import yaml  # type: ignore
-    except ImportError as e:  # pragma: no cover
-        raise RuntimeError("pyyaml chưa cài — `pip install pyyaml` để dùng save_yaml") from e
-    Path(path).write_text(
-        yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8"
-    )

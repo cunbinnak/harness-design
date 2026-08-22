@@ -287,10 +287,6 @@ def safe_rel_path(abs_or_rel: str) -> str:
 # ========================================================================
 
 HARNESS_CMD_RE = re.compile(
-    r"(?:harness\.py|state\.py)\s+(?:complete\s+)?([\w-]+)\s+complete\b",
-    re.IGNORECASE,
-)
-HARNESS_CMD_RE_ALT = re.compile(
     r"(?:harness\.py|state\.py)\s+([\w-]+)\s+complete\b",
     re.IGNORECASE,
 )
@@ -330,7 +326,7 @@ def parse_harness_complete(bash_cmd: str) -> dict | None:
     if not bash_cmd:
         return None
     bash_cmd = strip_heredocs(bash_cmd)
-    m = HARNESS_CMD_RE_ALT.search(bash_cmd)
+    m = HARNESS_CMD_RE.search(bash_cmd)
     if not m:
         return None
     command = m.group(1)
@@ -542,3 +538,90 @@ def _selftest() -> int:
 if __name__ == "__main__":
     import sys as _sys
     _sys.exit(_selftest())
+
+
+# ========================================================================
+# token_violation — design system đã chốt thì phải theo, chặn NGAY LÚC GHI
+# ========================================================================
+#
+# VÌ SAO CÓ. Luật "mockup và code FE chỉ lắp từ token" hiện chỉ sống ở gate `web_styling`
+# @dev-handoff — tức là BÁO sau khi code đã viết xong, và chỉ khi có người chạy tới chốt đó.
+# Cám dỗ lớn nhất lúc dựng UI là gõ thẳng `#3B82F6` cho nhanh; nhanh hơn thật, và giết đúng
+# tác dụng của design token: phản hồi "chữ nhỏ quá / màu chìm quá" lẽ ra sửa MỘT token rồi lan
+# ra mọi màn, nay thành đi sửa tay từng chỗ — rồi pha code thừa hưởng nguyên mớ đó.
+#
+# CHỈ CHẶN LỖI MỚI so với bản đang trên đĩa. File bẩn từ trước (viết lúc chưa có hook) là việc
+# của gate; edit không thêm lỗi — kể cả edit đang sửa dần từng lỗi một — phải đi qua, nếu không
+# hook bắt đền lỗi cũ và Edit không sửa nổi file.
+#
+# FAIL-OPEN, và mỗi chỗ mở đều có người bắt hộ: chưa chốt design-tokens.css · file ngoài phạm vi
+# · không đọc được → cho qua, gate `web_styling` + `design_system_closed` là backstop.
+
+TOKEN_SCOPE_DIRS = ("docs/architecture/ux/mockups/",)
+TOKEN_SCOPE_EXTS = (".css", ".scss", ".html", ".tsx", ".jsx", ".vue", ".svelte")
+TOKENS_CSS = "docs/architecture/ux/design-tokens.css"
+
+_RAW_COLOR_RE = re.compile(r"#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(")
+_VAR_USE_RE = re.compile(r"var\(\s*(--[\w-]+)")
+_ROOT_BLOCK_RE = re.compile(r":root[^{]*\{[^}]*\}", re.DOTALL)
+
+
+def _in_token_scope(rel: str) -> bool:
+    if not rel:
+        return False
+    r = rel.replace("\\", "/")
+    if r.startswith(TOKEN_SCOPE_DIRS):
+        return True
+    # code FE của boundary: services/**/src/** file style/component
+    return r.startswith("services/") and r.endswith(TOKEN_SCOPE_EXTS)
+
+
+def _strip_root(css: str) -> str:
+    """Bỏ khối `:root{...}` — đó là CHỖ HỢP LỆ để khai giá trị thô."""
+    return _ROOT_BLOCK_RE.sub("", css)
+
+
+def _token_errors(text: str, declared: set[str]) -> tuple[set[str], set[str]]:
+    """(mã màu thô ngoài :root, token dùng mà chưa khai)."""
+    body = _strip_root(text)
+    raw = {m.group(0) for m in _RAW_COLOR_RE.finditer(body)}
+    used = {m.group(1) for m in _VAR_USE_RE.finditer(text)}
+    return raw, (used - declared if declared else set())
+
+
+def token_violation(rel: str, new_text: str, root: Path | None = None) -> str | None:
+    """Thông báo chặn, hoặc None nếu cho qua. Chỉ tính lỗi MỚI so với bản trên đĩa."""
+    if not new_text or not _in_token_scope(rel):
+        return None
+    base = root or Path(__file__).resolve().parent.parent.parent
+    tokens_file = base / TOKENS_CSS
+    if not tokens_file.is_file():
+        return None                       # chưa chốt design system → chưa có gì để theo
+    try:
+        declared = {m.group(1) for m in re.finditer(r"(--[\w-]+)\s*:", tokens_file.read_text(
+            encoding="utf-8", errors="ignore"))}
+    except OSError:
+        return None
+    if not declared:
+        return None                       # SoT chưa khai token nào → gate design_system_closed bắt
+    try:
+        old_text = (base / rel).read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        old_text = ""
+    raw_new, undecl_new = _token_errors(new_text, declared)
+    raw_old, undecl_old = _token_errors(old_text, declared)
+    raw = raw_new - raw_old
+    undecl = undecl_new - undecl_old
+    if not raw and not undecl:
+        return None
+    msg = [f"FM-TOKEN-DRIFT: '{rel}' thêm lỗi MỚI so với bản đang có —"]
+    if raw:
+        msg.append(f"  · mã màu thô ngoài `:root`: {', '.join(sorted(raw)[:5])}")
+        msg.append("    Gõ thẳng hex là giết đúng tác dụng của design token: phản hồi \"màu chìm quá\"")
+        msg.append(f"    lẽ ra sửa MỘT token trong `{TOKENS_CSS}` rồi lan ra mọi màn.")
+    if undecl:
+        msg.append(f"  · dùng token chưa khai ở SoT: {', '.join(sorted(undecl)[:5])}")
+        msg.append(f"    Thiếu token thì THÊM VÀO `{TOKENS_CSS}` trước, đừng khai biến mới tại chỗ —")
+        msg.append("    đó là dựng design system thứ hai mà không ai biết.")
+    msg.append("  Lỗi CŨ trong file không bị tính: sửa dần từng chỗ vẫn đi qua được.")
+    return "\n".join(msg)

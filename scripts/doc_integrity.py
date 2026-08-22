@@ -145,7 +145,29 @@ def main() -> int:
                 if not (f.parent / t).exists():
                     problems.append(f"[link chết] {rel}:{n} → {t}")
 
-    # 7. command file trên đĩa nhưng chưa sync sang .claude/commands
+    # 7. TEMPLATE mồ côi — không tài liệu/script nào nhắc tên nó
+    #    Template không ai gọi là chỗ trốn kỹ nhất của rác: nó không gây lỗi, không ai xoá, và
+    #    lần sau có người chép nhầm bản đã chết. (`TEMPLATE.local-dev.md` nằm im như vậy 3 tháng.)
+    tpl_names = {p.name for p in ROOT.rglob("TEMPLATE.*")
+                 if ".git" not in p.parts and "archive" not in p.parts}
+    corpus = []
+    for p in ROOT.rglob("*"):
+        if not p.is_file() or ".git" in p.parts or "archive" in p.parts:
+            continue
+        if p.suffix not in (".md", ".py", ".json", ".yaml", ".yml"):
+            continue
+        if p.name in tpl_names:
+            continue                       # template không tự chứng minh mình còn sống
+        try:
+            corpus.append(p.read_text(encoding="utf-8", errors="ignore"))
+        except OSError:
+            pass
+    joined = "\n".join(corpus)
+    for name in sorted(tpl_names):
+        if name not in joined:
+            problems.append(f"[template mồ côi] {name} — không chỗ nào nhắc tên; xoá hoặc nối vào flow")
+
+    # 8. command file trên đĩa nhưng chưa sync sang .claude/commands
     synced = {p.stem for p in (ROOT / ".claude" / "commands").glob("*.md")}
     for c in sorted(commands - synced):
         problems.append(f"[chưa sync] commands/{c}.md — chạy py scripts/sync_commands.py")

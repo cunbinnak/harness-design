@@ -2253,6 +2253,69 @@ def check_challenge_doc(state: dict, evidence: dict | None = None,
     return True, ""
 
 
+HYPO_LOG = "docs/discovery/hypothesis-log.md"
+_NUM_RE = re.compile(r"\d")
+
+
+def check_hypothesis_measurable(state: dict, evidence: dict | None = None,
+                                root: Path | None = None) -> tuple[bool, str]:
+    """KHOÁ SCOPE: mọi giả thuyết còn `TESTABLE` phải có NGƯỠNG BẰNG SỐ + CÁCH ĐO + WAVE ĐO.
+
+    VÌ SAO — `hypothesis-log` khai vòng đời `TESTABLE → PROVEN | DISPROVEN`, nhưng trong cả repo
+    chuỗi `PROVEN` chỉ xuất hiện đúng một lần: ở chính cái template khai ra nó. Không gì đo, nên
+    không gì chuyển trạng thái, nên sổ giả thuyết là **danh sách phỏng đoán không ai đối chứng** —
+    một tài liệu trông như đang gác mà không gác gì.
+
+    Gate này KHÔNG đòi "đã đo" — harness dừng ở `/next-wave`, chưa có production thì chưa có số.
+    Nó đòi đúng ba thứ NẰM TRONG TẦM TAY lúc khoá scope:
+
+      NGƯỠNG BẰNG SỐ   "tăng đáng kể" không bác bỏ được cái gì; giả thuyết nào cũng đúng nếu ngưỡng
+                       viết sau khi nhìn số. Có số thì mới sai được, mà sai được mới là giả thuyết.
+      CÁCH ĐO          trỏ tới thứ có thật (event ở PRODUCTION-READY nhóm 4 / một truy vấn cụ thể).
+                       Không cài chỗ đo thì ngưỡng cũng chỉ là con số trang trí.
+      WAVE ĐO          gắn vào một wave, để `/next-wave` còn biết lúc nào phải hỏi lại.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    f = root / HYPO_LOG
+    if not f.is_file():
+        return True, ""      # chưa có sổ giả thuyết → không phải phạm vi gate này (discovery gác)
+    bad: list[str] = []
+    for r in _parse_md_table_rows(read_live(f), ("id", "status")):
+        hid = (r.get("id") or "").strip()
+        if not hid or "{{" in hid or not hid.upper().startswith("H"):
+            continue
+        if (r.get("status") or "").strip().upper() != "TESTABLE":
+            continue                                  # đã kết luận rồi thì thôi
+        miss = []
+        thr = (r.get("ngưỡng (số, ghi trước)") or r.get("ngưỡng") or "").strip()
+        how = (r.get("cách đo") or "").strip()
+        wave = (r.get("wave đo") or "").strip()
+        if not thr or "{{" in thr:
+            miss.append("thiếu Ngưỡng")
+        elif not _NUM_RE.search(thr):
+            miss.append(f"Ngưỡng không có SỐ ({thr[:32]!r})")
+        if not how or "{{" in how:
+            miss.append("thiếu Cách đo")
+        if not wave or "{{" in wave:
+            miss.append("thiếu Wave đo")
+        if miss:
+            bad.append(f"{hid}: {' · '.join(miss)}")
+    if not bad:
+        return True, ""
+    return False, (
+        f"{HYPO_LOG} — {len(bad)} giả thuyết chưa đo được:\n      "
+        + "\n      ".join(bad[:6])
+        + ("\n      …" if len(bad) > 6 else "")
+        + "\n      Ngưỡng phải là **SỐ** và ghi TRƯỚC khi nhìn dữ liệu: \"tăng đáng kể\" thì giả "
+          "thuyết nào cũng đúng, mà đúng-mọi-đằng nghĩa là không bác bỏ được, tức là không phải "
+          "giả thuyết.\n      Cách đo phải trỏ tới thứ có thật (event ở PRODUCTION-READY nhóm 4 / "
+          "một truy vấn cụ thể) — không cài chỗ đo thì ngưỡng chỉ là số trang trí"
+    )
+
+
 def check_decisions_min(state: dict, evidence: dict | None = None,
                         root: Path | None = None) -> tuple[bool, str]:
     """KHOÁ SCOPE: ≥2 quyết định đã ghi, đếm DƯỚI mốc wave hiện tại.
@@ -3350,6 +3413,7 @@ GATE_RULES: dict[str, list[dict]] = {
         # Đây là KHOÁ SCOPE. Hai gate dưới là thứ chặn "khoá một bộ tài liệu chưa ai chất vấn":
         # challenge_doc bắt lỗ TRONG tài liệu (khác challenge_passed — cái đó bắt lỗi đọc hiểu,
         # muộn hơn và rẻ hơn); decisions_min bắt ĐOÁN IM LẶNG suốt lượt làm tài liệu.
+        {"kind": "hypothesis_measurable"},
         {"kind": "challenge_doc"},
         {"kind": "decisions_min"},
         # Giao diện phải được NGƯỜI xem: cả tầng design-tokens + web_styling + vai picky đang
@@ -3447,6 +3511,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_file_exists(rule["path"])
         if kind == "wave_in_matrix":
             return check_wave_in_matrix(evidence, rule.get("field", "wave_n"))
+        if kind == "hypothesis_measurable":
+            return check_hypothesis_measurable(state, evidence)
         if kind == "challenge_doc":
             return check_challenge_doc(state, evidence)
         if kind == "decisions_min":

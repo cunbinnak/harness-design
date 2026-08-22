@@ -321,7 +321,20 @@ def _pre_write_edit(payload: dict) -> int:
             "của boundary). Container chết do lỗi này → STOP, đọc `docker compose logs`, báo root-cause + "
             "spawn `fix-{boundary}-agent` (Mode B) để fix → re-run /dev-handoff. dev-handoff chỉ chỉnh docker-compose.yml."
         )
+    tok = policies.token_violation(norm, _edit_new_text(payload))
+    if tok:
+        return pre_tool_deny(tok)
     return allow_silent()
+
+
+def _edit_new_text(payload: dict) -> str:
+    """Nội dung SẮP ghi — Write `content`, Edit `new_string`, MultiEdit gộp mọi `new_string`."""
+    ti = _tool_input(payload)
+    parts = [str(ti.get("content") or ""), str(ti.get("new_string") or "")]
+    for e in (ti.get("edits") or []):
+        if isinstance(e, dict):
+            parts.append(str(e.get("new_string") or ""))
+    return "\n".join(p for p in parts if p)
 
 
 def _harness_agent_names() -> list[str]:

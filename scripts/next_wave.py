@@ -305,6 +305,36 @@ def carry_open_findings(n: int) -> list[str]:
     return [(r.get("#") or "").strip() for r in carried]
 
 
+def unconcluded_hypotheses(n: int) -> list[str]:
+    """Giả thuyết khai `Wave đo = wave-N` mà còn `TESTABLE`. Trả mô tả ngắn.
+
+    Đây là nửa còn lại của vòng giả thuyết: gate `hypothesis_measurable` ép khai được NGƯỠNG và
+    CÁCH ĐO lúc khoá scope; chỗ này hỏi lại lúc wave đó đóng. Không hỏi thì sổ giả thuyết vẫn nằm
+    im ở `TESTABLE` mãi mãi — đúng tình trạng trước khi vá.
+
+    **Nhắc, không chặn.** Harness dừng ở `/next-wave`, chưa chắc đã có production để lấy số; ép ra
+    `PROVEN`/`DISPROVEN` khi số chưa đủ còn tệ hơn không kết luận — nó đóng một câu hỏi vẫn đang mở.
+    `CHƯA ĐỦ DỮ LIỆU` là kết luận hợp lệ, và ghi nó vào cũng là một lần trả lời.
+    """
+    f = REPO_ROOT / "docs" / "discovery" / "hypothesis-log.md"
+    if not f.is_file():
+        return []
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import gates
+
+    wave = f"wave-{n:03d}"
+    out = []
+    for r in gates._parse_md_table_rows(gates.read_live(f), ("id", "status")):
+        hid = (r.get("id") or "").strip()
+        if not hid or "{{" in hid:
+            continue
+        if (r.get("wave đo") or "").strip() != wave:
+            continue
+        if (r.get("status") or "").strip().upper() == "TESTABLE":
+            out.append(f"{hid}: {(r.get('statement') or '')[:60]}")
+    return out
+
+
 def open_blockers() -> list[str]:
     """Dòng blocker còn `mở` trong tracking/blockers.md. Trả mô tả ngắn từng dòng.
 
@@ -447,6 +477,15 @@ def do_go(state: dict, n: int) -> int:
     if n_bc:
         print(f"  ok  sổ tương thích ngược: bỏ tick {n_bc} mục §3 — wave mới rà lại "
               "(§1 sổ hợp đồng GIỮ NGUYÊN, tích luỹ vĩnh viễn)")
+
+    hypo = unconcluded_hypotheses(n)
+    if hypo:
+        print(f"  !!  {len(hypo)} giả thuyết khai đo ở wave {n} mà còn TESTABLE:")
+        for h in hypo[:5]:
+            print(f"        {h}")
+        print("      Điền `Số thật` + đổi Status. `CHƯA ĐỦ DỮ LIỆU` là kết luận HỢP LỆ — "
+              "ép ra PROVEN/DISPROVEN khi số chưa đủ là đóng một câu hỏi vẫn đang mở.")
+        print("      Không chặn, nhưng bỏ qua thì sổ giả thuyết nằm im ở TESTABLE mãi mãi.")
 
     blk = open_blockers()
     if blk:

@@ -13,7 +13,7 @@ Python kernel cho ADLC Design Harness. ~10 file core.
 | `materialize.py` | Per-boundary artifact generator (dev/fix/KG từ MATRIX) |
 | `materialize_matrix.py` | Ghi SERVICE-BOUNDARY-MATRIX.json (stage PLAN, gate stage, validate) |
 | `discovery_gate.py` | Gate D0-D3 (port từ ZIP, adapt single-repo) |
-| `harness_lib.py` | Shared helper (repo_root/load_json/save_json/utc_now_iso) cho tooling phụ |
+| `harness_lib.py` | Helper dùng chung: repo_root · load_json · save_json · utc_now_iso |
 | `smoke_test.py` | E2E state machine walkthrough (28 assertions) |
 | `sync_commands.py` | Sync `commands/*.md` → `.claude/commands/` |
 | `reset_for_new_project.py` | Clear v4 artifacts khi fork repo |
