@@ -9,7 +9,7 @@ Vì sao HARNESS ghi (không phải agent): giống proof-file infra/health — n
 (policies.is_proof_file: feature-state.md).
 
 Là **clock-in artifact** (L05): session mới đọc file này biết ngay feat nào `passing`/`active`/
-`not_started` — không phải dò lại từ đầu. MAIN chạy sau /test-execute (khi có report), hoặc bất cứ
+`not_started` — không phải dò lại từ đầu. MAIN chạy sau test-execute (khi có report), hoặc bất cứ
 lúc nào ở DEV+ để xem tiến độ (chưa test → mọi feat not_started, vẫn là baseline hữu ích).
 
 Usage:
@@ -44,7 +44,7 @@ def capture(wave_id: str, root: Path | None = None) -> int:
     state["wave"] = {**(state.get("wave") or {}), "id": wave_id}
     rows = gates.derive_feature_states(state, root)
     if not rows:
-        print(f"WARN: wave {wave_id} không có wave_features (chưa /start-wave?) — không ghi.", file=sys.stderr)
+        print(f"WARN: wave {wave_id} không có wave_features (chưa start-wave?) — không ghi.", file=sys.stderr)
         return 1
     out_dir = root / "tracking" / wave_id
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -104,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError):
             wave_id = None
     if not wave_id:
-        print("FAIL: không xác định wave (STATE.wave.id rỗng) — /start-wave trước.", file=sys.stderr)
+        print("FAIL: không xác định wave (STATE.wave.id rỗng) — start-wave trước.", file=sys.stderr)
         return 2
     return capture(wave_id)
 

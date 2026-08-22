@@ -205,7 +205,7 @@ flowchart TB
 | Scalability | {{1000 req/s @ {{N}} concurrent}} | load test |
 | Durability | {{no data loss on single-node crash}} | resilience TC |
 | Security | {{OWASP Top 10 clean; auth mọi endpoint}} | security review + TC |
-| Test coverage | BE ≥ 80%, BFF ≥ 70%, web/mobile ≥ 60% | `/dev-handoff` gate |
+| Test coverage | BE ≥ 80%, BFF ≥ 70%, web/mobile ≥ 60% | `dev-handoff` gate |
 | Observability | {{JSON log + RED metric + trace}} | review |
 | Maintainability | {{1 người vận hành — ưu tiên đơn giản}} | — |
 

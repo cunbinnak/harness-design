@@ -7,7 +7,7 @@ Port từ ZIP `{{PROJECT-CODE}}-ADLC-DISCOVERY/scripts/wave-sequence-validate.py
 - BỎ contract-signing/`inherited_active` SIGNED check (plumbing multi-repo). Thay: `inherited_active`
   = đường dẫn doc trong `docs/architecture/` → check FILE TỒN TẠI (single-repo: contract = file).
 
-Hard invariants (error → chặn /plan): wave_class/wave_strategy enum · target_count_per_layer ≤ 3 ·
+Hard invariants (error → chặn plan): wave_class/wave_strategy enum · target_count_per_layer ≤ 3 ·
 strategy layer-purity (horizontal-be cấm FE target; horizontal-fe cấm boundary target) · vertical →
 mỗi FEAT có parent_epic. Warning (không chặn): rare combo rationale · paired_with reciprocal ·
 exit_signal coherence · test_scope coherence.

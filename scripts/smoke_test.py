@@ -366,9 +366,9 @@ def main() -> int:
         state_mod.complete("discovery-end", {"service_prefix": "demo", **FB3})
         state_mod.complete("domain-end", FB3)
         state_mod.complete("design-end", FB3)  # giờ ở PLAN
-        ok = step("PLAN -> DESIGN (lùi /design)", "design", {}, "DESIGN")
+        ok = step("PLAN -> DESIGN (lùi design)", "design", {}, "DESIGN")
         passed.append(ok) if ok else failed.append("back-edge PLAN->DESIGN")
-        ok = step("DESIGN -> DOMAIN (lùi /domain-po)", "domain-po", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
+        ok = step("DESIGN -> DOMAIN (lùi domain-po)", "domain-po", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
         passed.append(ok) if ok else failed.append("back-edge DESIGN->DOMAIN")
 
     finally:

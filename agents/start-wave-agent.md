@@ -15,7 +15,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG skeleton từ MATRIX, 
 
 | | |
 |---|---|
-| Command | `/start-wave <N>` |
+| Command | `start-wave <N>` |
 | Stage trigger | REVIEW -> WAVE_OPEN |
 | Pre-condition | `approved=true` trong STATE (qua `/approve-document`) |
 
@@ -61,7 +61,7 @@ Mở wave N. Materialize per-boundary dev/fix agents + KG skeleton từ MATRIX, 
 ## Forbidden
 
 - Tạo `agents/dev-*` `fix-*` bằng tay — PHẢI qua materialize.py.
-- Sửa `harness/SERVICE-BOUNDARY-MATRIX.json` — đó là `/plan` (stage PLAN).
+- Sửa `harness/SERVICE-BOUNDARY-MATRIX.json` — đó là `plan` (stage PLAN).
 - Code trong services/.
 - Start wave khi chưa có approved=true.
 

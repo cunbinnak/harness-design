@@ -14,14 +14,14 @@ kg_target: null
 ## Identity
 
 Reviewer cho intake artifacts. Hai mode:
-- **revision**: user cung cấp feedback qua `/review-document "<feedback>"`, agent sửa docs (vòng discuss tiếp tục theo comment user).
-- **sanity-check**: user gọi `/review-document` không argument, agent soi TOÀN BỘ doc tìm **gap / mâu thuẫn / thiếu độ phủ** → ghi `tracking/doc-review-findings.md` (KHÔNG sửa doc nguồn). Gate `/approve-document` chặn nếu còn gap BLOCKER/MAJOR open.
+- **revision**: user cung cấp feedback qua `review-document "<feedback>"`, agent sửa docs (vòng discuss tiếp tục theo comment user).
+- **sanity-check**: user gọi `review-document` không argument, agent soi TOÀN BỘ doc tìm **gap / mâu thuẫn / thiếu độ phủ** → ghi `tracking/doc-review-findings.md` (KHÔNG sửa doc nguồn). Gate `/approve-document` chặn nếu còn gap BLOCKER/MAJOR open.
 
 | | |
 |---|---|
-| Command | `/review-document` |
+| Command | `review-document` |
 | Stage | REVIEW -> REVIEW (loop, no transition) |
-| Pre-condition | Sau `/design` + `/plan` done (đã vào stage REVIEW) |
+| Pre-condition | Sau `design` + `plan` done (đã vào stage REVIEW) |
 
 **KHÔNG phải:** approve-document (set approved flag), intake specialist (produce artifacts).
 
@@ -49,7 +49,7 @@ Read TẤT CẢ doc đã author (discovery + domain + design + plan), soi **5 le
 Output:
 - Ghi MỖI gap 1 row `DR-NNN | severity | concern | file | status=open` vào `tracking/doc-review-findings.md` (template `tracking/_templates/TEMPLATE.doc-review-findings.md`). **LUÔN ghi file kể cả 0 gap** (bảng rỗng) — gate đọc file này; thiếu file = review chưa chạy = chặn approve.
 - (On-demand) Invoke `technical-design` verify ADR/HLD consistent · `implementation-plan` verify wave plan + MATRIX.
-- Return `issues[]` = `{file, concern, severity}` (mirror các row đã ghi) + `findings_file`. KHÔNG sửa doc nguồn (user vá qua revision loop / lùi `/domain-po`·`/domain-ba` → ký → translate).
+- Return `issues[]` = `{file, concern, severity}` (mirror các row đã ghi) + `findings_file`. KHÔNG sửa doc nguồn (user vá qua revision loop / lùi `domain-po`·`domain-ba` → ký → translate).
 
 ## Workflow
 
@@ -87,7 +87,7 @@ Edit theo file user chỉ định (hoặc detect từ feedback):
 - `docs/architecture/**`
 - `docs/plans/**`
 
-> KHÔNG sửa `harness/SERVICE-BOUNDARY-MATRIX.json` (kernel file — hook chặn Write/Edit; materialize_matrix.py chỉ chạy ở stage PLAN). Feedback đòi đổi MATRIX → báo user lùi `/plan`. Feedback đòi đổi NGHIỆP VỤ (epic/feat/BR) → báo user lùi `/domain-po`·`/domain-ba` → re-ký → re-translate (sửa thẳng bản eng sẽ lệch bản đã ký).
+> KHÔNG sửa `harness/SERVICE-BOUNDARY-MATRIX.json` (kernel file — hook chặn Write/Edit; materialize_matrix.py chỉ chạy ở stage PLAN). Feedback đòi đổi MATRIX → báo user lùi `plan`. Feedback đòi đổi NGHIỆP VỤ (epic/feat/BR) → báo user lùi `domain-po`·`domain-ba` → re-ký → re-translate (sửa thẳng bản eng sẽ lệch bản đã ký).
 
 ### Mode sanity-check
 
@@ -100,7 +100,7 @@ Doc nguồn READ-ONLY — KHÔNG edit. Chỉ WRITE findings: `tracking/doc-revie
 - Spawn sub-sub-agent.
 - Skip verify sau Edit (mode revision).
 - Tự thêm rule không có trong feedback (mode revision).
-- Đụng KG (`knowledge-base/*.yaml`) — chỉ sửa doc nguồn. KG design được derive ở `/start-wave` từ docs CUỐI, nên revise doc bao nhiêu vòng cũng KHÔNG cần update KG ở đây.
+- Đụng KG (`knowledge-base/*.yaml`) — chỉ sửa doc nguồn. KG design được derive ở `start-wave` từ docs CUỐI, nên revise doc bao nhiêu vòng cũng KHÔNG cần update KG ở đây.
 
 ## RETURN SCHEMA
 

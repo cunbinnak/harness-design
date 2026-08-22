@@ -13,7 +13,7 @@ facilitator: "event-stormer (D2)"
 
 > Điền NGẮN GỌN: ưu tiên bảng/bullet, không văn xuôi thừa, không lặp. Doc này agent downstream đọc nhiều lần — tiết kiệm context.
 
-> Output `/discovery-start D2` cho 1 domain. Tên file `ES-{{domain-name}}.md` khớp domain ở `capability-map.md §3`.
+> Output `discovery-start D2` cho 1 domain. Tên file `ES-{{domain-name}}.md` khớp domain ở `capability-map.md §3`.
 > Gate D2: §1 Events ≥10 (chronological, past-tense) · ≥1 aggregate (§5) · hot-spot flagged kể cả "no hot-spot" (§7).
 
 ---

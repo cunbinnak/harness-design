@@ -33,7 +33,7 @@ BOOTSTRAP → DISC_D0 → DISC_D1 → DISC_D2 → DISC_D3 → DOMAIN_AUTHORING �
 ```
 REVIEW → WAVE_OPEN → DEV → REVIEW_DEV → DEV_HANDOFF → TEST_PLAN → TEST_EXECUTE → (auto) MANUAL_TEST → DONE → BOOTSTRAP
  start-wave  start-dev↻      ↑ fix Mode B loop                                    ↑ fix-bugs/run-wave↻      │
-                                                              DONE → DOMAIN_AUTHORING (apply-cr: po/ba → ký → translate)
+                                                              DONE → DOMAIN_AUTHORING (lùi `/domain` ở wave sau: nghiệp vụ → ký → dịch)
 ```
 
 Chi tiết transitions + evidence required: xem `harness/STATE-MACHINE.json`.

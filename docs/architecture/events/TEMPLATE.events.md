@@ -175,7 +175,7 @@ on event:
 | Subscriber crash giữa handle | Re-delivery → idempotent handler (§6) |
 | Broker down | Producer-side outbox/retry |
 | Poison message (parse fail) | Retry N → **DLT** + alert |
-| Schema drift | Contract test (`/test-execute`); breaking → version bump (§10) |
+| Schema drift | Contract test (`test-execute`); breaking → version bump (§10) |
 
 **Retry consumer-side**: backoff + jitter, max N → DLT. KHÔNG retry vô hạn (block partition).
 
@@ -195,7 +195,7 @@ on event:
 
 **Additive (MINOR — dev trong wave)**: thêm field payload/envelope optional; subscriber ignore field lạ.
 
-**Breaking (MAJOR — `/apply-cr` từ DONE)**: xoá field / đổi type / optional→required / rename / đổi `event_type`.
+**Breaking → WAVE SAU** (không sửa tại chỗ): lùi `/domain` sửa hợp đồng, `/approve-document` khoá lại, wave kế giao bản mới. Consumer đang chạy phải còn chạy được suốt lúc đó — luật cộng-trước-xoá-sau ở `tracking/BC-LEDGER.md §2`: xoá field / đổi type / optional→required / rename / đổi `event_type`.
 
 Breaking → bump `event_version` → topic mới `.v2`. Producer dual-publish v1+v2 qua deprecation window (default 2 wave); subscriber migrate xong → ngừng v1.
 

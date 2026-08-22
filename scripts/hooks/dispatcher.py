@@ -122,7 +122,7 @@ def _task_prompt(payload: dict) -> str:
 def _skill_name(payload: dict) -> str:
     """Tên skill/slash-command MAIN gọi qua Skill/SlashCommand tool.
 
-    Skill tool input: `skill`. SlashCommand tool input: `command` (vd '/dev-handoff arg').
+    Skill tool input: `skill`. SlashCommand tool input: `command` (vd 'dev-handoff arg').
     Chuẩn hoá: bỏ '/' đầu, bỏ namespace 'plugin:', lấy token đầu (tên lệnh, bỏ arg)."""
     ti = _tool_input(payload)
     raw = str(ti.get("skill") or ti.get("command") or ti.get("name") or "").strip()
@@ -213,7 +213,7 @@ def _pre_skill(payload: dict) -> int:
     """Chặn MAIN TỰ chạy harness slash-command (auto-nối pipeline) — CHỈ tool `SlashCommand`.
 
     Phân biệt 2 tool khác hẳn nhau (trước đây gộp → chặn oan sub-agent load skill):
-    - **`SlashCommand`** tool = CHẠY LỆNH `/test-plan` (như user gõ → fire UserPromptSubmit → reset
+    - **`SlashCommand`** tool = CHẠY LỆNH `test-plan` (như user gõ → fire UserPromptSubmit → reset
       MAIN chạy lại cả hành lang). Vector tự-nối-lệnh THẬT → deny nếu ∈ GATE_RULES.
     - **`Skill`** tool = LOAD convention skill (sub-agent nạp checklist của chính nó: domain-po,
       test-plan, ux-design…). KHÔNG transition state, KHÔNG fire UserPromptSubmit → CHO QUA LUÔN,
@@ -279,7 +279,7 @@ def _pre_bash(payload: dict) -> int:
 def _handoff_no_code_fix(spawn_active: str | None, norm_path: str) -> bool:
     """True = chặn edit services/** vì dev-handoff-agent đang là spawn hoạt động (infra-only, #12).
 
-    Discriminator = WHO (cờ spawn.active), KHÔNG phải stage: `/dev-handoff` chỉ transition sang
+    Discriminator = WHO (cờ spawn.active), KHÔNG phải stage: `dev-handoff` chỉ transition sang
     DEV_HANDOFF ở `complete` (SAU khi agent chạy xong) → suốt lúc dev-handoff-agent thật sự chạy
     stage vẫn REVIEW_DEV; và fix-agent (Mode B) CŨNG chạy ở REVIEW_DEV → stage không phân biệt được.
     Chống cờ stale (SubagentStop có thể không fire với background Agent) → clear ở _pre_task khi MAIN
@@ -319,7 +319,7 @@ def _pre_write_edit(payload: dict) -> int:
         return pre_tool_deny(
             f"FM-HANDOFF-NO-CODE-FIX: dev-handoff INFRA-ONLY — KHÔNG sửa '{norm}' (code/migration/config/Dockerfile "
             "của boundary). Container chết do lỗi này → STOP, đọc `docker compose logs`, báo root-cause + "
-            "spawn `fix-{boundary}-agent` (Mode B) để fix → re-run /dev-handoff. dev-handoff chỉ chỉnh docker-compose.yml."
+            "spawn `fix-{boundary}-agent` (Mode B) để fix → re-run dev-handoff. dev-handoff chỉ chỉnh docker-compose.yml."
         )
     tok = policies.token_violation(norm, _edit_new_text(payload))
     if tok:
@@ -564,7 +564,7 @@ def handle_stop(payload: dict) -> int:
     """
     Quality gate cuối turn: stage ∈ {DEV, REVIEW_DEV, TEST_EXECUTE} → build/test scoped theo kind
     cho MỌI boundary trong wave (A-1: không chỉ active_boundary — boundary đỏ bị bỏ lại khi MAIN
-    /start-dev boundary kế vẫn bị bắt ở turn stop kế). Fail → block kèm 40 dòng cuối. Cache
+    start-dev boundary kế vẫn bị bắt ở turn stop kế). Fail → block kèm 40 dòng cuối. Cache
     content-hash để skip boundary sạch. Fail-open mọi lỗi hạ tầng (thiếu tool / timeout).
     """
     try:
@@ -615,7 +615,7 @@ def _selftest() -> int:
     import gates
     # _skill_name parsing
     assert _skill_name({"tool_input": {"skill": "test-plan"}}) == "test-plan"
-    assert _skill_name({"tool_input": {"command": "/dev-handoff order-mgmt"}}) == "dev-handoff"
+    assert _skill_name({"tool_input": {"command": "dev-handoff order-mgmt"}}) == "dev-handoff"
     assert _skill_name({"tool_input": {"skill": "plugin:test-execute"}}) == "test-execute"
     assert _skill_name({"tool_input": {}}) == ""
 
@@ -626,7 +626,7 @@ def _selftest() -> int:
         return buf.getvalue()
 
     # SlashCommand tool = MAIN chạy lệnh harness (tự nối pipeline) → deny
-    for cmd in ("/test-plan", "/test-execute", "/dev-handoff", "/start-wave"):
+    for cmd in ("test-plan", "test-execute", "dev-handoff", "start-wave"):
         out = _cap({"tool_name": "SlashCommand", "tool_input": {"command": cmd}})
         assert '"permissionDecision": "deny"' in out and cmd.lstrip("/") in out, f"{cmd}: {out!r}"
     # Skill tool = sub-agent LOAD convention skill (kể cả tên trùng harness command) → ALLOW (vá chặn oan)

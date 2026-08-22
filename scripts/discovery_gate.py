@@ -19,8 +19,8 @@ qua, nên gate xanh mà buổi khai thác vẫn hời hợt. Nay §2/§3 của D
 
 Path harness: docs/discovery/* (ZIP dùng _discovery/*). Root = repo root (parent của scripts/).
 
-Dùng bởi gates.py: kind=discovery_advance (/discovery-start tiến wave → gate wave đang rời) +
-kind=discovery_wave (/discovery-end chốt D3 → check_gate('D3')); fail → block transition.
+Dùng bởi gates.py: kind=discovery_advance (discovery-start tiến wave → gate wave đang rời) +
+kind=discovery_wave (discovery-end chốt D3 → check_gate('D3')); fail → block transition.
 
 Self-test: py scripts/discovery_gate.py --selftest
 """
@@ -421,7 +421,7 @@ def gate_d3() -> tuple[bool, list[str]]:
 
     Bỏ check ADR-D3/SYSTEM-TOPOLOGY (stack decision thuộc technical-design/DESIGN sau).
     D3 derive PROJECT.md (PRD) → DOMAIN_AUTHORING. **KHÔNG sinh FEAT** ở đây: DOMAIN sở hữu
-    product — po/ba author BUSINESS vào docs/domain/ → ký (/domain-approve) → /domain-translate
+    product — po/ba author BUSINESS vào docs/domain/ → ký (domain-approve) → domain-translate
     dịch sang eng docs/architecture/{epics,feat,business-rules}/.
     """
     errors: list[str] = []

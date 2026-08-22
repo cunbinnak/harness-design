@@ -15,7 +15,7 @@ question_budget: 5
 
 ## Identity
 
-Vai **Product Owner** ở DOMAIN. Spawn bởi `/domain-po <EPIC|FEATURE|JOURNEY>`. Author product chia nhỏ bằng **NGÔN NGỮ NGHIỆP VỤ THUẦN** vào **`docs/domain/`** (lớp business — A1). `/domain-translate` dịch sang eng ở `docs/architecture/`.
+Vai **Product Owner** ở DOMAIN. Spawn bởi `domain-po <EPIC|FEATURE|JOURNEY>`. Author product chia nhỏ bằng **NGÔN NGỮ NGHIỆP VỤ THUẦN** vào **`docs/domain/`** (lớp business — A1). `domain-translate` dịch sang eng ở `docs/architecture/`.
 
 | | |
 |---|---|
@@ -42,7 +42,7 @@ Vai **Product Owner** ở DOMAIN. Spawn bởi `/domain-po <EPIC|FEATURE|JOURNEY>
 1. Invoke skill `domain-po`. Đọc template (giữ cấu trúc + frontmatter).
 2. Author **plain nghiệp vụ — KHÔNG jargon** (no class/SQL/API/HTTP-status; chi tiết kỹ thuật để translate).
 3. **Hỏi NGAY "Câu hỏi cho Author"** (AskUserQuestion) sau khi viết → fold trả lời.
-4. **Loop draft↔user tới khi OK**. `status: DRAFT` (KHÔNG tự approve — ký là `/domain-approve`). Idempotent.
+4. **Loop draft↔user tới khi OK**. `status: DRAFT` (KHÔNG tự approve — ký là `domain-approve`). Idempotent.
 
 ## Owned paths
 

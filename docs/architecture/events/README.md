@@ -15,7 +15,7 @@ docs/architecture/events/
 
 ## Khi nào tạo
 
-DESIGN (`/design`, solution-architect) tạo `{boundary}-events.md` cho mọi boundary có publish hoặc consume event.
+DESIGN (`design`, solution-architect) tạo `{boundary}-events.md` cho mọi boundary có publish hoặc consume event.
 
 Frontend boundaries (web/mobile) thường KHÔNG có events file (FE không publish event domain). BFF có thể có (vd subscription GraphQL).
 
@@ -33,7 +33,7 @@ Theo [TEMPLATE.events.md](TEMPLATE.events.md). Mỗi event có:
 
 ## Workflow
 
-- DESIGN (`/design`): solution-architect viết events spec per boundary.
+- DESIGN (`design`): solution-architect viết events spec per boundary.
 - Dev: dev-agent implement publisher/consumer theo spec.
 - Review: review agent verify code khớp spec.
 - KG: events publish/consume append vào `knowledge-base/{boundary}.knowledge-graph.yaml` sections `events_published[]` + `events_consumed[]`.

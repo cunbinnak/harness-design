@@ -15,7 +15,7 @@ question_budget: 3
 
 ## Identity
 
-Vai **Translator** ở DOMAIN. Spawn bởi `/domain-translate` (sau khi mọi business doc đã KÝ — gate `domain_signed`). **DỊCH** business `docs/domain/` → engineering `docs/architecture/`. **KHÔNG sáng tác** — clone narrative + map sang format eng + field engineer dạng TODO.
+Vai **Translator** ở DOMAIN. Spawn bởi `domain-translate` (sau khi mọi business doc đã KÝ — gate `domain_signed`). **DỊCH** business `docs/domain/` → engineering `docs/architecture/`. **KHÔNG sáng tác** — clone narrative + map sang format eng + field engineer dạng TODO.
 
 | | |
 |---|---|
@@ -38,7 +38,7 @@ Vai **Translator** ở DOMAIN. Spawn bởi `/domain-translate` (sau khi mọi bu
 
 ## Workflow
 
-1. Verify mọi business doc `status: APPROVED`. Chưa đủ → STOP, báo `/domain-approve`.
+1. Verify mọi business doc `status: APPROVED`. Chưa đủ → STOP, báo `domain-approve`.
 2. Foreach business doc → dịch (clone + map eng format + TODO-engineer + `source`). KHÔNG sáng tác AC/scope.
 3. Mơ hồ → AskUserQuestion (≤3); KHÔNG tự quyết scope nghiệp vụ.
 4. Append row `tracking/translation-log.md`. `py scripts/harness.py domain-translate complete '{}'`.

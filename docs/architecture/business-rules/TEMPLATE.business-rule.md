@@ -13,14 +13,14 @@ severity: "CORNERSTONE | NORMAL"
 source_type: "legal | company-policy | partner-contract | business-decision"
 related_journeys: ["JOURNEY-{{PREFIX}}-{{NNN}}"]
 related_features: ["FEAT-{{PREFIX}}-{{NNN}}"]   # ≥1 FEAT (gate planning_lint, trỏ file thật)
-enforcement_location: "TBD (DESIGN)"   # TODO engineer — DESIGN điền NƠI enforce (vd "api: scheduling POST /bookings — 422 ROOM_TIME_CONFLICT" / "data-model: unique constraint" / "event handler"); gate todo_resolved chặn /design-end khi còn TBD
+enforcement_location: "TBD (DESIGN)"   # TODO engineer — DESIGN điền NƠI enforce (vd "api: scheduling POST /bookings — 422 ROOM_TIME_CONFLICT" / "data-model: unique constraint" / "event handler"); gate todo_resolved chặn design-end khi còn TBD
 error_code: "TBD (DESIGN)"   # map vào Domain error catalog api §4.2 (nếu rule lộ qua API)
 source: "docs/domain/business-rules/BR-{{PREFIX}}-{{NNN}}.md"   # file business nguồn (translator điền — gate translation_parity @domain-end đối chiếu 1-1)
 domain_source_id: "BR-{{PREFIX}}-{{NNN}}"
 last_reviewed: "{{YYYY-MM-DD}}"
 ---
 
-> **LỚP ENGINEERING** — bản dịch từ business (`source`) do `/domain-translate` sinh, KHÔNG author tay. Khác bản business: `enforcement_location` + `error_code` (TODO engineer — BR không có nơi enforce = rule không bao giờ được code, gate `todo_resolved` đòi DESIGN điền). Sửa NGHIỆP VỤ → lùi `/domain-ba` → re-ký → re-dịch. Điền NGẮN GỌN: ưu tiên bảng/bullet.
+> **LỚP ENGINEERING** — bản dịch từ business (`source`) do `domain-translate` sinh, KHÔNG author tay. Khác bản business: `enforcement_location` + `error_code` (TODO engineer — BR không có nơi enforce = rule không bao giờ được code, gate `todo_resolved` đòi DESIGN điền). Sửa NGHIỆP VỤ → lùi `domain-ba` → re-ký → re-dịch. Điền NGẮN GỌN: ưu tiên bảng/bullet.
 
 > Quy tắc nghiệp vụ MUST tuân thủ, dùng chung bởi ≥1 feature. Ngôn ngữ nghiệp vụ THUẦN — KHÔNG ghi nơi enforce (layer/API/DB), không endpoint/4xx/throw/tên bảng. severity: CORNERSTONE=vi phạm thì dừng, bắt buộc test, không override mặc định; NORMAL=cảnh báo, override được. rule_type định hướng cách viết (validation/calculation/constraint/authorization/lifecycle/rate-limit). APPROVED khi: ≥1 related_features trỏ file THẬT; phát biểu duy nhất không nhập nhằng; ≥2 ví dụ có số liệu (1 happy + 1 vi phạm); liệt kê ngoại lệ; source_type + rationale cụ thể.
 

@@ -1,7 +1,7 @@
 """
 capture_infra_proof.py — HARNESS tự bắt bằng chứng infra (G13), KHÔNG để agent tự khai.
 
-Chạy ở `/dev-handoff` (sau khi `docker compose up -d --build` wave services):
+Chạy ở `dev-handoff` (sau khi `docker compose up -d --build` wave services):
   1. `docker compose ps --format json` → ghi `tracking/{wave}/docker-ps.json` (gate `infra_proof`).
   2. curl /health/ready (qua urllib, stdlib) MỖI wave service → ghi `tracking/{wave}/health-proof.json`
      (gate `health_proof`). Đây là điểm khác cốt lõi với loophole cũ: bằng chứng app THỰC SỰ trả
@@ -263,7 +263,7 @@ def capture(wave_id: str) -> int:
     ok_all = all(p.get("ok") for p in probes) if probes else False
     print(json.dumps(health, indent=2, ensure_ascii=False))
     if not probes:
-        print("WARN: wave_boundaries rỗng — chưa /start-wave?", file=sys.stderr)
+        print("WARN: wave_boundaries rỗng — chưa start-wave?", file=sys.stderr)
         return 1
     if not ok_all:
         bad = [p["boundary"] for p in probes if not p.get("ok")]
@@ -334,7 +334,7 @@ def main(argv: list[str] | None = None) -> int:
         state = load_json(STATE_FILE) or {}
         wave_id = (state.get("wave") or {}).get("id")
     if not wave_id:
-        print("FAIL: không xác định wave (STATE.wave.id rỗng) — chạy /start-wave trước.", file=sys.stderr)
+        print("FAIL: không xác định wave (STATE.wave.id rỗng) — chạy start-wave trước.", file=sys.stderr)
         return 2
     return capture(wave_id)
 

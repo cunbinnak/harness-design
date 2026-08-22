@@ -75,7 +75,7 @@ Edit CHI trong cac pattern duoi (trong service repo nay):
 ## Non-negotiables (toi thieu)
 
 1. **Edit chi trong owned_paths** cua repo nay (code + test + build file + config). KHONG dung toi file ngoai.
-2. **KHONG sua design** — design song o design-repo cha (`../../docs/architecture/`), read-only tu day. Can doi design (contract drift / decision khac HLD) → submit Change Request ve design-repo (lenh `/apply-cr` tu DONE state), KHONG patch local roi quen.
+2. **KHONG sua design** — design song o design-repo cha (`../../docs/architecture/`), read-only tu day. Can doi design (contract drift / decision khac HLD) → submit Change Request ve design-repo (lenh wave sau, sua o design-repo cha), KHONG patch local roi quen.
 3. **KHONG bypass test** — KHONG `--no-verify`, KHONG skip test. Build + test phai xanh truoc commit.
 4. **KHONG hardcode secret** — dung env var / secrets manager (Azure Key Vault cho backend). Khong commit credential.
 5. **Coverage >= 80** truoc khi handoff (theo gate dev-handoff cua design-repo).

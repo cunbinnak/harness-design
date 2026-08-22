@@ -49,7 +49,7 @@ py scripts/smoke_test.py             # E2E state machine walkthrough (36 asserti
 - **State machine first**: mọi transition qua `harness.py <cmd> complete`, KHÔNG sửa `harness/STATE.json` thủ công.
 - **Owned paths**: sub-agent chỉ edit file trong `SERVICE-BOUNDARY-MATRIX.json` owned_paths của boundary mình.
 - **Skills on-demand**: rules/conventions sống trong `.claude/skills/`, agent invoke khi cần. KHÔNG hardcode rule vào agent file.
-- **Per-boundary KG** (`knowledge-base/{boundary}.knowledge-graph.yaml`): design (entities/BR/events/permissions) **đã seed ở `/start-wave`** từ docs; dev/fix/review chỉ **append phần kinh nghiệm** (learnings/decisions/failure_modes) + update design khi implement lệch.
+- **Per-boundary KG** (`knowledge-base/{boundary}.knowledge-graph.yaml`): design (entities/BR/events/permissions) **đã seed ở chốt `start-wave`** từ docs; dev/fix/review chỉ **append phần kinh nghiệm** (learnings/decisions/failure_modes) + update design khi implement lệch.
 
 ## File structure
 

@@ -15,11 +15,11 @@ Hard close wave: teardown infra docker-compose, archive wave artifacts vào hand
 
 | | |
 |---|---|
-| Command | `/done-wave` |
+| Command | `done-wave` |
 | Stage trigger | DONE -> BOOTSTRAP |
-| Pre-condition | `/end-wave` complete: UAT signed + no open bugs |
+| Pre-condition | `end-wave` complete: UAT signed + no open bugs |
 
-**Khác `/end-wave`:**
+**Khác `end-wave`:**
 
 | | end-wave | done-wave |
 |---|---------|-----------|
@@ -65,7 +65,7 @@ Hard close wave: teardown infra docker-compose, archive wave artifacts vào hand
 ## Forbidden
 
 - Skip `docker-compose down` — teardown bắt buộc cho clean state.
-- Done-wave khi `/end-wave` chưa complete (qc-signoff missing).
+- Done-wave khi `end-wave` chưa complete (qc-signoff missing).
 - Bỏ qua KG cross-wave summary — learnings cần persist cho wave kế.
 - Tự ý xóa file tracking/wave-{N}/ — archive vào handoff giữ history.
 
@@ -78,10 +78,10 @@ Hard close wave: teardown infra docker-compose, archive wave artifacts vào hand
 - `active_boundary = null`
 
 Allowed next (từ BOOTSTRAP):
-- `/discovery-start <D>` — re-run idempotent (docs giữ nguyên nên gate pass nhanh) → `/discovery-end` → `/domain-end` (không đổi product thì qua thẳng) → `/design-end` → `/plan` → approve → `/start-wave <N+1>`.
-- Boundary MỚI / mở rộng scope lớn → `/discovery-start D3` (charter boundary mới) hoặc `D0` (bootstrap lại front-half).
+- `discovery-start <D>` — re-run idempotent (docs giữ nguyên nên gate pass nhanh) → `discovery-end` → `domain-end` (không đổi product thì qua thẳng) → `design-end` → `plan` → approve → `start-wave <N+1>`.
+- Boundary MỚI / mở rộng scope lớn → `discovery-start D3` (charter boundary mới) hoặc `D0` (bootstrap lại front-half).
 
-> LƯU Ý: `/apply-cr <CR-ID>` chạy **TỪ DONE (TRƯỚC done-wave)** → DOMAIN_AUTHORING (po/ba → ký → translate). Đã done-wave rồi thì đi đường discovery re-run ở trên.
+> LƯU Ý: thay đổi sau khi wave đã ship = **wave sau**, không sửa tại chỗ. Lùi `/domain` (gọi được từ DESIGN/PLAN/REVIEW) sửa tài liệu rồi tiến lại để gate chạy lại; wave kế nhận.
 
 ## RETURN SCHEMA
 

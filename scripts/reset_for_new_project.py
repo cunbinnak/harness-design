@@ -81,7 +81,6 @@ CORE_AGENTS = frozenset({
     "dev-handoff-agent.md",
     "test-plan-agent.md",
     "test-execute-agent.md",
-    "log-bug-agent.md",
     # dogfood (6 lăng kính persona, thay MANUAL_TEST thủ công) — spec TĨNH của kernel,
     # không phải agent materialize per-boundary. Quên đăng ký ở đây thì reset xoá sạch
     # và lỗi chỉ lộ ra ở wave sau, lúc /dogfood không tìm thấy spec nào.
@@ -116,7 +115,7 @@ def collect_targets() -> dict[str, list[Path]]:
             if f.is_file():
                 targets["remove"].append(f)
         for sub, prefix in [
-            # DOMAIN eng artifacts (bản dịch từ docs/domain qua /domain-translate)
+            # DOMAIN eng artifacts (bản dịch từ docs/domain qua domain-translate)
             ("epics", "EP-"),
             ("feat", "FEAT-"),
             ("journeys", "JOURNEY-"),
@@ -161,7 +160,7 @@ def collect_targets() -> dict[str, list[Path]]:
                 if f.is_file():
                     targets["remove"].append(f)
 
-    # docs/domain (lớp BUSINESS plain VN — /domain-po·/domain-ba author + ký; giữ TEMPLATE.*)
+    # docs/domain (lớp BUSINESS plain VN — domain-po·domain-ba author + ký; giữ TEMPLATE.*)
     dom = root / "docs/domain"
     if dom.is_dir():
         for sub, prefix in [
@@ -211,20 +210,6 @@ def collect_targets() -> dict[str, list[Path]]:
         for child in sorted(tracking.glob("wave-*")):
             if child.is_dir():
                 targets["remove"].append(child)
-        # Cross-wave: change-requests (keep TEMPLATE)
-        cr_dir = tracking / "change-requests"
-        if cr_dir.is_dir():
-            for f in cr_dir.glob("*.md"):
-                if not f.name.startswith("TEMPLATE"):
-                    targets["remove"].append(f)
-        # Cross-wave files sinh ở runtime: translation-log (domain-translate) +
-        # doc-review-findings (sanity-check) + decisions (audit force-bypass) +
-        # BC-LEDGER (sổ hợp đồng surface) + challenge-log (đối kháng trước khi code)
-        for name in ("translation-log.md", "doc-review-findings.md", "decisions.md",
-                     "BC-LEDGER.md", "challenge-log.md"):
-            f = tracking / name
-            if f.is_file():
-                targets["remove"].append(f)
 
     # archive/wave-N/ — snapshot của các wave ĐÃ ĐÓNG (next_wave.py sinh).
     #
@@ -339,7 +324,7 @@ def reset_state(project_id: str | None, display_name: str | None) -> None:
             "revision": 1,
             "updated_at": utc_now_iso(),
             "updated_by": "reset_for_new_project",
-            "notes": f"Fresh starter for project={proj['id']}. Run /discovery-start D0 to begin.",
+            "notes": f"Fresh starter for project={proj['id']}. Run discovery-start D0 to begin.",
         },
     }
     save_json(state_path, fresh)

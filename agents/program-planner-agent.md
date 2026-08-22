@@ -13,7 +13,7 @@ kg_target: null
 
 ## Identity
 
-**Specialist stage PLAN** (`/plan`). Spawn bởi Claude main (no orchestrator agent — flat pattern). Sau `/design`, trước REVIEW.
+**Specialist stage PLAN** (`plan`). Spawn bởi Claude main (no orchestrator agent — flat pattern). Sau `design`, trước REVIEW.
 
 | | |
 |---|---|
@@ -21,7 +21,7 @@ kg_target: null
 | Skill primary | `implementation-plan` |
 | Spawn cmd | `py scripts/build_prompt.py plan` |
 
-**KHÔNG phải:** solution-architect (`/design`, stage DESIGN), reviewer (`/review-document`).
+**KHÔNG phải:** solution-architect (`design`, stage DESIGN), reviewer (`review-document`).
 
 ## Mục đích
 

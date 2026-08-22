@@ -1,5 +1,5 @@
 """
-Materialize harness/SERVICE-BOUNDARY-MATRIX.json từ boundary decomposition (stage PLAN, /plan).
+Materialize harness/SERVICE-BOUNDARY-MATRIX.json từ boundary decomposition (stage PLAN, plan).
 
 Lý do tồn tại: MATRIX nằm trong PROTECTED_PATHS — hook PreToolUse(Write|Edit) chặn mọi
 sửa tay bằng Write/Edit tool. Script này chạy qua Bash (không bị hook đó chặn) và tự gate
@@ -217,7 +217,7 @@ def main() -> int:
             sys.stdout.reconfigure(encoding="utf-8")
         except Exception:
             pass
-    ap = argparse.ArgumentParser(description="Materialize SERVICE-BOUNDARY-MATRIX.json (stage PLAN, /plan).")
+    ap = argparse.ArgumentParser(description="Materialize SERVICE-BOUNDARY-MATRIX.json (stage PLAN, plan).")
     ap.add_argument("path", nargs="?", help="Đường dẫn file JSON chứa boundaries (list hoặc {boundaries:[...]})")
     ap.add_argument("--json", help="Inline JSON boundaries thay cho file")
     ap.add_argument("--mode", choices=["replace", "merge"], default="replace", help="replace (mặc định) | merge theo boundary_id")

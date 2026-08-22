@@ -211,8 +211,8 @@ def is_proof_file(rel_path: str) -> bool:
 # ------------------------------------------------------------------------
 # ZIP (multi-repo) đóng băng upstream bằng snapshot `_inputs/**` read-only per repo. Single-repo
 # tương đương = phase-lock theo stage: mỗi LỚP doc chỉ sửa được ở stage SỞ HỮU (+ REVIEW = cửa
-# revision chung). Stage khác → frozen → LÙI về stage sở hữu (back-edge /design, /domain-po//domain-ba)
-# rồi tiến lại (re-gate); sau ship dùng /apply-cr. Chống dev/test sửa spec cho khớp code (anti-pattern
+# revision chung). Stage khác → frozen → LÙI về stage sở hữu (back-edge design, domain-po/domain-ba)
+# rồi tiến lại (re-gate); sau khi wave đã ship thì đổi ở WAVE SAU. Chống dev/test sửa spec cho khớp code (anti-pattern
 # e2e) + chống sửa FEAT/HLD lúc đã ở PLAN. Thực thi NON-NEGOTIABLE #6 (trước chỉ honor-system).
 
 _REVIEW = "REVIEW"
@@ -228,7 +228,7 @@ PHASE_LOCK_CLASSES = [
      re.compile(r"^docs/domain/|^docs/architecture/(epics|journeys|personas)/")),
     # eng spec feat/BR: dual-owner. Business (AC/rule) do DOMAIN dịch; NHƯNG field kỹ thuật
     # translator cố ý để mở (enforcement_location/consumes_contracts = `TBD (DESIGN)`) là việc
-    # DESIGN điền (gate todo_resolved @/design-end). Nên DESIGN cũng sửa được lớp này.
+    # DESIGN điền (gate todo_resolved @design-end). Nên DESIGN cũng sửa được lớp này.
     ("domain-spec", {"DOMAIN_AUTHORING", "DESIGN", _REVIEW},
      re.compile(r"^docs/architecture/(feat|business-rules)/")),
     ("design", {"DESIGN", _REVIEW},
@@ -237,10 +237,10 @@ PHASE_LOCK_CLASSES = [
      re.compile(r"^docs/plans/")),
 ]
 _BACK_HINT = {
-    "discovery": "lùi qua done-wave→/discovery-start (hoặc sửa ở REVIEW)",
-    "domain-business": "lùi /domain-po·/domain-ba → DOMAIN (sửa business → /domain-approve → /domain-translate)",
-    "domain-spec": "field kỹ thuật (enforcement/contract) → sửa ở DESIGN; narrative/AC → lùi /domain-po·/domain-ba",
-    "design": "lùi /design → DESIGN",
+    "discovery": "lùi qua done-wave→discovery-start (hoặc sửa ở REVIEW)",
+    "domain-business": "lùi domain-po·domain-ba → DOMAIN (sửa business → domain-approve → domain-translate)",
+    "domain-spec": "field kỹ thuật (enforcement/contract) → sửa ở DESIGN; narrative/AC → lùi domain-po·domain-ba",
+    "design": "lùi design → DESIGN",
     "plan": "về PLAN",
 }
 
@@ -263,7 +263,7 @@ def phase_lock_violation(rel_path: str, stage: str) -> str | None:
             return (
                 f"FM-PHASE-LOCK: '{norm}' (tài liệu {label}) đã ĐÓNG BĂNG ở stage '{stage}'. "
                 f"Chỉ sửa được ở {sorted(editable)}. Muốn sửa → {_BACK_HINT.get(label)} rồi tiến lại "
-                "(re-gate); sau ship dùng /apply-cr. KHÔNG sửa upstream từ stage sau (NON-NEGOTIABLE #6)."
+                "(re-gate); sau khi wave đã ship thì đổi ở WAVE SAU. KHÔNG sửa upstream từ stage sau (NON-NEGOTIABLE #6)."
             )
     return None
 
@@ -530,7 +530,7 @@ def _selftest() -> int:
     assert detect_dev_spawn("run test-execute black-box trên hệ thống") == "test-execute"
     assert detect_dev_spawn("review the test plan document") is None  # space-form KHÔNG khớp (không false-positive)
     # build_prompt-signed output cho test PHẢI pass (không bị block)
-    assert looks_like_build_prompt("# SPAWN PROMPT — /test-execute\n...") is True
+    assert looks_like_build_prompt("# SPAWN PROMPT — test-execute\n...") is True
     print("OK: policies.py selftest passed")
     return 0
 

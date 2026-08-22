@@ -32,7 +32,7 @@ Internal chỉ file summary (knowledge đã trong repo qua HLD/API).
 
 ## Khi nào tạo
 
-DESIGN (`/design`, solution-architect) tạo file integrations cho mọi sync dependency:
+DESIGN (`design`, solution-architect) tạo file integrations cho mọi sync dependency:
 - Mỗi external provider → 1 file INTEG-EXT.
 - Mỗi cross-boundary sync call → 1 file INTEG-INT.
 
@@ -57,7 +57,7 @@ DESIGN (`/design`, solution-architect) tạo file integrations cho mọi sync de
 
 ## Workflow
 
-- DESIGN (`/design`): solution-architect viết integration spec.
+- DESIGN (`design`): solution-architect viết integration spec.
 - Dev: dev-agent implement client theo spec.
 - Review: review agent verify code khớp spec.
 - KG: integrations append vào `knowledge-base/{boundary}.knowledge-graph.yaml` section `integrations[]` + `dependencies.outbound[]` + `dependencies.inbound[]`.

@@ -3,7 +3,7 @@
   "initial_state": "BOOTSTRAP",
   "states": {
     "BOOTSTRAP": {
-      "description": "Khởi tạo, chưa có wave. Vào DISCOVERY (D0-D3) qua /discovery-start. Target reset sau /done-wave.",
+      "description": "Khởi tạo, chưa có wave. Vào DISCOVERY (D0-D3) qua discovery-start. Target reset sau done-wave.",
       "allowed_commands": [
         "discovery-start"
       ],
@@ -11,7 +11,7 @@
       "read_only_spawn_always": true
     },
     "DISC_D0": {
-      "description": "D0 hypothesis-log. /discovery-start D0 spawn hypothesis agent (refine); /discovery-start D1 tiến wave (gate D0).",
+      "description": "D0 hypothesis-log. discovery-start D0 spawn hypothesis agent (refine); discovery-start D1 tiến wave (gate D0).",
       "allowed_commands": [
         "discovery-start"
       ],
@@ -19,7 +19,7 @@
       "read_only_spawn_always": true
     },
     "DISC_D1": {
-      "description": "D1 capability-map+persona-pool. /discovery-start D1 spawn capability-mapper (refine); /discovery-start D2 tiến wave (gate D1).",
+      "description": "D1 capability-map+persona-pool. discovery-start D1 spawn capability-mapper (refine); discovery-start D2 tiến wave (gate D1).",
       "allowed_commands": [
         "discovery-start"
       ],
@@ -27,7 +27,7 @@
       "read_only_spawn_always": true
     },
     "DISC_D2": {
-      "description": "D2 event-storming. /discovery-start D2 spawn event-stormer per domain (refine); /discovery-start D3 tiến wave (gate D2).",
+      "description": "D2 event-storming. discovery-start D2 spawn event-stormer per domain (refine); discovery-start D3 tiến wave (gate D2).",
       "allowed_commands": [
         "discovery-start"
       ],
@@ -35,7 +35,7 @@
       "read_only_spawn_always": true
     },
     "DISC_D3": {
-      "description": "D3 charter + PROJECT.md. /discovery-start D3 spawn charter-author (refine); /discovery-end (không arg) gate D3 → DOMAIN_AUTHORING.",
+      "description": "D3 charter + PROJECT.md. discovery-start D3 spawn charter-author (refine); discovery-end (không arg) gate D3 → DOMAIN_AUTHORING.",
       "allowed_commands": [
         "discovery-start",
         "discovery-end"
@@ -44,7 +44,7 @@
       "read_only_spawn_always": true
     },
     "DOMAIN_AUTHORING": {
-      "description": "DOMAIN authoring 2 lớp (continuous) — /domain-po (EPIC/FEATURE/JOURNEY) + /domain-ba (BR/PERSONA) author BUSINESS plain VN vào docs/domain/ → /domain-approve KÝ (status: APPROVED) → /domain-translate DỊCH sang eng docs/architecture/{epics,feat,journeys,business-rules,personas}/. /domain-end gate (domain_gate + planning_lint + translation_parity) → DESIGN.",
+      "description": "DOMAIN authoring 2 lớp (continuous) — domain-po (EPIC/FEATURE/JOURNEY) + domain-ba (BR/PERSONA) author BUSINESS plain VN vào docs/domain/ → domain-approve KÝ (status: APPROVED) → domain-translate DỊCH sang eng docs/architecture/{epics,feat,journeys,business-rules,personas}/. domain-end gate (domain_gate + planning_lint + translation_parity) → DESIGN.",
       "allowed_commands": [
         "domain-po",
         "domain-ba",
@@ -56,7 +56,7 @@
       "read_only_spawn_always": true
     },
     "DESIGN": {
-      "description": "Technical design — /design spawn solution-architect: ADR/HLD/API/data-model/UX/events/integrations. Gate → PLAN.",
+      "description": "Technical design — design spawn solution-architect: ADR/HLD/API/data-model/UX/events/integrations. Gate → PLAN.",
       "allowed_commands": [
         "design",
         "design-ux",
@@ -68,7 +68,7 @@
       "read_only_spawn_always": true
     },
     "PLAN": {
-      "description": "Implementation plan — /plan spawn program-planner: WAVE-SEQUENCE + wave-{N} + MATRIX + KG skeleton. Gate → REVIEW.",
+      "description": "Implementation plan — plan spawn program-planner: WAVE-SEQUENCE + wave-{N} + MATRIX + KG skeleton. Gate → REVIEW.",
       "allowed_commands": [
         "plan",
         "design",
@@ -78,7 +78,7 @@
       "read_only_spawn_always": true
     },
     "REVIEW": {
-      "description": "Review + approve + launch wave (đổi tên từ INTAKE). /review-document loop, /approve-document set approved, /start-wave mở wave.",
+      "description": "Review + approve + launch wave (đổi tên từ INTAKE). review-document loop, /approve-document set approved, start-wave mở wave.",
       "allowed_commands": [
         "review-document",
         "approve-document",
@@ -97,7 +97,7 @@
       "read_only_spawn_always": true
     },
     "DEV": {
-      "description": "Dev các boundary của wave (mỗi /start-dev 1 boundary, lặp được). Xong hết → /review-dev review cả wave.",
+      "description": "Dev các boundary của wave (mỗi start-dev 1 boundary, lặp được). Xong hết → review-dev review cả wave.",
       "allowed_commands": [
         "start-dev",
         "review-dev"
@@ -141,7 +141,7 @@
       }
     },
     "MANUAL_TEST": {
-      "description": "UAT. /dogfood chạy 6 lăng kính persona trên hệ đang chạy (thay việc ngồi chọc tay); phát hiện ghi dogfood-report.md cột `Xử`; TC fail thì sửa rồi /test-execute re-run; /end-wave khi sạch.",
+      "description": "UAT. /dogfood chạy 6 lăng kính persona trên hệ đang chạy (thay việc ngồi chọc tay); phát hiện ghi dogfood-report.md cột `Xử`; TC fail thì sửa rồi test-execute re-run; end-wave khi sạch.",
       "allowed_commands": [
         "dogfood",
         "test-execute",
@@ -178,7 +178,7 @@
       "evidence_required": {
         "approved": true
       },
-      "note": "User mark docs OK. Set approved=true in STATE. KHONG transition state. /start-wave gate check approved."
+      "note": "User mark docs OK. Set approved=true in STATE. KHONG transition state. start-wave gate check approved."
     },
     {
       "from": "REVIEW",
@@ -204,7 +204,7 @@
       "evidence_required": {
         "boundary": "any"
       },
-      "note": "Dev thêm boundary khác trong cùng wave (multi-boundary). Xong hết mới /review-dev."
+      "note": "Dev thêm boundary khác trong cùng wave (multi-boundary). Xong hết mới review-dev."
     },
     {
       "from": "DEV",
@@ -288,7 +288,7 @@
       "evidence_required": {
         "wave_n": "any"
       },
-      "note": "Mở wave kế sau khi snapshot wave vừa đóng (scripts/next_wave.py). KHÔNG gate lại — /end-wave ngay trước đã gác đủ (uat_signed + test_passed + features_complete + dogfood_done). KHÔNG reset gì: test_result/review_results giữ nguyên nhưng mang dấu wave cũ nên gate wave mới tự đỏ lại."
+      "note": "Mở wave kế sau khi snapshot wave vừa đóng (scripts/next_wave.py). KHÔNG gate lại — end-wave ngay trước đã gác đủ (uat_signed + test_passed + features_complete + dogfood_done). KHÔNG reset gì: test_result/review_results giữ nguyên nhưng mang dấu wave cũ nên gate wave mới tự đỏ lại."
     },
     {
       "from": "DONE",
@@ -303,14 +303,14 @@
       "to": "DESIGN",
       "trigger": "design",
       "evidence_required": {},
-      "note": "self-loop: re-spawn solution-architect de thao luan/refine. KHONG advance — dung /design-end de sang PLAN."
+      "note": "self-loop: re-spawn solution-architect de thao luan/refine. KHONG advance — dung design-end de sang PLAN."
     },
     {
       "from": "DESIGN",
       "to": "DESIGN",
       "trigger": "design-ux",
       "evidence_required": {},
-      "note": "self-loop: spawn ux-designer-agent (skill ux-design) — UX/UI cho FE boundary (ux-*.md + design-tokens.css). KHONG advance — dung /design-end."
+      "note": "self-loop: spawn ux-designer-agent (skill ux-design) — UX/UI cho FE boundary (ux-*.md + design-tokens.css). KHONG advance — dung design-end."
     },
     {
       "from": "DESIGN",
@@ -392,14 +392,14 @@
       "to": "DESIGN",
       "trigger": "design",
       "evidence_required": {},
-      "note": "back-edge: lui sua design doc (HLD/API/UX/ADR); tien lai /design-end re-gate"
+      "note": "back-edge: lui sua design doc (HLD/API/UX/ADR); tien lai design-end re-gate"
     },
     {
       "from": "PLAN",
       "to": "DESIGN",
       "trigger": "design-ux",
       "evidence_required": {},
-      "note": "back-edge: lui sua UX doc (ux-*.md/design-tokens) qua ux-designer; tien lai /design-end re-gate"
+      "note": "back-edge: lui sua UX doc (ux-*.md/design-tokens) qua ux-designer; tien lai design-end re-gate"
     },
     {
       "from": "DISC_D0",
@@ -467,7 +467,7 @@
       "evidence_required": {
         "mode": "any"
       },
-      "note": "back-edge: lui sua product qua domain-po; tien lai /domain-end re-gate"
+      "note": "back-edge: lui sua product qua domain-po; tien lai domain-end re-gate"
     },
     {
       "from": "DESIGN",
@@ -476,7 +476,7 @@
       "evidence_required": {
         "mode": "any"
       },
-      "note": "back-edge: lui sua product qua domain-ba; tien lai /domain-end re-gate"
+      "note": "back-edge: lui sua product qua domain-ba; tien lai domain-end re-gate"
     }
   ]
 }

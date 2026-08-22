@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL: không thấy business doc '{target}' ở docs/domain/", file=sys.stderr)
             return 2
     if not files:
-        print("FAIL: chưa có business doc nào ở docs/domain/ — /domain-po · /domain-ba author trước.", file=sys.stderr)
+        print("FAIL: chưa có business doc nào ở docs/domain/ — domain-po · domain-ba author trước.", file=sys.stderr)
         return 2
 
     jargon_docs: list[str] = []
@@ -82,13 +82,13 @@ def main(argv: list[str] | None = None) -> int:
         print("REFUSE — business doc còn JARGON kỹ thuật (sửa cho plain nghiệp vụ rồi ký lại):", file=sys.stderr)
         for d in jargon_docs:
             print(f"  - {d}", file=sys.stderr)
-        print("  (bỏ code/SQL/API-path/class-name/HTTP-status — chi tiết kỹ thuật để /domain-translate sinh ở eng layer.)", file=sys.stderr)
+        print("  (bỏ code/SQL/API-path/class-name/HTTP-status — chi tiết kỹ thuật để domain-translate sinh ở eng layer.)", file=sys.stderr)
         return 1
 
     stamped = [str(p.relative_to(REPO_ROOT)).replace("\\", "/") for p in files if _stamp_approved(p)]
     already = len(files) - len(stamped)
     print(f"OK: đã ký {len(files)} business doc ({len(stamped)} stamp mới, {already} đã ký sẵn). "
-          f"→ khi MỌI doc ký → /domain-translate.")
+          f"→ khi MỌI doc ký → domain-translate.")
     return 0
 
 

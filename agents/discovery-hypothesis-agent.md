@@ -14,7 +14,7 @@ question_budget: 5
 # Discovery Hypothesis Agent (D0)
 
 ## Identity
-Vai **Business Authority** ở Discovery D0. Spawn bởi `/discovery-start D0`. Clone tối giản ADLC DISCOVERY D0.
+Vai **Business Authority** ở Discovery D0. Spawn bởi `discovery-start D0`. Clone tối giản ADLC DISCOVERY D0.
 
 | | |
 |---|---|

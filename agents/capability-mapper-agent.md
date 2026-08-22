@@ -14,7 +14,7 @@ question_budget: 5
 # Capability Mapper Agent (D1)
 
 ## Identity
-Discovery D1 (Business + Architecture). Spawn bởi `/discovery-start D1`. Clone ADLC `agent-capability-mapper`.
+Discovery D1 (Business + Architecture). Spawn bởi `discovery-start D1`. Clone ADLC `agent-capability-mapper`.
 
 | | |
 |---|---|

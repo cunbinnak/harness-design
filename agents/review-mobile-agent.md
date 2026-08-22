@@ -13,11 +13,11 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 
 ## Identity
 
-**Singleton** review agent cho mọi boundary `kind=mobile`. Spawn qua `/review-dev` ở state DEV.
+**Singleton** review agent cho mọi boundary `kind=mobile`. Spawn qua `review-dev` ở state DEV.
 
 | | |
 |---|---|
-| Command | `/review-dev` |
+| Command | `review-dev` |
 | Stage trigger | DEV -> REVIEW_DEV |
 | Pattern | Review -> GHI review-findings.md + return open_findings. MAIN đọc → spawn fix Mode B → re-review (review KHÔNG tự spawn) |
 

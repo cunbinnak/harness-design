@@ -198,7 +198,7 @@ loop:
 
 **Additive (MINOR — dev trong wave)**: B thêm field optional / error code (A coi unknown = transient); A dùng field optional mới của B.
 
-**Breaking (MAJOR — `/apply-cr` từ DONE)**: B xoá field A dùng / đổi semantics / status code; đổi mode. Breaking → re-design CẢ A và B cùng amendment (single-repo: 1 mình sửa cả hai); deprecation window chốt khi CR.
+**Breaking → WAVE SAU** (không sửa tại chỗ): lùi `/domain` sửa hợp đồng, `/approve-document` khoá lại, wave kế giao bản mới. Consumer đang chạy phải còn chạy được suốt lúc đó — luật cộng-trước-xoá-sau ở `tracking/BC-LEDGER.md §2`: B xoá field A dùng / đổi semantics / status code; đổi mode. Breaking → re-design CẢ A và B cùng amendment (single-repo: 1 mình sửa cả hai); deprecation window chốt khi CR.
 
 ---
 
@@ -241,7 +241,7 @@ loop:
 
 - **Component (A's side)**: mock B client; happy + mỗi failure (5xx, 4xx, timeout, no-event); saga transitions; compensating action.
 - **Integration**: real B trong `docker-compose` test env; full saga happy + ≥1 failure-path có compensation; idempotency replay.
-- **Contract**: outbound call A khớp `api/api-{{B}}.md`; event handler khớp `events/{{B}}-events.md` (`/test-execute`). **Chaos**: inject B fail/latency staging.
+- **Contract**: outbound call A khớp `api/api-{{B}}.md`; event handler khớp `events/{{B}}-events.md` (`test-execute`). **Chaos**: inject B fail/latency staging.
 
 ---
 

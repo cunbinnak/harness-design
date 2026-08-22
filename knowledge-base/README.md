@@ -16,9 +16,9 @@ Mỗi boundary có 1 file KG riêng. File name: `{boundary}.knowledge-graph.yaml
 
 ## Schema — 2 nhóm, vòng đời khác nhau
 
-**Nhóm DESIGN (phái sinh từ docs)** — nguồn sự thật ở docs; KG là view cô đọng. **Seed 1 lần ở `/start-wave`** từ docs đã chốt (sau approve); re-sync khi docs đổi qua `/apply-cr`. Dev chỉ update nếu implement khác design (kèm sửa doc). KHÔNG gõ tay rải rác.
+**Nhóm DESIGN (phái sinh từ docs)** — nguồn sự thật ở docs; KG là view cô đọng. **Seed 1 lần ở `start-wave`** từ docs đã chốt (sau approve); re-sync khi docs đổi (lùi `/domain` ở wave sau). Dev chỉ update nếu implement khác design (kèm sửa doc). KHÔNG gõ tay rải rác.
 
-| Section | Nội dung | Seed từ (ở `/start-wave`) |
+| Section | Nội dung | Seed từ (ở `start-wave`) |
 |---------|---------|--------|
 | `metadata` | tech stack, purpose | MATRIX (materialize) |
 | `entities[]` | aggregate roots, entities | `data-model-{boundary}.md` |
@@ -41,13 +41,13 @@ Mỗi boundary có 1 file KG riêng. File name: `{boundary}.knowledge-graph.yaml
 
 ## Khi nào ghi / update
 
-- **`/start-wave`** → seed nhóm DESIGN từ docs cuối (start-wave-agent). Nhóm kinh nghiệm để rỗng.
-- **`/review-document`** (intake) → **KHÔNG đụng KG**, chỉ sửa doc; design seed sau ở start-wave từ docs cuối.
+- **`start-wave`** → seed nhóm DESIGN từ docs cuối (start-wave-agent). Nhóm kinh nghiệm để rỗng.
+- **`review-document`** (intake) → **KHÔNG đụng KG**, chỉ sửa doc; design seed sau ở start-wave từ docs cuối.
 - **Dev** → append nhóm kinh nghiệm khi phát sinh; update design CHỈ khi implement lệch (kèm sửa data-model).
 - **Review** → append `learnings` **chỉ khi** phát hiện cái mới; review sạch thì KHÔNG ghi.
 - **Fix** → append `failure_modes` khi discover FM mới.
 - **End-wave** → update `execution_history` (status=COMPLETED + deliverables).
-- **`/apply-cr`** (sau DONE) → docs đổi → re-sync nhóm DESIGN.
+- **Lùi `/domain`** (sửa doc ở wave sau) → docs đổi → re-sync nhóm DESIGN.
 
 ## RETURN SCHEMA requires `kg_appended[]`
 

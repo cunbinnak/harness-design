@@ -50,9 +50,9 @@ Mọi touch-point cross-boundary phải có **contract artifact** trong `docs/ar
 | UI | User-flow + screen + state cho FE | `ux/ux-{boundary}.md` |
 
 **Hệ quả**:
-- Contract là file markdown trong design-repo — KHÔNG `contracts/` repo riêng, KHÔNG hash-signing. "Đã có contract trước khi consume" enforce ở REVIEW (`/review-document`) + `/review-dev` (checklist contract per kind).
-- Breaking change → CR (`/apply-cr`) + DESIGN amendment + re-validate consumer.
-- Code không match contract → bắt ở `/review-dev` (contract-drift) hoặc test contract fail.
+- Contract là file markdown trong design-repo — KHÔNG `contracts/` repo riêng, KHÔNG hash-signing. "Đã có contract trước khi consume" enforce ở REVIEW (`review-document`) + `review-dev` (checklist contract per kind).
+- Breaking change → **wave sau**: lùi `/domain` sửa hợp đồng + `/approve-document` khoá lại + đối chiếu lại consumer. KHÔNG sửa tại chỗ một wave đã ship.
+- Code không match contract → bắt ở `review-dev` (contract-drift) hoặc test contract fail.
 - **Common error envelope + generic codes (400/401/403/404/409/429/500) GIỐNG NHAU mọi boundary** (chuẩn chung ở ADR api-error-convention); per-endpoint chỉ ref code trong Domain error catalog.
 
 ### P3. Thin-context (boot-sequence-driven)
@@ -111,7 +111,7 @@ NON-NEGOTIABLES (CLAUDE.md)            → agent đọc mỗi session
 
 - **I1. No business logic in frontend** — FE là presentation; business rule ở backend. FE chỉ enforce display/UX validation, KHÔNG thay backend validation.
 - **I2/I3. Boundary chỉ biết contract** — backend KHÔNG đọc design FE; FE KHÔNG đọc HLD/business-rules backend. Chỉ consume contract (`api/events/ux`).
-- **I4. No cross-boundary code without contract** — cross-boundary call (REST/event/shared schema) phải có contract trước; thiếu → `/review-dev` reject (drift).
+- **I4. No cross-boundary code without contract** — cross-boundary call (REST/event/shared schema) phải có contract trước; thiếu → `review-dev` reject (drift).
 - **I5. No decision without artifact** — non-trivial change phải có `# DECISION-REF: ADR/BR/CONTRACT` + `tracking/decisions.md` row.
 - **I6. No edit kernel files tay** — `STATE.json`/`STATE-MACHINE.json`/`SERVICE-BOUNDARY-MATRIX.json`/`settings.json` chỉ đổi qua script/transition (hook block).
 - **I7. Orchestrator KHÔNG Edit code** — MAIN spawn dev/fix agent; dev spawn bằng `build_prompt.py` output (hook E-6).
@@ -151,7 +151,7 @@ app/ (routing, providers, layout) → features/<name>/ → shared/ (design-syste
 | Tạo file aggregate duplicate (SYSTEM-ARCH/CONTRACT-MAP) | P5 | Derive on-demand (grep/Explore) |
 | Orchestrator Edit code | I7 | Spawn dev agent |
 | Sửa kernel file tay | I6 | Qua script/transition |
-| Quên `# DECISION-REF` cho non-trivial commit | I5 | Validate ở `/review-dev` |
+| Quên `# DECISION-REF` cho non-trivial commit | I5 | Validate ở `review-dev` |
 | FE đọc backend HLD / backend đọc FE | I2/I3 | Consume contract |
 | "Documentation rule" không có gate/hook enforce | P6 | Add gate (vd planning_lint) hoặc hook |
 

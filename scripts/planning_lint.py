@@ -449,7 +449,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  - {e}", file=sys.stderr)
     print(
         "\nResolution: sửa artifact thiếu field (xem planning-rules §1-§4). "
-        "Hoặc override: /domain-end (hay /plan) với --force (ghi tracking/decisions.md).",
+        "Hoặc override: domain-end (hay plan) với --force (ghi tracking/decisions.md).",
         file=sys.stderr,
     )
     return 1

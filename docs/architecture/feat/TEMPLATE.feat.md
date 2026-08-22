@@ -17,13 +17,13 @@ outcome_persona: "PERSONA-{{PREFIX}}-{{NNN}}"   # persona CHÍNH nhận outcome
 demo_signature: "{{1 câu: demo gì để CHỨNG MINH feature đạt (anti-gaming) — nguồn cho wave demo_target}}"
 target_boundary_hint: "{{boundary name (kind backend/web/mobile) hoặc TBD}}"
 has_ui_touchpoint: true
-consumes_contracts: []   # TODO engineer — DESIGN điền contract FEAT tiêu thụ (api/INTEG id); gate todo_resolved đòi hết TBD/TODO trước /design-end
+consumes_contracts: []   # TODO engineer — DESIGN điền contract FEAT tiêu thụ (api/INTEG id); gate todo_resolved đòi hết TBD/TODO trước design-end
 source: "docs/domain/feat/FEAT-{{PREFIX}}-{{NNN}}.md"   # file business nguồn (translator điền — gate translation_parity @domain-end đối chiếu 1-1)
 domain_source_id: "FEAT-{{PREFIX}}-{{NNN}}"
 last_reviewed: "{{YYYY-MM-DD}}"
 ---
 
-> **LỚP ENGINEERING** — bản dịch từ business (`source` ở trên) do `/domain-translate` sinh, KHÔNG author tay (gate `translation_parity` chặn eng mồ côi). Sửa NGHIỆP VỤ → lùi `/domain-po` sửa bản business → re-ký → re-dịch. Điền NGẮN GỌN: ưu tiên bảng/bullet — agent downstream đọc nhiều lần.
+> **LỚP ENGINEERING** — bản dịch từ business (`source` ở trên) do `domain-translate` sinh, KHÔNG author tay (gate `translation_parity` chặn eng mồ côi). Sửa NGHIỆP VỤ → lùi `domain-po` sửa bản business → re-ký → re-dịch. Điền NGẮN GỌN: ưu tiên bảng/bullet — agent downstream đọc nhiều lần.
 
 > AC giữ BDD Cho/Khi/Thì thuần HÀNH VI (test map vào hành vi, không map class/endpoint — spec sống lâu hơn implementation; heading `### AC-n` để gate `ac_coverage` parse). Khác bản business ở FRONTMATTER máy-đọc: `feat_type`/`priority`/refs (planning_lint gate) + `consumes_contracts` (TODO engineer → DESIGN điền) + `source`/`domain_source_id` (trace về bản đã ký) + §5 AC→BR + §7 demo evidence.
 
@@ -160,11 +160,11 @@ last_reviewed: "{{YYYY-MM-DD}}"
 
 ## 9. TODO engineer / Open questions kỹ thuật (DESIGN trả — gate `todo_resolved`)
 
-> Câu hỏi NGHIỆP VỤ đã chốt trước khi ký ở lớp business (docs/domain). Ở đây chỉ còn nợ KỸ THUẬT translator để lại — DESIGN phải điền hết trước `/design-end`.
+> Câu hỏi NGHIỆP VỤ đã chốt trước khi ký ở lớp business (docs/domain). Ở đây chỉ còn nợ KỸ THUẬT translator để lại — DESIGN phải điền hết trước `design-end`.
 
 - [ ] {{consumes_contracts: FEAT này gọi contract nào? (api-{{boundary}} / INTEG-INT-*)}}
 - [ ] {{Lỗi nghiệp vụ AC-3 map error code nào trong Domain error catalog? (api §4.2)}}
-- [ ] {{Màn hình nào ở ux-{{boundary}}.md hiện thực AC có UI? (/design-ux)}}
+- [ ] {{Màn hình nào ở ux-{{boundary}}.md hiện thực AC có UI? (design-ux)}}
 
 ## 10. References
 
@@ -173,7 +173,7 @@ last_reviewed: "{{YYYY-MM-DD}}"
 - Personas: `docs/architecture/personas/PERSONA-{{PREFIX}}-{{NNN}}.md`
 - Business rules: `docs/architecture/business-rules/BR-{{PREFIX}}-*.md`
 - Business nguồn (bản ĐÃ KÝ): `docs/domain/feat/FEAT-{{PREFIX}}-{{NNN}}.md`
-- UX (nếu có UI, do /design-ux): `docs/architecture/ux/ux-{{boundary}}.md`
+- UX (nếu có UI, do design-ux): `docs/architecture/ux/ux-{{boundary}}.md`
 
 ## 11. Change log
 

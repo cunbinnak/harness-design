@@ -16,7 +16,7 @@ last_reviewed: "{{YYYY-MM-DD}}"
 
 # BR-{{PREFIX}}-{{NNN}} — {{Phát biểu ngắn quy tắc}}
 
-> **Business rule** (lớp BUSINESS) = quy tắc nghiệp vụ MUST tuân thủ. Ngôn ngữ nghiệp vụ thuần — KHÔNG ghi enforcement layer (domain/API/DB); `/domain-translate` để `enforcement_location: TBD (DESIGN)` cho engineer điền. KÝ (`status: APPROVED`) → eng BR ở `docs/architecture/business-rules/`.
+> **Business rule** (lớp BUSINESS) = quy tắc nghiệp vụ MUST tuân thủ. Ngôn ngữ nghiệp vụ thuần — KHÔNG ghi enforcement layer (domain/API/DB); `domain-translate` để `enforcement_location: TBD (DESIGN)` cho engineer điền. KÝ (`status: APPROVED`) → eng BR ở `docs/architecture/business-rules/`.
 >
 > Severity: `CORNERSTONE` = vi phạm thì hệ thống KHÔNG được tiếp tục · `NORMAL` = warn, có thể override theo business case.
 
@@ -61,4 +61,4 @@ last_reviewed: "{{YYYY-MM-DD}}"
 | Date | Status | Author | Description |
 |---|---|---|---|
 | {{YYYY-MM-DD}} | DRAFT | {{BA}} | Initial draft |
-| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (/domain-approve) |
+| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (domain-approve) |

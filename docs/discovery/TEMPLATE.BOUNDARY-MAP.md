@@ -11,7 +11,7 @@ last_reviewed: "{{DATE}}"
 
 > Điền NGẮN GỌN: ưu tiên bảng/bullet, không văn xuôi thừa, không lặp. Doc này agent downstream đọc nhiều lần — tiết kiệm context.
 
-> Inventory mọi backend boundary + web experience + mobile experience. Authored ở D3 (charter-author) từ aggregate D2 (`ES-*.md §5`). Updated qua `/apply-cr` sau DISCOVERED.
+> Inventory mọi backend boundary + web experience + mobile experience. Authored ở D3 (charter-author) từ aggregate D2 (`ES-*.md §5`). Updated qua wave sau (lùi `/domain`).
 > `id` cột đầu (backtick) = tên target, khớp folder `boundaries/{id}/CHARTER.md` (BE) + `services/{prefix-id}/` ở DEV. `service_prefix` = `{{prefix}}` (chốt ở D3).
 > Gate D3 (boundary): ≥1 row non-placeholder across §1/§2/§3 · mỗi target BE có folder + `CHARTER.md` §1 Mission thật.
 > Status: `PROPOSED` (D3) → `DESIGNING` → `ACTIVE` → `MAINTENANCE` → `ARCHIVED`.
@@ -68,7 +68,7 @@ last_reviewed: "{{DATE}}"
 
 ## 6. Adding boundary/experience after DISCOVERED
 
-> Sau REVIEW, BOUNDARY-MAP = baseline. Thêm/bớt target phải qua `/apply-cr` + `/review-document` approve (append row + ADR ref, không sửa lén). Xem CLAUDE.md §NON-NEGOTIABLES (5).
+> Sau REVIEW, BOUNDARY-MAP = baseline. Thêm/bớt target phải qua **wave sau** (lùi `/domain` chốt chia-wave) + `review-document` approve (append row + ADR ref, không sửa lén). Xem CLAUDE.md §NON-NEGOTIABLES (5).
 
 ---
 

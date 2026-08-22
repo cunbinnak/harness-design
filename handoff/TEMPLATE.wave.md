@@ -35,7 +35,7 @@
 
 ## 3. Start local
 
-> Chi tiết command + env: [`docs/architecture/infra/local-dev.md`](../docs/architecture/infra/local-dev.md) (không lặp ở đây).
+> Chi tiết command + env: [`docs/architecture/infra/local-dev.md`](../.claude/skills/infra-local-dev/SKILL.md) (không lặp ở đây).
 
 ```bash
 cd docs/architecture/infra
@@ -64,7 +64,7 @@ Test token (dev only): `Authorization: Bearer {dev_jwt_token}` (xem `.env`).
 4. Ghi kết quả manual vào `tracking/wave-{N}/test-report.md` (§Manual Tests)
 5. Nếu phát hiện vấn đề → thêm **1 DÒNG** vào `tracking/wave-{N}/dogfood-report.md` §2, có đủ *thao tác đã làm* / *thấy gì trên màn hình* và **ô `Xử`** (`sửa ngay` · `chưa xử` · `wave sau`). Ô trống = chưa ai quyết, gate `dogfood_done` đếm.
    Lượt sửa: `py scripts/build_prompt.py fix --tc <TC> --boundary <b>` → sửa → chạy lại chốt `test-execute`.
-6. Clean → `/end-wave` (UAT signed → DONE) → `/done-wave` (teardown + reset).
+6. Clean → `end-wave` (UAT signed → DONE) → `done-wave` (teardown + reset).
 
 ## 6. Known issues & deferred
 

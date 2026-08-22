@@ -27,6 +27,6 @@
     "revision": 1,
     "updated_at": "2026-06-14T15:27:17.206300+00:00",
     "updated_by": "reset_for_new_project",
-    "notes": "Fresh starter for project=adlc-design. Run /discovery-start D0 to begin."
+    "notes": "Fresh starter for project=adlc-design. Run discovery-start D0 to begin."
   }
 }

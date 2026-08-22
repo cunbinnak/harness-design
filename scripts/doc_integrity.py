@@ -22,12 +22,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+# QUÉT RỘNG có chủ ý. Bản trước chỉ soi router + lệnh + skill + agent, nên `docs/**` và
+# `tracking/_templates/**` nằm ngoài tầm — và 20 chỗ `apply-cr` sống trong đó qua nhiều lượt quét
+# báo sạch. Template là thứ project mới CHÉP RA DÙNG: lệnh ma ở đó lan sang mọi project sau.
 SURFACES = ["CLAUDE.md", "README.md", "SETUP-GUIDE.md", "AGENTS.md",
-            "harness/PROTOCOL.md", "commands", ".claude/skills", "agents",
-            "tracking/README.md", "knowledge-base/README.md", "docs/architecture/README.md",
-            # build_prompt.py không phải tài liệu người đọc, nhưng chuỗi trong nó ĐƯỢC NHỒI vào
-            # prompt của MỌI sub-agent — lệnh ma ở đây tệ hơn ở README: agent đọc rồi tin là có.
-            "scripts/build_prompt.py"]
+            "harness", "commands", ".claude/skills", "agents",
+            "docs", "tracking", "knowledge-base", "handoff",
+            # scripts không phải tài liệu người đọc, nhưng chuỗi trong đó ĐƯỢC NHỒI vào prompt của
+            # sub-agent (build_prompt) và vào thông báo chặn của hook (policies) — lệnh ma ở đây
+            # tệ hơn ở README: agent đọc rồi tin là có lệnh đó để gọi.
+            "scripts"]
 # Câu khai SỐ LƯỢNG lệnh. Bắt hẹp — chỉ ba dạng người thật viết — vì đây là chỗ dễ báo oan nhất
 # (tài liệu đầy "7 chốt", "17 state", "2 lớp doc"). Báo oan một lần là công cụ bị tắt.
 COUNT_CLAIM = re.compile(
@@ -45,7 +49,13 @@ RETIRED = (
     "test-plan", "test-execute", "log-bug", "fix-bugs", "end-wave", "done-wave",
     "apply-cr", "decide", "validate",
 )
-SLASH = re.compile(r"(?<![\w`/-])/(" + "|".join(sorted(RETIRED, key=len, reverse=True)) + r")\b")
+# Lookbehind CHỈ loại `\w` và `-` (chặn `docs/design`, `x-/plan`). KHÔNG loại backtick:
+# `/apply-cr` trong nháy ngược là cách viết PHỔ BIẾN NHẤT của lệnh trong tài liệu, loại nó ra làm
+# công cụ mù đúng chỗ cần soi nhất — đo được 20 chỗ `apply-cr` sống sót qua ba lượt quét chỉ vì
+# một ký tự backtick đứng trước.
+SLASH = re.compile(r"(?<![\w-])/(" + "|".join(sorted(RETIRED, key=len, reverse=True)) + r")\b")
+# Cột đầu có thể gộp nhiều tên (`| `/design` · `/plan` · `/review-document` | … |`).
+MIGRATION_ROW = re.compile(r"^\s*\|\s*`/[a-z-]+`(?:\s*[·,]\s*`/[a-z-]+`)*\s*\|")
 GATEISH = re.compile(r"`([a-z_]{4,})`")
 LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
 GATE_SUFFIX = ("_proof", "_gate", "_present", "_passed", "_compat", "_decided",
@@ -55,14 +65,28 @@ GATE_SUFFIX = ("_proof", "_gate", "_present", "_passed", "_compat", "_decided",
 NOT_GATES = {"open_findings", "files_changed", "needs_review", "test_result", "review_result"}
 
 
-def _files() -> list[Path]:
+SELF = Path(__file__).name
+
+
+def _files(py: bool = True) -> list[Path]:
+    """File cần soi. `py=False` → chỉ .md.
+
+    File .py bị soi HẸP HƠN .md: chỉ tìm lệnh ma, không tìm tên gate hay link. Lý do: `gates.py` là
+    NƠI ĐỊNH NGHĨA gate, còn chuỗi trong code đầy `path`/regex trông giống tên gate — soi rộng ở đó
+    chỉ đẻ dương tính giả, mà công cụ báo oan thì bị tắt.
+
+    Bỏ qua chính file này: nó buộc phải chứa cả danh sách RETIRED, soi vào là tự báo mình.
+    """
     out: list[Path] = []
     for s in SURFACES:
         p = ROOT / s
         if p.is_file():
             out.append(p)
         elif p.is_dir():
-            out += [f for f in p.rglob("*.md")]
+            out += [f for f in p.rglob("*.md") if "__pycache__" not in f.parts]
+            if py:
+                out += [f for f in p.rglob("*.py")
+                        if "__pycache__" not in f.parts and f.name != SELF]
     return out
 
 
@@ -94,18 +118,22 @@ def main() -> int:
         rel = f.relative_to(ROOT).as_posix()
         text = f.read_text(encoding="utf-8", errors="ignore")
         for n, line in enumerate(text.splitlines(), 1):
-            if "không còn là lệnh" in line.lower() or "Cũ | Giờ ở đâu" in line:
+            # Dòng bảng migration: tên lệnh cũ đứng ở CỘT ĐẦU (`| `/x` | giờ ở đâu |`) —
+            # ở đó nó là CHỦ NGỮ chứ không phải lời khuyên dùng lệnh đó.
+            if ("không còn là lệnh" in line.lower() or "Cũ | Giờ ở đâu" in line
+                    or MIGRATION_ROW.match(line)):
                 continue
             for name in SLASH.findall(line):
                 problems.append(f"[lệnh ma] {rel}:{n} → /{name} (đã gộp/xoá)")
 
-    # 2. tên gate nhắc trong tài liệu nhưng không có trong GATE_RULES
-    for f in _files():
+    # 2. tên gate nhắc trong tài liệu nhưng không có trong GATE_RULES (CHỈ .md)
+    for f in _files(py=False):
         rel = f.relative_to(ROOT).as_posix()
         text = f.read_text(encoding="utf-8", errors="ignore")
         for n, line in enumerate(text.splitlines(), 1):
             for tok in GATEISH.findall(line):
-                if tok.endswith(GATE_SUFFIX) and tok not in doc_allow:
+                kind = tok[len("check_"):] if tok.startswith("check_") else tok
+                if kind.endswith(GATE_SUFFIX) and kind not in doc_allow:
                     problems.append(f"[gate ma] {rel}:{n} → {tok}")
 
     # 3. gate khai trong GATE_RULES mà không có nhánh dispatch (và ngược lại)
@@ -132,7 +160,7 @@ def main() -> int:
     # 6. link markdown trỏ tới file KHÔNG tồn tại
     #    `agents/README.md` còn trỏ `apply-cr-agent.md` sau khi agent đó bị xoá — link chết là
     #    dạng trôi khó thấy nhất: người đọc bấm vào mới biết, agent thì đọc thấy tên rồi tin là có.
-    for f in _files():
+    for f in _files(py=False):
         rel = f.relative_to(ROOT).as_posix()
         text = f.read_text(encoding="utf-8", errors="ignore")
         for n, line in enumerate(text.splitlines(), 1):

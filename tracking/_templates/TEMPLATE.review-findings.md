@@ -1,8 +1,8 @@
 # Review Findings — wave-{N}
 
-> **Mỗi finding = 1 HÀNG.** Sản phẩm của `/review-dev` (review-{kind}-agent ghi). Đây là "cần sửa gì, ở đâu" để **MAIN** spawn fix Mode B — KHÔNG phải bug test/UAT (đó là `bugs.md`).
+> **Mỗi finding = 1 HÀNG.** Sản phẩm của `review-dev` (review-{kind}-agent ghi). Đây là "cần sửa gì, ở đâu" để **MAIN** spawn fix Mode B — KHÔNG phải bug test/UAT (đó là `bugs.md`).
 > Vòng đời: review **append/cập nhật** row → MAIN spawn fix theo row → fix sửa code, set `status` = `resolved` → review re-review xác nhận.
-> Gate `no_open_findings` chặn `/review-dev complete` khi còn row `severity ∈ {BLOCKER, MAJOR}` mà `status = open` → ép fix sạch trước khi rời REVIEW_DEV.
+> Gate `no_open_findings` chặn `review-dev complete` khi còn row `severity ∈ {BLOCKER, MAJOR}` mà `status = open` → ép fix sạch trước khi rời REVIEW_DEV.
 >
 > Enum — severity: `BLOCKER | MAJOR | MINOR | NIT | QUESTION` · status: `open | resolved | accepted | wontfix` · type: `rule | BR | AC | arch | security | test | other`.
 > `MINOR/NIT/QUESTION` không chặn gate (reviewer set `accepted`/`wontfix` nếu không sửa). Chỉ `BLOCKER/MAJOR` còn `open` mới chặn.

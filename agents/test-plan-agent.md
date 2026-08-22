@@ -15,9 +15,9 @@ Sinh test-case-registry.md cho wave. Bao gồm smoke + integration + E2E + manua
 
 | | |
 |---|---|
-| Command | `/test-plan` |
+| Command | `test-plan` |
 | Stage trigger | DEV_HANDOFF -> TEST_PLAN |
-| Pre-condition | `/dev-handoff` complete: `docker_compose_ok=true` |
+| Pre-condition | `dev-handoff` complete: `docker_compose_ok=true` |
 | Output | `tracking/wave-{N}/test-case-registry.md` |
 
 **KHÔNG phải:** test-execute (người chạy test), boundary dev agent (code).
@@ -62,7 +62,7 @@ Sinh test-case-registry.md cho wave. Bao gồm smoke + integration + E2E + manua
 - Sửa source code trong `services/`.
 - Bỏ trống AC mapping — mỗi TC phải trace.
 - Quên cột `Type=auto|manual` — test-execute không phân biệt được.
-- Sửa FEAT/AC content — đó là DOMAIN (`/domain-po FEATURE` → ký → translate; phase-lock hook cũng chặn).
+- Sửa FEAT/AC content — đó là DOMAIN (`domain-po FEATURE` → ký → translate; phase-lock hook cũng chặn).
 
 ## RETURN SCHEMA
 
@@ -85,4 +85,4 @@ Sinh test-case-registry.md cho wave. Bao gồm smoke + integration + E2E + manua
 }
 ```
 
-> `docker_compose_ok` + `connectivity_ok` = infra status kế thừa từ `/dev-handoff` (verify stack còn UP). Gate test-plan cần CẢ 2 flag + infra-proof (`tracking/{wave}/docker-ps.json` do dev-handoff capture).
+> `docker_compose_ok` + `connectivity_ok` = infra status kế thừa từ `dev-handoff` (verify stack còn UP). Gate test-plan cần CẢ 2 flag + infra-proof (`tracking/{wave}/docker-ps.json` do dev-handoff capture).

@@ -198,14 +198,14 @@ Type codegen từ mỗi backend `api/api-{{boundary}}.md` — KHÔNG hand-roll t
 
 - **Component**: resolver + mock backend client (fixture per `api/api-{{boundary}}.md`) — happy + mỗi backend fail + circuit-open + partial degrade + error mapping (§7.1).
 - **Integration**: real backend trong `docker-compose` test env — full fan-out ≥1 aggregation critical.
-- **Contract**: outbound call khớp mỗi backend contract (verify ở `/test-execute`).
+- **Contract**: outbound call khớp mỗi backend contract (verify ở `test-execute`).
 
 ---
 
 ## 14. Versioning + backward compatibility
 
 - **Additive (MINOR — dev trong wave)**: thêm field aggregating backend mới; thêm optional dependency; bỏ dependency redundant.
-- **Breaking (MAJOR — `/apply-cr` từ DONE)**: đổi resolver signature; remove field; đổi degradation semantics.
+- **Breaking → WAVE SAU** (không sửa tại chỗ): lùi `/domain` sửa hợp đồng, `/approve-document` khoá lại, wave kế giao bản mới. Consumer đang chạy phải còn chạy được suốt lúc đó — luật cộng-trước-xoá-sau ở `tracking/BC-LEDGER.md §2`: đổi resolver signature; remove field; đổi degradation semantics.
 
 ---
 

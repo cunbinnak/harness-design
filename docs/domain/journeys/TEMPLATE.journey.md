@@ -64,4 +64,4 @@ last_reviewed: "{{YYYY-MM-DD}}"
 | Date | Status | Author | Description |
 |---|---|---|---|
 | {{YYYY-MM-DD}} | DRAFT | {{PO/BA}} | Initial draft |
-| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (/domain-approve) |
+| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (domain-approve) |

@@ -17,7 +17,7 @@ last_reviewed: "{{YYYY-MM-DD}}"
 
 # EP-{{PREFIX}}-{{NNN}} — {{Tên Epic}}
 
-> **Epic** (lớp BUSINESS) = chủ đề lớn nhóm nhiều feature cùng business outcome cho 1 persona. KÝ (`status: APPROVED`) rồi `/domain-translate` → eng epic ở `docs/architecture/epics/`. **`feature_refs` ≥2 FEAT** (ZIP planning-rules: <2 → granularity sai). Tên + nội dung KHÔNG từ kỹ thuật.
+> **Epic** (lớp BUSINESS) = chủ đề lớn nhóm nhiều feature cùng business outcome cho 1 persona. KÝ (`status: APPROVED`) rồi `domain-translate` → eng epic ở `docs/architecture/epics/`. **`feature_refs` ≥2 FEAT** (ZIP planning-rules: <2 → granularity sai). Tên + nội dung KHÔNG từ kỹ thuật.
 
 ---
 
@@ -90,4 +90,4 @@ last_reviewed: "{{YYYY-MM-DD}}"
 | Date | Status | Author | Description |
 |---|---|---|---|
 | {{YYYY-MM-DD}} | DRAFT | {{PO}} | Initial epic |
-| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (/domain-approve) |
+| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (domain-approve) |

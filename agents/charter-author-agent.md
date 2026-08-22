@@ -14,7 +14,7 @@ question_budget: 5
 # Charter Author Agent (D3)
 
 ## Identity
-Discovery D3 (Architecture Authority). Spawn bởi `/discovery-start D3`. Clone ADLC `agent-charter-author` mode CHARTER-NEW.
+Discovery D3 (Architecture Authority). Spawn bởi `discovery-start D3`. Clone ADLC `agent-charter-author` mode CHARTER-NEW.
 
 | | |
 |---|---|
@@ -45,7 +45,7 @@ Identify boundary từ event-storming aggregates → BOUNDARY-MAP + CHARTER, R�
 - `docs/architecture/PROJECT.md`
 
 ## Forbidden
-- Sinh FEAT/Epic/BR (DOMAIN sở hữu — author business qua `/domain-po`·`/domain-ba` → ký → `/domain-translate`). Bịa capability/boundary ngoài D0-D2. Tạo `knowledge-base/*.yaml`.
+- Sinh FEAT/Epic/BR (DOMAIN sở hữu — author business qua `domain-po`·`domain-ba` → ký → `domain-translate`). Bịa capability/boundary ngoài D0-D2. Tạo `knowledge-base/*.yaml`.
 
 ## RETURN SCHEMA
 ```json

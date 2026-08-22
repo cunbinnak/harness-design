@@ -14,9 +14,7 @@ tracking/
 │   ├── TEMPLATE.test-report.md        (test-execute agent fill)
 │   ├── TEMPLATE.review-findings.md    (review-dev: review ghi, fix set resolved)
 │   ├── TEMPLATE.qc-signoff.md         (end-wave agent fill)
-│   └── TEMPLATE.cr.md                 (user create CR)
 ├── wave-001/
-│   ├── change-requests/
 │   │   └── CR-NNN-*.md                (CR affecting this wave)
 │   ├── test-case-registry.md
 │   ├── test-report.md
@@ -33,12 +31,12 @@ tracking/
 
 | File | Created by | Updated by | Purpose |
 |------|-----------|------------|---------|
-| `test-case-registry.md` | `/test-plan` (test-plan-agent) | Initial only | TC list, AC trace, type=auto\|manual |
-| `test-report.md` | `/test-execute` (test-execute-agent) | Initial only | Aggregate test results với per-TC log refs |
-| `test-logs/TC-*.log` | `/test-execute` | Per-TC append | Proof per TC: cmd, response, result |
-| `test-logs/screenshots/*.png` | `/test-execute` | UI tests | UI test evidence (Playwright/Cypress) |
-| `review-findings.md` | `/review-dev` (review-{kind}-agent ghi) | review append/update row + fix set `resolved` | Findings review pre-handoff dạng **bảng** (1 row/finding); gate `no_open_findings` |
-| `qc-signoff.md` | `/end-wave` (end-wave-agent) | Final signoff | UAT result + stakeholder approval |
+| `test-case-registry.md` | `test-plan` (test-plan-agent) | Initial only | TC list, AC trace, type=auto\|manual |
+| `test-report.md` | `test-execute` (test-execute-agent) | Initial only | Aggregate test results với per-TC log refs |
+| `test-logs/TC-*.log` | `test-execute` | Per-TC append | Proof per TC: cmd, response, result |
+| `test-logs/screenshots/*.png` | `test-execute` | UI tests | UI test evidence (Playwright/Cypress) |
+| `review-findings.md` | `review-dev` (review-{kind}-agent ghi) | review append/update row + fix set `resolved` | Findings review pre-handoff dạng **bảng** (1 row/finding); gate `no_open_findings` |
+| `qc-signoff.md` | `end-wave` (end-wave-agent) | Final signoff | UAT result + stakeholder approval |
 
 ## Ba sổ, ba loại sự thật
 
@@ -56,7 +54,7 @@ Lượt sửa: `py scripts/build_prompt.py fix --tc TC-NNN --boundary <b>` → s
 
 ## Review-findings.md format
 
-**Format BẢNG — mỗi finding = 1 HÀNG** (theo `_templates/TEMPLATE.review-findings.md`). Sản phẩm của `/review-dev` (review ghi, MAIN spawn fix theo row, fix set `resolved`):
+**Format BẢNG — mỗi finding = 1 HÀNG** (theo `_templates/TEMPLATE.review-findings.md`). Sản phẩm của `review-dev` (review ghi, MAIN spawn fix theo row, fix set `resolved`):
 
 ```markdown
 | FINDING | severity | status | boundary | file | type | description | suggested fix |
@@ -65,7 +63,7 @@ Lượt sửa: `py scripts/build_prompt.py fix --tc TC-NNN --boundary <b>` → s
 ```
 
 - review ghi row `status=open`; fix Mode B sửa → set `resolved`; review re-review xác nhận.
-- **Gate `no_open_findings`** reject `/review-dev complete` nếu còn row `severity ∈ {BLOCKER, MAJOR}` mà `status=open`. `MINOR/NIT/QUESTION` không chặn (set `accepted`/`wontfix`).
+- **Gate `no_open_findings`** reject `review-dev complete` nếu còn row `severity ∈ {BLOCKER, MAJOR}` mà `status=open`. `MINOR/NIT/QUESTION` không chặn (set `accepted`/`wontfix`).
 - Findings sống **theo wave, trước bàn giao**: rà sạch thì đóng, không mang sang wave sau.
 
 ## Đổi ý giữa chừng

@@ -57,7 +57,7 @@ last_reviewed: "{{YYYY-MM-DD}}"
 
 ## 5. Phasing gợi ý
 
-> Gợi ý thứ tự release. PLAN (`/plan`) chốt thật qua WAVE-SEQUENCE.
+> Gợi ý thứ tự release. PLAN (`plan`) chốt thật qua WAVE-SEQUENCE.
 
 | Phase | Features | Outcome |
 |---|---|---|

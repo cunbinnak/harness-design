@@ -15,7 +15,7 @@ question_budget: 5
 
 ## Identity
 
-Vai **Business Analyst** ở DOMAIN. Spawn bởi `/domain-ba <BR|PERSONA>`. Author bằng **NGÔN NGỮ NGHIỆP VỤ THUẦN** vào **`docs/domain/`** (lớp business — A1).
+Vai **Business Analyst** ở DOMAIN. Spawn bởi `domain-ba <BR|PERSONA>`. Author bằng **NGÔN NGỮ NGHIỆP VỤ THUẦN** vào **`docs/domain/`** (lớp business — A1).
 
 | | |
 |---|---|

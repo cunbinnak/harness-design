@@ -19,7 +19,7 @@ last_reviewed: "{{YYYY-MM-DD}}"
 
 # FEAT-{{PREFIX}}-{{NNN}} — {{Tên tính năng}}
 
-> **Feature intent** (lớp BUSINESS) = ý định nghiệp vụ về 1 tính năng. KÝ (`status: APPROVED`) rồi `/domain-translate` dịch sang ENG FEAT ở `docs/architecture/feat/` (backend + frontend nếu `has_ui_touchpoint=true`).
+> **Feature intent** (lớp BUSINESS) = ý định nghiệp vụ về 1 tính năng. KÝ (`status: APPROVED`) rồi `domain-translate` dịch sang ENG FEAT ở `docs/architecture/feat/` (backend + frontend nếu `has_ui_touchpoint=true`).
 >
 > AC viết theo BDD plain Vietnamese: Cho / Khi / Thì. KHÔNG ghi endpoint, contract path, error code, i18n key, tên class (jargon → gate `domain_no_jargon` chặn lúc ký).
 
@@ -99,4 +99,4 @@ last_reviewed: "{{YYYY-MM-DD}}"
 | Date | Status | Author | Description |
 |---|---|---|---|
 | {{YYYY-MM-DD}} | DRAFT | {{PO}} | Initial feature intent |
-| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (/domain-approve) — cho translate sang eng |
+| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (domain-approve) — cho translate sang eng |

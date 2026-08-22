@@ -134,8 +134,8 @@ Deprecation old approach: hoàn tất by Wave {{M}}.
 | Cách verify | Khi nào | Pass criteria |
 |---|---|---|
 | {{Lint rule / ArchUnit}} | CI mỗi build | {{không còn auto-increment ID}} |
-| {{Load test}} | `/test-execute` | {{p99 < 200ms}} |
-| {{Review checklist}} | `/review-dev` | {{contract khớp}} |
+| {{Load test}} | `test-execute` | {{p99 < 200ms}} |
+| {{Review checklist}} | `review-dev` | {{contract khớp}} |
 
 ---
 

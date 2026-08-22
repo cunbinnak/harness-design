@@ -24,7 +24,7 @@ last_reviewed: "{{DATE}}"
 >
 > **Bảng này KHÔNG chết sau D1.** Hai cột cuối làm nó thành bảng theo dõi giao hàng xuyên suốt dự án:
 > `Wave giao` chốt ở PLAN (cắt lát được: `1 (scaffold) → 3 (đầy đủ)`), `Trạng thái` cập nhật ở
-> `/end-wave`. Nhờ vậy trả lời được "còn bao nhiêu năng lực chưa giao" mà không phải đọc lại mọi wave.
+> `end-wave`. Nhờ vậy trả lời được "còn bao nhiêu năng lực chưa giao" mà không phải đọc lại mọi wave.
 
 | # | Capability | P1 | P2 | P3 | … | Business outcome (đo được, ↔ hypothesis) | Candidate domain | Priority | MVP/Phase | Wave giao | Trạng thái |
 |---|---|---|---|---|---|---|---|---|---|---|---|

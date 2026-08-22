@@ -70,7 +70,7 @@ last_reviewed: "{{DATE}}"
 >
 > Mỗi ô `cấm` sinh **một ca kiểm âm bắt buộc**: đăng nhập đúng vai đó (hoặc không đăng nhập),
 > gọi thẳng URL/API tới hành động bị cấm, phải bị chặn **ở server**. `/dogfood` vai `user-breaker`
-> chạy đúng bảng này; `/test-plan` sinh TC âm từ đúng bảng này.
+> chạy đúng bảng này; `test-plan` sinh TC âm từ đúng bảng này.
 >
 > Hành động viết bằng ngôn ngữ nghiệp vụ (`Huỷ đơn của người khác`), không phải endpoint.
 > Không dùng icon — chỉ `có` / `cấm` (grep được).

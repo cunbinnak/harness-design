@@ -41,11 +41,11 @@ matrix_revision: {{matrix_revision}}
 2. Code trong `services/{{prefix}}-{{boundary}}/` (gitignored ở design repo, push lên `{{repo_url}}`). Lần đầu scaffold: emit `CLAUDE.md` + `.claude/settings.json` + `.gitignore` từ template `docs/architecture/infra/TEMPLATE.service-repo-*` (create-if-missing) để repo con có guardrail (identity + owned_paths + non-negotiables + permission allowlist build tool theo kind).
 3. Tuân `rules-{{kind}}` (primary skill — invoke khi start).
 4. Run scoped build/test cho boundary (lệnh chi tiết trong skill).
-5. KG: design (entities/business_rules/events/permissions) đã seed ở `/start-wave` — update nếu implement khác design (kèm data-model); append phần kinh nghiệm (learnings/gotchas/decisions/failure_modes) khi phát sinh.
+5. KG: design (entities/business_rules/events/permissions) đã seed ở `start-wave` — update nếu implement khác design (kèm data-model); append phần kinh nghiệm (learnings/gotchas/decisions/failure_modes) khi phát sinh.
 
 ## Workflow khi spawn
 
-`/start-dev --boundary {{boundary}}` triggers:
+`start-dev --boundary {{boundary}}` triggers:
 
 1. `build_prompt.py` đọc STATE + MATRIX + frontmatter này → render runtime prompt.
 2. Orchestrator spawn sub-agent qua Agent/Task tool với prompt + agent file ref.
@@ -79,7 +79,7 @@ Edit CHỈ trong các pattern này (hook PreToolUse block ngoài):
 - KHÔNG edit ngoài `owned_paths` — block.
 - KHÔNG sửa `harness/STATE.json`, `harness/STATE-MACHINE.json` — block.
 - KHÔNG `--no-verify`, KHÔNG hardcode secrets.
-- KHÔNG cross-boundary change — phải qua `/apply-cr` từ DONE.
+- KHÔNG cross-boundary change — phải qua chốt rà chéo của `/domain` + `/approve-document` TRƯỚC khi code; sau khi wave đã ship thì đổi ở **wave sau**.
 - KG append BẮT BUỘC khi `files_changed != []` (else SubagentStop warn).
 
 ## RETURN SCHEMA bắt buộc

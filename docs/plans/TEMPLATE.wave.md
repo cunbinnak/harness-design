@@ -12,7 +12,7 @@ last_reviewed: "{{DATE}}"
 
 # Wave {{N}} — {{wave-title}}
 
-> Per-wave plan chi tiết (cho người). Sinh bởi `program-planner-agent` ở **PLAN** (`/plan`); update khi `/apply-cr` (từ DONE) đổi scope.
+> Per-wave plan chi tiết (cho người). Sinh bởi `program-planner-agent` ở **PLAN** (`plan`); update khi wave sau (lùi `/domain` chốt chia-wave) đổi scope.
 >
 > **Machine SOT = `harness/SERVICE-BOUNDARY-MATRIX.json`**: `start-wave` đọc MATRIX (wave-number → boundary_id + kind + features), KHÔNG đọc file này. `targets` + boundary list dưới đây **mirror** MATRIX; lệch → MATRIX thắng. KHÔNG có MANIFEST/contract-sign/hash. Thin-context per boundary materialize qua `start-wave` + `build_prompt.py`.
 
@@ -137,7 +137,7 @@ constraints:
 
 > Foundation trước, dependent sau.
 
-1. **Phase 1**: {{boundary-foundation}} (vd auth / shared) — `/start-dev {{boundary-foundation}}`.
+1. **Phase 1**: {{boundary-foundation}} (vd auth / shared) — `start-dev {{boundary-foundation}}`.
 2. **Phase 2**: {{boundary phụ thuộc foundation}}.
 3. **Phase 3**: {{FE / BFF integration}} (consume API phase trước).
 4. **Phase 4**: review-dev → dev-handoff → test-plan → test-execute → UAT.
@@ -160,7 +160,7 @@ test_scope:
 | contract | producer boundary | api/event ổn định |
 | e2e | integration wave | demo path xanh |
 
-> Chi tiết TC sinh ở TEST_PLAN (`/test-plan` → `tracking/wave-{{NNN}}/test-case-registry.md`). Enterprise coverage (error path, tenant isolation, idempotency, rate-limit, concurrency) thêm ở test-plan.
+> Chi tiết TC sinh ở TEST_PLAN (`test-plan` → `tracking/wave-{{NNN}}/test-case-registry.md`). Enterprise coverage (error path, tenant isolation, idempotency, rate-limit, concurrency) thêm ở test-plan.
 
 ### Deferred to later waves (SoT cho test-plan đánh `@deferred`)
 

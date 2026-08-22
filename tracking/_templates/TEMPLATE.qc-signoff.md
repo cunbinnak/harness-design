@@ -105,4 +105,4 @@ notes: "All bugs fixed and regression verified."
 
 - end-wave complete → state DONE
 - done-wave để teardown infra + reset
-- Wave kế tiếp: wave-{N+1} (nếu plan có) hoặc /apply-cr (nếu có CR)
+- Wave kế tiếp: wave-{N+1} nếu WAVE-SEQUENCE còn wave; hết wave → teardown

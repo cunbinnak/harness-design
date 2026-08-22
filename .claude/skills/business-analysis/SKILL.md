@@ -35,7 +35,7 @@ Input: `docs/architecture/{PROJECT.md, feat/FEAT-*.md, business-rules/BR-*.md}`.
 
 ## Flow
 - **review-document**: soi → trả `issues[]` (file + concern) cho user; KHÔNG tự sửa product (DOMAIN author sửa, hoặc revision loop).
-- **apply-cr**: analyze CR → ghi impact vào CR file §Kế hoạch cập nhật + return `affected_docs`/`boundaries_affected`.
+- **rà chéo**: soi gap/độ phủ giữa các lớp doc + return `affected_docs`/`boundaries_affected`.
 
 ## Quality checklist (khi review / phân tích)
 - [ ] Mỗi user story có ≥ 1 AC testable (Cho/Khi/Thì), gồm non-happy-path.
@@ -45,4 +45,4 @@ Input: `docs/architecture/{PROJECT.md, feat/FEAT-*.md, business-rules/BR-*.md}`.
 - [ ] (Nếu research) ≥ 1 nguồn thật, ghi link.
 
 ## Done
-- review-document: trả issues list cho user feedback. apply-cr: CR impact analysis ghi vào CR file.
+- rà chéo: trả issues list cho user feedback. Ghi vào CR file.

@@ -16,7 +16,7 @@ supersedes: "{{contract-id hoặc 'none'}}"
 
 # API Contract — `api/{{name}}`
 
-> 1 contract / boundary backend (hoặc bff). Shape đầy đủ request/response + error catalog mọi operation. Author ở DESIGN. Sửa additive=MINOR (trong wave); breaking=MAJOR (`/apply-cr` từ DONE, §7). Consumer = boundary khác cùng repo (MATRIX `consumed_by`); pattern cross-boundary → `integrations/INTEG-INT-*.md`.
+> 1 contract / boundary backend (hoặc bff). Shape đầy đủ request/response + error catalog mọi operation. Author ở DESIGN. Sửa additive=MINOR (trong wave); breaking=MAJOR (wave sau, §7). Consumer = boundary khác cùng repo (MATRIX `consumed_by`); pattern cross-boundary → `integrations/INTEG-INT-*.md`.
 
 ---
 
@@ -189,7 +189,7 @@ Client map `error.code` → i18n; KHÔNG parse `message`. `details[]` optional c
 
 **Additive (MINOR — dev trong wave)**: thêm field response/request optional (default an toàn); thêm endpoint; thêm error code (consumer ignore code lạ).
 
-**Breaking (MAJOR — `/apply-cr` từ DONE, kiến trúc-only → `/domain-end` qua thẳng → DESIGN sửa contract)**: xoá field / đổi type / đổi semantics / optional→required / đổi nghĩa HTTP status / rename.
+**Breaking → WAVE SAU** (không sửa tại chỗ): lùi `/domain` sửa hợp đồng, `/approve-document` khoá lại, wave kế giao bản mới. Consumer đang chạy phải còn chạy được suốt lúc đó — luật cộng-trước-xoá-sau ở `tracking/BC-LEDGER.md §2`. (bỏ) qua thẳng → DESIGN sửa contract)**: xoá field / đổi type / đổi semantics / optional→required / đổi nghĩa HTTP status / rename.
 
 Breaking → `/api/v2`; v1 giữ ACTIVE qua deprecation window (default 2 wave) → `status: DEPRECATED` → xoá.
 

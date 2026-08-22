@@ -30,11 +30,11 @@ docs/architecture/
 
 | Stage | Command / Agent | Files |
 |-------|-----------------|-------|
-| Discovery D3 | `/discovery-start D3` charter-author | PROJECT.md (PRD) + BOUNDARY-MAP + CHARTER |
-| DOMAIN | `/domain-po`·`/domain-ba` author business (`docs/domain/`) → `/domain-approve` ký → `/domain-translate` (domain-translator-agent) | epics/ + feat/ + journeys/ + personas/ + business-rules/ (eng — bản dịch, frontmatter `source`) |
-| DESIGN | `/design` solution-architect | ADR + HLD + API + data-model + UX + events + integrations + infra/docker-compose |
-| PLAN | `/plan` program-planner | (none here — đọc; ghi docs/plans/ + MATRIX) |
-| `/review-document` | review-document-agent | Revise theo user feedback hoặc sanity check |
+| Discovery D3 | `discovery-start D3` charter-author | PROJECT.md (PRD) + BOUNDARY-MAP + CHARTER |
+| DOMAIN | `domain-po`·`domain-ba` author business (`docs/domain/`) → `domain-approve` ký → `domain-translate` (domain-translator-agent) | epics/ + feat/ + journeys/ + personas/ + business-rules/ (eng — bản dịch, frontmatter `source`) |
+| DESIGN | `design` solution-architect | ADR + HLD + API + data-model + UX + events + integrations + infra/docker-compose |
+| PLAN | `plan` program-planner | (none here — đọc; ghi docs/plans/ + MATRIX) |
+| `review-document` | review-document-agent | Revise theo user feedback hoặc sanity check |
 
 ## Boundary types
 

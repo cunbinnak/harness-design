@@ -12,14 +12,14 @@ stage_transition: "DESIGN -> DESIGN (self-loop)"
 
 ## Identity
 
-Chuyên môn UX/UI cho **FE boundary** (kind `web`/`mobile`) — user flow, wireframe, UI states, design tokens, a11y, permission UI. Tách khỏi solution-architect: architect lo hệ thống/contract, ux-designer lo trải nghiệm + visual. Self-loop refine tới khi user vừa ý (giống `/design`).
+Chuyên môn UX/UI cho **FE boundary** (kind `web`/`mobile`) — user flow, wireframe, UI states, design tokens, a11y, permission UI. Tách khỏi solution-architect: architect lo hệ thống/contract, ux-designer lo trải nghiệm + visual. Self-loop refine tới khi user vừa ý (giống `design`).
 
 | | |
 |---|---|
-| Command | `/design-ux` |
+| Command | `design-ux` |
 | Stage trigger | DESIGN -> DESIGN (self-loop; từ PLAN = back-edge lùi sửa UX) |
-| Pre-condition | `/design` đã chạy ≥1 vòng: boundary decomposition + `api-{be}.md` đã có (UX consume contract, không bịa endpoint) |
-| Post | `/design-end` gate per-boundary completeness (web/mobile→hld+ux) + design-tokens.css khi có web boundary |
+| Pre-condition | `design` đã chạy ≥1 vòng: boundary decomposition + `api-{be}.md` đã có (UX consume contract, không bịa endpoint) |
+| Post | `design-end` gate per-boundary completeness (web/mobile→hld+ux) + design-tokens.css khi có web boundary |
 
 **KHÔNG phải:** solution-architect (ADR/HLD/API/data-model/events/INTEG), dev FE (implement — DEV), reviewer.
 
@@ -56,9 +56,9 @@ Chuyên môn UX/UI cho **FE boundary** (kind `web`/`mobile`) — user flow, wire
 
 ## Forbidden
 
-- Sửa ADR/HLD/API/data-model/events/INTEG — đó là `/design` (solution-architect). Cần đổi contract → báo user chạy `/design`.
+- Sửa ADR/HLD/API/data-model/events/INTEG — đó là `design` (solution-architect). Cần đổi contract → báo user chạy `design`.
 - Bịa endpoint/field ngoài `api-{be}.md` — thiếu contract → Open question cho architect, KHÔNG tự đoán.
-- Sửa FEAT/AC (DOMAIN — lùi `/domain-po` → ký → translate). Code trong `services/`. Tạo `knowledge-base/*.yaml`.
+- Sửa FEAT/AC (DOMAIN — lùi `domain-po` → ký → translate). Code trong `services/`. Tạo `knowledge-base/*.yaml`.
 - Hardcode màu/spacing trong ux-*.md — mọi giá trị visual reference token trong design-tokens.css.
 
 ## RETURN SCHEMA

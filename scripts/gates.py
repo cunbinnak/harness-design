@@ -161,7 +161,7 @@ def derive_coverage_pct(boundary_id: str, state: dict, root: Path | None = None)
 def check_all_boundaries_reviewed(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
     """Mọi boundary trong wave_boundaries phải có review_result=pass + coverage đạt ngưỡng theo kind.
 
-    Nguồn review: STATE.review_results (lưu bởi apply_effects khi /review-dev complete). List này chỉ
+    Nguồn review: STATE.review_results (lưu bởi apply_effects khi review-dev complete). List này chỉ
     khoá theo BOUNDARY nên tự nó KHÔNG mang chiều wave — dấu wave nằm ở `review_results_wave`, đối
     chiếu qua `results_stale()`. Trước đây docstring này khai là "wave-scoped" trong khi thực tế không
     phải: vòng wave không-reset thì boundary review pass ở wave N sẽ xanh hộ wave N+1.
@@ -209,7 +209,7 @@ def check_all_boundaries_reviewed(state: dict, evidence: dict | None = None, roo
                 no_report.append(
                     f"{bid}: service đã scaffold nhưng KHÔNG có coverage report "
                     f"(jacoco XML / coverage-summary.json / lcov.info) — số tự khai không được tin; "
-                    f"chạy test kèm coverage rồi /review-dev lại"
+                    f"chạy test kèm coverage rồi review-dev lại"
                 )
                 continue
         if not (isinstance(cov, (int, float)) and cov >= min_pct):
@@ -487,14 +487,14 @@ def _findings_open_from_table(text: str, id_pattern: str = r"rf-\d+") -> list[st
 def check_doc_review(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
     """Gate /approve-document: doc-review sanity-check phải ĐÃ chạy + KHÔNG còn gap BLOCKER/MAJOR open.
 
-    Mode sanity-check của /review-document (gọi KHÔNG argument) quét toàn bộ doc đã author
+    Mode sanity-check của review-document (gọi KHÔNG argument) quét toàn bộ doc đã author
     (discovery + domain + design + plan): mâu thuẫn cross-doc · thiếu độ phủ (capability-map +
     persona + journey phải có FEAT phủ → bắt thiếu năng lực nền như auth/login) · AC không testable ·
     cross-ref gãy · "Câu hỏi cho Author" chưa chốt → ghi tracking/doc-review-findings.md
     (DR-NNN + severity + status). Gate này ép vá gap BLOCKER/MAJOR trước khi approve → start-wave
     (mirror review-dev no_open_findings, nhưng cho TÀI LIỆU thay vì code).
 
-    Thiếu file → review CHƯA chạy → chặn (ép chạy /review-document no-arg trước approve).
+    Thiếu file → review CHƯA chạy → chặn (ép chạy review-document no-arg trước approve).
     force=true → bypass (audit decisions.md ở apply_effects)."""
     evidence = evidence or {}
     if evidence.get("force") is True:
@@ -503,7 +503,7 @@ def check_doc_review(state: dict, evidence: dict | None = None, root: Path | Non
     findings_file = base / "tracking" / "doc-review-findings.md"
     if not findings_file.exists():
         return False, (
-            "chưa chạy doc-review: thiếu `tracking/doc-review-findings.md` — chạy `/review-document` "
+            "chưa chạy doc-review: thiếu `tracking/doc-review-findings.md` — chạy `review-document` "
             "(KHÔNG argument) để quét gap/mâu thuẫn/thiếu-độ-phủ trước khi approve"
         )
     open_findings = _findings_open_from_table(
@@ -512,13 +512,13 @@ def check_doc_review(state: dict, evidence: dict | None = None, root: Path | Non
     if open_findings is None:
         return False, (
             "doc-review-findings.md không có bảng findings hợp lệ (cần cột finding/severity/status) — "
-            "re-run `/review-document` no-arg"
+            "re-run `review-document` no-arg"
         )
     if open_findings:
         return False, (
             f"còn {len(open_findings)} gap tài liệu BLOCKER/MAJOR chưa xử: {open_findings} — sửa qua "
-            "`/review-document \"<feedback>\"` (hoặc lùi `/domain-po`·`/domain-ba` author bổ sung → "
-            "`/domain-approve` → `/domain-translate`) tới sạch rồi approve"
+            "`review-document \"<feedback>\"` (hoặc lùi `domain-po`·`domain-ba` author bổ sung → "
+            "`domain-approve` → `domain-translate`) tới sạch rồi approve"
         )
     return True, ""
 
@@ -599,10 +599,10 @@ def results_stale(state: dict, field: str) -> str | None:
 
 
 def check_test_passed(state: dict) -> tuple[bool, str]:
-    """end-wave: lần /test-execute cuối phải `pass` VÀ thuộc đúng wave hiện tại.
+    """end-wave: lần test-execute cuối phải `pass` VÀ thuộc đúng wave hiện tại.
 
     Sau một lượt sửa, field này GIỮ NGUYÊN `fail` của lần test trước (sửa không đụng) → buộc
-    re-run /test-execute cho xanh mới end-wave được. Ép vòng fix ↔ re-run tới khi suite xanh hẳn."""
+    re-run test-execute cho xanh mới end-wave được. Ép vòng fix ↔ re-run tới khi suite xanh hẳn."""
     stale = results_stale(state, "test_result")
     if stale:
         return False, stale + " (/run-wave sẽ chạy lại test cho wave này)"
@@ -610,7 +610,7 @@ def check_test_passed(state: dict) -> tuple[bool, str]:
     if tr == "pass":
         return True, ""
     return False, (
-        f"test_result hiện = {tr!r} (cần 'pass'). Re-run /test-execute cho full suite xanh "
+        f"test_result hiện = {tr!r} (cần 'pass'). Re-run test-execute cho full suite xanh "
         "trước khi đóng wave (sau fix phải test lại)."
     )
 
@@ -618,7 +618,7 @@ def check_test_passed(state: dict) -> tuple[bool, str]:
 def check_no_open_findings(state: dict) -> tuple[bool, str]:
     """Parse tracking/wave-{N}/review-findings.md → reject nếu còn finding BLOCKER/MAJOR status=open.
 
-    Lưới an toàn ép MAIN spawn fix tới sạch trước khi /review-dev complete (rời REVIEW_DEV)."""
+    Lưới an toàn ép MAIN spawn fix tới sạch trước khi review-dev complete (rời REVIEW_DEV)."""
     wave_id = (state.get("wave") or {}).get("id")
     if not wave_id:
         return True, ""
@@ -632,7 +632,7 @@ def check_no_open_findings(state: dict) -> tuple[bool, str]:
 
 
 def check_discovery_wave(evidence: dict, state: dict) -> tuple[bool, str]:
-    """Gate /discovery-end (clone ZIP): gate wave ĐANG RỜI (outgoing = state.stage) → tiến wave kế.
+    """Gate discovery-end (clone ZIP): gate wave ĐANG RỜI (outgoing = state.stage) → tiến wave kế.
 
     DISC_D0 --discovery-end--> DISC_D1: gate D0. ... DISC_D3 --discovery-end--> DOMAIN: gate D3.
     force=true → bypass (audit ghi ở decisions.md).
@@ -649,7 +649,7 @@ def check_discovery_wave(evidence: dict, state: dict) -> tuple[bool, str]:
 
 
 def check_discovery_advance(evidence: dict, state: dict) -> tuple[bool, str]:
-    """Gate /discovery-start (cơ chế mới start D0→Dn): khi NHẢY TIẾN sang wave kế → gate wave hiện tại.
+    """Gate discovery-start (cơ chế mới start D0→Dn): khi NHẢY TIẾN sang wave kế → gate wave hiện tại.
 
     arg (evidence.wave) > wave hiện tại (state.stage) = advancing → verify gate wave đang rời.
     arg == wave hiện tại = refine (không gate). BOOTSTRAP→D0 = first-entry (không gate). force bypass.
@@ -682,9 +682,9 @@ def _phase_gate(evidence: dict, checks: list[dict], label: str) -> tuple[bool, s
 
 
 def check_domain_gate(evidence: dict) -> tuple[bool, str]:
-    """Gate /domain-end (DOMAIN_AUTHORING → DESIGN): ENG product chia nhỏ ở docs/architecture/.
+    """Gate domain-end (DOMAIN_AUTHORING → DESIGN): ENG product chia nhỏ ở docs/architecture/.
 
-    docs/architecture/ là ĐẦU RA eng (do /domain-translate sinh từ business docs/domain/ đã ký).
+    docs/architecture/ là ĐẦU RA eng (do domain-translate sinh từ business docs/domain/ đã ký).
     """
     return _phase_gate(evidence, [
         {"kind": "artifact_glob", "pattern": "docs/architecture/epics/EP-*.md", "min_count": 1},
@@ -697,7 +697,7 @@ def check_domain_gate(evidence: dict) -> tuple[bool, str]:
 # #2/#3 — DOMAIN business layer (docs/domain/) + ký (approve) + translate + no-jargon
 # ========================================================================
 # A1: business plain-VN ở docs/domain/{epics,feat,journeys,business-rules,personas}/ (PO/BA viết + KÝ)
-# → /domain-translate dịch sang docs/architecture/ (eng). Ký TRƯỚC, dịch SAU.
+# → domain-translate dịch sang docs/architecture/ (eng). Ký TRƯỚC, dịch SAU.
 
 _DOMAIN_BUSINESS_GLOBS = (
     "docs/domain/epics/EP-*.md",
@@ -736,7 +736,7 @@ def _domain_business_files(root: Path) -> list[Path]:
 
 
 def check_domain_signed(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /domain-translate: MỌI business doc ở docs/domain/ phải `status: APPROVED` (ký TRƯỚC, dịch SAU).
+    """Gate domain-translate: MỌI business doc ở docs/domain/ phải `status: APPROVED` (ký TRƯỚC, dịch SAU).
 
     Chưa author business doc nào → fail. Còn doc chưa ký → fail (liệt kê). force bypass (audit).
     """
@@ -746,20 +746,20 @@ def check_domain_signed(evidence: dict | None = None, root: Path | None = None) 
     root = root or REPO_ROOT
     files = _domain_business_files(root)
     if not files:
-        return False, "chưa có business doc nào ở docs/domain/ — /domain-po · /domain-ba author trước"
+        return False, "chưa có business doc nào ở docs/domain/ — domain-po · domain-ba author trước"
     unsigned = [str(p.relative_to(root)).replace("\\", "/") for p in files
                 if not _frontmatter_signed(p.read_text(encoding="utf-8", errors="ignore"))]
     if unsigned:
         return False, ("còn business doc CHƯA KÝ (status!=APPROVED): " + ", ".join(sorted(unsigned))
-                       + " — /domain-approve <id|all> rồi mới /domain-translate")
+                       + " — domain-approve <id|all> rồi mới domain-translate")
     return True, ""
 
 
 def check_domain_stamped(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /domain-approve: doc thuộc target phải ĐÃ stamp `status: APPROVED` trên disk lúc complete.
+    """Gate domain-approve: doc thuộc target phải ĐÃ stamp `status: APPROVED` trên disk lúc complete.
 
     Chặn "approve chay": MAIN chạy `complete` mà quên chạy `scripts/domain_approve.py` → state nói đã
-    ký nhưng file vẫn DRAFT (về sau `domain_signed` fail khó hiểu ở /domain-translate). Không có doc
+    ký nhưng file vẫn DRAFT (về sau `domain_signed` fail khó hiểu ở domain-translate). Không có doc
     nào khớp target → vacuous pass (chưa author gì — hermetic/smoke). force=true → bypass (audit).
     """
     evidence = evidence or {}
@@ -782,7 +782,7 @@ def check_domain_stamped(evidence: dict | None = None, root: Path | None = None)
 
 
 def check_domain_no_jargon(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /domain-approve: doc business KHÔNG được chứa jargon kỹ thuật (giữ chủ-nghiệp-vụ ký được).
+    """Gate domain-approve: doc business KHÔNG được chứa jargon kỹ thuật (giữ chủ-nghiệp-vụ ký được).
 
     evidence.target = id doc (vd EP-x) hoặc 'all'/rỗng = mọi business doc. Quét token kỹ thuật rõ ràng.
     force bypass (audit).
@@ -808,7 +808,7 @@ def check_domain_no_jargon(evidence: dict | None = None, root: Path | None = Non
             problems.append(f"{rel}: jargon kỹ thuật ({len(hits)} loại)")
     if problems:
         return False, ("business doc CÓ jargon kỹ thuật (phải plain nghiệp vụ để ký): " + "; ".join(problems)
-                       + " — bỏ code/SQL/API/class-name; chi tiết kỹ thuật để /domain-translate sinh ở eng layer")
+                       + " — bỏ code/SQL/API/class-name; chi tiết kỹ thuật để domain-translate sinh ở eng layer")
     return True, ""
 
 
@@ -816,7 +816,7 @@ def _boundaries_from_boundary_map(root: Path | None = None) -> list[tuple[str, s
     """Parse docs/discovery/BOUNDARY-MAP.md → [(boundary_id, kind)] non-placeholder.
 
     §1 'Backend boundaries' → kind 'backend' (gồm cả bff — phân biệt set ở DESIGN/MATRIX,
-       chưa biết lúc /design → gom 'backend-family', chỉ ép HLD+API).
+       chưa biết lúc design → gom 'backend-family', chỉ ép HLD+API).
     §2 'Web experiences' → kind 'web'. §3 'Mobile experiences' → kind 'mobile'.
     id nằm trong backtick cột đầu. Bỏ row placeholder (_TBD / không có `id`).
     """
@@ -877,7 +877,7 @@ def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = 
     (cột tối thiểu `screen | boundary | feat | mockup`):
       (a) MỖI web boundary có ≥1 row (màn được gán rõ, không boundary nào trắng design);
       (b) cột `boundary` của row phải là FE boundary hợp lệ (không gán màn cho boundary ma);
-      (c) MỖI row: file mockup tồn tại + (html) dùng design token (var(--)/design-tokens.css);
+      (c) MỖI row: file mockup tồn tại + (html) dùng design token (var(--)design-tokens.css);
       (d) màn TUÂN THỦ FEAT (khi docs/architecture/feat/ đã có): FEAT-id trong cột `feat` phải có
           file thật (không trace FEAT ma); chiều ngược — MỌI FEAT `has_ui_touchpoint: true`
           (không deferred/dropped) phải xuất hiện ở ≥1 row (FEAT có UI mà 0 màn = bị bỏ rơi).
@@ -893,7 +893,7 @@ def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = 
     if not smap.is_file():
         return [
             "thiếu `docs/architecture/ux/SCREEN-MAP.md` — thiết kế theo MÀN: mục lục screen ↔ boundary ↔ "
-            "FEAT ↔ mockup (bảng cột `screen|route|boundary|feat|mockup`; /design-ux sinh TRƯỚC khi vẽ)"
+            "FEAT ↔ mockup (bảng cột `screen|route|boundary|feat|mockup`; design-ux sinh TRƯỚC khi vẽ)"
         ]
     rows = _parse_md_table_rows(smap.read_text(encoding="utf-8", errors="ignore"), ("screen", "boundary", "mockup"))
     if not rows:
@@ -959,7 +959,7 @@ def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = 
 
 
 def check_design_gate(evidence: dict) -> tuple[bool, str]:
-    """Gate /design (DESIGN → PLAN): ADR≥3 + INTEG≥1 + **per-boundary kind-aware completeness**.
+    """Gate design (DESIGN → PLAN): ADR≥3 + INTEG≥1 + **per-boundary kind-aware completeness**.
 
     Aggregate (cũ): ADR≥3, INTEG≥1. Mới (chắt lọc ZIP per-target MANIFEST): MỖI boundary
     trong BOUNDARY-MAP phải có artifact đúng kind — backend→HLD+API; web/mobile→HLD+UX.
@@ -996,7 +996,7 @@ def check_design_gate(evidence: dict) -> tuple[bool, str]:
 
 
 def check_plan_gate(evidence: dict) -> tuple[bool, str]:
-    """Gate /plan (PLAN → REVIEW): WAVE-SEQUENCE + MATRIX + wave files + KG."""
+    """Gate plan (PLAN → REVIEW): WAVE-SEQUENCE + MATRIX + wave files + KG."""
     return _phase_gate(evidence, [
         {"kind": "file_exists", "path": "docs/plans/WAVE-SEQUENCE.md"},
         {"kind": "file_exists", "path": "harness/SERVICE-BOUNDARY-MATRIX.json"},
@@ -1105,7 +1105,7 @@ _COMPATIBLE_KINDS = {
 
 
 def check_matrix_boundary_coherence(evidence: dict, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /plan: MATRIX phải phủ MỌI boundary/experience khai báo ở BOUNDARY-MAP (đúng kind).
+    """Gate plan: MATRIX phải phủ MỌI boundary/experience khai báo ở BOUNDARY-MAP (đúng kind).
 
     Catch planner âm thầm bỏ rơi boundary đã khai báo (vd web experience không vào MATRIX
     → không bao giờ scaffold/scheduled). Mỗi entry BOUNDARY-MAP non-placeholder mà Status
@@ -1193,7 +1193,7 @@ def check_infra_proof(state: dict, evidence: dict | None = None) -> tuple[bool, 
         return True, ""
     wave_id = (state.get("wave") or {}).get("id")
     if not wave_id:
-        return False, "chưa có wave (chạy /start-wave trước)"
+        return False, "chưa có wave (chạy start-wave trước)"
     proof = REPO_ROOT / "tracking" / wave_id / "docker-ps.json"
     if not proof.is_file():
         return False, (
@@ -1254,12 +1254,12 @@ def check_health_proof(state: dict, evidence: dict | None = None, root: Path | N
     root = root or REPO_ROOT
     wave_id = (state.get("wave") or {}).get("id")
     if not wave_id:
-        return False, "chưa có wave (chạy /start-wave trước)"
+        return False, "chưa có wave (chạy start-wave trước)"
     proof = root / "tracking" / wave_id / "health-proof.json"
     if not proof.is_file():
         return False, (
             f"thiếu 'tracking/{wave_id}/health-proof.json' — chạy "
-            f"`py scripts/capture_infra_proof.py` (HARNESS curl /health/ready mỗi wave service) trước /dev-handoff"
+            f"`py scripts/capture_infra_proof.py` (HARNESS curl /health/ready mỗi wave service) trước dev-handoff"
         )
     try:
         data = json.loads(proof.read_text(encoding="utf-8").lstrip("﻿"))
@@ -1480,7 +1480,7 @@ def check_test_evidence(state: dict, evidence: dict | None = None, root: Path | 
         return False, "chưa có wave"
     reg = root / "tracking" / wave_id / "test-case-registry.md"
     if not reg.is_file():
-        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — chạy /test-plan trước"
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — chạy test-plan trước"
     rep = root / "tracking" / wave_id / "test-report.md"
     if not rep.is_file():
         return False, f"thiếu 'tracking/{wave_id}/test-report.md' — test-execute phải ghi report (không tự khai)"
@@ -1673,7 +1673,7 @@ def render_feature_state_md(state: dict, root: Path | None = None) -> str:
 
 
 def check_features_complete(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /end-wave (L07 WIP=1 → enforcement ở điểm SHIP): KHÔNG feat nào được `active` (làm dở).
+    """Gate end-wave (L07 WIP=1 → enforcement ở điểm SHIP): KHÔNG feat nào được `active` (làm dở).
 
     `active` = một phần AC pass, phần khác chưa (feature dở dang — chính là overreach: mở feat mới khi
     feat cũ chưa xong). Đây là điều harness quan sát ĐƯỢC bằng máy (derive từ report), thay cho lời-dặn
@@ -1689,7 +1689,7 @@ def check_features_complete(state: dict, evidence: dict | None = None, root: Pat
         detail = "; ".join(f"{r['feat']} ({r['ac_pass']}/{r['ac_total']} AC verified)" for r in active)
         return False, (
             "còn feature LÀM DỞ (state=active — WIP=1: xong hẳn 1 feat mới sang feat kế, L07): " + detail
-            + " — hoàn thành nốt AC còn thiếu (mọi AC có TC pass trong report) rồi /end-wave"
+            + " — hoàn thành nốt AC còn thiếu (mọi AC có TC pass trong report) rồi end-wave"
         )
     return True, ""
 
@@ -1726,7 +1726,7 @@ def contrast_ratio(fg: str, bg: str) -> float:
 
 def check_design_system_closed(evidence: dict | None = None,
                                root: Path | None = None) -> tuple[bool, str]:
-    """`/design --end`: có boundary web/mobile → DESIGN-SYSTEM.md phải đủ và ĐÓNG.
+    """`design --end`: có boundary web/mobile → DESIGN-SYSTEM.md phải đủ và ĐÓNG.
 
     VÌ SAO — harness đang ép tuân thủ một design system chưa được định nghĩa đủ: gate `web_styling`
     bắt FE dùng token, vai `picky` ở `/dogfood` đi kiểm "component thiếu trạng thái bắt buộc" —
@@ -2033,7 +2033,7 @@ def _edge_rows_unanswered(text: str) -> list[str]:
 
 def check_edge_cases_decided(evidence: dict | None = None,
                              root: Path | None = None) -> tuple[bool, str]:
-    """`/design --end`: mỗi HLD phải có §6.1 Ca biên đã quyết, KHÔNG dòng nào bỏ trống.
+    """`design --end`: mỗi HLD phải có §6.1 Ca biên đã quyết, KHÔNG dòng nào bỏ trống.
 
     VÌ SAO — ca biên kỹ thuật (gửi hai lần · sửa đồng thời · xoá mềm hay cứng · gọi sai thứ tự ·
     hỏng nửa chừng · đọc bản cũ · rỗng · quyền thu hồi giữa chừng) là thứ AC hạnh phúc gần như không
@@ -2411,7 +2411,7 @@ DOGFOOD_LENSES = ("edge", "newbie", "picky", "rushed", "breaker", "mobile")
 
 def check_dogfood_done(state: dict, evidence: dict | None = None,
                        root: Path | None = None) -> tuple[bool, str]:
-    """/end-wave: wave phải đã qua MỘT lượt dogfood đủ 2 đợt trên hệ đang chạy.
+    """end-wave: wave phải đã qua MỘT lượt dogfood đủ 2 đợt trên hệ đang chạy.
 
     Vì sao cần gate riêng dù đã có test_passed: nó chỉ nói "test-case ĐÃ VIẾT
     thì pass". Chúng mù với thứ không ai viết TC cho — cảnh rỗng câm, lỗi bị nuốt im lặng, bấm hai
@@ -2437,7 +2437,7 @@ def check_dogfood_done(state: dict, evidence: dict | None = None,
             f"chưa có {rel} — wave chưa qua lượt /dogfood nào. "
             "test_passed chỉ nói 'TC đã viết thì pass', nó mù với thứ không ai "
             "viết TC cho (cảnh rỗng câm, lỗi nuốt im lặng, bấm hai lần ra hai bản ghi, "
-            "vai A chạm dữ liệu vai B). Chạy /dogfood rồi /end-wave lại"
+            "vai A chạm dữ liệu vai B). Chạy /dogfood rồi end-wave lại"
         )
     text = read_live(f).lower()
     missing = [l for l in DOGFOOD_LENSES if l not in text]
@@ -2518,7 +2518,7 @@ def check_ui_test_present(state: dict, evidence: dict | None = None, root: Path 
         return True, ""  # wave không có web boundary → không áp dụng
     reg = root / "tracking" / wave_id / "test-case-registry.md"
     if not reg.is_file():
-        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — /test-plan phải sinh trước"
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — test-plan phải sinh trước"
     rows = _registry_auto_rows(reg.read_text(encoding="utf-8", errors="ignore"))
     deferred = _wave_deferred_tokens(wave_id, root)
     missing: list[str] = []
@@ -2586,7 +2586,7 @@ def check_registry_scope(state: dict, evidence: dict | None = None, root: Path |
         return False, "chưa có wave"
     reg = root / "tracking" / wave_id / "test-case-registry.md"
     if not reg.is_file():
-        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — /test-plan phải sinh trước"
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — test-plan phải sinh trước"
     planned = _feats_planned_upto(wave_id, root)
     if not planned:
         return True, ""  # không đọc được scope từ wave plans → không kiểm được (không chặn bừa)
@@ -2647,7 +2647,7 @@ def _eng_docs_by_kind(root: Path) -> dict[str, list[tuple[Path, dict]]]:
 
 
 def check_translation_parity(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /domain-end: business đã KÝ ↔ eng doc phải 1-1 (translate không được bỏ sót im lặng).
+    """Gate domain-end: business đã KÝ ↔ eng doc phải 1-1 (translate không được bỏ sót im lặng).
 
     Chiều 1: MỖI business doc APPROVED (docs/domain/) phải có eng doc cùng kind ở docs/architecture/
     khớp qua frontmatter `source` (chứa tên file business) / `domain_source_id` / trùng stem.
@@ -2678,7 +2678,7 @@ def check_translation_parity(evidence: dict | None = None, root: Path | None = N
         if not hit:
             problems.append(
                 f"{kind}/{bp.name}: business doc ĐÃ KÝ nhưng KHÔNG có eng doc tương ứng ở "
-                f"docs/architecture/{kind}/ (translate bỏ sót — chạy lại /domain-translate)"
+                f"docs/architecture/{kind}/ (translate bỏ sót — chạy lại domain-translate)"
             )
     biz_stems = {p.stem for p in all_biz}
     for kind in _ENG_ORPHAN_KINDS:
@@ -2706,7 +2706,7 @@ _TODO_ENGINEER_RES = [
 
 
 def check_todo_resolved(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /design-end: field kỹ thuật translator để TODO/TBD phải được DESIGN điền hết.
+    """Gate design-end: field kỹ thuật translator để TODO/TBD phải được DESIGN điền hết.
 
     `enforcement_location: TBD (DESIGN)` sống sót qua design-end = BR không có nơi enforce
     → rule không bao giờ được implement, chỉ lộ ở UAT. Quét docs/architecture/{epics,feat,
@@ -2758,7 +2758,7 @@ def check_ac_coverage(state: dict, evidence: dict | None = None, root: Path | No
     Chiều 1 (AC mồ côi): mỗi `### AC-n` của FEAT in-scope wave (STATE.wave_features / MATRIX)
     phải có ≥1 TC (auto hoặc manual) trace nó — trừ token đã khai deferred ở wave plan.
     Chiều 2 (TC stale): TC trace `FEAT:AC-m` mà FEAT file không còn AC đó → stale (bắt case
-    /apply-cr đổi AC mà quên remap TC). FEAT chưa có file → bỏ qua (plan_integrity lo).
+    lùi `/domain` đổi AC mà quên remap TC). FEAT chưa có file → bỏ qua (plan_integrity lo).
     force=true → bypass (audit).
     """
     evidence = evidence or {}
@@ -2770,7 +2770,7 @@ def check_ac_coverage(state: dict, evidence: dict | None = None, root: Path | No
         return False, "chưa có wave"
     reg = root / "tracking" / wave_id / "test-case-registry.md"
     if not reg.is_file():
-        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — /test-plan phải sinh trước"
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — test-plan phải sinh trước"
     feats = list(state.get("wave_features") or [])
     if not feats:
         for b in (state.get("wave_boundaries") or []):
@@ -2911,7 +2911,7 @@ def _contract_edges(root: Path) -> list[tuple[str, str, str]]:
 
 
 def check_contract_graph_parity(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /plan: đồ thị contract (api consumers[] + INTEG-INT + events subscribers) ↔ MATRIX depends_on.
+    """Gate plan: đồ thị contract (api consumers[] + INTEG-INT + events subscribers) ↔ MATRIX depends_on.
 
     3 nguồn khai cùng 1 sự thật mà không ai đối chiếu: (a) id trong contract phải là boundary MATRIX;
     (b) cạnh contract (consumer→producer) phải có trong MATRIX (`depends_on`/`consumed_by`);
@@ -2992,7 +2992,7 @@ def _doc_endpoints(api_file: Path) -> set[tuple[str, str]]:
 
 
 def check_api_contract_proof(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
-    """Gate /dev-handoff: endpoint khai trong api-{boundary}.md phải TỒN TẠI trong runtime OpenAPI.
+    """Gate dev-handoff: endpoint khai trong api-{boundary}.md phải TỒN TẠI trong runtime OpenAPI.
 
     Bắt contract↔implementation drift (endpoint thiếu/rename) TRƯỚC khi test — đọc
     tracking/{wave}/api-proof.json do capture_infra_proof.py fetch `/v3/api-docs` (HARNESS đo,
@@ -3176,7 +3176,7 @@ def check_contract_test_present(state: dict, evidence: dict | None = None, root:
         return True, ""  # wave 1-boundary / không cross-boundary → không cần contract TC
     reg = root / "tracking" / wave_id / "test-case-registry.md"
     if not reg.is_file():
-        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — /test-plan phải sinh trước"
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — test-plan phải sinh trước"
     rows = _parse_md_table_rows(reg.read_text(encoding="utf-8", errors="ignore"), ("tc", "group", "type"))
     missing: list[str] = []
     for c in consumers:
@@ -3257,7 +3257,7 @@ def check_journey_e2e_present(state: dict, evidence: dict | None = None, root: P
         return True, ""  # không có chuỗi ≥3 hop → không cần journey e2e
     reg = root / "tracking" / wave_id / "test-case-registry.md"
     if not reg.is_file():
-        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — /test-plan phải sinh trước"
+        return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — test-plan phải sinh trước"
     rows = _parse_md_table_rows(reg.read_text(encoding="utf-8", errors="ignore"), ("tc", "group", "type"))
     uncovered: list[str] = []
     for chain in chains:
@@ -3299,7 +3299,7 @@ _TENANT_ID_NAME_RE = re.compile(
 
 
 def check_wave_sequence_lint(evidence: dict | None = None) -> tuple[bool, str]:
-    """Gate /plan: validate WAVE-SEQUENCE.md §wave-NNN (G16, port ZIP wave-sequence-validate).
+    """Gate plan: validate WAVE-SEQUENCE.md §wave-NNN (G16, port ZIP wave-sequence-validate).
 
     Enum class/strategy + target_count ≤ 3/layer + strategy layer-purity (horizontal-be/-fe) +
     vertical parent_epic + inherited_active file tồn tại (single-repo). Field từng là "trang trí" giờ
@@ -3451,7 +3451,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "flag", "field": "docker_compose_ok", "expected": True},
         {"kind": "flag", "field": "connectivity_ok", "expected": True},
         {"kind": "infra_proof"},
-        {"kind": "health_proof"},  # stack còn UP + app reachable (kế thừa từ /dev-handoff)
+        {"kind": "health_proof"},  # stack còn UP + app reachable (kế thừa từ dev-handoff)
         {"kind": "contract_test_present"},  # consumer cross-boundary phải có TC contract/integration (G4/G6)
         {"kind": "journey_e2e_present"},  # chuỗi depends_on ≥3 boundary phải có TC span cả chuỗi (L10, API-driven, không đợi FE)
         # Registry là file MỚI mỗi wave (tracking/{wave}/) — không tự mang TC cũ sang. Không
@@ -3480,7 +3480,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "production_ready"},  # wave ≥2: hình dạng surface đã giao không bị đổi (dogfood soi LUỒNG, cái này soi SHAPE)
     ],
     "next-wave": [
-        # KHÔNG gate lại: /end-wave chạy ngay trước đã gác đủ (uat_signed · test_passed ·
+        # KHÔNG gate lại: end-wave chạy ngay trước đã gác đủ (uat_signed · test_passed ·
         # features_complete · dogfood_done). Gate hai lần cùng một điều kiện chỉ
         # tạo chỗ để hai bản sao lệch nhau.
         {"kind": "non_empty", "field": "wave_n"},
@@ -3826,7 +3826,7 @@ def _selftest() -> int:
         probs = _screen_map_problems(_fe, _mkroot)
         assert probs and "design token" in probs[0], probs
         (_mkd / "rooms-day.html").write_text(
-            '<html><head><link rel="stylesheet" href="../../design-tokens.css"></head>'
+            '<html><head><link rel="stylesheet" href="../..design-tokens.css"></head>'
             '<body><div style="color: var(--color-text)">x</div></body></html>', encoding="utf-8")
         assert _screen_map_problems(_fe, _mkroot) == [], _screen_map_problems(_fe, _mkroot)
         # (e) web boundary không có màn nào trong map → fail (boundary trắng design)

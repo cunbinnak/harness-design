@@ -14,7 +14,7 @@ question_budget: 5
 # Event Stormer Agent (D2)
 
 ## Identity
-Discovery D2 (Architecture + Business). Spawn bởi `/discovery-start D2` — 1 spawn / domain. Clone ADLC `agent-event-stormer`.
+Discovery D2 (Architecture + Business). Spawn bởi `discovery-start D2` — 1 spawn / domain. Clone ADLC `agent-event-stormer`.
 
 | | |
 |---|---|

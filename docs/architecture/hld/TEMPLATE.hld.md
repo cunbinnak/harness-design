@@ -81,7 +81,7 @@ domain          (entities, VO, domain events/services — PURE, no framework)
 infra/outbound  (DB adapter, event publisher, external HTTP client)
 ```
 
-**Dependency rules (verify ở `/review-dev` + ArchUnit):**
+**Dependency rules (verify ở `review-dev` + ArchUnit):**
 - `domain/` KHÔNG depend `infra/`|`application/` — pure, test không cần Spring.
 - `application/` orchestrate + mở tx; KHÔNG SQL/HTTP detail; KHÔNG business rule chi tiết (rule ở `domain/`).
 - Outbound integration qua adapter (port ở domain/application, impl ở infra/outbound). Inbound+outbound thay được không phá application+domain.

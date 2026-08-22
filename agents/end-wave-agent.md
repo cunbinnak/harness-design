@@ -15,7 +15,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, **tắ
 
 | | |
 |---|---|
-| Command | `/end-wave` |
+| Command | `end-wave` |
 | Stage trigger | MANUAL_TEST -> DONE |
 | Pre-condition | `STATE.test_result=pass` (lần test-execute cuối xanh, derive từ `test-report.md`) + UAT signed |
 
@@ -23,7 +23,7 @@ UAT đã signed off. Soft close wave: archive UAT result, ghi KG summary, **tắ
 
 ## Trách nhiệm
 
-1. Verify `tracking/wave-{N}/test-report.md` không còn TC `fail` (gate `test_passed` derive từ cột `status`) **VÀ** `STATE.test_result=pass` (gate `test_passed` — sau fix phải re-run `/test-execute` cho xanh; còn `fail`/stale → bị chặn).
+1. Verify `tracking/wave-{N}/test-report.md` không còn TC `fail` (gate `test_passed` derive từ cột `status`) **VÀ** `STATE.test_result=pass` (gate `test_passed` — sau fix phải re-run `test-execute` cho xanh; còn `fail`/stale → bị chặn).
 2. Verify hoặc write `tracking/wave-{N}/qc-signoff.md` với UAT checklist + stakeholder signoff + date.
 3. Update KG per boundary execution_history: `status: COMPLETED` + `end_date` + `deliverables[]`.
 4. Append release summary vào `handoff/wave-{N}.md` (summary, learnings, link tracking).

@@ -272,7 +272,7 @@ def _append_decision(ref: str, rationale: str) -> None:
 
     Clone cơ chế audit của ZIP: gate bypass phải để lại dấu vết.
 
-    Dùng CHUNG bảng với `/decide` (scripts/decide.py) — cùng 7 cột, cùng file. Hai sổ riêng thì phép
+    Dùng CHUNG bảng với `decide.py` — cùng 7 cột, cùng file. Hai sổ riêng thì phép
     đếm quyết định theo wave phải đọc hai chỗ, và cái force-bypass (thứ đáng soi nhất) lại nằm ở chỗ
     ít ai mở. Cột "Giả định" của force-bypass luôn là cùng một câu: bypass đang cược rằng gate sai
     chứ không phải việc chưa xong.
@@ -301,7 +301,7 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
     """Mutate `state` in place to reflect runtime fields a command establishes.
 
     state.complete() only moves `stage`; without this, fields gating later commands
-    (e.g. wave_boundaries for /start-dev) stay at their init values and block the flow.
+    (e.g. wave_boundaries for start-dev) stay at their init values and block the flow.
     Keyed on the user command (not _auto). Side-effect free except a MATRIX read.
     """
     if command == "discovery-start":
@@ -373,7 +373,7 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
             state["active_boundary"] = boundary
 
     elif command == "review-dev":
-        # Wave-scoped review: lưu kết quả per-boundary để gate /dev-handoff verify cả wave.
+        # Wave-scoped review: lưu kết quả per-boundary để gate dev-handoff verify cả wave.
         # Dấu wave đi KÈM lúc ghi — list chỉ khoá theo boundary nên tự nó không mang chiều wave;
         # thiếu dấu thì boundary review pass ở wave N xanh hộ wave N+1 (vòng wave không reset).
         rr = evidence.get("review_results")
@@ -394,7 +394,7 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
     elif command == "test-execute":
         # DERIVE test_result từ test-report.md (G12) — KHÔNG tin agent tự khai. Chỉ tính auto-TC
         # in-scope (bỏ deferred): all-pass → 'pass', còn lại → 'fail'. Fallback evidence khi force/thiếu file.
-        # → gate /end-wave (test_passed) đọc giá trị honest này, ép re-run xanh sau fix.
+        # → gate end-wave (test_passed) đọc giá trị honest này, ép re-run xanh sau fix.
         derived = gates.derive_test_result(state)
         tr = derived if derived is not None else evidence.get("test_result")
         if tr:
@@ -418,17 +418,6 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
         state["test_result"] = None
         state["test_cases_count"] = 0
 
-    elif command == "apply-cr":
-        # DONE → DOMAIN_AUTHORING (amendment): clear per-wave runtime fields của wave vừa đóng
-        # (GIỮ project.service_prefix) để spawn prompt DOMAIN/DESIGN/PLAN không in context wave cũ.
-        # Re-enter DOMAIN để CR thêm feature mới author được epic/feat/BR; CR chỉ kiến trúc → /domain-end qua thẳng.
-        state["wave"] = {"id": None, "number": None}
-        state["wave_boundaries"] = []
-        state["wave_features"] = []
-        state["active_boundary"] = None
-        state["review_results"] = []
-        state["test_result"] = None
-        state["test_cases_count"] = 0
 
 
 # ========================================================================

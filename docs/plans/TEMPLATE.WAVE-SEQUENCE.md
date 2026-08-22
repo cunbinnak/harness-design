@@ -12,13 +12,13 @@ last_reviewed: "{{DATE}}"
 
 # Wave Sequence — {{PROJECT_NAME}}
 
-> Source-of-truth (cho người) về thứ tự + scope mỗi wave. Author bởi `program-planner-agent` ở stage **PLAN** (`/plan`); refine qua `/apply-cr` (từ DONE).
+> Source-of-truth (cho người) về thứ tự + scope mỗi wave. Author bởi `program-planner-agent` ở stage **PLAN** (`plan`); refine qua wave sau (lùi `/domain` chốt chia-wave).
 >
 > Mỗi wave 2 dimension độc lập (clone ADLC, adapt single-repo):
 > - `wave_class`: `slice` (nhỏ ≈ 1 boundary-day, test cấp 1) | `integration` (lát E2E full + demo)
 > - `wave_strategy`: `vertical` (pair BE+FE) | `horizontal-be` (kind=backend/bff) | `horizontal-fe` (kind=web/mobile)
 >
-> **Machine SOT = `harness/SERVICE-BOUNDARY-MATRIX.json`**: `start-wave` đọc MATRIX (wave-number → `boundary_id` + `kind` + `features[]`) derive `STATE.wave_boundaries`/`wave_features`; KHÔNG đọc file `.md` này. `targets.*` ở đây **mirror** MATRIX cùng wave-number; lệch → MATRIX thắng. **`wave_class`/`wave_strategy`/`targets`/`target_count` ĐƯỢC GATE** ở `/plan` qua `wave_sequence_lint`: enum + `target_count_per_layer ≤ 3` + strategy layer-purity + vertical `parent_epic` + `inherited_active` file tồn tại. Điền §2 block YAML đúng schema dưới (validator parse trực tiếp).
+> **Machine SOT = `harness/SERVICE-BOUNDARY-MATRIX.json`**: `start-wave` đọc MATRIX (wave-number → `boundary_id` + `kind` + `features[]`) derive `STATE.wave_boundaries`/`wave_features`; KHÔNG đọc file `.md` này. `targets.*` ở đây **mirror** MATRIX cùng wave-number; lệch → MATRIX thắng. **`wave_class`/`wave_strategy`/`targets`/`target_count` ĐƯỢC GATE** ở `plan` qua `wave_sequence_lint`: enum + `target_count_per_layer ≤ 3` + strategy layer-purity + vertical `parent_epic` + `inherited_active` file tồn tại. Điền §2 block YAML đúng schema dưới (validator parse trực tiếp).
 
 ---
 

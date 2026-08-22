@@ -102,7 +102,7 @@ order-mgmt          ...          order     Up (healthy)   8080->8080
 postgres            ...          db        Up (healthy)   5432->5432
 redis               ...          cache     Up (healthy)   6379->6379
 
-(Infra GIỮ UP cho MANUAL_TEST — teardown ở /done-wave, KHÔNG ở test-execute.)
+(Infra GIỮ UP cho MANUAL_TEST — teardown ở done-wave, KHÔNG ở test-execute.)
 ```
 
 ---

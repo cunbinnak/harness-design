@@ -33,7 +33,7 @@ Lý do chia đợt không phải để dàn tải, mà vì **các vai dùng chun
 
 **Ba ràng buộc cứng:** tối đa 3 vai một đợt · **không mở đợt 2 khi đợt 1 chưa trả kết quả đủ** · **giữa hai đợt phải seed lại**. Muốn đổi vai nào vào đợt nào thì sửa cột `Đợt` ở `persona-pool.md`, đừng đổi trong đầu.
 
-Chưa có bước seed → tạo dữ liệu mẫu bằng tay theo `docs/plans/wave-{N}.md` và **ghi 1 dòng `/decide`**: thiếu seed là một phát hiện của chính lượt dogfood này, không phải chuyện vặt.
+Chưa có bước seed → tạo dữ liệu mẫu bằng tay theo `docs/plans/wave-{N}.md` và **ghi 1 dòng bằng `py scripts/decide.py`**: thiếu seed là một phát hiện của chính lượt dogfood này, không phải chuyện vặt.
 
 ## Mỗi vai nhận gì trong prompt
 

@@ -59,4 +59,4 @@ last_reviewed: "{{YYYY-MM-DD}}"
 | Date | Status | Author | Description |
 |---|---|---|---|
 | {{YYYY-MM-DD}} | DRAFT | {{BA}} | Initial từ persona-pool D1 |
-| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (/domain-approve) |
+| {{YYYY-MM-DD}} | APPROVED | Business Authority | KÝ (domain-approve) |

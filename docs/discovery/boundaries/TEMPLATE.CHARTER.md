@@ -13,7 +13,7 @@ last_reviewed: "{{DATE}}"
 
 > Điền NGẮN GỌN: ưu tiên bảng/bullet, không văn xuôi thừa, không lặp. Doc này agent downstream đọc nhiều lần — tiết kiệm context.
 
-> Source-of-truth cho boundary này — conflict với HLD/ADR/code → CHARTER thắng. Authored ở D3 (charter-author) từ `ES-*.md §5 Aggregates`. Chỉ Architecture + Business modify (cross-boundary → `/apply-cr` + approve).
+> Source-of-truth cho boundary này — conflict với HLD/ADR/code → CHARTER thắng. Authored ở D3 (charter-author) từ `ES-*.md §5 Aggregates`. Chỉ Architecture + Business modify (cross-boundary → chốt rà chéo của `/domain` + `/approve-document`).
 > Gate D3: §1 Mission có content thật. Section khác có thể high-level ở D3, làm sâu ở DESIGN.
 > Single-repo: FEAT ở `docs/architecture/feat/*` (DOMAIN) · contract draft ở DESIGN (`api,events,data-model`). KHÔNG có `contracts/` repo / signed-hash / multi-authority sign-off.
 
@@ -87,7 +87,7 @@ _Ví dụ: "Quản lý vòng đời thanh toán: intent → capture → refund �
 
 ## 7. NON-NEGOTIABLES (boundary-specific)
 
-> Specific cho boundary — KHÔNG copy-paste universal (xem `CLAUDE.md`). Vi phạm → `/apply-cr` + approve.
+> Specific cho boundary — KHÔNG copy-paste universal (xem `CLAUDE.md`). Vi phạm → chốt rà chéo của `/domain` + `/approve-document`.
 
 1. {{vd "Mọi write qua transaction serializable isolation."}}
 2. {{vd "Tenant ID trong WHERE clause mọi query."}}
@@ -104,7 +104,7 @@ services/{{prefix}}-{{boundary-name}}/                  ← primary service code
 services/{{prefix}}-{{boundary-name}}/db/migrations/     ← schema migrations
 ```
 
-Cross-boundary write → `/apply-cr` + approve.
+Cross-boundary write → chốt rà chéo của `/domain` + `/approve-document` TRƯỚC khi code.
 
 ---
 
@@ -161,10 +161,10 @@ Current: **{{STATUS}}**
 **Sibling (cùng D3):** `docs/architecture/PROJECT.md` (PRD project-level — derive cùng lúc).
 
 **Forward:**
-- DOMAIN (`/domain-po`·`/domain-ba` → ký → `/domain-translate`): `docs/domain/*` (business) → `docs/architecture/{epics,feat,business-rules,journeys}/*` (eng) từ §3/§5/§6.
-- DESIGN (`/design`): HLD/API/data-model/events `hld-{{boundary}}` · `api-{{boundary}}` · `data-model-{{boundary}}` · `{{boundary}}-events` — fill contract path §3/§4.
-- PLAN (`/plan`): `WAVE-SEQUENCE.md` + `SERVICE-BOUNDARY-MATRIX.json` (owned_paths §8) + KG `{{boundary}}.knowledge-graph.yaml`.
-- DEV (`/start-dev {{boundary}}`): scaffold `services/{{prefix}}-{{boundary-name}}/` theo §8.
+- DOMAIN (`domain-po`·`domain-ba` → ký → `domain-translate`): `docs/domain/*` (business) → `docs/architecture/{epics,feat,business-rules,journeys}/*` (eng) từ §3/§5/§6.
+- DESIGN (`design`): HLD/API/data-model/events `hld-{{boundary}}` · `api-{{boundary}}` · `data-model-{{boundary}}` · `{{boundary}}-events` — fill contract path §3/§4.
+- PLAN (`plan`): `WAVE-SEQUENCE.md` + `SERVICE-BOUNDARY-MATRIX.json` (owned_paths §8) + KG `{{boundary}}.knowledge-graph.yaml`.
+- DEV (`start-dev {{boundary}}`): scaffold `services/{{prefix}}-{{boundary-name}}/` theo §8.
 
 ---
 

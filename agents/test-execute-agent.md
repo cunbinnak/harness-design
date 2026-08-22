@@ -15,7 +15,7 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
 
 | | |
 |---|---|
-| Command | `/test-execute` |
+| Command | `test-execute` |
 | Stage trigger | TEST_PLAN -> TEST_EXECUTE -> auto MANUAL_TEST sau khi chạy (pass HAY fail) |
 | Pre-condition | `tracking/wave-{N}/test-case-registry.md` >= 1 TC |
 | Output BẮT BUỘC | `test-report.md` + per-TC log + bugs |
@@ -25,7 +25,7 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
 ## Trách nhiệm
 
 1. Invoke skill `test-execute` để load strict execution rules + proof requirements.
-2. Infra đã UP từ `/dev-handoff` — sanity reachable; down thật → STOP báo user chạy lại `/dev-handoff` (KHÔNG test ảo). Skip "service-down" bị đối chiếu `health-proof.json` — service chết giữa chừng → re-run `py scripts/capture_infra_proof.py` cập nhật proof.
+2. Infra đã UP từ `dev-handoff` — sanity reachable; down thật → STOP báo user chạy lại `dev-handoff` (KHÔNG test ảo). Skip "service-down" bị đối chiếu `health-proof.json` — service chết giữa chừng → re-run `py scripts/capture_infra_proof.py` cập nhật proof.
 3. Read `tracking/wave-{N}/test-case-registry.md`, parse TC type=auto.
 4. Foreach TC: run với proof — log file per TC trong `test-logs/`, screenshot UI nếu E2E.
 5. Fail: ghi ĐỦ NGUYÊN NHÂN (status thật + assert/exception) vào `test-logs/{TC}.log`. **KHÔNG spawn fix, KHÔNG loop** — MAIN điều phối lượt sửa rồi chạy lại chốt này.
@@ -71,7 +71,7 @@ Chạy auto TC **BLACK-BOX trên hệ thống ĐANG CHẠY** (API qua curl/REST 
 - Skip E2E UI khi FE có framework setup (Playwright/Cypress).
 - Aggregate `test-report.md` không có per-TC log support.
 - Skip screenshot UI khi framework installed.
-- Teardown infra — KHÔNG (giữ UP cho MANUAL_TEST; teardown ở `/done-wave`).
+- Teardown infra — KHÔNG (giữ UP cho MANUAL_TEST; teardown ở `done-wave`).
 - Ghi log FAIL chỉ có chữ `failed` — không status, không stack/assert. Gate `test_evidence` chặn, và người sửa phải đoán lại từ đầu.
 - Sửa source code / spawn fix — KHÔNG phải việc test-execute. MAIN điều phối lượt sửa.
 

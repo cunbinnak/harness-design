@@ -118,7 +118,7 @@ Immutable, equality theo value (no identity):
 | {{CONFIRMED}} | `{{cancel}}` | — | CANCELLED | emit `{{Cancelled}}`, release hold |
 | {{IN_PROGRESS}} | `{{complete}}` | {{all done}} | {{TERMINAL}} | emit `{{Completed}}` |
 
-**Terminal:** {{TERMINAL}}, CANCELLED. **Illegal transition** → reject domain error (không silently ignore). Test ở `/test-execute`.
+**Terminal:** {{TERMINAL}}, CANCELLED. **Illegal transition** → reject domain error (không silently ignore). Test ở `test-execute`.
 
 ---
 
@@ -253,7 +253,7 @@ Consume → translate → cache snapshot nếu cần (đừng gọi external tro
 | Đổi type / rename | breaking | dual-write + backfill + cutover + drop (strangler) |
 | Drop column / table | breaking | deprecate → ngừng đọc → drop wave sau |
 
-Không DROP cùng wave với lần cuối còn đọc. Migration test rollback-safe ở `/test-execute`.
+Không DROP cùng wave với lần cuối còn đọc. Migration test rollback-safe ở `test-execute`.
 
 ---
 

@@ -193,7 +193,7 @@ Metric `integration_circuit_state{provider, state}`; alert khi circuit open kéo
 ## 14. Versioning + backward compatibility
 
 - Provider thêm field → boundary ignore (ACL §9 bền với additive).
-- Provider breaking (đổi semantics / xoá field mình dùng / đổi API version) → re-design boundary (`/apply-cr` từ DONE nếu đã ship). Pin version (§2) + monitor changelog (§1.2).
+- Provider breaking (đổi semantics / xoá field mình dùng / đổi API version) → re-design boundary (wave sau nếu đã ship). Pin version (§2) + monitor changelog (§1.2).
 
 ---
 
