@@ -1198,6 +1198,14 @@ def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
         "Fix sửa code → set row `status=resolved` → return.\n"
         "3. **Quay lại bước 1** (re-review) — review xác nhận row resolved, phát hiện thêm nếu có. Lặp tới `open_findings==0` (cap ~5 vòng; quá → STOP báo user).\n"
         "4. Ghi `{boundary, kind, review_result:pass, coverage_pct}`. Sang boundary kế.",
+        "## SAU KHI MỌI BOUNDARY SẠCH — SPAWN `bug-hunter-agent` MỘT LẦN CHO CẢ WAVE\n"
+        "> Review per-boundary đi **từ code lên** và chỉ nhìn thấy code ĐÃ viết. Hai chỗ nó mù hoàn "
+        "toàn: **FEAT giao cho boundary A mà A không code** (không có gì để soi thì không có finding "
+        "— FEAT im lặng biến mất) và **AC chạy xuyên A→B** (đứng trong A đủ, trong B đủ, nối lại thì "
+        "gãy). Bug-hunter đi **từ tài liệu xuống**, phạm vi CẢ WAVE.\n\n"
+        "```\npy scripts/build_prompt.py bug-hunt\n```\n\n"
+        "Nó CHỈ ĐỌC, ghi finding vào cùng `review-findings.md`. `open_findings > 0` → xử như vòng "
+        "trên (BẠN spawn fix → re-review), rồi mới complete.",
         "## KẾT THÚC\n"
         "- Khi MỌI boundary `open_findings==0` + `review_result=pass`:\n"
         "```\npy scripts/harness.py review-dev complete '{\"review_results\":[{\"boundary\":\"<b>\",\"kind\":\"<k>\",\"review_result\":\"pass\",\"coverage_pct\":NN}]}'\n```\n"
@@ -1206,6 +1214,55 @@ def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
         "- Gate `dev-handoff` verify thêm: mọi `wave_boundaries` có trong `review_results` pass + coverage đạt ngưỡng kind.",
     ]
     return "\n\n".join(parts)
+
+
+def build_bug_hunt(state: dict, matrix: list[dict], opts: dict) -> str:
+    """Quét CẢ WAVE đi từ tài liệu xuống code — lăng kính ngược với review per-boundary.
+
+    Vì sao là agent RIÊNG chứ không phải một mục trong skill review: checklist review dài 16 mục, và
+    lăng kính "đi từ tài liệu xuống" nằm sau nó thì luôn thua trong cuộc tranh giành chú ý. Phạm vi
+    cũng khác hẳn — review là per-boundary, cái này là cả wave.
+    """
+    wave_id = (state.get("wave") or {}).get("id") or "<wave>"
+    bs = state.get("wave_boundaries") or []
+    return "\n\n".join([
+        f"# SPAWN PROMPT — chốt review-dev · bug-hunt (CẢ WAVE: {wave_id})",
+        "\nAgent: **bug-hunter-agent** · CHỈ ĐỌC. Đi từ TÀI LIỆU xuống code, phạm vi cả wave.",
+        state_bundle(state, {"mode": "bug-hunt"}),
+        NON_NEGOTIABLES,
+        "## MỤC TIÊU\n"
+        "Trả lời đúng một câu hỏi: **thứ tài liệu đã hứa có ở trong code không.** Khác hẳn "
+        "`review-{kind}-agent` — nó đi từ code lên và hỏi \"code này có vấn đề gì\", nên **code sạch "
+        "bong vẫn có thể thiếu hẳn một AC** mà không mục checklist nào bắt được.\n"
+        f"Boundary trong wave: {', '.join(f'`{b}`' for b in bs) or '_(rỗng)_'}",
+        docs_to_read([
+            ("FEAT trong scope wave", f"docs/plans/{wave_id}.md"),
+            ("AC chi tiết", "docs/architecture/feat/FEAT-*.md"),
+            ("Business rule", "docs/architecture/business-rules/BR-*.md"),
+            ("Ca biên §6.1 + ranh giới liên boundary §6.2", "docs/architecture/hld/hld-*.md"),
+            ("Ma trận vai × hành động", "docs/discovery/persona-pool.md"),
+            ("Quyết định đã chốt", "tracking/decisions.md"),
+            ("Hợp đồng wave trước", "archive/wave-*/DELIVERED.md"),
+            ("Boundary nào ở đâu", "harness/SERVICE-BOUNDARY-MATRIX.json"),
+        ]),
+        "## CÁCH LÀM\n"
+        "Theo **bảy bước** trong `agents/bug-hunter-agent.md` — làm ĐỦ, mỗi bước ra finding HOẶC ra "
+        "câu \"bước này sạch\". Bước 1 (đi từng AC trên toàn wave) là bước **duy nhất** bắt được "
+        "*FEAT không ai code*; đừng bỏ nó để chạy nhanh mấy lệnh `grep` ở dưới.",
+        tasks_block([
+            f"Append finding vào `tracking/{wave_id}/review-findings.md` — **cùng sổ** với "
+            "review-{kind}-agent, cùng gate `no_open_findings`. KHÔNG đẻ sổ thứ hai.",
+            "Mỗi dòng: `file` = `path:dòng` ĐÃ ĐỌC THẬT · `hậu quả thật` = chuyện gì xảy ra với "
+            "người dùng thật (**viết không nổi câu này thì không phải finding**) · không chắc → "
+            "`severity: QUESTION` + cột `suggested fix` ghi **cách kiểm chứng**, không phải cách sửa.",
+            "**KHÔNG sửa code, KHÔNG sửa test-case, KHÔNG sửa doc spec.** Thấy sai thì ghi finding — "
+            "MAIN spawn fix, không phải bạn.",
+            "Bước nào sạch thì **nói thẳng là sạch**. Đừng bịa finding cho có — findings rác làm "
+            "loãng findings thật, rồi người đọc bỏ qua cả danh sách.",
+            "Return RETURN SCHEMA với `open_findings: <số row BLOCKER/MAJOR status=open vừa ghi>`.",
+        ]),
+        RETURN_SCHEMA_TEMPLATE,
+    ])
 
 
 def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
@@ -1330,6 +1387,9 @@ BUILDERS = {
         build_boundary_command(s, m, o, "review-dev") if o.get("boundary")
         else build_review_dev_wave(s, m, o)
     ),
+    # Chạy ở chốt review-dev, sau khi mọi boundary sạch — lăng kính NGƯỢC (tài liệu → code),
+    # phạm vi cả wave. Không phải chốt riêng: cùng sổ findings, cùng gate `no_open_findings`.
+    "bug-hunt": build_bug_hunt,
     "dev-handoff": build_dev_handoff,
     "test-plan": build_test_plan,
     "test-execute": build_test_execute,

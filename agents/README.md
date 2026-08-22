@@ -43,6 +43,7 @@ State machine: [harness/STATE-MACHINE.json](../harness/STATE-MACHINE.json) (17 s
 |-------|---------|---------------|------|
 | [review-document-agent](review-document-agent.md) | `review-document` | `business-analysis` | revision (feedback) + sanity-check (no arg) |
 | [review-backend-agent](review-backend-agent.md) | `review-dev` (kind=backend) | `review-backend` | Review ghi findings + trả open_findings; MAIN spawn fix → re-review |
+| [bug-hunter-agent](bug-hunter-agent.md) | `review-dev` (lượt 2, cả wave) | _(không skill riêng)_ | CHỈ ĐỌC — đi từ tài liệu XUỐNG code: FEAT không ai code · AC xuyên boundary · ca biên chưa chặn · ô `cấm` chưa chặn ở server |
 | [review-bff-agent](review-bff-agent.md) | `review-dev` (kind=bff) | `review-bff` | Same |
 | [review-web-agent](review-web-agent.md) | `review-dev` (kind=web) | `review-web` | Same |
 | [review-mobile-agent](review-mobile-agent.md) | `review-dev` (kind=mobile) | `review-mobile` | Same |

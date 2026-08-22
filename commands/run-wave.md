@@ -16,7 +16,7 @@ Không arg → chạy tiếp từ chốt đang đứng (suy từ `stage`).
 |---|---|---|
 | 1 | Dựng wave | `start-wave` |
 | 2 | Code từng boundary (tuần tự) | `start-dev` |
-| 3 | Review tới sạch | `review-dev` |
+| 3 | Review tới sạch — per-boundary **rồi** bug-hunt cả wave | `review-dev` |
 | 4 | Dựng chạy thật | `dev-handoff` |
 | 5 | Sinh test case | `test-plan` |
 | 6 | Chạy test | `test-execute` |
@@ -30,6 +30,7 @@ Xong chốt 7 → dừng ở `MANUAL_TEST`. Còn TC đỏ / dòng `sửa ngay` �
 
 1. Chốt đỏ → **DỪNG tại đó**, báo gate nào đỏ, thiếu gì. KHÔNG bỏ qua, KHÔNG `force`.
 2. Chốt 2 lặp **tuần tự** từng boundary; xong hết mới sang chốt 3.
+2b. **Chốt 3 có HAI lượt.** Lượt 1: `review-{kind}-agent` từng boundary (đi từ code lên, hỏi *code này có vấn đề gì*). Lượt 2 sau khi mọi boundary sạch: `bug-hunter-agent` **một lần cho cả wave** (`build_prompt.py bug-hunt` — đi từ tài liệu xuống, hỏi *thứ đã hứa có ở đây không*). Bỏ lượt 2 thì **FEAT giao cho boundary A mà A không code sẽ im lặng biến mất**: không có code thì không có gì để review. Cùng sổ findings, cùng gate.
 3. **Chốt 2 mở đầu bằng CHALLENGE**: một câu hỏi khó từ spec thật (mâu thuẫn hai AC · ca biên HLD §6.1 · ô `cấm` trong ma trận · surface `BC-LEDGER §1` sắp đụng), trả lời **chỉ từ spec**, tự chấm. **FAIL = không được code.** PASS → ghi `tracking/challenge-log.md`.
 4. **Wave ≥2 — tôn trọng wave trước**: `archive/wave-*/DELIVERED.md` là hợp đồng. Chỉ được **THÊM** vào surface đã giao (endpoint · shape · cột · khoá cache · event · format export); buộc phải phá → **DỪNG, ghi blocker, báo user**, không tự quyết.
 5. Spawn bằng `py scripts/build_prompt.py <chốt> …`, nguyên văn output.
