@@ -119,6 +119,29 @@ last_reviewed: "{{YYYY-MM-DD}}"
 | [BR-{{PREFIX}}-001](../business-rules/BR-{{PREFIX}}-001.md) | {{Số tiền hoàn ≤ số dư còn lại}} |
 | [BR-{{PREFIX}}-002](../business-rules/BR-{{PREFIX}}-002.md) | {{Đơn đã chargeback không cho hoàn thủ công}} |
 
+## 6.1 Ca biên hành vi — đã quyết
+
+> **Bảng TRA, không phải văn xuôi.** Khác `HLD §6.1` (ca biên kỹ thuật/dữ liệu: khoá lạc quan,
+> idempotency key, cache cũ): chỗ này là **ca biên HÀNH VI mà người dùng thật gặp** — và AC hạnh
+> phúc gần như không bao giờ nói tới.
+>
+> **Mọi dòng phải có câu trả lời.** Không áp dụng → `n/a — <lý do>`. Để trống nghĩa là **chưa ai
+> quyết**, và lúc code sẽ có người quyết thay bạn.
+>
+> Dòng nào cần chặn ở server thì phải sinh **≥1 AC âm** ở §4 — nếu không, nó chỉ là ý định.
+
+| # | Tình huống | Người dùng thấy gì | Có AC nào phủ? |
+|---|---|---|---|
+| B1 | Bấm/gửi hai lần liên tiếp | {{một kết quả, không nhân đôi}} | {{AC-n / cần thêm}} |
+| B2 | Bỏ dở giữa chừng rồi quay lại | {{dữ liệu đang nhập còn / mất — nói rõ}} | {{...}} |
+| B3 | Không có quyền nhưng gọi thẳng | {{bị chặn ở server, thông báo nói được PHẢI LÀM GÌ}} | {{...}} |
+| B4 | Dữ liệu rỗng (lần đầu dùng) | {{hiện gì, hướng dẫn bước tiếp theo}} | {{...}} |
+| B5 | Hệ phụ thuộc lỗi / mất mạng giữa chừng | {{báo lỗi tử tế + cách thử lại, KHÔNG nuốt im lặng}} | {{...}} |
+| B6 | Dữ liệu rất nhiều / chuỗi rất dài | {{phân trang, cắt, không vỡ}} | {{...}} |
+
+> `/dogfood` chạy đúng các tình huống này bằng 6 lăng kính persona; `B3` lấy ca thử từ ma trận
+> vai × hành động (`persona-pool.md`).
+
 ## 7. Bằng chứng demo (anti-gaming)
 
 > Cụ thể hoá `demo_signature` thành kịch bản quan sát được — nguồn cho wave `demo_target`. CHỨNG MINH outcome, không chỉ "code chạy".

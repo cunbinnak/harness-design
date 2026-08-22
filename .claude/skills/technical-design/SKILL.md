@@ -48,6 +48,19 @@ Mỗi concern ghi rõ ở ADR / HLD / API (không để hở):
 - Iterate với user: trình bày ADR + design per boundary → "OK chưa? chỉnh gì?" → sửa. Lặp tới khi user confirm (không giới hạn số vòng).
 - **Self-loop refine**: chưa vừa ý → user chạy lại `/design` (re-spawn DESIGN→DESIGN, KHÔNG advance, idempotent update). Khi confirm toàn bộ → return `user_confirmed: true` → main chạy `/design` (`py scripts/harness.py design-end complete '{}'`, gate design_gate: ADR≥3 + INTEG + per-boundary completeness) → DESIGN → PLAN.
 
+## Ca biên — phần dễ bỏ nhất, và đắt nhất khi bỏ
+
+`HLD §6.1` là **bảng TRA**: agent lúc code cần trả lời *"tình huống X xử ra sao?"* mà không phải đoán và không phải hỏi. Rule nằm trong văn xuôi thì phải suy diễn — có khoảng trống để hiểu sai. Rule nằm trong bảng `Tình huống → Xử lý` thì tra là ra.
+
+**Checklist đóng 8 dòng** (E1-E8) là những tình huống hệ có trạng thái nào cũng gặp mà AC hạnh phúc không nói tới: gửi hai lần · sửa đồng thời · xoá · gọi sai thứ tự · hỏng nửa chừng · đọc bản cũ · rỗng · quyền thu hồi giữa chừng. Không tự nghĩ ra danh sách — danh sách đã có, việc của bạn là **trả lời hết**.
+
+- **`n/a — <lý do>` là câu trả lời hợp lệ.** Checklist ép rà qua hết, không ép làm hết.
+- **Ô trống thì KHÔNG.** Trống nghĩa là chưa ai quyết, và lúc code sẽ có người quyết thay — mỗi boundary một kiểu. Gate `edge_cases_decided` chặn.
+- **Cột `Enforce ở đâu` phải trỏ thứ CHẶN ĐƯỢC**: unique index · cột `version` + `WHERE version = ?` · idempotency key · DB constraint · state machine. Viết "validate ở service" là chưa quyết gì cả — nó không nói được cái gì ngăn lỗi xảy ra.
+- Ca biên riêng của boundary (E9+) thêm vào bảng dưới; đừng nhồi vào 8 dòng chung.
+
+`HLD §6.2` khai **ranh giới liên boundary**: được gọi qua đường nào, **KHÔNG được** làm gì, vì sao. ArchUnit chặn được luật chung (layer, package), nhưng "RETRIEVAL không được gọi KM qua REST vì đã có DB grant" là quyết định riêng của hệ này — không khai thì lúc code sẽ đi đường tiện nhất.
+
 ## Quality checklist
 - [ ] ADR/HLD nhất quán với `docs/architecture/ARCHITECTURE-PRINCIPLES.md` (layering hexagonal BE / FE layers, contract-first, no-business-logic-in-FE, decision-traceability DECISION-REF, anti-patterns); deviation phải có ADR override.
 - [ ] ≥ 3 ADR (theo chủ đề, có decision + **alternatives ≥2** + consequences).

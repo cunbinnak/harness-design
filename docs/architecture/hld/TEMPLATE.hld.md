@@ -160,6 +160,50 @@ sequenceDiagram
 
 ---
 
+## 6.1 Ca biên đã quyết
+
+> **Đây là bảng TRA, không phải văn xuôi.** Agent lúc code cần trả lời "tình huống X xử ra sao?"
+> mà **không phải đoán và không phải hỏi** — chỗ này chưa quyết thì nó sẽ tự quyết, và quyết
+> khác nhau ở mỗi boundary.
+>
+> **CHECKLIST ĐÓNG — mọi dòng phải có câu trả lời.** Không áp dụng thì ghi `n/a — <lý do>`;
+> để trống nghĩa là **chưa ai quyết**, không phải "không cần". Đây là danh sách những tình huống
+> mà hệ có trạng thái nào cũng gặp, và brief/AC gần như không bao giờ nói tới.
+>
+> Cột `Enforce ở đâu` là chỗ phân biệt quyết-định-thật với ý-định: nó phải trỏ tới thứ chặn được
+> (unique index, optimistic lock version, idempotency key, DB constraint) — **không phải "validate ở
+> service"** chung chung.
+
+| # | Tình huống | Xử lý | Enforce ở đâu |
+|---|---|---|---|
+| E1 | **Gửi hai lần** — cùng request tới 2 lần (bấm đúp, retry mạng, at-least-once consumer) | {{trả kết quả cũ, không tạo bản ghi thứ hai}} | {{idempotency key `(client_id, request_id)` + unique index}} |
+| E2 | **Sửa đồng thời** — hai bên cùng sửa một bản ghi | {{optimistic lock, bên sau bị reject + retry}} | {{cột `version`, `WHERE version = ?`}} |
+| E3 | **Xoá** — mềm hay cứng, ai được xoá, tham chiếu còn lại xử sao | {{soft delete, giữ tham chiếu, đánh dấu STALE}} | {{cột `deleted_at` + filter ở repository}} |
+| E4 | **Gọi sai thứ tự** — bước sau chạy khi bước trước chưa xong | {{reject kèm mã lỗi rõ, không tự chạy bù}} | {{state machine + check trạng thái trước khi chuyển}} |
+| E5 | **Hỏng nửa chừng** — ghi DB xong, gọi ngoài fail (hoặc ngược lại) | {{compensating action / outbox retry}} | {{§6 saga + outbox}} |
+| E6 | **Đọc phải bản cũ** — cache/replica chưa kịp cập nhật | {{version-composite key, invalidate theo event}} | {{key có version, TTL}} |
+| E7 | **Rỗng** — chưa có dữ liệu gì | {{200 + danh sách rỗng + signal, KHÔNG lỗi âm thầm}} | {{contract ở `api/`}} |
+| E8 | **Quyền bị thu hồi giữa chừng** — token/grant hết hiệu lực khi request đang chạy | {{request đang chạy hoàn thành, request mới bị chặn}} | {{push-invalidate + TTL}} |
+
+**Ca biên riêng của boundary này** (ngoài 8 dòng chung ở trên):
+
+| # | Tình huống | Xử lý | Enforce ở đâu |
+|---|---|---|---|
+| E9 | {{tình huống chỉ boundary này mới có}} | {{...}} | {{...}} |
+
+---
+
+## 6.2 Ranh giới liên boundary — KHÔNG được làm gì
+
+> Cột bên phải là thứ ArchUnit và review không suy ra được từ luật chung: nó là **quyết định
+> kiến trúc riêng của hệ này**. Không khai ở đây thì lúc code sẽ đi đường tiện nhất.
+
+| Boundary này | ĐƯỢC gọi qua | **KHÔNG được** | Vì sao |
+|---|---|---|---|
+| → {{boundary khác}} | {{REST `api-x-v1` / event / DB grant read-only}} | {{import thẳng code · gọi REST khi đã có DB grant · ghi vào bảng của nó}} | {{0 service hop / tránh coupling}} |
+
+---
+
 ## 7. Non-functional requirements (NFR — refine từ PROJECT.md, KHÔNG lỏng hơn)
 
 | Attribute | Target | Mechanism | Verify ở |

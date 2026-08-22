@@ -1709,6 +1709,79 @@ def check_features_complete(state: dict, evidence: dict | None = None, root: Pat
 
 
 # ========================================================================
+# edge_cases_decided (design-end) — ca biên phải ĐƯỢC QUYẾT, không để agent đoán
+# ========================================================================
+
+_EDGE_HDR = re.compile(r"^##\s*6\.1\s", re.MULTILINE)
+
+
+def _edge_rows_unanswered(text: str) -> list[str]:
+    """Dòng ca biên chưa có câu trả lời trong §6.1 — trả list mã (E1, B2…).
+
+    "Chưa trả lời" = ô Xử lý rỗng, hoặc còn `{{…}}`. `n/a` TÍNH LÀ đã trả lời — mục đích của
+    checklist đóng là ép RÀ QUA hết, không phải ép làm hết (mirror BC-LEDGER §3 và ma trận quyền).
+    """
+    live = COMMENT_RE.sub("", text) if "COMMENT_RE" in globals() else re.sub(
+        r"<!--.*?-->", "", text, flags=re.DOTALL)
+    m = _EDGE_HDR.search(live)
+    if not m:
+        return ["<thiếu mục §6.1>"]
+    body = live[m.end():]
+    nxt = re.search(r"^##\s", body, re.MULTILINE)
+    if nxt:
+        body = body[: nxt.start()]
+    bad: list[str] = []
+    for line in body.splitlines():
+        s = line.strip()
+        if not s.startswith("|"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if len(cells) < 3 or not re.fullmatch(r"[EB]\d+", cells[0]):
+            continue
+        answer = cells[2]
+        if not answer or re.search(r"\{\{.*?\}\}", answer):
+            bad.append(cells[0])
+    return bad
+
+
+def check_edge_cases_decided(evidence: dict | None = None,
+                             root: Path | None = None) -> tuple[bool, str]:
+    """`/design --end`: mỗi HLD phải có §6.1 Ca biên đã quyết, KHÔNG dòng nào bỏ trống.
+
+    VÌ SAO — ca biên kỹ thuật (gửi hai lần · sửa đồng thời · xoá mềm hay cứng · gọi sai thứ tự ·
+    hỏng nửa chừng · đọc bản cũ · rỗng · quyền thu hồi giữa chừng) là thứ AC hạnh phúc gần như không
+    bao giờ nói tới, mà hệ có trạng thái nào cũng gặp. Không khai ở HLD thì lúc code agent PHẢI đoán
+    — và mỗi boundary sẽ đoán một kiểu.
+
+    `n/a — <lý do>` tính là đã trả lời: checklist đóng ép RÀ QUA hết, không ép LÀM hết. Ô trống mới
+    là lỗi, vì trống nghĩa là chưa ai quyết chứ không phải không cần.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    d = root / "docs" / "architecture" / "hld"
+    if not d.is_dir():
+        return True, ""
+    problems: list[str] = []
+    for p in sorted(d.glob("hld-*.md")):
+        if _is_scaffold_md(p.name):
+            continue
+        bad = _edge_rows_unanswered(p.read_text(encoding="utf-8", errors="ignore"))
+        if bad:
+            problems.append(f"{p.name}: {', '.join(bad[:6])}")
+    if not problems:
+        return True, ""
+    return False, (
+        "ca biên chưa quyết (HLD §6.1) — " + " · ".join(problems)
+        + "\n      Ô `Xử lý` trống = CHƯA AI QUYẾT, và lúc code agent sẽ quyết thay. "
+          "Không áp dụng thì ghi `n/a — <lý do>` (rà qua là đủ, không phải làm hết). "
+          "Cột `Enforce ở đâu` phải trỏ thứ chặn được (unique index, version, idempotency key), "
+          "không phải 'validate ở service'"
+    )
+
+
+# ========================================================================
 # discovery_stamped (chốt D3) — Discovery phải được KÝ trước khi sang DOMAIN
 # ========================================================================
 
@@ -2812,6 +2885,9 @@ GATE_RULES: dict[str, list[dict]] = {
     "design": [],   # self-loop re-spawn solution-architect (refine) — KHÔNG gate, KHÔNG advance
     "design-ux": [],  # self-loop spawn ux-designer (UX/UI cho FE boundary) — KHÔNG gate, KHÔNG advance
     "design-end": [
+        # Ca biên là thứ AC hạnh phúc không nói tới mà hệ nào cũng gặp — chưa quyết ở HLD thì
+        # lúc code agent phải đoán, và mỗi boundary đoán một kiểu.
+        {"kind": "edge_cases_decided"},
         {"kind": "design_gate"},   # ADR≥3 + INTEG + per-boundary completeness (force bypass + audit). Advance DESIGN→PLAN
         {"kind": "todo_resolved"},  # TODO-engineer/TBD(DESIGN) translator để lại phải điền hết (BR có nơi enforce) (force bypass)
     ],
@@ -2976,6 +3052,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_backward_compat(state, evidence)
         if kind == "discovery_stamped":
             return check_discovery_stamped(evidence)
+        if kind == "edge_cases_decided":
+            return check_edge_cases_decided(evidence)
         if kind == "challenge_passed":
             return check_challenge_passed(state, evidence)
         if kind == "discovery_wave":

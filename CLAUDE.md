@@ -65,6 +65,7 @@
 | "Failure mode đã biết?" | `harness/PROTOCOL.md` § FM-* + `grep knowledge-base/` |
 | "Ý tưởng/giả thuyết project (tổng quan)?" | `docs/discovery/hypothesis-log.md` (D0) |
 | "Persona + capability map?" | `docs/discovery/persona-pool.md` + `docs/discovery/capability-map.md` (D1) |
+| "Tình huống X xử ra sao?" (gửi 2 lần · sửa đồng thời · xoá · sai thứ tự · hỏng nửa chừng · bản cũ · rỗng · thu hồi quyền) | `hld-{boundary}.md` **§6.1 Ca biên đã quyết** — bảng TRA, checklist đóng 8 dòng, `n/a` hợp lệ nhưng **ô trống thì không** (gate `edge_cases_decided`). Ca biên HÀNH VI → `FEAT-*` §6.1. Ranh giới liên boundary (KHÔNG được gọi qua đường nào) → `hld` §6.2 |
 | "Ai được / KHÔNG được làm gì?" | `docs/discovery/persona-pool.md` §Ma trận vai × hành động (`có`/`cấm`, không ô trống — gate D1 chặn). Spec phân quyền khi code · nguồn TC âm khi sinh test case · danh sách phép thử của vai `breaker` ở `/dogfood` |
 | "Năng lực nào đã giao, còn bao nhiêu?" | `docs/discovery/capability-map.md` §1 cột `Wave giao` + `Trạng thái` (bảng SỐNG — PLAN điền wave, `/next-wave` cập nhật trạng thái) |
 | "Surface nào đã giao ra ngoài, đổi được không?" | `tracking/BC-LEDGER.md` — §1 sổ hợp đồng (**tích luỹ vĩnh viễn**, không wave nào xoá) · §2 luật additive-first · §3 checklist rà mỗi wave (`/next-wave` re-arm; gate `backward_compat` chặn đóng wave ≥2) |
