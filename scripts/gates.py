@@ -2320,6 +2320,39 @@ def check_dogfood_done(state: dict, evidence: dict | None = None,
             "ghi đầu tiên), đợt 2 cần DB CÓ DỮ LIỆU (bảng dài mới tràn) — gộp một đợt là mất "
             "một nửa phép thử"
         )
+
+    # Mỗi phát hiện phải có QUYẾT ĐỊNH XỬ. Đây là thứ thay chỗ cho sổ bug: không cần vòng đời
+    # BUG-NNN, nhưng "đã thấy rồi bỏ đó" thì phải phân biệt được với "đã cân nhắc và hoãn".
+    # Từ vựng ĐÓNG — ô trống nghĩa là chưa ai quyết, không phải "không đáng".
+    rows = _parse_md_table_rows(read_live(f), ("xử",))
+    blank, later_no_ref, open_now = [], [], []
+    for r in rows:
+        rid = (r.get("#") or r.get("id") or "?").strip()
+        if "{{" in rid or not rid or rid == "?":
+            continue                                   # dòng mẫu của template
+        if not any(v.strip() for k, v in r.items() if k not in ("#", "id")):
+            continue                                   # dòng rỗng trơn — artefact bảng, không phải phát hiện
+        v = (r.get("xử") or "").strip().lower()
+        where = (r.get("ở đâu") or "").strip()
+        if not v:
+            blank.append(rid)
+        elif v.startswith("sửa ngay") and not where:
+            open_now.append(rid)                       # khai sửa ngay mà không dẫn được vết sửa
+        elif v.startswith("wave sau") and "wave-sequence" not in where.lower():
+            later_no_ref.append(rid)
+    bad = []
+    if blank:
+        bad.append(f"{len(blank)} phát hiện chưa có ô `Xử` ({', '.join(blank[:6])}) — "
+                   "ô trống = chưa ai quyết, không phải 'không đáng'")
+    if open_now:
+        bad.append(f"{len(open_now)} dòng khai `sửa ngay` mà cột `Ở đâu` trống "
+                   f"({', '.join(open_now[:6])}) — sửa rồi thì dẫn được ra commit/TC")
+    if later_no_ref:
+        bad.append(f"{len(later_no_ref)} dòng đẩy `wave sau` mà không dẫn tới "
+                   f"`WAVE-SEQUENCE.md` ({', '.join(later_no_ref[:6])}) — đẩy sang wave sau mà "
+                   "không có chỗ nhận thì là bỏ đi, gọi tên khác thôi")
+    if bad:
+        return False, f"{rel}:\n      " + "\n      ".join(bad)
     return True, ""
 
 

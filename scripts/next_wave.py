@@ -256,6 +256,55 @@ def rearm_marked(rel: str, marker: str) -> int:
     return n
 
 
+def carry_open_findings(n: int) -> list[str]:
+    """Mang phát hiện `chưa xử` của wave n sang report của wave n+1. Trả list mã đã mang.
+
+    VÌ SAO — `dogfood-report.md` nằm trong `tracking/wave-N/`, đóng wave là nó vào `archive/` rồi
+    không ai đọc nữa. Thứ ghi "chưa xử, sẽ làm" lặng lẽ biến mất đúng lúc đáng ra phải nhắc.
+
+    Mang sang với ô `Xử` BỎ TRỐNG, không giữ nguyên `chưa xử`: gate `dogfood_done` của wave mới
+    sẽ đỏ tới khi có người quyết LẠI. Giữ nguyên chữ "chưa xử" thì nó tự hoãn vô hạn — hai wave
+    liền mang cùng một dòng nghĩa là nó không phải "chưa xử", nó là "wave sau" hoặc "không làm".
+    """
+    src = REPO_ROOT / "tracking" / f"wave-{n:03d}" / "dogfood-report.md"
+    if not src.is_file():
+        return []
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import gates
+
+    rows = gates._parse_md_table_rows(gates.read_live(src), ("xử",))
+    carried = [r for r in rows
+               if (r.get("xử") or "").strip().lower().startswith("chưa xử")
+               and (r.get("#") or "").strip() and "{{" not in (r.get("#") or "")]
+    if not carried:
+        return []
+
+    dst_dir = REPO_ROOT / "tracking" / f"wave-{n + 1:03d}"
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    dst = dst_dir / "dogfood-report.md"
+    head = "" if dst.is_file() else (
+        f"---\ntype: dogfood-report\nwave: \"wave-{n + 1:03d}\"\n---\n\n"
+        f"# Dogfood — wave-{n + 1:03d}\n\n"
+        "> Khuôn đầy đủ: `tracking/_templates/TEMPLATE.dogfood-report.md`. Lượt dogfood của wave này\n"
+        "> **APPEND** vào bảng dưới, KHÔNG ghi đè file.\n")
+    block = [
+        "", f"## Mang sang từ wave {n}", "",
+        f"> {len(carried)} phát hiện wave {n} ghi `chưa xử`. Ô `Xử` để TRỐNG có chủ ý — phải quyết",
+        "> LẠI ở wave này (sửa ngay / wave sau), không được để nguyên chữ 'chưa xử' mà hoãn tiếp.",
+        "", "| # | Lăng kính | FEAT/AC | Thao tác đã làm | Thấy gì trên màn hình | Xử | Ở đâu |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for r in carried:
+        block.append("| {} | {} | {} | {} | {} |  | {} |".format(
+            (r.get("#") or "").strip(), (r.get("lăng kính") or "").strip(),
+            (r.get("feat/ac") or "").strip(), (r.get("thao tác đã làm") or "").strip(),
+            (r.get("thấy gì trên màn hình") or "").strip(),
+            f"mang sang từ wave {n}"))
+    with dst.open("a", encoding="utf-8") as fh:
+        fh.write(head + "\n".join(block) + "\n")
+    return [(r.get("#") or "").strip() for r in carried]
+
+
 def rearm_bc_ledger() -> int:
     """Bỏ tick ĐÚNG §3 của sổ tương thích ngược → wave nào rà wave đó. Trả số dòng đã bỏ tick.
 
@@ -323,6 +372,12 @@ def do_go(state: dict, n: int) -> int:
     if n_bc:
         print(f"  ok  sổ tương thích ngược: bỏ tick {n_bc} mục §3 — wave mới rà lại "
               "(§1 sổ hợp đồng GIỮ NGUYÊN, tích luỹ vĩnh viễn)")
+
+    carried = carry_open_findings(n)
+    if carried:
+        print(f"  ok  dogfood: mang {len(carried)} phát hiện `chưa xử` sang wave {n + 1} "
+              f"({', '.join(carried[:6])}) — ô `Xử` để trống, phải quyết LẠI. "
+              "Không mang thì thứ ghi 'sẽ làm' biến mất cùng lúc wave đóng")
 
     n_pr = rearm_marked(PROD_READY, PER_WAVE)
     if n_pr:

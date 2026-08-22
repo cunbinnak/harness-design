@@ -92,7 +92,31 @@ Mọi lỗi phân quyền là **blocker**, không có ngoại lệ — nó là l
 - **KHÔNG teardown infra** — giữ UP cho lượt sửa bug + re-test.
 - Sản phẩm không có UI → các vai gọi API trực tiếp; `picky` soi shape response + error envelope thay cho giao diện; `mobile` soi độ trễ từ client yếu thay cho layout.
 
+## Xử phát hiện — MỖI dòng phải có quyết định
+
+Gộp phát hiện của cả 6 lăng kính × 2 đợt vào `tracking/wave-{N}/dogfood-report.md` §2.
+**File có thể ĐÃ TỒN TẠI** với mục `## Mang sang từ wave <N-1>` — những dòng `chưa xử` của
+wave trước, `/next-wave` chép sang với ô `Xử` bỏ trống. **APPEND vào, KHÔNG ghi đè**, và
+quyết lại từng dòng đó (`sửa ngay` hay `wave sau`) — để nguyên chữ `chưa xử` là hoãn vô hạn.
+Khuôn đầy đủ: `tracking/_templates/TEMPLATE.dogfood-report.md`. Cột `Xử` là **từ vựng đóng**, đúng
+một trong ba — **ô trống nghĩa là chưa ai quyết**, không phải "không đáng":
+
+| Loại phát hiện | Xử |
+|---|---|
+| Hỏng luồng lõi · mất dữ liệu · **thủng phân quyền** (vai A chạm được dữ liệu vai B) | `sửa ngay` — không hoãn |
+| **Gãy luồng của wave TRƯỚC** (`archive/wave-*/DELIVERED.md`) | `sửa ngay` — nặng ngang gãy luồng lõi |
+| Lệch design system / mockup user đã chốt: màu-cỡ ngoài token · thiếu trạng thái bắt buộc · sai khuôn rỗng/lỗi/đang tải | `sửa ngay` **về token**; cố ý giữ khác → `py scripts/decide.py` một dòng |
+| Nhỏ, sửa dưới 15 phút | `sửa ngay` |
+| Cần nhiều thời gian **nhưng trong scope wave này** | `chưa xử` — cột `Ở đâu` nói rõ đang nằm chỗ nào |
+| **Ngoài scope đã khoá** | `wave sau` — cột `Ở đâu` dẫn tới dòng trong `docs/plans/WAVE-SEQUENCE.md` |
+
+`sửa ngay` xong thì chạy lại phần vừa sửa — sửa mà không dùng lại là chưa biết đã sửa được chưa.
+
+Gate `dogfood_done` đọc đúng bảng này: thiếu ô `Xử` · khai `sửa ngay` mà không dẫn được vết sửa ·
+đẩy `wave sau` mà không có chỗ nhận → đỏ. Không có sổ bug riêng: **kết quả test nằm ở
+`test-report.md`, quyết định xử nằm ở đây**, hai chỗ không chép lẫn nhau.
+
 ## Done
 - Đủ 2 đợt, mỗi vai một báo cáo có bằng chứng bộ ba.
-- Bug ghi vào `tracking/wave-{N}/bugs.md` (`origin=manual`), blocker đánh dấu rõ.
-- Báo user tổng hợp → `/run-wave` nếu có bug (tự sửa + re-test), `/next-wave` nếu sạch.
+- §2 mọi dòng có ô `Xử`; §3 Kết luận điền bằng **số**, không phải tính từ.
+- Báo user tổng hợp → còn `sửa ngay` thì sửa + chạy lại; sạch → `/next-wave`.
