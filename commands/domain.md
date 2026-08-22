@@ -32,7 +32,15 @@ Xong chốt 9 → dừng ở `REVIEW`, chờ `/approve-document`.
 ## Luật
 
 1. Chốt đỏ → **DỪNG tại đó**, báo thiếu gì. KHÔNG bỏ qua, KHÔNG `force`.
-2. **Chỉ chốt 1 được hỏi.** Từ chốt 3 gặp mơ hồ → `py scripts/decide.py` rồi đi tiếp.
+2. **KHÔNG hỏi user ở bất kỳ chốt nào.** `/discover` đã hỏi rất sâu và câu trả lời nằm ở
+   `hypothesis-log` · `persona-pool` (ma trận vai × hành động) · `capability-map` ·
+   `event-storming/ES-*` · `BOUNDARY-MAP` · `CHARTER` · `PROJECT.md`. Bắt user trả lời lại là
+   hỏi hai lần cùng một câu.
+   Bí thì theo thứ tự: **(1)** tìm trong tài liệu khám phá → **(2)** `py scripts/decide.py`
+   (script từ chối dòng không dẫn được về artifact — không dẫn về đâu được nghĩa là chưa đọc đủ)
+   → **(3)** chặn cứng thật thì một dòng `tracking/blockers.md`, chuyển việc khác, báo gộp cuối.
+   User chỉ CHẠM hai lần trong cả hành lang: **đọc bản nghiệp vụ để ký** (chốt 2) và **xem giao
+   diện** ở `/approve-document`. Cả hai đều là ĐỌC + DUYỆT, không phải trả lời câu hỏi.
 3. Chốt 6 tự suy theo kind boundary; backend-only → bỏ qua **và nói rõ là bỏ qua**.
    Có UI: vẽ xong **đi tiếp**, KHÔNG dừng. Giao diện chỉ được user xem và chốt MỘT lần, ở
    `/approve-document` — chỗ họ vốn đang đọc cả bộ tài liệu. Chốt 6 chỉ để lại thứ đáng xem:

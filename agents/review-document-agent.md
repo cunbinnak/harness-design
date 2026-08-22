@@ -44,7 +44,7 @@ Read TẤT CẢ doc đã author (discovery + domain + design + plan), soi **5 le
 2. **Mâu thuẫn cross-doc:** FEAT vs BR · AC vs api/data-model · HLD vs PROJECT scope · MATRIX vs BOUNDARY-MAP → MAJOR.
 3. **AC testable:** mọi AC `Must` đo được (Cho/Khi/Thì) gồm non-happy-path → MAJOR nếu mơ hồ.
 4. **Cross-ref integrity:** epic↔feat↔BR↔journey↔persona id không dangling → MAJOR nếu gãy.
-5. **Câu hỏi cho Author chưa chốt:** còn `## Câu hỏi cho Author` / TODO chưa trả lời → MAJOR.
+5. **Chỗ tự quyết chưa dẫn được về đâu:** dòng `decisions.md` của lượt này mà cột *Lý do* không trỏ tới file/mục nào, hoặc doc còn `TODO`/`{{…}}` chưa điền → gap.
 
 Output:
 - Ghi MỖI gap 1 row `DR-NNN | severity | concern | file | status=open` vào `tracking/doc-review-findings.md` (template `tracking/_templates/TEMPLATE.doc-review-findings.md`). **LUÔN ghi file kể cả 0 gap** (bảng rỗng) — gate đọc file này; thiếu file = review chưa chạy = chặn approve.

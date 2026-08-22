@@ -1,6 +1,6 @@
 ---
 name: domain-po
-description: Skill của domain-po-agent (chốt viết nghiệp vụ trong /domain) — DOMAIN po-author — viết BUSINESS Epic/Feature/Journey (plain VN, BDD AC) vào docs/domain/{epics,feat,journeys}. Loop tới khi user OK + hỏi "Câu hỏi cho Author" ngay sau khi viết. Spawn qua /domain. KHÔNG approve/translate.
+description: Skill của domain-po-agent (chốt viết nghiệp vụ trong /domain) — DOMAIN po-author — viết BUSINESS Epic/Feature/Journey (plain VN, BDD AC) vào docs/domain/{epics,feat,journeys}. Suy từ tài liệu khám phá, KHÔNG hỏi lại user; mơ hồ → decide.py. Trình user đọc để ký. Spawn qua /domain. KHÔNG approve/translate.
 ---
 
 # Domain PO-Author Skill
@@ -19,7 +19,7 @@ description: Skill của domain-po-agent (chốt viết nghiệp vụ trong /dom
 1. STATE + `agents/domain-agent.md` (owned_paths/forbidden)
 2. EPIC: `docs/discovery/{hypothesis-log,capability-map,persona-pool}.md`
 3. FEATURE: epic cha `docs/domain/epics/EP-*.md` + Journey `docs/domain/journeys/JOURNEY-*.md` + BR `docs/domain/business-rules/BR-*.md` + persona-pool
-4. Template tương ứng mode (có mục **"Câu hỏi cho Author"**)
+4. Template tương ứng mode
 
 ## Mode-specific
 - **EPIC**: gom feature theo capability + outcome cho persona. `target_capability` + **`feature_refs` link ≥2 FEAT** (ZIP planning-rules: <2 → merge) + `priority`. **Tên + nội dung KHÔNG từ kỹ thuật**. §Vision + §Success metrics **nghiệp vụ** + §MVP scope + §Ngoài phạm vi.
@@ -27,8 +27,9 @@ description: Skill của domain-po-agent (chốt viết nghiệp vụ trong /dom
 - **JOURNEY**: 3-7 step (hành động + kỳ vọng + cảm xúc). `persona_refs`; touchpoints nhất quán device.
 
 ## Hai bổ sung BẮT BUỘC khi author
-- **Hỏi NGAY sau khi viết:** viết xong draft → đọc mục **"Câu hỏi cho Author"** trong template → dùng **AskUserQuestion hỏi TỪNG câu mở đó NGAY** → fold câu trả lời vào doc. KHÔNG để câu hỏi treo.
-- **Loop tới khi OK:** vòng *draft → trình user → user góp ý → sửa* — CHỈ dừng khi user xác nhận OK. KHÔNG one-shot.
+- **KHÔNG hỏi user.** `/discover` đã hỏi rất sâu và để lại câu trả lời ở `hypothesis-log` · `persona-pool` (kèm ma trận vai × hành động) · `capability-map` · `event-storming/ES-*` · `BOUNDARY-MAP` · `CHARTER` · `PROJECT.md`. Bắt user trả lời lại là hỏi hai lần cùng một câu.
+  Thứ tự khi bí: **(1)** tìm trong tài liệu khám phá · **(2)** vẫn mơ hồ → `py scripts/decide.py --what … --why "… (<file/mục dẫn ra nó>)" --assume … --reversible …` rồi đi tiếp (script TỪ CHỐI dòng không dẫn được về artifact nào — không dẫn về đâu được nghĩa là chưa đọc đủ) · **(3)** chặn cứng thật → một dòng `tracking/blockers.md`, chuyển việc khác, báo gộp cuối lượt.
+- **Trình để KÝ, không phải để hỏi:** viết xong thì đưa user đọc — góp ý thì sửa, OK thì sang chốt ký. Đó là lần chạm duy nhất của user ở `/domain`.
 
 ## Quy tắc
 - ID `EP-/FEAT-/JOURNEY-<PREFIX>-NNN`. Cross-ref bằng ID. `status: DRAFT` — **KHÔNG tự approve** (ký là `/domain` riêng).
@@ -37,4 +38,4 @@ description: Skill của domain-po-agent (chốt viết nghiệp vụ trong /dom
 - Question budget ~5 (nghiệp vụ).
 
 ## Done
-- Business doc đúng template + AC BDD plain + `status: DRAFT` + đã hỏi "Câu hỏi cho Author" + user OK. Author thêm → gọi `/domain` lại. Xong cả bộ → ký → dịch → DESIGN (cùng một lệnh).
+- Business doc đúng template + AC BDD plain + `status: DRAFT` + mọi chỗ tự quyết đã có dòng `decisions.md` + user đọc và OK. Author thêm → gọi `/domain` lại. Xong cả bộ → ký → dịch → DESIGN (cùng một lệnh).

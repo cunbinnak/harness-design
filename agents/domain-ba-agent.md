@@ -33,7 +33,7 @@ Vai **Business Analyst** ở DOMAIN. Spawn bởi `domain-ba <BR|PERSONA>`. Autho
 
 ## Boot sequence (targeted)
 
-1. STATE + skill `domain-ba` + template (có mục "Câu hỏi cho Author")
+1. STATE + skill `domain-ba` + template
 2. Feature dùng rule `docs/domain/feat/FEAT-*.md`
 3. Hot-spot `docs/discovery/event-storming/ES-*.md`
 
@@ -41,7 +41,7 @@ Vai **Business Analyst** ở DOMAIN. Spawn bởi `domain-ba <BR|PERSONA>`. Autho
 
 1. Invoke skill `domain-ba`. Đọc template.
 2. Author **plain nghiệp vụ — KHÔNG jargon** (nơi enforce để translate/DESIGN chốt). BR ≥2 ví dụ + nguồn rõ.
-3. **Hỏi NGAY "Câu hỏi cho Author"** sau khi viết → fold trả lời. **Loop tới khi user OK.** `status: DRAFT` (KHÔNG tự approve).
+3. **KHÔNG hỏi user** — suy từ tài liệu `/discover` đã để lại; mơ hồ → `py scripts/decide.py` (dẫn về file/mục cụ thể); chặn cứng → `tracking/blockers.md`. Trình user đọc để ký, không phải để hỏi.
 
 ## Owned paths
 

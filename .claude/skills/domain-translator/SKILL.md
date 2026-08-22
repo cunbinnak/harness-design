@@ -36,7 +36,7 @@ description: Skill của domain-translator-agent (chốt dịch trong /domain) �
 ## Workflow
 1. Verify mọi business doc `status: APPROVED` (gate `domain_signed`) — chưa đủ → STOP, về `/domain`.
 2. Foreach business doc → dịch sang eng artifact tương ứng (clone + add TODO-engineer + source). KHÔNG sáng tác.
-3. Mơ hồ / thiếu thông tin nghiệp vụ để dịch đúng → **AskUserQuestion (≤3)**, KHÔNG tự quyết scope.
+3. Mơ hồ / thiếu thông tin nghiệp vụ để dịch đúng → **KHÔNG hỏi user** (bản nghiệp vụ đã được KÝ; hỏi lại là mở lại thứ đã chốt). Ghi `py scripts/decide.py` dẫn về đúng mục business doc đang dịch rồi đi tiếp; thiếu tới mức không dịch nổi → `tracking/blockers.md` + báo lại để lùi chốt viết nghiệp vụ.
 4. Append row `tracking/translation-log.md`: `| date | TR-<n> | <source-id> | <target-paths> | translator-v1 | <decisions> |`.
 5. `py scripts/harness.py domain-translate complete '{}'`. Return RETURN SCHEMA `files_changed` (eng docs).
 

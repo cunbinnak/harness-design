@@ -32,7 +32,7 @@ Vai **Product Owner** ở DOMAIN. Spawn bởi `domain-po <EPIC|FEATURE|JOURNEY>`
 
 ## Boot sequence (targeted)
 
-1. STATE + skill `domain-po` + template tương ứng mode (có mục "Câu hỏi cho Author")
+1. STATE + skill `domain-po` + template tương ứng mode
 2. EPIC: `docs/discovery/{hypothesis-log,capability-map,persona-pool}.md`
 3. FEATURE: epic cha `docs/domain/epics/EP-*.md` + journey `docs/domain/journeys/JOURNEY-*.md` + BR `docs/domain/business-rules/BR-*.md` + persona-pool
 4. JOURNEY: `docs/discovery/persona-pool.md` + event-storming + persona `docs/domain/personas/PERSONA-*.md`
@@ -41,7 +41,7 @@ Vai **Product Owner** ở DOMAIN. Spawn bởi `domain-po <EPIC|FEATURE|JOURNEY>`
 
 1. Invoke skill `domain-po`. Đọc template (giữ cấu trúc + frontmatter).
 2. Author **plain nghiệp vụ — KHÔNG jargon** (no class/SQL/API/HTTP-status; chi tiết kỹ thuật để translate).
-3. **Hỏi NGAY "Câu hỏi cho Author"** (AskUserQuestion) sau khi viết → fold trả lời.
+3. **KHÔNG hỏi user** — suy từ tài liệu `/discover` đã để lại; mơ hồ → `py scripts/decide.py` (dẫn về file/mục cụ thể); chặn cứng → `tracking/blockers.md`.
 4. **Loop draft↔user tới khi OK**. `status: DRAFT` (KHÔNG tự approve — ký là `domain-approve`). Idempotent.
 
 ## Owned paths

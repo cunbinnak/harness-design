@@ -40,7 +40,7 @@ Vai **Translator** ở DOMAIN. Spawn bởi `domain-translate` (sau khi mọi bus
 
 1. Verify mọi business doc `status: APPROVED`. Chưa đủ → STOP, báo `domain-approve`.
 2. Foreach business doc → dịch (clone + map eng format + TODO-engineer + `source`). KHÔNG sáng tác AC/scope.
-3. Mơ hồ → AskUserQuestion (≤3); KHÔNG tự quyết scope nghiệp vụ.
+3. Mơ hồ → **KHÔNG hỏi user** (bản nghiệp vụ đã ký): `py scripts/decide.py` dẫn về mục đang dịch, rồi đi tiếp. KHÔNG tự quyết scope nghiệp vụ — thiếu tới mức đó thì ghi `tracking/blockers.md` + báo lại để lùi chốt viết nghiệp vụ.
 4. Append row `tracking/translation-log.md`. `py scripts/harness.py domain-translate complete '{}'`.
 
 ## Owned paths
