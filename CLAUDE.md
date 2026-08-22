@@ -147,6 +147,7 @@ Mỗi command tự document trong `.claude/commands/<name>.md` (sync từ `comma
 | `PreToolUse(Bash)` — gate | Deny `harness <cmd> complete` nếu sai `allowed_commands` hoặc fail gate — §Gate evidence |
 | `PreToolUse(Write\|Edit)` | Block kernel files + 3 proof file (chỉ `capture_infra_proof.py` sinh, FM-PROOF-FORGE) + doc phase-locked ngoài stage sở hữu + `services/**` khi dev-handoff-agent (#12) |
 | `PreToolUse(Task)` | Block spawn command-agent bằng prompt tự viết (E-6: phải dùng `build_prompt.py`); Explore free |
+| `PreToolUse(AskUserQuestion)` | Chặn hỏi user ngoài khâu khám phá. Cho qua ở `BOOTSTRAP`/`DISC_*` (đó LÀ chỗ để hỏi) và ở ba chốt KÝ khi **MAIN** chạy (`DOMAIN_AUTHORING` ký nghiệp vụ · `REVIEW` khoá scope · `MANUAL_TEST` UAT). **Sub-agent thì không, ở bất kỳ đâu ngoài khám phá** — nó phải suy từ tài liệu khám phá, mơ hồ thì `decide.py`, tắc thật thì `blockers.md` |
 | `PreToolUse(Skill\|SlashCommand)` | Chặn CHỈ `SlashCommand` chạy harness cmd ∈ GATE_RULES (MAIN tự nối pipeline); `Skill` tool cho qua (sub-agent load convention); user **gõ tay** không ảnh hưởng |
 | `SubagentStop` | Validate RETURN SCHEMA (7 field: completed/deferred/needs_review/files_changed/build/lint/test) |
 | `Stop` | Build/lint/test **wave-scoped** khi sửa `services/` ở {DEV, REVIEW_DEV, TEST_EXECUTE}; đỏ → block (cache git-hash) |

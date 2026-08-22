@@ -502,6 +502,18 @@ def _selftest() -> int:
     assert is_proof_file("tracking/wave-001/test-report.md") is False
     assert is_proof_file("tracking/doc-review-findings.md") is False
     assert is_proof_file("docs/health-proof.json") is False
+    # ask_violation — luật "chỉ /discover được hỏi" phải sống bằng HOOK, không bằng văn xuôi
+    _S = lambda st, sp=None: {"stage": st, "spawn": {"active": sp}}
+    assert ask_violation(_S("DISC_D2")) is None                      # khâu khám phá: hỏi thoải mái
+    assert ask_violation(_S("DOMAIN_AUTHORING")) is None             # MAIN trình cho user KÝ
+    assert ask_violation(_S("DOMAIN_AUTHORING", "domain-po-agent"))  # sub-agent thì KHÔNG
+    assert ask_violation(_S("DESIGN")) is not None                   # không phải chốt ký
+    assert ask_violation(_S("REVIEW")) is None                       # khoá scope = chốt ký
+    assert ask_violation(_S("REVIEW", "review-document-agent"))      # nhưng sub-agent thì không
+    assert ask_violation(_S("MANUAL_TEST")) is None                  # UAT ký
+    assert ask_violation(_S("DEV", "dev-x-agent")) is not None
+    assert ask_violation({}) is None                                 # fail-open: không rõ thì cho qua
+
     # next-step hint contextual (arg + back-edge)
     # Gợi ý phải dạy dạng KHÔNG ARG. Trước đây nó dạy `/discover D2` — mà `/discover` vốn tự suy
     # (gate wave đang đứng xanh thì tiến, đỏ thì ở lại), nên gợi ý đang dạy người dùng nhớ một cờ
@@ -538,11 +550,6 @@ def _selftest() -> int:
     assert looks_like_build_prompt("# SPAWN PROMPT — test-execute\n...") is True
     print("OK: policies.py selftest passed")
     return 0
-
-
-if __name__ == "__main__":
-    import sys as _sys
-    _sys.exit(_selftest())
 
 
 # ========================================================================
@@ -630,3 +637,61 @@ def token_violation(rel: str, new_text: str, root: Path | None = None) -> str | 
         msg.append("    đó là dựng design system thứ hai mà không ai biết.")
     msg.append("  Lỗi CŨ trong file không bị tính: sửa dần từng chỗ vẫn đi qua được.")
     return "\n".join(msg)
+
+
+# ========================================================================
+# ask_violation — hỏi user CHỈ ở khâu khám phá và ở ba chốt KÝ
+# ========================================================================
+#
+# VÌ SAO CÓ. Luật "từ /domain trở đi KHÔNG hỏi user, mơ hồ thì decide.py" hiện sống bằng văn xuôi
+# rải trong 3 skill + 4 agent + 1 command doc. VIPER đã trả giá cho đúng cách làm này và kết luận
+# gọn: *cấm bằng văn xuôi không giữ được luật, nhất là sau compact* — nên họ chặn `AskUserQuestion`
+# bằng hook (`guard_ask.py`). Đây là bản port.
+#
+# KHÁC VIPER MỘT CHỖ, có lý do. Họ chặn theo PHA (sau pha V là cấm), và phải tự vá thêm vì agent
+# hay quên đổi dòng pha nên họ đọc ô "Scope khoá" trước. Mình không có lỗ đó — `stage` do state
+# machine giữ, sửa tay bị hook chặn — nhưng lại có một phân biệt họ không cần: cùng ở
+# `DOMAIN_AUTHORING`, **sub-agent viết nghiệp vụ KHÔNG được hỏi** (phải suy từ tài liệu khám phá)
+# trong khi **MAIN trình bản nháp cho user KÝ thì được**. Hai việc khác hẳn nhau: một bên moi
+# thông tin, một bên xin chữ ký. Phân biệt bằng `spawn.active` — cờ đã có sẵn cho hook #12.
+
+# Khâu khám phá: đây LÀ chỗ để hỏi, hỏi bao nhiêu cũng được.
+ASK_DISCOVERY_STAGES = frozenset({"BOOTSTRAP", "DISC_D0", "DISC_D1", "DISC_D2", "DISC_D3"})
+# Chốt cần CHỮ KÝ NGƯỜI — MAIN được hỏi để trình và chốt, sub-agent thì không.
+ASK_SIGNOFF_STAGES = frozenset({"DOMAIN_AUTHORING", "REVIEW", "MANUAL_TEST"})
+
+
+def ask_violation(state: dict) -> str | None:
+    """Thông báo chặn `AskUserQuestion`, hoặc None nếu cho qua.
+
+    Fail-open: không đọc được stage → cho qua. Chặn nhầm một phiên còn tệ hơn một câu hỏi thừa.
+    """
+    stage = (state or {}).get("stage")
+    if not stage or stage in ASK_DISCOVERY_STAGES:
+        return None
+    spawn_active = ((state or {}).get("spawn") or {}).get("active")
+    if stage in ASK_SIGNOFF_STAGES and not spawn_active:
+        return None                      # MAIN trình cho user ký — đó là việc của chốt này
+    who = f"sub-agent `{spawn_active}`" if spawn_active else "phiên chính"
+    return (
+        f"FM-ASK-AFTER-DISCOVERY: {who} đang ở `{stage}` — KHÔNG hỏi user ở đây.\n"
+        "`/discover` (D0-D3) đã hỏi rất sâu; câu trả lời nằm ở `hypothesis-log` · `persona-pool` "
+        "(ma trận vai × hành động) · `capability-map` · `event-storming/ES-*` · `BOUNDARY-MAP` · "
+        "`CHARTER` · `PROJECT.md`. Bắt user trả lời lại là hỏi hai lần cùng một câu.\n"
+        "Ba nước đi, theo thứ tự:\n"
+        "  1. Tìm trong tài liệu khám phá ở trên.\n"
+        "  2. Vẫn mơ hồ → `py scripts/decide.py --what … --why \"… (<file/mục>)\" --assume … "
+        "--reversible yes|hard|no` rồi ĐI TIẾP. Script từ chối dòng không dẫn được về artifact — "
+        "không dẫn về đâu được nghĩa là chưa đọc đủ, không phải cớ để hỏi.\n"
+        "  3. Chặn cứng thật → một dòng `tracking/blockers.md` (cột `Đã thử gì` phải có nội dung), "
+        "CHUYỂN VIỆC KHÁC ngay, báo gộp cuối lượt.\n"
+        "Hành động không đảo ngược được / hướng ra ngoài (xoá dữ liệu thật, đẩy lên remote, tiêu "
+        "tiền) thì hỏi BẰNG LỜI trong chat — không qua tool này."
+    )
+
+
+if __name__ == "__main__":
+    import sys as _sys
+    _sys.exit(_selftest())
+
+

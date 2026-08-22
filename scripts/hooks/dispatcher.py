@@ -206,7 +206,24 @@ def handle_pre_tool_use(payload: dict) -> int:
         return _pre_task(payload)
     if tool in ("Skill", "SlashCommand"):
         return _pre_skill(payload)
+    if tool == "AskUserQuestion":
+        return _pre_ask(payload)
     return allow_silent()
+
+
+def _pre_ask(payload: dict) -> int:
+    """Chặn hỏi user ngoài khâu khám phá / ngoài ba chốt ký — port `guard_ask.py` của VIPER.
+
+    Luật này trước đây chỉ sống bằng văn xuôi trong 3 skill + 4 agent + 1 command doc. VIPER đã
+    trả giá cho đúng cách làm đó: *cấm bằng văn xuôi không giữ được luật, nhất là sau compact*.
+    Fail-open khi không đọc được STATE — chặn nhầm một phiên tệ hơn một câu hỏi thừa.
+    """
+    try:
+        st = state_mod.load_state()
+    except Exception:
+        return allow_silent()
+    msg = policies.ask_violation(st)
+    return pre_tool_deny(msg) if msg else allow_silent()
 
 
 def _pre_skill(payload: dict) -> int:
