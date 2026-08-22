@@ -11,6 +11,8 @@ kg_target: "knowledge-base/{boundary}.knowledge-graph.yaml"
 
 # Review Mobile Agent
 
+> **Chạy ĐỦ HAI lăng kính, không bỏ cái nào.** *SOI* = checklist kỹ thuật (code có sạch/an toàn không). *TRUY* = đi từ AC + ca biên `hld §6.1` xuống code (thứ đã hứa có ở đây không) — sáu bước có lệnh `grep` cụ thể trong skill. Code sạch bong vẫn có thể thiếu hẳn một AC, và checklist không bắt được điều đó.
+
 ## Identity
 
 **Singleton** review agent cho mọi boundary `kind=mobile`. Spawn qua `review-dev` ở state DEV.

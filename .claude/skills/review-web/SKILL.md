@@ -61,6 +61,56 @@ ls tailwind.config.* 2>/dev/null; grep -rl "styled\.\|@emotion\|makeStyles" src 
 - Folder/file thừa không dùng (component/hook mồ côi, scaffold mẫu sót, dead code / import chết) — phải xóa, không để lại.
 
 
+
+## Lăng kính thứ hai: TRUY — code có làm đúng thứ tài liệu đã chốt không
+
+Phần checklist ở trên là lăng kính **SOI** (code có sạch, có an toàn không). Lăng kính này khác hẳn:
+**đi từ TÀI LIỆU xuống code**, không đi từ code lên. Hai lăng kính bắt hai loại lỗi khác nhau — code
+sạch bong vẫn có thể thiếu hẳn một AC, và không mục nào ở trên bắt được điều đó.
+
+Đây là **quy trình**, không phải lời dặn: làm đủ sáu bước, mỗi bước ra finding hoặc ra câu
+"bước này sạch".
+
+**1. Đi từng AC một.** Liệt kê AC của mọi `FEAT-*` boundary này đảm nhận. Với **mỗi** AC: tìm đoạn
+code hiện thực nó. Ba kết quả, ba xử lý khác nhau:
+`có và đúng` → sạch · `có nhưng chỉ làm một nửa` (thiếu nhánh lỗi/validation) → **MAJOR** ·
+`không tìm thấy` → **BLOCKER**. **Không suy từ tên hàm** — `validateOrder` không chứng minh nó
+validate AC nào; mở file ra đọc.
+
+**2. Ca biên `hld-{boundary}.md` §6.1.** Mỗi dòng đã quyết (gửi hai lần · sửa đồng thời · xoá ·
+sai thứ tự · hỏng nửa chừng · bản cũ · rỗng · thu hồi quyền) — tìm chỗ code chặn nó.
+**Không tìm thấy nghĩa là CHƯA XỬ**, dù chạy thử trông vẫn ổn: ca biên chỉ nổ khi trùng thời điểm.
+**Disable nút KHÔNG tính.** FE chỉ là lớp tiện; ràng buộc thật phải nằm ở BE — FE thiếu chặn là MINOR, BE thiếu chặn là BLOCKER (ghi finding cho boundary BE).
+
+**3. Phân quyền — chỗ hay thủng nhất.**
+```bash
+grep -rn "fetch(\|axios\.\|useQuery(" --include=*.ts --include=*.tsx src/
+```
+Mỗi truy vấn lấy bản ghi theo id: **có kèm điều kiện chủ sở hữu / tenant không?** Thiếu là lỗ hổng,
+và đây là loại nặng nhất. Đối chiếu `docs/discovery/persona-pool.md` §Ma trận vai × hành động:
+mỗi ô `cấm` phải tìm được chỗ chặn ở server.
+
+**4. Lỗi bị nuốt.**
+```bash
+grep -rn "catch *([a-z]*) *{ *}\|\.catch(() *=> *{ *})" --include=*.ts --include=*.tsx src/
+```
+`catch` rỗng = lỗi biến mất, người dùng thấy "thành công" trong khi không có gì xảy ra.
+
+**5. Việc dở dang.**
+```bash
+grep -rn "TODO\|FIXME\|HACK\|XXX" --include=*.ts --include=*.tsx .
+```
+Cái nào **chặn một AC** → finding. Cái nào là nợ tương lai → ghi chú, không phải finding.
+
+**6. Secret lọt vào code.**
+```bash
+grep -rnE '(api[_-]?key|secret|password|token)\s*[=:]\s*["'"'"'][A-Za-z0-9_-]{12,}' --include=*.ts --include=*.tsx .
+```
+
+> Sáu bước này **không thay** checklist ở trên — chúng chạy song song. Checklist hỏi *"code này có
+> vấn đề gì"*; sáu bước hỏi *"thứ đã hứa có ở đây không"*. Bỏ lăng kính thứ hai thì một FEAT thiếu
+> hẳn vẫn qua được review sạch bong.
+
 ## Kỷ luật khi review — bốn luật, áp cho MỌI finding
 
 **1. Mỗi finding phải nói được HẬU QUẢ THẬT.** Không phải "vi phạm mục X", mà *chuyện gì xảy ra
