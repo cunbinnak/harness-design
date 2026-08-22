@@ -128,6 +128,11 @@
 | `/design` · `/plan` · `/review-document` | ba chốt bên trong `/domain` (thiết kế · chia wave · rà chéo) |
 
 
+> **Menu `/` hiện cả SKILL, không chỉ lệnh.** `domain-po`, `test-plan`, `dogfood`… là skill
+> của sub-agent — gõ chúng chỉ **nạp checklist** vào phiên, KHÔNG chạy chốt và KHÔNG chuyển
+> state. Nhận ra bằng mô tả: skill mở đầu bằng `Skill của <agent> (chốt X trong /<lệnh>)`.
+> **7 lệnh thật** là bảng ở trên.
+
 Mỗi command tự document trong `.claude/commands/<name>.md` (sync từ `commands/<name>.md` qua `py scripts/sync_commands.py`).
 
 ---

@@ -1,6 +1,6 @@
 ---
 name: dogfood
-description: Dùng thử sản phẩm ĐANG CHẠY bằng 6 lăng kính persona, hai đợt theo trạng thái DB — thay cho MANUAL_TEST thủ công. Mỗi vai đóng một persona thật từ persona-pool, vai breaker chạy đủ ma trận vai × hành động. Mỗi phát hiện một dòng ở dogfood-report §2 kèm ô Xử (sửa ngay / chưa xử / wave sau) — ô trống là chưa ai quyết. KHÔNG tự fix.
+description: Skill của 6 dogfood-{vai}-agent (chốt cuối /run-wave, hoặc lệnh /dogfood) — Dùng thử sản phẩm ĐANG CHẠY bằng 6 lăng kính persona, hai đợt theo trạng thái DB — thay cho MANUAL_TEST thủ công. Mỗi vai đóng một persona thật từ persona-pool, vai breaker chạy đủ ma trận vai × hành động. Mỗi phát hiện một dòng ở dogfood-report §2 kèm ô Xử (sửa ngay / chưa xử / wave sau) — ô trống là chưa ai quyết. KHÔNG tự fix.
 ---
 
 # Dogfood Skill

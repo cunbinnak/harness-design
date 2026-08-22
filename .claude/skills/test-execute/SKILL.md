@@ -1,6 +1,6 @@
 ---
 name: test-execute
-description: Chạy auto TC BLACK-BOX trên hệ thống ĐANG CHẠY (API qua curl/REST client, UI/e2e qua Playwright, perf k6) — KHÔNG build source, KHÔNG mvn/gradle/vitest, KHÔNG đo coverage (đó là việc DEV). Ghi test-report.md + nguyên nhân của mỗi FAIL vào test-logs. KHÔNG fix — MAIN điều phối lượt sửa.
+description: Skill của test-execute-agent (chốt chạy test trong /run-wave) — Chạy auto TC BLACK-BOX trên hệ thống ĐANG CHẠY (API qua curl/REST client, UI/e2e qua Playwright, perf k6) — KHÔNG build source, KHÔNG mvn/gradle/vitest, KHÔNG đo coverage (đó là việc DEV). Ghi test-report.md + nguyên nhân của mỗi FAIL vào test-logs. KHÔNG fix — MAIN điều phối lượt sửa.
 ---
 
 # Test Execute Skill

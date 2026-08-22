@@ -1,6 +1,6 @@
 ---
 name: domain-ba
-description: DOMAIN ba-author — viết BUSINESS Business-rule/Persona (plain VN) vào docs/domain/{business-rules,personas}. Loop tới khi user OK + hỏi "Câu hỏi cho Author" ngay. Spawn qua /domain. KHÔNG approve/translate.
+description: Skill của domain-ba-agent (chốt viết nghiệp vụ trong /domain) — DOMAIN ba-author — viết BUSINESS Business-rule/Persona (plain VN) vào docs/domain/{business-rules,personas}. Loop tới khi user OK + hỏi "Câu hỏi cho Author" ngay. Spawn qua /domain. KHÔNG approve/translate.
 ---
 
 # Domain BA-Author Skill

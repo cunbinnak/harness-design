@@ -1,6 +1,6 @@
 ---
 name: test-plan
-description: Sinh test-case-registry.md cho wave — TC per AC + enterprise coverage matrix (error paths, tenant isolation, idempotency, rate limit, concurrency). Test pyramid.
+description: Skill của test-plan-agent (chốt sinh test trong /run-wave) — Sinh test-case-registry.md cho wave — TC per AC + enterprise coverage matrix (error paths, tenant isolation, idempotency, rate limit, concurrency). Test pyramid.
 ---
 
 # Test Plan Skill

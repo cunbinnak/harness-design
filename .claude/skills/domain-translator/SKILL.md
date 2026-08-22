@@ -1,6 +1,6 @@
 ---
 name: domain-translator
-description: DỊCH business doc (docs/domain/, đã ký) → engineering artifact (docs/architecture/). Clone ZIP agent-domain-translator. DỊCH KHÔNG SÁNG TÁC — clone narrative + map sang format eng + thêm field engineer dạng TODO; KHÔNG tự nghĩ AC/scope mới. Spawn qua /domain.
+description: Skill của domain-translator-agent (chốt dịch trong /domain) — DỊCH business doc (docs/domain/, đã ký) → engineering artifact (docs/architecture/). Clone ZIP agent-domain-translator. DỊCH KHÔNG SÁNG TÁC — clone narrative + map sang format eng + thêm field engineer dạng TODO; KHÔNG tự nghĩ AC/scope mới. Spawn qua /domain.
 ---
 
 # Domain Translator Skill (clone ZIP `agent-domain-translator`, adapt single-repo)

@@ -1,6 +1,6 @@
 ---
 name: domain-po
-description: DOMAIN po-author — viết BUSINESS Epic/Feature/Journey (plain VN, BDD AC) vào docs/domain/{epics,feat,journeys}. Loop tới khi user OK + hỏi "Câu hỏi cho Author" ngay sau khi viết. Spawn qua /domain. KHÔNG approve/translate.
+description: Skill của domain-po-agent (chốt viết nghiệp vụ trong /domain) — DOMAIN po-author — viết BUSINESS Epic/Feature/Journey (plain VN, BDD AC) vào docs/domain/{epics,feat,journeys}. Loop tới khi user OK + hỏi "Câu hỏi cho Author" ngay sau khi viết. Spawn qua /domain. KHÔNG approve/translate.
 ---
 
 # Domain PO-Author Skill

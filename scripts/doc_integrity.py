@@ -173,7 +173,22 @@ def main() -> int:
                 if not (f.parent / t).exists():
                     problems.append(f"[link chết] {rel}:{n} → {t}")
 
-    # 7. TEMPLATE mồ côi — không tài liệu/script nào nhắc tên nó
+    # 7. Skill TRÙNG TÊN CHỐT mà mô tả không nói ai sở hữu.
+    #    Claude Code liệt kê skill trong menu `/`, nên `domain-po` hiện lên y hệt một slash command
+    #    — người dùng gõ `/domain-po` tưởng đang chạy chốt, thực ra chỉ nạp checklist vào phiên
+    #    chính. Không đổi được tên (build_prompt + agent trỏ vào), nên bắt MÔ TẢ phải tự khai:
+    #    dòng đầu tiên người đọc thấy trong menu phải nói ngay nó là skill của agent nào.
+    for sk in sorted((ROOT / ".claude" / "skills").glob("*/SKILL.md")):
+        name = sk.parent.name
+        if name not in harness_ids and name.replace("translator", "translate") not in harness_ids:
+            continue
+        head = sk.read_text(encoding="utf-8", errors="ignore")[:900]
+        if "Skill của" not in head:
+            problems.append(
+                f"[skill trùng tên chốt] {name} — mô tả không khai chủ sở hữu; thêm tiền tố "
+                '"Skill của <agent> (chốt X trong /<lệnh>) — " để menu `/` không đọc nhầm là lệnh')
+
+    # 8. TEMPLATE mồ côi — không tài liệu/script nào nhắc tên nó
     #    Template không ai gọi là chỗ trốn kỹ nhất của rác: nó không gây lỗi, không ai xoá, và
     #    lần sau có người chép nhầm bản đã chết. (`TEMPLATE.local-dev.md` nằm im như vậy 3 tháng.)
     tpl_names = {p.name for p in ROOT.rglob("TEMPLATE.*")
