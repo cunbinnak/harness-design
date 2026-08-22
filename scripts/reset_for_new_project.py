@@ -23,6 +23,7 @@ REMOVE (project-specific artifacts):
   - docs/architecture/infra/docker-compose.yml (preserve TEMPLATE if exists)
   - docs/plans/WAVE-SEQUENCE.md + wave-*.md
   - tracking/wave-*/  (entire folders)
+  - archive/wave-*/   (snapshot wave đã đóng — sự tồn tại = cờ 'đã đóng')
   - handoff/wave-*.md
   - agents/{dev-,fix-}*-agent.md (materialized per boundary)
   - knowledge-base/*.knowledge-graph.yaml (except TEMPLATE)
@@ -218,11 +219,25 @@ def collect_targets() -> dict[str, list[Path]]:
                 if not f.name.startswith("TEMPLATE"):
                     targets["remove"].append(f)
         # Cross-wave files sinh ở runtime: translation-log (domain-translate) +
-        # doc-review-findings (sanity-check) + decisions (audit force-bypass)
-        for name in ("translation-log.md", "doc-review-findings.md", "decisions.md"):
+        # doc-review-findings (sanity-check) + decisions (audit force-bypass) +
+        # BC-LEDGER (sổ hợp đồng surface) + challenge-log (đối kháng trước khi code)
+        for name in ("translation-log.md", "doc-review-findings.md", "decisions.md",
+                     "BC-LEDGER.md", "challenge-log.md"):
             f = tracking / name
             if f.is_file():
                 targets["remove"].append(f)
+
+    # archive/wave-N/ — snapshot của các wave ĐÃ ĐÓNG (next_wave.py sinh).
+    #
+    # BẮT BUỘC dọn khi reset sang project mới: sự TỒN TẠI của `archive/wave-N/` chính là
+    # cờ "wave N đã đóng" (next_wave.checks từ chối đóng lại). Bỏ sót thì project mới thừa
+    # hưởng cờ của project cũ và KHÔNG BAO GIỜ đóng được wave 1 — đúng lỗi đã xảy ra thật
+    # khi một fixture test lọt vào repo.
+    archive = root / "archive"
+    if archive.is_dir():
+        for child in sorted(archive.glob("wave-*")):
+            if child.is_dir():
+                targets["remove"].append(child)
 
     # handoff
     handoff = root / "handoff"
