@@ -128,7 +128,10 @@ def derive_coverage_pct(boundary_id: str, state: dict, root: Path | None = None)
 def check_all_boundaries_reviewed(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
     """Mọi boundary trong wave_boundaries phải có review_result=pass + coverage đạt ngưỡng theo kind.
 
-    Nguồn review: STATE.review_results (lưu bởi apply_effects khi /review-dev complete) — wave-scoped.
+    Nguồn review: STATE.review_results (lưu bởi apply_effects khi /review-dev complete). List này chỉ
+    khoá theo BOUNDARY nên tự nó KHÔNG mang chiều wave — dấu wave nằm ở `review_results_wave`, đối
+    chiếu qua `results_stale()`. Trước đây docstring này khai là "wave-scoped" trong khi thực tế không
+    phải: vòng wave không-reset thì boundary review pass ở wave N sẽ xanh hộ wave N+1.
     Coverage KHÔNG tin số tự khai: service đã scaffold → HARNESS derive từ coverage report thật
     (jacoco/coverage-summary/lcov); có report → số đo thắng số khai; scaffold rồi mà KHÔNG có report
     → fail (chạy test với coverage rồi review lại). Chưa scaffold → fallback số khai (hermetic/smoke).
@@ -140,7 +143,10 @@ def check_all_boundaries_reviewed(state: dict, evidence: dict | None = None, roo
     base = root or REPO_ROOT
     wave_boundaries = state.get("wave_boundaries") or []
     if not wave_boundaries:
-        return False, "wave_boundaries rỗng — chưa /start-wave?"
+        return False, "wave_boundaries rỗng — chưa mở wave?"
+    stale = results_stale(state, "review_results")
+    if stale and (state.get("review_results") or []):
+        return False, stale + " — review lại code của wave này (/run-wave)"
     results = {
         r.get("boundary"): r
         for r in (state.get("review_results") or [])
@@ -582,17 +588,46 @@ def check_doc_stamped(evidence: dict | None = None, root: Path | None = None) ->
     return True, ""
 
 
+def results_stale(state: dict, field: str) -> str | None:
+    """None = kết quả thuộc ĐÚNG wave hiện tại; str = lý do không tính.
+
+    VÌ SAO CÓ HÀM NÀY — `test_result` và `review_results` là KẾT QUẢ, và trước đây chúng là field
+    PHẲNG: chỉ khoá theo boundary/giá trị, không mang dấu wave nào. Chúng vô hại chừng nào `done-wave`
+    còn reset STATE về BOOTSTRAP — nhưng vòng wave kiểu VIPER **không reset gì**, nên nếu không đóng
+    dấu thì wave N+1 thừa hưởng nguyên `pass` của wave N:
+      · test_result=pass của wave N  → /next-wave wave N+1 xanh trước khi chạy test nào;
+      · review_results[payment]=pass → wave N+1 lại đụng `payment` là đi thẳng tới dev-handoff mà
+        chưa review dòng code nào của wave đó.
+    Dấu wave đi kèm ngay lúc GHI (state.apply_effects), gate đối chiếu lúc ĐỌC.
+
+    FAIL-CLOSED có chủ ý: thiếu dấu (STATE cũ, script gãy giữa chừng) → coi như của wave khác. Đếm
+    trên vết không rõ nguồn chính là cách kết quả wave cũ xanh hộ wave mới.
+    """
+    cur = (state.get("wave") or {}).get("id")
+    if not cur:
+        return None                       # ngoài phạm vi wave → gate khác lo
+    stamp = state.get(f"{field}_wave")
+    if stamp == cur:
+        return None
+    if not stamp:
+        return f"{field} không mang dấu wave (STATE cũ?) — chạy lại cho wave {cur}"
+    return f"{field} là kết quả của {stamp}, không phải {cur} — chạy lại cho wave này"
+
+
 def check_test_passed(state: dict) -> tuple[bool, str]:
-    """end-wave: lần /test-execute cuối phải `pass` (đọc `STATE.test_result`).
+    """end-wave: lần /test-execute cuối phải `pass` VÀ thuộc đúng wave hiện tại.
 
     Sau /fix-bugs, field này GIỮ NGUYÊN `fail` của lần test trước (fix không đụng) → buộc
     re-run /test-execute cho xanh mới end-wave được. Ép vòng fix ↔ re-run tới khi suite xanh hẳn."""
+    stale = results_stale(state, "test_result")
+    if stale:
+        return False, stale + " (/run-wave sẽ chạy lại test cho wave này)"
     tr = state.get("test_result")
     if tr == "pass":
         return True, ""
     return False, (
         f"test_result hiện = {tr!r} (cần 'pass'). Re-run /test-execute cho full suite xanh "
-        "trước khi /end-wave (sau fix phải test lại)."
+        "trước khi đóng wave (sau fix phải test lại)."
     )
 
 
@@ -1674,6 +1709,173 @@ def check_features_complete(state: dict, evidence: dict | None = None, root: Pat
 
 
 # ========================================================================
+# backward_compat (end-wave, wave ≥2) — legacy là hợp đồng
+# ========================================================================
+
+BC_LEDGER = "tracking/BC-LEDGER.md"
+
+
+def _bc_section3(text: str) -> list[str] | None:
+    """Dòng thuộc §3 của sổ — None khi mất heading '## 3'.
+
+    Phạm vi §3 là hợp đồng chung của HAI chỗ: gate này (đếm) và `next_wave.py` (bỏ tick khi mở wave).
+    Đếm cả file thì một checkbox ghi chú ở §1/§4 chặn đóng wave vĩnh viễn mà không chỗ nào re-arm nó.
+    """
+    out: list[str] | None = None
+    for line in text.splitlines():
+        if re.match(r"## 3(?!\d)", line):      # đúng §3 — "## 30. Ghi chú" không tính
+            out = []
+            continue
+        if out is not None and line.startswith("## "):
+            break
+        if out is not None:
+            out.append(line)
+    return out
+
+
+def check_backward_compat(state: dict, evidence: dict | None = None,
+                          root: Path | None = None) -> tuple[bool, str]:
+    """Đóng wave ≥2: §3 sổ tương thích ngược phải rà xong.
+
+    Vì sao cần gate riêng dù đã có dogfood regression: dogfood đi lại LUỒNG (bấm được không), gate
+    này soi HÌNH DẠNG (endpoint/cột/khoá cache/event có đổi shape không). Luồng vẫn chạy trơn trong
+    khi field response bị đổi tên — client ngoài gãy, dogfood không thấy vì nó dùng đúng client mới.
+
+    Wave 1 bỏ qua: chưa giao gì thì chưa có hợp đồng nào để giữ.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    n = (state.get("wave") or {}).get("number") or 0
+    if n < 2:
+        return True, ""
+    f = root / BC_LEDGER
+    if not f.is_file():
+        return False, (
+            f"wave {n} (≥2) mà chưa có {BC_LEDGER} — chép từ "
+            "tracking/_templates/TEMPLATE.bc-ledger.md rồi điền §1 (surface đã giao) + rà §3. "
+            "Từ wave 2 có thứ đã giao cho người dùng thật, và không sổ nào ghi lại thì "
+            "'chỉ được THÊM' chỉ là lời dặn không đối chiếu được"
+        )
+    sec3 = _bc_section3(f.read_text(encoding="utf-8", errors="ignore"))
+    if sec3 is None:
+        return False, (f"{BC_LEDGER} mất heading '## 3' — chép lại §3 từ template; "
+                       "gate đếm và next_wave.py re-arm đúng mục đó")
+    todo = [l.strip() for l in sec3 if l.strip().startswith("- [ ]")]
+    if not todo:
+        return True, ""
+    return False, (
+        f"còn {len(todo)} mục tương thích ngược chưa rà ({BC_LEDGER} §3):\n      "
+        + "\n      ".join(todo[:4]) + ("\n      …" if len(todo) > 4 else "")
+        + "\n      Rà từng mục theo luật §2 (đối chiếu sổ hợp đồng §1). Mục không áp dụng → "
+          "tick kèm 'n/a'. Chỗ buộc phải phá mà user CHƯA chốt → DỪNG, hỏi user"
+    )
+
+
+# ========================================================================
+# challenge_passed (review-dev) — đối kháng nội bộ TRƯỚC khi code
+# ========================================================================
+
+CHALLENGE_LOG = "tracking/challenge-log.md"
+
+
+def check_challenge_passed(state: dict, evidence: dict | None = None,
+                           root: Path | None = None) -> tuple[bool, str]:
+    """Rời DEV: phải có ≥1 challenge PASS của ĐÚNG wave này.
+
+    Đối kháng nội bộ thay reviewer ngoài (VIPER luật #8): trước khi viết dòng code đầu tiên, agent
+    tự ra một câu hỏi khó dựa trên spec THẬT rồi tự chấm. review-dev bắt lỗi SAU khi code xong —
+    lúc đó cái giá đã trả. Challenge bắt đúng chỗ "tưởng đã hiểu mà chưa".
+
+    Lọc theo wave: dòng PASS của wave trước KHÔNG gánh hộ wave này — cùng cơ chế đếm-theo-wave với
+    test_result/review_results. FAIL gần nhất mà không có PASS sau nó → đỏ (FAIL nghĩa là CHƯA được
+    code, nên nó không phải là gate đã qua).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    wave_id = (state.get("wave") or {}).get("id")
+    if not wave_id:
+        return True, ""
+    f = root / CHALLENGE_LOG
+    if not f.is_file():
+        return False, (
+            f"chưa có {CHALLENGE_LOG} — chép từ tracking/_templates/TEMPLATE.challenge-log.md. "
+            "Trước khi code, agent phải tự ra MỘT câu hỏi khó dựa trên spec thật (mâu thuẫn giữa "
+            "hai AC · ca biên HLD chưa chặn · ô `cấm` trong ma trận quyền · surface wave trước sắp "
+            "đụng) rồi tự chấm PASS/FAIL"
+        )
+    rows = [l for l in f.read_text(encoding="utf-8", errors="ignore").splitlines()
+            if l.strip().startswith("|") and wave_id in l and "{{" not in l]
+    if not rows:
+        return False, (
+            f"{CHALLENGE_LOG} chưa có dòng challenge nào của {wave_id} "
+            "(dòng của wave trước không tính — mỗi wave có spec riêng để chất vấn)"
+        )
+    if not any(re.search(r"\bPASS\b", r) for r in rows):
+        return False, (
+            f"{CHALLENGE_LOG}: {wave_id} có {len(rows)} dòng nhưng chưa dòng nào PASS. "
+            "FAIL nghĩa là CHƯA được code — đọc lại spec, ra câu khác, trả lời lại"
+        )
+    return True, ""
+
+
+# ========================================================================
+# dogfood_done (end-wave) — đã soi bằng 6 lăng kính, không chỉ chạy TC đã viết
+# ========================================================================
+
+DOGFOOD_LENSES = ("edge", "newbie", "picky", "rushed", "breaker", "mobile")
+
+
+def check_dogfood_done(state: dict, evidence: dict | None = None,
+                       root: Path | None = None) -> tuple[bool, str]:
+    """/end-wave: wave phải đã qua MỘT lượt dogfood đủ 2 đợt trên hệ đang chạy.
+
+    Vì sao cần gate riêng dù đã có test_passed + no_open_bugs: hai cái đó chỉ nói "test-case ĐÃ VIẾT
+    thì pass". Chúng mù với thứ không ai viết TC cho — cảnh rỗng câm, lỗi bị nuốt im lặng, bấm hai
+    lần ra hai bản ghi, vai A chạm dữ liệu vai B. Một wave có thể xanh sạch cả ba gate kia mà chưa
+    ai từng mở sản phẩm ra dùng thử.
+
+    Bằng chứng đọc từ report của chính lượt dogfood (`tracking/{wave}/dogfood-report.md`) chứ không
+    từ evidence agent tự khai: agent khai `dogfood_done: true` thì gate chỉ đo được lời khai.
+    Đòi báo cáo nêu ĐỦ 6 lăng kính + đủ 2 đợt — chạy 3 vai rồi bảo xong là dogfood nửa vời, và nửa
+    đợt 1 (DB sạch) chính là nửa bắt được lỗi trạng thái rỗng.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    wave_id = (state.get("wave") or {}).get("id")
+    if not wave_id:
+        return True, ""      # không có wave → không phải phạm vi gate này
+    rel = f"tracking/{wave_id}/dogfood-report.md"
+    f = root / rel
+    if not f.is_file():
+        return False, (
+            f"chưa có {rel} — wave chưa qua lượt /dogfood nào. "
+            "test_passed + no_open_bugs chỉ nói 'TC đã viết thì pass', chúng mù với thứ không ai "
+            "viết TC cho (cảnh rỗng câm, lỗi nuốt im lặng, bấm hai lần ra hai bản ghi, "
+            "vai A chạm dữ liệu vai B). Chạy /dogfood rồi /end-wave lại"
+        )
+    text = f.read_text(encoding="utf-8", errors="ignore").lower()
+    missing = [l for l in DOGFOOD_LENSES if l not in text]
+    if missing:
+        return False, (
+            f"{rel} thiếu lăng kính: {', '.join(missing)} — /dogfood phải chạy đủ 6 vai. "
+            "Vai thiếu = một loại lỗi không ai đi tìm"
+        )
+    if not (("đợt 1" in text or "dot 1" in text) and ("đợt 2" in text or "dot 2" in text)):
+        return False, (
+            f"{rel} không nêu đủ 2 đợt. Đợt 1 cần DB SẠCH (trạng thái rỗng chết ngay khi có bản "
+            "ghi đầu tiên), đợt 2 cần DB CÓ DỮ LIỆU (bảng dài mới tràn) — gộp một đợt là mất "
+            "một nửa phép thử"
+        )
+    return True, ""
+
+
+# ========================================================================
 # ui_test_present + registry_scope (test-plan) — UI phải được test thật + TC không over-scope
 # ========================================================================
 
@@ -2596,6 +2798,9 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "in_state_list", "field": "boundary", "state_field": "wave_boundaries"},
     ],
     "review-dev": [
+        # Đối kháng nội bộ TRƯỚC khi code (VIPER luật #8): review-dev bắt lỗi SAU khi code xong,
+        # lúc đó cái giá đã trả. Challenge bắt chỗ "tưởng đã hiểu mà chưa".
+        {"kind": "challenge_passed"},
         {"kind": "non_empty", "field": "review_results"},  # ép kèm review_results — chống `complete {}` làm STATE rỗng rồi kẹt dev-handoff (#10)
         {"kind": "no_open_findings"},  # complete bị chặn tới khi findings BLOCKER/MAJOR fix sạch
     ],
@@ -2628,11 +2833,25 @@ GATE_RULES: dict[str, list[dict]] = {
     "log-bug": [
         {"kind": "non_empty", "field": "bug_id"},  # log-bug-agent ghi row → trả bug_id
     ],
+    "dogfood": [
+        # Hệ phải ĐANG CHẠY THẬT. Dogfood trên hệ chết còn tệ hơn không dogfood: nó không tìm ra
+        # gì, nhưng để lại vết "đã kiểm" mà end-wave sẽ tin.
+        {"kind": "health_proof"},
+        {"kind": "int_min", "field": "batches_done", "min": 2},  # đủ 2 đợt (DB sạch + DB có dữ liệu)
+    ],
     "end-wave": [
         {"kind": "flag", "field": "uat_signed", "expected": True},
         {"kind": "test_passed"},  # lần test-execute cuối phải pass (STATE) → ép re-run sau fix
         {"kind": "no_open_bugs"},
         {"kind": "features_complete"},  # WIP=1 ship-gate (L07): KHÔNG feat nào `active` (làm dở) — VCR-ở-điểm-ship
+        {"kind": "dogfood_done"},  # đã soi bằng 6 lăng kính persona, không chỉ chạy TC đã viết
+        {"kind": "backward_compat"},  # wave ≥2: hình dạng surface đã giao không bị đổi (dogfood soi LUỒNG, cái này soi SHAPE)
+    ],
+    "next-wave": [
+        # KHÔNG gate lại: /end-wave chạy ngay trước đã gác đủ (uat_signed · test_passed ·
+        # no_open_bugs · features_complete · dogfood_done). Gate hai lần cùng một điều kiện chỉ
+        # tạo chỗ để hai bản sao lệch nhau.
+        {"kind": "non_empty", "field": "wave_n"},
     ],
     "done-wave": [
         {"kind": "flag", "field": "teardown_ok", "expected": True},
@@ -2707,6 +2926,12 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_wave_sequence_lint(evidence)
         if kind == "web_styling":
             return check_web_styling(state, evidence)
+        if kind == "dogfood_done":
+            return check_dogfood_done(state, evidence)
+        if kind == "backward_compat":
+            return check_backward_compat(state, evidence)
+        if kind == "challenge_passed":
+            return check_challenge_passed(state, evidence)
         if kind == "discovery_wave":
             return check_discovery_wave(evidence, state)
         if kind == "discovery_advance":

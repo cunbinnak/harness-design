@@ -262,20 +262,33 @@ def wave_features_from_matrix(wave_n: int) -> list[str]:
 
 
 def _append_decision(ref: str, rationale: str) -> None:
-    """Append 1 audit row vào tracking/decisions.md (cho force-override discovery gate).
+    """Append 1 audit row vào tracking/decisions.md (cho force-override gate).
 
     Clone cơ chế audit của ZIP: gate bypass phải để lại dấu vết.
+
+    Dùng CHUNG bảng với `/decide` (scripts/decide.py) — cùng 7 cột, cùng file. Hai sổ riêng thì phép
+    đếm quyết định theo wave phải đọc hai chỗ, và cái force-bypass (thứ đáng soi nhất) lại nằm ở chỗ
+    ít ai mở. Cột "Giả định" của force-bypass luôn là cùng một câu: bypass đang cược rằng gate sai
+    chứ không phải việc chưa xong.
     """
+    from decide import HEADER, _cell  # cùng thư mục scripts/
+
     path = REPO_ROOT / "tracking" / "decisions.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
-    if not path.exists():
-        path.write_text(
-            "# Decisions log\n\n| Date | Ref | Rationale |\n|---|---|---|\n",
-            encoding="utf-8",
-        )
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not path.exists() or not path.read_text(encoding="utf-8").strip():
+        path.write_text(HEADER, encoding="utf-8")
+    try:
+        st = load_state() or {}
+    except Exception:   # audit row KHÔNG được hỏng vì đọc STATE lỗi — mất vết còn tệ hơn thiếu cột
+        st = {}
+    stage = st.get("stage") or "-"
+    wave = (st.get("wave") or {}).get("id") or "-"
     with path.open("a", encoding="utf-8") as f:
-        f.write(f"| {ts} | {ref} | {rationale} |\n")
+        f.write(
+            f"| {ts} | {stage} · {wave} | FORCE-BYPASS gate: {_cell(ref)} | {_cell(rationale)} | "
+            f"gate báo sai, việc thật sự đã xong | Có — chạy lại gate sau khi vá | force-override |\n"
+        )
 
 
 def apply_effects(command: str, evidence: dict, state: dict) -> None:
@@ -355,9 +368,12 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
 
     elif command == "review-dev":
         # Wave-scoped review: lưu kết quả per-boundary để gate /dev-handoff verify cả wave.
+        # Dấu wave đi KÈM lúc ghi — list chỉ khoá theo boundary nên tự nó không mang chiều wave;
+        # thiếu dấu thì boundary review pass ở wave N xanh hộ wave N+1 (vòng wave không reset).
         rr = evidence.get("review_results")
         if isinstance(rr, list):
             state["review_results"] = rr
+            state["review_results_wave"] = (state.get("wave") or {}).get("id")
 
     elif command == "dev-handoff":
         # Audit force override gate infra_proof (vd env không có Docker → bypass có lý do).
@@ -377,6 +393,9 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
         tr = derived if derived is not None else evidence.get("test_result")
         if tr:
             state["test_result"] = tr
+            # Dấu wave đi KÈM lúc ghi — không có nó thì `pass` của wave N làm gate đóng wave N+1
+            # xanh trước khi wave N+1 chạy test nào (vòng wave không reset).
+            state["test_result_wave"] = (state.get("wave") or {}).get("id")
         tc = evidence.get("test_cases_count")
         if isinstance(tc, int):
             state["test_cases_count"] = tc

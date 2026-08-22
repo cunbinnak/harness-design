@@ -19,6 +19,35 @@ service_prefix: "{{prefix}}"            # chốt ở D3 — dùng cho services/{
 
 ---
 
+## 0. Bảng chốt — đề bài đã đủ chưa
+
+> **Mọi dòng phải có câu trả lời.** Không áp dụng thì ghi `KHÔNG CÓ — <lý do>`; để trống nghĩa là **chưa ai hỏi**, không phải "không cần".
+> Cột `Trả lời` viết ngắn + trỏ về mục chứa chi tiết (§n, hoặc file). Đây là bảng **kiểm soát**, không phải nơi chép lại nội dung.
+> Đây là danh sách những thứ brief/tài liệu đầu vào gần như không bao giờ nói đủ — hỏi cho hết ở stage sở hữu, vì downstream không có chỗ nào hỏi lại.
+
+| # | Phải chốt | Chốt ở | Trả lời (hoặc `KHÔNG CÓ — lý do`) | Nguồn |
+|---|---|---|---|---|
+| C1 | Pain point + **ai chịu** + tần suất/chi phí (có số) | DISC_D0 | {{...}} → §1 | {{hypothesis-log §problem}} |
+| C2 | Persona + **năng lực được cấp / KHÔNG được làm** từng vai | DISC_D1 · DOMAIN | {{...}} → §2, `personas/` | {{...}} |
+| C3 | **Danh sách vai (role) đóng** — đủ để lập ma trận vai × hành động | DOMAIN | {{...}} → §2 | {{...}} |
+| C4 | Multi-tenant hay không; ranh giới cô lập là gì | DISC_D3 | {{...}} → §9 | {{...}} |
+| C5 | Đăng nhập: provider, S2S hay user, vòng đời token | DESIGN | {{...}} → §7.2 + `adr/` | {{...}} |
+| C6 | Phân quyền **enforce ở tầng nào** (không phải chỉ ẩn UI) | DESIGN | {{...}} → §9 | {{...}} |
+| C7 | Định giá / hạn mức / quota | DOMAIN | {{...}} → §3 | {{...}} |
+| C8 | Trạng thái rỗng + **error catalog chung** (mã lỗi, shape response) | DESIGN | {{...}} → `api/` | {{...}} |
+| C9 | **Dữ liệu mẫu / seed** để chạy thử và test | DESIGN | {{...}} → `infra/` | {{...}} |
+| C10 | Vòng đời dữ liệu: giữ bao lâu, xoá mềm hay cứng, ai được xoá | DESIGN | {{...}} → `data-model/` | {{...}} |
+| C11 | Tích hợp ngoài: hệ nào, **ai giữ credential**, hỏng thì hệ thống làm gì | DESIGN | {{...}} → `integrations/` | {{...}} |
+| C12 | Môi trường: mấy môi trường, deploy ở đâu | DISC_D3 | {{...}} → §5 | {{...}} |
+| C13 | **NFR có SỐ**: p95, throughput, availability — không viết "nhanh" | DISC_D3 · DESIGN | {{...}} → §8 | {{...}} |
+| C14 | i18n / múi giờ / tiền tệ / đơn vị đo | DOMAIN | {{...}} → §11 | {{...}} |
+| C15 | Compliance / pháp lý / data residency | DISC_D3 | {{...}} → §9 | {{...}} |
+| C16 | Tương thích ngược — surface đã giao ở wave trước *(từ wave 2)* | PLAN | {{...}} → BC-LEDGER | {{...}} |
+
+**Lỗ hổng còn mở** → ghi vào §12. **§12 trống là đáng ngờ, không phải sạch** — tài liệu đầu vào gần như không bao giờ nói đủ về C5, C7, C8, C9, C13.
+
+---
+
 ## 1. Tổng quan (PRD)
 
 - **Tên / mã:** {{project_name}} / prefix `{{prefix}}`

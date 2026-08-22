@@ -80,6 +80,15 @@ CORE_AGENTS = frozenset({
     "test-plan-agent.md",
     "test-execute-agent.md",
     "log-bug-agent.md",
+    # dogfood (6 lăng kính persona, thay MANUAL_TEST thủ công) — spec TĨNH của kernel,
+    # không phải agent materialize per-boundary. Quên đăng ký ở đây thì reset xoá sạch
+    # và lỗi chỉ lộ ra ở wave sau, lúc /dogfood không tìm thấy spec nào.
+    "dogfood-edge-agent.md",
+    "dogfood-newbie-agent.md",
+    "dogfood-picky-agent.md",
+    "dogfood-rushed-agent.md",
+    "dogfood-breaker-agent.md",
+    "dogfood-mobile-agent.md",
     "end-wave-agent.md",
     "done-wave-agent.md",
     # side

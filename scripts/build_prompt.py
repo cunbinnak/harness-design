@@ -70,6 +70,13 @@ NON_NEGOTIABLES = """## NON-NEGOTIABLES
 2. Edit chỉ trong `owned_paths` của `active_boundary` — hook block ngoài.
 3. Stage transition CHỈ qua slash command, KHÔNG sửa `stage` trong STATE.json bằng tay.
 4. Quyết định non-trivial → artifact ngay (ADR / FEAT / CR / KG).
+   **Gặp mơ hồ giữa lúc làm — KHÔNG đoán im lặng, KHÔNG dừng hỏi:** chọn phương án hợp lý nhất
+   **theo một tài liệu cụ thể** rồi ghi vết và đi tiếp:
+   `py scripts/decide.py --what "..." --why "... (FEAT-X-001 §3)" --assume "..." --reversible yes|hard|no`
+   Script TỪ CHỐI nếu `--why` không dẫn được về artifact nào (`FEAT-`/`BR-`/`ADR-`/tên file/`§n`) —
+   không dẫn về đâu được nghĩa là chưa đủ căn cứ để tự quyết, phải đọc lại spec.
+   KHÔNG ghi cho: đặt tên biến, chia file, thư viện tiện ích nhỏ (ghi mọi thứ thì sổ thành nhật ký,
+   không ai đọc, mất luôn tác dụng).
 5. Cross-boundary change → `/apply-cr` + `/review-document` (chỉ từ DONE state).
 6. Không bypass test (`--no-verify`, skip), không hardcode secrets.
 7. **TUÂN THỦ skill được giao**: convention `rules-{kind}` + cấu trúc/layout `ref-{kind}-pattern` (đúng kiến trúc HLD §4) + template tương ứng. KHÔNG tự bịa cấu trúc/đặt tên/đổi build tool ngoài skill+ADR. Review/gate sẽ reject nếu lệch."""
@@ -769,6 +776,20 @@ def build_start_wave(state: dict, matrix: list[dict], opts: dict) -> str:
     return "\n\n".join(parts)
 
 
+def _prior_waves(state: dict) -> list[str]:
+    """Wave đã đóng gói trước wave hiện tại — `archive/wave-*/DELIVERED.md` có thật.
+
+    Đọc từ ĐĨA chứ không suy từ số wave: wave 3 mà archive chỉ có wave 1 (wave 2 chưa đóng đúng
+    cách) thì hợp đồng chỉ gồm wave 1. Suy theo số sẽ trỏ dev tới file không tồn tại rồi bị lờ đi.
+    """
+    d = REPO / "archive"
+    if not d.is_dir():
+        return []
+    cur = (state.get("wave") or {}).get("id") or ""
+    return sorted(p.parent.name for p in d.glob("wave-*/DELIVERED.md")
+                  if p.parent.name != cur)
+
+
 def build_boundary_command(
     state: dict, matrix: list[dict], opts: dict, command: str
 ) -> str:
@@ -792,6 +813,18 @@ def build_boundary_command(
         # Skill mô tả cây thư mục chuẩn: ref-{kind}-pattern nếu có, else rules-{kind}.
         pattern_ref = next((s for s in scaffold_refs if s.endswith("-pattern")), PRIMARY_SKILLS_PER_KIND.get(kind, ['rules-?'])[0])
         task_list = [
+            "**CHALLENGE TRƯỚC KHI VIẾT DÒNG CODE ĐẦU TIÊN.** Tự ra **một câu hỏi khó dựa trên "
+            "spec THẬT của dự án này** — loại chỉ trả lời được nếu đã đọc và hiểu FEAT/HLD/BR, "
+            "KHÔNG phải câu hỏi kiến thức chung. Nguồn câu hỏi tốt: mâu thuẫn giữa hai AC · ca biên "
+            "ở HLD mà mô hình dữ liệu chưa chặn · **ô `cấm` trong ma trận vai × hành động** mà "
+            "thiết kế chưa chặn ở server · thứ trong FEAT nhưng NGOÀI scope wave này · surface wave "
+            "trước (`tracking/BC-LEDGER.md §1`) mà việc sắp làm sẽ đụng.\n"
+            "  Trả lời **chỉ bằng những gì đã ghi trong spec**, dẫn ra file/mục. Tự chấm PASS/FAIL "
+            "trung thực: **FAIL** (trả lời chung chung, phải đoán, phát hiện mình chưa đọc kỹ) → "
+            "đọc lại, ra câu khác, trả lời lại — **KHÔNG ĐƯỢC CODE**. **PASS** → append 1 dòng vào "
+            "`tracking/challenge-log.md` (cột Wave = wave hiện tại) rồi đi tiếp.\n"
+            "  Gate `challenge_passed` đòi ≥1 dòng PASS của ĐÚNG wave này trước khi rời DEV. "
+            "Ra câu dễ cho qua là tự lừa mình — cái giá trả ở dogfood.",
             f"Invoke primary skill `{PRIMARY_SKILLS_PER_KIND.get(kind, ['rules-?'])[0]}` để load convention.",
             "Read HLD + API + data-model + KG của boundary; lấy **kiến trúc (Layered/Hexagonal) đã CHỐT ở HLD §4** (HLD §4 chỉ CHỌN kiến trúc — KHÔNG phải nguồn cây thư mục).",
             f"**Scaffold (BẮT BUỘC invoke {scaffold_invoke} trước khi tạo file)** — nếu `{service_folder}/` chưa có code: tạo build file (**theo ADR tech-stack** — backend: Gradle `build.gradle` default / Maven `pom.xml`; bff/web: `package.json`; mobile: `pubspec.yaml`) + **folder/file layout BÁM ĐÚNG cây thư mục trong `{pattern_ref}`** — **chọn đúng layout Layered HAY Hexagonal/DDD theo kiến trúc chốt ở HLD §4, KHÔNG mặc định Layered**. KHÔNG tự bịa cấu trúc; KHÔNG dùng bảng layer HLD làm cây thư mục; KHÔNG tự đổi build tool khác ADR.",
@@ -805,6 +838,23 @@ def build_boundary_command(
                 "Boundary này được intake gắn ref skill (MATRIX `ref_skills`): "
                 + ", ".join(f"`{s}`" for s in ref_skills)
                 + " — **invoke khi code phần tương ứng** (vd cache/event)."
+            )
+        _prior = _prior_waves(state)
+        if _prior:
+            task_list.append(
+                "**TÔN TRỌNG WAVE TRƯỚC — đọc TRƯỚC khi sửa dòng nào của code đã có.** "
+                f"`archive/{{{','.join(_prior)}}}/DELIVERED.md` liệt kê FEAT + AC các wave trước "
+                "đã verify được (máy derive lúc đóng wave, không phải ai khai); bản đặc tả tại thời "
+                f"điểm đó nằm ở `archive/<wave>/docs/`. **Mọi thứ trong đó phải GIỮ CHẠY ĐƯỢC** sau "
+                "khi bạn xong.\n"
+                "  - Đụng vào surface đã giao (endpoint, shape request/response, bảng/cột DB, khoá "
+                "cache, event/topic, format export) → **chỉ THÊM**: field optional, bảng/cột nullable, "
+                "endpoint mới, event-type mới. **KHÔNG đổi/xoá/đổi nghĩa** thứ wave trước đã giao.\n"
+                "  - Buộc phải phá mới làm được → **DỪNG, ghi `STATE.md` blocker + báo user**. "
+                "KHÔNG tự quyết rồi ghi `decide.py`: phá hợp đồng đã giao cho người dùng thật là "
+                "loại quyết định không đảo ngược được, không thuộc thẩm quyền tự quyết.\n"
+                "  - Test của wave trước phải giữ XANH. Đỏ là **regression** — sửa ngay, "
+                "KHÔNG xoá/sửa test cho qua."
             )
         _feats = list(boundary.get("features") or [])
         if _feats:
@@ -877,6 +927,10 @@ def build_boundary_command(
         docs_to_read(
             boundary_doc_refs(boundary_id, kind, boundary.get("features"), boundary.get("depends_on"))
             + [("Wave plan (scope wave hiện tại)", f"docs/plans/{wave_id}.md")]
+            + ([("FEAT/AC các wave TRƯỚC đã giao — KHÔNG được làm gãy",
+                 "archive/wave-*/DELIVERED.md"),
+                ("Surface đã giao ra ngoài + luật đổi additive-first",
+                 "tracking/BC-LEDGER.md")] if _prior_waves(state) else [])
         ),
         tasks_block(task_list),
         PRE_EDIT_CHECKLIST,
@@ -1171,6 +1225,110 @@ def build_log_bug(state: dict, matrix: list[dict], opts: dict) -> str:
     return "\n\n".join(parts)
 
 
+DOGFOOD_BATCHES = (
+    ("1", "DB SẠCH — đọc là chính", ("edge", "newbie", "picky")),
+    ("2", "DB CÓ DỮ LIỆU — ghi và phá", ("rushed", "breaker", "mobile")),
+)
+
+
+def build_dogfood(state: dict, matrix: list[dict], opts: dict) -> str:
+    """/dogfood: MAIN điều phối 6 lăng kính persona x 2 đợt trên hệ ĐANG CHẠY.
+
+    MAIN điều phối (không phải một agent đơn) vì hai đợt phải TUẦN TỰ và giữa hai đợt phải seed lại —
+    một agent tự chia đợt sẽ gộp cho nhanh, mà gộp là mất nửa phép thử: trạng thái rỗng chết ngay khi
+    vai đầu tiên ghi bản ghi đầu tiên.
+    """
+    wave_id = (state.get("wave") or {}).get("id") or "<wave>"
+    only = (opts.get("lens") or opts.get("input") or "").strip().lower() or None
+    valid = {l for _, _, ls in DOGFOOD_BATCHES for l in ls}
+    if only and only not in valid:
+        only = None
+
+    if only:
+        head = f"# SPAWN PROMPT — /dogfood (CHẠY LẠI một vai: `{only}`)"
+        plan = (
+            "## CÁCH CHẠY\n"
+            f"Chỉ spawn lại `dogfood-{only}-agent` với đúng bộ đầu vào ở §ĐẦU VÀO MỖI VAI. "
+            "Bỏ qua chia đợt — DB đang ở trạng thái nào thì ghi rõ trạng thái đó vào báo cáo."
+        )
+    else:
+        head = "# SPAWN PROMPT — /dogfood (6 lăng kính persona · 2 đợt)"
+        rows = "\n".join(
+            f"{n}. **Đợt {n} — {label}**: spawn `"
+            + "` · `".join(f"dogfood-{l}-agent" for l in lenses)
+            + "` trong MỘT lượt (song song)."
+            for n, label, lenses in DOGFOOD_BATCHES
+        )
+        plan = (
+            "## CÁCH CHẠY — BẠN (MAIN) ĐIỀU PHỐI, THỨ TỰ LÀ BẮT BUỘC\n"
+            f"{rows}\n"
+            "   Giữa hai đợt: **đợi đủ 3 vai đợt 1 trả kết quả**, rồi **seed lại dữ liệu mẫu**.\n"
+            "   Chưa có bước seed → tạo dữ liệu mẫu bằng tay + ghi 1 dòng `py scripts/decide.py` "
+            "(thiếu seed là một phát hiện của chính lượt này).\n"
+            "3. Gộp phát hiện → soi **dấu hiệu dogfood giả** (skill `dogfood`) → vai nào dính thì "
+            "cho chạy lại vai đó trước khi đi tiếp.\n"
+            "4. Ghi bug (`origin=manual`) + viết báo cáo tổng.\n\n"
+            "**KHÔNG mở đợt 2 khi đợt 1 chưa xong.** Các vai dùng chung một hệ và một DB: thả cả 6 "
+            "cùng lúc là vai này ghi đè cảnh vai kia đang nhìn, và trạng thái rỗng chết ngay khi có "
+            "bản ghi đầu tiên."
+        )
+
+    parts = [
+        head,
+        state_bundle(state, {"mode": "dogfood"}),
+        NON_NEGOTIABLES,
+        "## MỤC TIÊU\n"
+        "Soi hệ ĐANG CHẠY bằng 6 lăng kính persona — tìm thứ `test-case-registry` KHÔNG phủ. "
+        "`/test-execute` chỉ chạy được test-case ai đó đã nghĩ ra trước; lượt này đi tìm cảnh rỗng "
+        "câm, lỗi bị nuốt im lặng, bấm hai lần ra hai bản ghi, vai A chạm dữ liệu vai B.",
+        skills_block(["dogfood", "bug-logging"]),
+        docs_to_read([
+            ("URL/endpoint hệ đang chạy (KHÔNG đoán)", f"tracking/{wave_id}/health-proof.json"),
+            ("Persona + ma trận vai × hành động + gán 6 vai", "docs/discovery/persona-pool.md"),
+            ("Luồng lõi + AC của wave", f"docs/plans/{wave_id}.md"),
+            ("AC chi tiết", "docs/architecture/feat/FEAT-*.md"),
+            ("Giao diện đã chốt (nếu có UI)", "docs/architecture/ux/design-tokens.css"),
+            ("Bugs (lấy BUG-NNN kế tiếp)", f"tracking/{wave_id}/bugs.md"),
+            ("FEAT/AC các wave TRƯỚC đã giao (hợp đồng regression)",
+             "archive/wave-*/DELIVERED.md"),
+        ]),
+        plan,
+        "## LƯỢT REGRESSION — bắt buộc từ wave 2\n"
+        "`archive/wave-*/DELIVERED.md` là **hợp đồng của các wave trước**: FEAT + AC đã "
+        "verify được, máy derive từ registry+report lúc đóng wave (không phải agent khai). "
+        "Vai `rushed` (đợt 2) và lượt tự đi của MAIN phải **đi lại luồng lõi các wave đó**, không chỉ "
+        "luồng của wave này.\n"
+        "Tính năng wave cũ gãy vì code wave mới là **regression** — nặng ngang gãy luồng lõi, "
+        "`sev=blocker`, xử trước mọi phát hiện khác. Wave 1 không có file này → bỏ qua mục này.",
+        "## ĐẦU VÀO MỖI VAI — thiếu vế nào thì vai đó vô giá trị\n"
+        "1. URL/endpoint thật lấy từ `health-proof.json`.\n"
+        "2. **Persona được giao** (chân dung + năng lực được cấp + luồng chính, chép từ "
+        "`persona-pool.md`). Lăng kính là *cách dùng*, persona là *ai đang dùng* — thiếu persona thì "
+        "vai thử như 'người dùng nói chung', đúng thứ persona-pool sinh ra để tránh.\n"
+        "3. Luồng lõi + AC liên quan của wave.\n"
+        "4. Riêng `breaker`: **ma trận vai × hành động ĐẦY ĐỦ** + tài khoản thử từng vai.\n"
+        "5. Riêng `picky`: màn liên quan + `design-tokens.css` (không có UI → soi shape response "
+        "+ error envelope thay cho giao diện).",
+        "## BẰNG CHỨNG BỘ BA — không có thì không tính là đã thử\n"
+        "```\nTôi đã làm    : <thao tác chính xác — URL, dữ liệu đã gõ, nút đã bấm>\n"
+        "Tôi thấy      : <thứ hiện ra / mã lỗi / response thật>\n"
+        "Tôi mong đợi  : <thứ lẽ ra phải xảy ra + dẫn về AC/FEAT/ô ma trận>\n```\n"
+        "Thiếu vế đầu = suy từ code chứ chưa chạy. Vế cuối không dẫn được về tài liệu = ý kiến "
+        "cá nhân, không phải bug.",
+        tasks_block([
+            f"Viết `tracking/{wave_id}/dogfood-report.md` — **nêu rõ đủ 6 lăng kính và đủ 2 đợt** "
+            "(gate `dogfood_done` @/end-wave đọc đúng file này; thiếu vai/thiếu đợt → đỏ).",
+            f"Append bug vào `tracking/{wave_id}/bugs.md` qua skill `bug-logging` (`origin=manual`). "
+            "Lỗi phân quyền → `sev=blocker`, không có ngoại lệ.",
+            "**KHÔNG fix** (fix qua `/fix-bugs`). **KHÔNG sửa test-case-registry**. "
+            "**KHÔNG sửa doc spec** (phase-lock chặn). **KHÔNG teardown infra**.",
+            "Return RETURN SCHEMA với `batches_done: 2`.",
+        ]),
+        RETURN_SCHEMA_TEMPLATE,
+    ]
+    return "\n\n".join(parts)
+
+
 BUILDERS = {
     "discovery-start": build_discovery_start,
     "discovery-end": build_discovery_end,
@@ -1199,6 +1357,7 @@ BUILDERS = {
         else build_fix_bugs_sweep(s, m, o)
     ),
     "log-bug": build_log_bug,
+    "dogfood": build_dogfood,
     "end-wave": build_end_wave,
     "done-wave": build_done_wave,
     "apply-cr": build_apply_cr,

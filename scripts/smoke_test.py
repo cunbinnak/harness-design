@@ -191,13 +191,17 @@ def main() -> int:
         passed.append(ok) if ok else failed.append("start-dev storefront (multi-boundary)")
 
         # DEV -> REVIEW_DEV (wave-scoped: review_results cho CẢ 2 boundary, mỗi cái theo kind)
+        # challenge_passed đọc tracking/challenge-log.md THẬT (test riêng ở gates selftest) →
+        # smoke force-bypass, đúng triết lý: smoke verify TRANSITION, nội dung gate test hermetic.
         ok = step(
             "DEV -> REVIEW_DEV (wave review)",
             "review-dev",
             {"review_results": [
                 {"boundary": "order-management", "kind": "backend", "review_result": "pass", "coverage_pct": 85},
                 {"boundary": "storefront", "kind": "web", "review_result": "pass", "coverage_pct": 62},
-            ]},
+            ],
+             "force": True,
+             "reason": "smoke transition walk (challenge-log content tested in gates selftest)"},
             "REVIEW_DEV",
         )
         passed.append(ok) if ok else failed.append("review-dev wave")
@@ -263,12 +267,26 @@ def main() -> int:
         )
         passed.append(ok) if ok else failed.append("fix-bugs manual")
 
+        # MANUAL_TEST -> MANUAL_TEST (dogfood: 6 lăng kính x 2 đợt, in-state)
+        # health_proof đọc proof file THẬT (test riêng ở gates.py selftest) → smoke force-bypass,
+        # đúng triết lý: smoke verify TRANSITION, nội dung gate test hermetic.
+        ok = step(
+            "MANUAL_TEST dogfood (loop)",
+            "dogfood",
+            {"batches_done": 2, "force": True,
+             "reason": "smoke transition walk (health-proof + dogfood report tested in gates selftest)"},
+            "MANUAL_TEST",
+        )
+        passed.append(ok) if ok else failed.append("dogfood")
+
         # MANUAL_TEST -> DONE (end-wave, no open bugs)
         # bugs.md doesn't exist or has no entries → check_no_open_bugs returns True
+        # dogfood_done đọc tracking/{wave}/dogfood-report.md THẬT → force-bypass như trên.
         ok = step(
             "MANUAL_TEST -> DONE",
             "end-wave",
-            {"uat_signed": True},
+            {"uat_signed": True, "force": True,
+             "reason": "smoke transition walk (dogfood-report content tested in gates selftest)"},
             "DONE",
         )
         passed.append(ok) if ok else failed.append("end-wave")
@@ -315,8 +333,10 @@ def main() -> int:
         state_mod.complete("start-wave", {"approved": True, "wave_n": 1})
         patch_state({"wave_boundaries": ["x"], "wave": {"id": "wave-001", "number": 1}})
         state_mod.complete("start-dev", {"boundary": "x"})
+        # force: đây là SETUP cho phép thử coverage, không phải phép thử challenge.
         state_mod.complete("review-dev", {"review_results": [
-            {"boundary": "x", "kind": "backend", "review_result": "pass", "coverage_pct": 50}]})
+            {"boundary": "x", "kind": "backend", "review_result": "pass", "coverage_pct": 50}],
+            "force": True, "reason": "smoke setup — phép thử là coverage, không phải challenge"})
 
         result = state_mod.complete("dev-handoff", {})
         ok = not result["ok"] and "coverage" in result.get("error", "").lower()

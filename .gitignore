@@ -42,3 +42,6 @@ harness/.turn-advance.flag
 
 # Reference archives (vd {{PROJECT-CODE}}-ADLC.zip — ADLC ZIP gốc để đối chiếu, KHÔNG track)
 *.zip
+
+# Bản tham chiếu VIPER — đọc để học, KHÔNG thuộc harness
+edu-grounding-viper/

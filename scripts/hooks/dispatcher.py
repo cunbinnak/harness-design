@@ -152,28 +152,18 @@ def _last_assistant_text(payload: dict) -> str:
 # Handlers
 # ========================================================================
 
-# #11: MAIN KHÔNG tự nối lệnh — chỉ 1 `harness <cmd> complete` mỗi user-turn. Marker reset ở
-# UserPromptSubmit/SessionStart (fresh turn); _pre_bash set khi cho qua complete đầu, chặn complete kế.
-TURN_ADVANCE_FLAG = REPO_ROOT / "harness" / ".turn-advance.flag"
-
-
-def _clear_turn_flag() -> None:
-    try:
-        TURN_ADVANCE_FLAG.unlink()
-    except OSError:
-        pass
-
-
 def handle_session_start(payload: dict) -> int:
-    _clear_turn_flag()  # fresh session → reset turn-advance
     state = state_mod.load_state()
     allowed = state_mod.allowed_commands(state)
-    brief = policies.format_state_brief(state, allowed)
-    return inject_context(brief)
+    # source == "compact": phiên vừa bị nén → nhồi lại LUẬT, không chỉ trạng thái. Compact giữ được
+    # "đang làm gì" nhưng làm phẳng "đang bị cấm gì" — và từ khi gỡ turn-flag, kỷ luật hành lang
+    # ("chốt đỏ → DỪNG") sống hoàn toàn bằng văn xuôi, nên đó là thứ trôi đầu tiên.
+    if str(payload.get("source") or "").lower() == "compact":
+        return inject_context(policies.reanchor_after_compact(state, allowed))
+    return inject_context(policies.format_state_brief(state, allowed))
 
 
 def handle_user_prompt_submit(payload: dict) -> int:
-    _clear_turn_flag()  # user gõ → mở 1 lượt mới (1 stage-command)
     state = state_mod.load_state()
     allowed = state_mod.allowed_commands(state)
     return inject_context(policies.state_header_line(state, allowed))
@@ -224,11 +214,11 @@ def _pre_skill(payload: dict) -> int:
 
     Phân biệt 2 tool khác hẳn nhau (trước đây gộp → chặn oan sub-agent load skill):
     - **`SlashCommand`** tool = CHẠY LỆNH `/test-plan` (như user gõ → fire UserPromptSubmit → reset
-      turn-flag → MAIN tự nối pipeline). Vector tự-nối-lệnh THẬT → deny nếu ∈ GATE_RULES.
+      MAIN chạy lại cả hành lang). Vector tự-nối-lệnh THẬT → deny nếu ∈ GATE_RULES.
     - **`Skill`** tool = LOAD convention skill (sub-agent nạp checklist của chính nó: domain-po,
       test-plan, ux-design…). KHÔNG transition state, KHÔNG fire UserPromptSubmit → CHO QUA LUÔN,
       kể cả tên trùng harness command. (Để transition vẫn phải `harness complete` qua Bash →
-      _pre_bash + turn-flag đã chặn; Skill không giúp MAIN né gì.)
+      _pre_bash + gate đã chặn; Skill không giúp MAIN né gì.)
     Skill ngoài-harness (research/code-review/…) → cho qua như thường.
     """
     if _tool_name(payload) != "SlashCommand":
@@ -273,17 +263,16 @@ def _pre_bash(payload: dict) -> int:
     if not ok:
         return pre_tool_deny("Gate sẽ fail:\n  - " + "\n  - ".join(errors))
 
-    # #11: chống MAIN tự nối lệnh — 1 stage-command/user-turn. Gate-fail KHÔNG tiêu cờ (return ở trên).
-    if TURN_ADVANCE_FLAG.exists():
-        return pre_tool_deny(
-            f"MAIN tự nối lệnh — đã chạy 1 stage-command (harness complete) trong lượt này. "
-            f"DỪNG: báo user kết quả + bước kế, CHỜ user gõ lệnh. (Mỗi prompt = 1 stage-command; "
-            f"user muốn đi tiếp thì invoke lệnh kế. Lệnh đang chặn: '{command_id}'.)"
-        )
-    try:
-        TURN_ADVANCE_FLAG.write_text("used", encoding="utf-8")
-    except OSError:
-        pass
+    # Turn-flag ĐÃ GỠ (trước đây: 1 stage-command/user-turn, chống MAIN tự nối lệnh).
+    #
+    # VÌ SAO GỠ: hành lang `/run-wave` gộp 6 chốt (start-wave → start-dev → review-dev →
+    # dev-handoff → test-plan → test-execute) vào MỘT lệnh người gõ, nên nó phải chạy nhiều
+    # `harness complete` trong cùng lượt. Turn-flag chặn đúng việc đó.
+    #
+    # THỨ THAY THẾ NÓ — và vì sao gỡ không mở toang: cái turn-flag thật sự bảo vệ là "đi tiếp khi
+    # chưa đủ điều kiện". Việc đó do GATE làm, và gate vẫn chạy từng chốt (khối `check_for_command`
+    # ngay trên) — chốt nào đỏ thì hành lang dừng đúng chốt đó, y như trước. Turn-flag chỉ ép người
+    # gõ lệnh giữa các chốt ĐÃ XANH; đó là ma sát, không phải an toàn.
     return allow_silent()
 
 

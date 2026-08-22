@@ -24,23 +24,23 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 # Next-step guidance per stage — báo CHÍNH XÁC lệnh + arg + ý nghĩa (thay vì list tên trống).
 # Gồm cả back-edge (lùi về stage sở hữu để sửa doc đã frozen).
 STAGE_NEXT_GUIDE = {
-    "BOOTSTRAP": "/discovery-start D0 (bắt đầu Discovery)",
-    "DISC_D0": "/discovery-start D1 (gate D0 → sang D1) · hoặc /discovery-start D0 (refine hypothesis)",
-    "DISC_D1": "/discovery-start D2 (gate D1 → sang D2) · hoặc /discovery-start D1 (refine capability/persona)",
-    "DISC_D2": "/discovery-start D3 (gate D2 → sang D3) · hoặc /discovery-start D2 (refine event-storming)",
-    "DISC_D3": "/discovery-end (gate D3 → DOMAIN) · hoặc /discovery-start D3 (refine charter/PROJECT)",
-    "DOMAIN_AUTHORING": "/domain-po <EPIC|FEATURE|JOURNEY> · /domain-ba <BR|PERSONA> (author business) → /domain-approve (ký) → /domain-translate (dịch eng) → /domain-end → DESIGN",
-    "DESIGN": "/design (hệ thống/contract, refine) · /design-ux (UX/UI cho FE boundary) · /design-end → PLAN · LÙI sửa product: /domain-po·/domain-ba → DOMAIN (re-ký + re-translate)",
-    "PLAN": "/plan → REVIEW · LÙI sửa design: /design (hoặc /design-ux) → DESIGN",
-    "REVIEW": "/review-document (sửa mọi doc) · /approve-document · /start-wave <N>",
-    "WAVE_OPEN": "/start-dev <boundary>",
-    "DEV": "/start-dev <boundary khác> · xong hết boundary → /review-dev",
-    "REVIEW_DEV": "/dev-handoff (sau khi mọi boundary review pass)",
-    "DEV_HANDOFF": "/test-plan",
-    "TEST_PLAN": "/test-execute",
+    "BOOTSTRAP": "/discover D0 (bắt đầu khám phá)",
+    "DISC_D0": "/discover D1 (gate D0 → sang D1) · hoặc /discover D0 (đào thêm hypothesis)",
+    "DISC_D1": "/discover D2 (gate D1 → sang D2) · hoặc /discover D1 (đào thêm capability/persona/ma trận quyền)",
+    "DISC_D2": "/discover D3 (gate D2 → sang D3) · hoặc /discover D2 (đào thêm event-storming)",
+    "DISC_D3": "/discover (D3 đạt gate → chốt sang DOMAIN) · hoặc /discover D3 (đào thêm charter/PROJECT)",
+    "DOMAIN_AUTHORING": "/domain (tự suy thiếu gì viết nấy → bạn OK = ký → dịch → DESIGN)",
+    "DESIGN": "/design (refine, tự làm UX nếu có boundary web/mobile) · /design --end → PLAN · LÙI sửa nghiệp vụ: /domain → DOMAIN (re-ký + re-dịch)",
+    "PLAN": "/plan → REVIEW · LÙI sửa thiết kế: /design → DESIGN",
+    "REVIEW": "/review-document (sửa doc) · /approve-document (ký, mở cổng wave) · /run-wave <N>",
+    "WAVE_OPEN": "/run-wave (chạy tiếp hành lang: code → review → dựng thật → test → dogfood)",
+    "DEV": "/run-wave (chạy tiếp: boundary còn lại → review)",
+    "REVIEW_DEV": "/run-wave (chạy tiếp: dựng chạy thật → test)",
+    "DEV_HANDOFF": "/run-wave (chạy tiếp: sinh test case)",
+    "TEST_PLAN": "/run-wave (chạy tiếp: chạy test)",
     "TEST_EXECUTE": "(tự động → MANUAL_TEST sau khi chạy)",
-    "MANUAL_TEST": "/fix-bugs · /test-execute (re-run full suite) · /end-wave (khi sạch bug + test pass)",
-    "DONE": "/done-wave (teardown → BOOTSTRAP) · hoặc /apply-cr <CR> (amend → DOMAIN)",
+    "MANUAL_TEST": "/run-wave (sửa bug + re-test, và dogfood nếu chưa) · /dogfood <vai> (chạy lại 1 vai) · /next-wave (khi UAT ký + sạch bug)",
+    "DONE": "/next-wave (snapshot + mở wave kế; hết wave thì teardown)",
 }
 
 
@@ -115,6 +115,56 @@ def state_header_line(state: dict, allowed_cmds: list[str]) -> str:
 def memory_marker(state: dict, allowed_cmds: list[str]) -> str:
     """Pinned summary for PreCompact — giữ TRẠNG THÁI HIỆN TẠI sau compaction (không có history)."""
     return format_state_brief(state, allowed_cmds)
+
+
+def _section(text: str, header: str) -> str:
+    """Một mục của markdown, tới `## ` kế tiếp. Rỗng nếu không thấy."""
+    i = text.find(header)
+    if i < 0:
+        return ""
+    j = text.find("\n## ", i + len(header))
+    return text[i: j if j > 0 else len(text)].strip()
+
+
+def reanchor_after_compact(state: dict, allowed_cmds: list[str]) -> str:
+    """Nhồi lại LUẬT sau khi context bị nén (SessionStart matcher `compact`).
+
+    VÌ SAO CÓ HÀM NÀY
+        Compact giữ được "đang làm gì" nhưng làm phẳng "đang bị cấm gì" — mà NON-NEGOTIABLES đúng
+        thuộc loại thứ hai. PreCompact của mình chỉ ghim TRẠNG THÁI (stage/wave/next), không ghim luật.
+
+        Việc này gấp hơn kể từ khi gỡ turn-flag: kỷ luật "chốt đỏ → DỪNG, không force, không nhảy
+        chốt" giờ sống hoàn toàn bằng văn xuôi trong prompt. Sau compact, đó chính là thứ trôi đầu tiên.
+
+    ĐỌC THẲNG TỪ `CLAUDE.md`, KHÔNG chép cứng vào đây — chép cứng là tự tạo bản sao thứ hai của luật:
+    sửa CLAUDE.md mà quên file này thì hook nhồi luật CŨ vào đúng lúc MAIN đang mất trí nhớ, hỏng hơn
+    là không nhồi gì. Không đọc được thì nói thẳng là không đọc được.
+    """
+    try:
+        claude = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        claude = ""
+    rules = _section(claude, "## NON-NEGOTIABLES")
+    if not rules:
+        rules = ("_Không đọc được `CLAUDE.md` §NON-NEGOTIABLES — mở file đó đọc trước khi làm tiếp._")
+    return "\n".join([
+        "# HARNESS — nhồi lại luật sau compact",
+        "",
+        "Context vừa bị nén. Bản tóm tắt giữ được *đang làm gì* nhưng thường đánh rơi *đang bị cấm gì*.",
+        "Dưới đây là luật đọc THẲNG từ `CLAUDE.md`, không phải từ tóm tắt.",
+        "",
+        rules,
+        "",
+        "## Trạng thái sống (đọc từ STATE.json, không từ trí nhớ)",
+        "",
+        "```",
+        format_state_brief(state, allowed_cmds),
+        "```",
+        "",
+        "## Trước khi làm tiếp",
+        "",
+        "Không chắc đang dở việc gì → `/status`. Đừng mở việc mới khi chốt hiện tại chưa xanh.",
+    ])
 
 
 # ========================================================================
@@ -247,6 +297,29 @@ HARNESS_CMD_RE_ALT = re.compile(
 JSON_BLOCK_RE = re.compile(r"\{[\s\S]*\}")
 
 
+# Thân heredoc = DỮ LIỆU đang được ghi ra file, không phải lệnh sắp chạy.
+# `cat > commands/run-wave.md <<'EOF' … py scripts/harness.py start-wave complete … EOF`
+# là viết TÀI LIỆU có ví dụ lệnh, không phải chạy lệnh đó.
+HEREDOC_RE = re.compile(
+    r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1[^\n]*\n.*?^\s*\2\s*$",
+    re.DOTALL | re.MULTILINE,
+)
+
+
+def strip_heredocs(bash_cmd: str) -> str:
+    """Bỏ thân heredoc khỏi command trước khi phân tích.
+
+    VÌ SAO: hook phải xét lệnh LÀM GÌ, không phải nó CHỨA CHỮ GÌ. Không bỏ thân heredoc thì viết
+    một file tài liệu có ví dụ `harness … complete` sẽ bị hook tưởng là đang chạy stage-command,
+    rồi deny vì gate của lệnh đó không đạt — chặn oan đúng lúc người ta đang viết chính tài liệu
+    mô tả lệnh. (Cùng họ với luật của VIPER `guard_ds`: chỉ chặn lỗi MỚI, không bắt đền nội dung
+    vốn có — hook báo oan là hook sẽ bị tắt.)
+    """
+    if not bash_cmd or "<<" not in bash_cmd:
+        return bash_cmd
+    return HEREDOC_RE.sub("<<HEREDOC-BODY-STRIPPED>>", bash_cmd)
+
+
 def parse_harness_complete(bash_cmd: str) -> dict | None:
     """
     Parse a bash command line like:
@@ -256,6 +329,7 @@ def parse_harness_complete(bash_cmd: str) -> dict | None:
     """
     if not bash_cmd:
         return None
+    bash_cmd = strip_heredocs(bash_cmd)
     m = HARNESS_CMD_RE_ALT.search(bash_cmd)
     if not m:
         return None
@@ -433,16 +507,28 @@ def _selftest() -> int:
     assert is_proof_file("tracking/doc-review-findings.md") is False
     assert is_proof_file("docs/health-proof.json") is False
     # next-step hint contextual (arg + back-edge)
-    assert "discovery-start D2" in next_step_hint({"stage": "DISC_D1"})  # advance qua start (cơ chế mới)
+    assert "/discover D2" in next_step_hint({"stage": "DISC_D1"})   # gộp: 1 lệnh cho cả D-wave
     assert "/design" in next_step_hint({"stage": "PLAN"})          # back-edge
-    assert "domain-po" in next_step_hint({"stage": "DESIGN"})    # back-edge
-    assert "domain-translate" in next_step_hint({"stage": "DOMAIN_AUTHORING"})  # flow 2 lớp: ký → dịch
+    assert "/domain" in next_step_hint({"stage": "DESIGN"})       # back-edge
+    assert "ký" in next_step_hint({"stage": "DOMAIN_AUTHORING"})  # flow 2 lớp: ký → dịch
     assert "header" not in state_header_line({"stage": "PLAN"}, []).lower() or True
     assert "next:" in state_header_line({"stage": "DISC_D0"}, [])
     # E-6 chặt: detect theo tên agent (registry) — khớp tên thật, không khớp prompt research
     assert detect_harness_agent_spawn("spawn domain-po-agent author epic", ["domain-po-agent", "dev-x-agent"]) == "domain-po-agent"
     assert detect_harness_agent_spawn("explore codebase for X", ["domain-po-agent"]) is None
     assert detect_harness_agent_spawn("anything", []) is None
+    # heredoc: viết TÀI LIỆU có ví dụ lệnh ≠ chạy lệnh đó (hook xét lệnh LÀM GÌ, không phải CHỨA GÌ)
+    _doc = ("cat > commands/run-wave.md <<'EOF'\n"
+            "py scripts/harness.py start-wave complete '{\"wave_n\": 1}'\n"
+            "EOF")
+    assert parse_harness_complete(_doc) is None, "viết doc chứa ví dụ lệnh KHÔNG được coi là chạy lệnh"
+    # heredoc không trích dẫn cũng vậy
+    assert parse_harness_complete("cat > f.md <<EOF\npy scripts/harness.py plan complete\nEOF") is None
+    # nhưng lệnh THẬT vẫn phải nhận ra — kể cả khi cùng dòng với heredoc khác
+    _real = parse_harness_complete('py scripts/harness.py plan complete \'{"a":1}\'')
+    assert _real and _real["command"] == "plan" and _real["evidence"] == {"a": 1}
+    _mixed = parse_harness_complete("cat > f.md <<'EOF'\nhello\nEOF\npy scripts/harness.py plan complete")
+    assert _mixed and _mixed["command"] == "plan", "lệnh thật SAU heredoc vẫn phải bị bắt"
     # E-6 keyword: test-plan/test-execute ép build_prompt (chống MAIN tự build prompt spawn test)
     assert detect_dev_spawn("spawn agent tạo test-plan cho wave") == "test-plan"
     assert detect_dev_spawn("run test-execute black-box trên hệ thống") == "test-execute"

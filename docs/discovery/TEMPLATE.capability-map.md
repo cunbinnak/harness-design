@@ -21,16 +21,21 @@ last_reviewed: "{{DATE}}"
 ## 1. Persona × Capability matrix
 
 > Capability = động từ + đối tượng (không phải UI cụ thể). Cột `P1/P2/…` đánh `x` nếu persona cần. Business outcome đo được, gắn hypothesis (vd "(H1)"). Candidate domain = nhóm capability cohesion → input D2. ≥5 row.
+>
+> **Bảng này KHÔNG chết sau D1.** Hai cột cuối làm nó thành bảng theo dõi giao hàng xuyên suốt dự án:
+> `Wave giao` chốt ở PLAN (cắt lát được: `1 (scaffold) → 3 (đầy đủ)`), `Trạng thái` cập nhật ở
+> `/end-wave`. Nhờ vậy trả lời được "còn bao nhiêu năng lực chưa giao" mà không phải đọc lại mọi wave.
 
-| # | Capability | P1 | P2 | P3 | … | Business outcome (đo được, ↔ hypothesis) | Candidate domain | Priority | MVP/Phase |
-|---|---|---|---|---|---|---|---|---|---|
-| C1 | {{vd "Nhập đơn có cấu trúc"}} | x | | x | | {{vd "giảm tỉ lệ đơn nhầm (H1)"}} | {{vd "ordering"}} | high | MVP |
-| C2 | {{TBD}} | | x | | | {{TBD}} | {{TBD}} | high | MVP |
-| C3 | {{TBD}} | x | | | | {{TBD}} | {{TBD}} | med | Phase 2 |
-| C4 | {{TBD}} | | | x | | {{TBD}} | {{TBD}} | med | Phase 2 |
-| C5 | {{TBD}} | | | | | {{TBD}} | {{TBD}} | low | Phase N |
+| # | Capability | P1 | P2 | P3 | … | Business outcome (đo được, ↔ hypothesis) | Candidate domain | Priority | MVP/Phase | Wave giao | Trạng thái |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| C1 | {{vd "Nhập đơn có cấu trúc"}} | x | | x | | {{vd "giảm tỉ lệ đơn nhầm (H1)"}} | {{vd "ordering"}} | high | MVP | _PLAN_ | chưa giao |
+| C2 | {{TBD}} | | x | | | {{TBD}} | {{TBD}} | high | MVP | _PLAN_ | chưa giao |
+| C3 | {{TBD}} | x | | | | {{TBD}} | {{TBD}} | med | Phase 2 | _PLAN_ | chưa giao |
+| C4 | {{TBD}} | | | x | | {{TBD}} | {{TBD}} | med | Phase 2 | _PLAN_ | chưa giao |
+| C5 | {{TBD}} | | | | | {{TBD}} | {{TBD}} | low | Phase N | _PLAN_ | chưa giao |
 
-> Legend: `x` = persona cần · Priority `high|med|low` · MVP/Phase `MVP | Phase 2 | Phase N`.
+> Legend: `x` = persona cần · Priority `high|med|low` · MVP/Phase `MVP | Phase 2 | Phase N`
+> · Wave giao `_PLAN_` (chưa chốt) → `1` / `1 (scaffold), 3 (đầy đủ)` · Trạng thái `chưa giao | đang làm | đã giao`.
 
 ---
 

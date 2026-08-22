@@ -141,9 +141,10 @@
       }
     },
     "MANUAL_TEST": {
-      "description": "UAT manual + clear bug + RE-RUN test. Infra UP. /fix-bugs (Mode A) fix bug auto+manual (re-run TC verify, KHÔNG gọi review). /test-execute chạy LẠI full auto suite sau fix → bug mới/regression log lại → fix tiếp. Sạch (no_open_bugs) mới /end-wave.",
+      "description": "UAT. /dogfood chạy 6 lăng kính persona trên hệ đang chạy (thay việc ngồi chọc tay); /log-bug ghi 1 bug lẻ; /fix-bugs xử; /test-execute re-run; /end-wave khi sạch.",
       "allowed_commands": [
         "fix-bugs",
+        "dogfood",
         "log-bug",
         "test-execute",
         "end-wave"
@@ -153,8 +154,9 @@
       "agent_behavior": "fix_bugs_mode_a"
     },
     "DONE": {
-      "description": "Wave kết thúc, UAT signed. Chờ teardown hoặc CR amendment.",
+      "description": "Wave đã đóng mềm. /next-wave: snapshot wave vừa xong → còn wave trong WAVE-SEQUENCE thì mở wave kế (WAVE_OPEN), hết wave thì teardown về BOOTSTRAP. KHÔNG reset tài liệu.",
       "allowed_commands": [
+        "next-wave",
         "done-wave",
         "apply-cr"
       ],
@@ -253,6 +255,17 @@
     {
       "from": "MANUAL_TEST",
       "to": "MANUAL_TEST",
+      "trigger": "dogfood",
+      "evidence_required": {
+        "batches_done": {
+          "min": 2
+        }
+      },
+      "note": "6 lăng kính persona x 2 đợt (chia theo trạng thái DB) trên hệ ĐANG CHẠY. Gate health_proof: dogfood trên hệ chết còn tệ hơn không dogfood, vì để lại vết 'đã kiểm'. Ở lại MANUAL_TEST; bug ghi origin=manual, fix qua /fix-bugs."
+    },
+    {
+      "from": "MANUAL_TEST",
+      "to": "MANUAL_TEST",
       "trigger": "log-bug",
       "evidence_required": {
         "bug_id": "any"
@@ -289,6 +302,15 @@
         "test_result": "pass"
       },
       "note": "uat_signed + test_result=pass (lần test-execute cuối xanh, ép re-run sau fix) + no_open_bugs"
+    },
+    {
+      "from": "DONE",
+      "to": "WAVE_OPEN",
+      "trigger": "next-wave",
+      "evidence_required": {
+        "wave_n": "any"
+      },
+      "note": "Mở wave kế sau khi snapshot wave vừa đóng (scripts/next_wave.py). KHÔNG gate lại — /end-wave ngay trước đã gác đủ (uat_signed + test_passed + no_open_bugs + features_complete + dogfood_done). KHÔNG reset gì: test_result/review_results giữ nguyên nhưng mang dấu wave cũ nên gate wave mới tự đỏ lại."
     },
     {
       "from": "DONE",
