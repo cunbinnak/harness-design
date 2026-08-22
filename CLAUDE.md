@@ -148,6 +148,12 @@ Mỗi command tự document trong `.claude/commands/<name>.md` (sync từ `comma
 | `PreCompact` | Pin STATE (stage+wave+boundary) vào summary |
 
 > Fail-open: hook crash → allow. Mọi gate force-bypass (`force:true,reason`) → audit `tracking/decisions.md`. Config: `.claude/settings.json` · scripts `scripts/hooks/`.
+>
+> **Permission là hàng rào NGOÀI, hook là hàng rào TRONG — hai lớp độc lập.** Thứ tự xét `deny → ask → allow`:
+> `deny` chặn thứ hook không nhìn thấy (secret `.env*`/`~/.ssh`/`~/.aws`, `sudo`, `rm -rf /`, force-push) ·
+> `ask` dừng hỏi ở hành động hướng RA NGOÀI hoặc không thu hồi được (`git push`, `gh repo create`/`release`,
+> `npm publish`, `docker compose down --volumes`) · `allow` mở rộng `Bash`/`Edit`/`Write` cho đỡ ma sát.
+> `allow` rộng **KHÔNG** mở khoá được thứ hook chặn — protected file, phase-lock, owned_paths, gate vẫn deny như thường.
 
 ---
 

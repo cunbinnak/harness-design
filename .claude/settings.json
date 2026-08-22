@@ -3,6 +3,19 @@
   "_comment": "ADLC Design Harness v4 — project-level settings. Hooks dispatch qua scripts/hooks/dispatcher.py. Personal permissions ở settings.local.json (gitignored).",
   "permissions": {
     "deny": [
+      "Read(.env)",
+      "Read(.env.local)",
+      "Read(.env.*.local)",
+      "Read(.env.production)",
+      "Read(.env.staging)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Bash(sudo:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard origin:*)",
       "Read(**/target/**)",
       "Read(**/build/**)",
       "Read(**/dist/**)",
@@ -13,7 +26,26 @@
       "Read(**/.next/**)",
       "Read(**/*.class)",
       "Read(**/*.pyc)"
-    ]
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(gh repo create:*)",
+      "Bash(gh release:*)",
+      "Bash(gh pr create:*)",
+      "Bash(npm publish:*)",
+      "Bash(docker compose down --volumes:*)",
+      "Bash(docker compose down -v:*)",
+      "Bash(docker volume rm:*)",
+      "Bash(docker system prune:*)"
+    ],
+    "allow": [
+      "Edit",
+      "Write",
+      "Bash",
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:127.0.0.1)"
+    ],
+    "defaultMode": "acceptEdits"
   },
   "hooks": {
     "SessionStart": [
