@@ -36,7 +36,10 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 3. **Topological → wave** (sprint):
    - **Wave 1 = foundation mỏng** (auth/shared + 1–2 capability core) đủ chạy **E2E sớm** (login + 1 luồng nghiệp vụ chính).
    - **Wave kế** = boundary/FEAT phụ thuộc wave trước, nhóm theo lát giá trị ship được cùng nhau; ghi rõ `dependencies` từ wave trước.
-   - **Kích thước wave: đếm tổng AC của mọi FEAT trong wave, ngưỡng THẬT là 6 AC/wave — chia nhỏ để dễ triển khai, không phải số đệm.** `>6 AC` mà không giải thích được → **gate `wave_sequence_lint` chặn cứng `/domain`** ở chốt chia-wave (đếm heading `### AC-n` trong từng FEAT file). Cắt tiếp thành wave con theo cùng đồ thị phụ thuộc, đừng nhét cố cho gọn số wave — wave nhiều AC là wave dev làm nửa chừng dễ bỏ sót, review khó soi hết, dogfood khó phủ. Feature liên đới chặt không tách được → điền `rationale` (≥20 ký tự) trong YAML block của wave, hạ xuống chỉ cảnh báo. Ít AC quá (1-2) không cần tách.
+   - **Kích thước wave: đếm tổng AC của mọi FEAT trong wave, ngưỡng THẬT là 6 AC/wave — chia nhỏ để dễ triển khai, không phải số đệm.** Gate `wave_sequence_lint` chặn theo **hai bậc** (đếm heading `### AC-n` trong từng FEAT file, không đọc văn xuôi để quyết):
+     - `6 < AC ≤ 12` mà không giải thích → chặn; điền `rationale` (≥20 ký tự) trong YAML block của wave → hạ xuống chỉ cảnh báo.
+     - `AC > 12` → **chặn LUÔN, `rationale` không cứu được** dù viết dài cỡ nào. "Phụ thuộc dây chuyền A cần B cần C" KHÔNG phải lý do hợp lệ để giữ chung một wave — đó chính xác là lý do để chia thành **nhiều wave nối tiếp đúng thứ tự** (wave(A) → wave(B) → wave(C)), việc `implementation-plan` vốn đã hướng dẫn (Topological → wave). Gặp mức này thì chia lại, không tìm cách viết rationale để lách.
+     Cắt tiếp thành wave con theo cùng đồ thị phụ thuộc, đừng nhét cố cho gọn số wave — wave nhiều AC là wave dev làm nửa chừng dễ bỏ sót, review khó soi hết, dogfood khó phủ. Ít AC quá (1-2) không cần tách.
    - Lặp tới khi **mọi** boundary/FEAT đã vào 1 wave.
 4. **Viết wave-{N}.md cho mọi wave** (theo `TEMPLATE.wave.md`).
 5. **Materialize MATRIX** (mỗi boundary: `wave` + `features[]` + `ref_skills[]` + `depends_on`) + **KG skeleton** per boundary.

@@ -9,12 +9,16 @@ Port từ ZIP `{{PROJECT-CODE}}-ADLC-DISCOVERY/scripts/wave-sequence-validate.py
 
 Hard invariants (error → chặn plan): wave_class/wave_strategy enum · target_count_per_layer ≤ 3 ·
 strategy layer-purity (horizontal-be cấm FE target; horizontal-fe cấm boundary target) · vertical →
-mỗi FEAT có parent_epic · **tổng AC vượt 6/wave (implementation-plan §Phương pháp chia wave — 6 là
-ngưỡng thật để dễ triển khai, không phải số đệm) mà không có `rationale` giải thích** (đếm bằng đếm
-heading `### AC-n` trong mỗi `docs/architecture/feat/{feat_id}*.md` của `features_in_scope`; file
-chưa tồn tại → 0, gate khác lo việc đó). Có `rationale` ≥20 ký tự → hạ xuống warning, không chặn —
-tránh ép tách một feature liên đới chặt chỉ để đẹp số AC. Warning (không chặn): rare combo rationale
-· paired_with reciprocal · exit_signal coherence · test_scope coherence.
+mỗi FEAT có parent_epic · **tổng AC vượt 6/wave** (implementation-plan §Phương pháp chia wave — 6 là
+ngưỡng thật để dễ triển khai, không phải số đệm; đếm heading `### AC-n` trong mỗi
+`docs/architecture/feat/{feat_id}*.md` của `features_in_scope`, file chưa tồn tại → 0, gate khác lo
+việc đó) — **hai bậc, KHÔNG một `rationale` dài là thoát được hết**:
+  - **6 < AC ≤ 12** (2×) mà không có `rationale` ≥20 ký tự → error, có rationale đủ dài → hạ warning.
+  - **AC > 12** → **error LUÔN, rationale không cứu được** — "phụ thuộc dây chuyền A cần B cần C" là
+    lý do để chia **nhiều wave nối tiếp theo đúng thứ tự**, không phải lý do nhét chung một wave; một
+    đoạn văn dài không đổi được sự thật đó, nên không cho văn xuôi thắng số đếm ở mức lệch quá xa.
+Warning (không chặn): rare combo rationale · paired_with reciprocal · exit_signal coherence ·
+test_scope coherence.
 
 CLI:
   py scripts/wave_sequence_lint.py            # lint tất cả wave
@@ -36,6 +40,7 @@ VALID_STRATEGIES = {"vertical", "horizontal-be", "horizontal-fe"}
 RARE_COMBOS = {("slice", "vertical"), ("integration", "horizontal-be"), ("integration", "horizontal-fe")}
 TARGET_CAP_PER_LAYER = 3
 TARGET_AC_CAP = 6           # ~6 AC/wave là ngưỡng THẬT (implementation-plan skill), không phải đệm
+TARGET_AC_HARD_CEILING = 12  # 2× cap — vượt mức này thì rationale KHÔNG cứu được, luôn error
 RATIONALE_MIN_LEN = 20      # ngưỡng "giải thích thật" dùng chung cho rare-combo + AC-cap override
 _AC_HEADING_RE = re.compile(r"^#{2,4}\s*AC-\d+\b", re.MULTILINE)
 EXPECTED_EXIT_SIGNAL = {
@@ -225,7 +230,15 @@ def validate_wave(spec: dict, wave_id: str, root: Path) -> tuple[list[str], list
     total_ac = 0
     for fid in {str(f.get("feat_id")) for f in feats if f.get("feat_id")}:
         total_ac += _count_ac(root, fid)
-    if total_ac > TARGET_AC_CAP:
+    if total_ac > TARGET_AC_HARD_CEILING:
+        # Vượt xa (>2× cap) — KHÔNG có rationale nào cứu được. "Phụ thuộc dây chuyền" là lý do để
+        # chia NHIỀU wave nối tiếp theo đúng thứ tự (A → B → C), không phải lý do nhét chung 1 wave.
+        errors.append(
+            f"{wave_id}: {total_ac} AC vượt xa ngưỡng {TARGET_AC_CAP} AC/wave (>{TARGET_AC_HARD_CEILING}"
+            " — rationale KHÔNG override được mức này) — chia thành NHIỀU wave nối tiếp theo đúng "
+            "thứ tự phụ thuộc (A cần B cần C → wave(A) → wave(B) → wave(C)), không phải giữ chung 1 wave"
+        )
+    elif total_ac > TARGET_AC_CAP:
         if len(rationale) >= RATIONALE_MIN_LEN:
             warnings.append(
                 f"{wave_id}: {total_ac} AC (ngưỡng {TARGET_AC_CAP}) — chấp nhận vì có rationale, "
@@ -463,6 +476,31 @@ features_in_scope:
         ok, errs, warns = run_lint_full(root)
         assert ok, errs
         assert any("AC" in w for w in warns), warns
+
+        # (h) vượt XA ngưỡng (>hard ceiling) — rationale dài cỡ nào cũng KHÔNG cứu được
+        huge_feat = "\n".join(f"### AC-{i}: x" for i in range(1, 21))  # 20 AC > ceiling 12
+        (feat_dir / "FEAT-901-huge.md").write_text(f"# FEAT-901\n\n{huge_feat}\n", encoding="utf-8")
+        way_overcap = """\
+### §wave-001
+```yaml
+wave_class: integration
+wave_strategy: vertical
+rationale: |
+  Chuoi phu thuoc rat chat A can B can C nen phai giu chung mot wave duy nhat khong tach duoc,
+  day la ly do rat dai va co ve hop ly nhung van khong duoc chap nhan o muc vuot qua xa nguong.
+targets:
+  boundaries: ["b"]
+  web_experiences: []
+  mobile_experiences: []
+features_in_scope:
+  - feat_id: FEAT-901
+    target: boundaries/b
+    parent_epic: EP-1
+```
+"""
+        (plans / "WAVE-SEQUENCE.md").write_text(way_overcap, encoding="utf-8")
+        ok, errs = run_lint(root)
+        assert not ok and "vượt xa" in " ".join(errs) and "KHÔNG override" in " ".join(errs), errs
 
         # (e) file thiếu → ok (plan_gate lo)
         (plans / "WAVE-SEQUENCE.md").unlink()
