@@ -947,12 +947,15 @@ def build_boundary_command(
         agent_name = f"review-{kind}-agent (singleton)"
         skills = REVIEW_SKILLS_PER_KIND.get(kind, [])
         ref_skills = PRIMARY_SKILLS_PER_KIND.get(kind, [])  # review: chỉ rules-{kind} (WHAT), KHÔNG nạp ref how-to
+        _rs = (REVIEW_SKILLS_PER_KIND.get(kind) or ['review-?'])[0]
+        _rules = (PRIMARY_SKILLS_PER_KIND.get(kind) or ['rules-?'])[0]
         task_list = [
-            f"Invoke skill `{(REVIEW_SKILLS_PER_KIND.get(kind) or ['review-?'])[0]}`.",
-            f"Read `FEAT-*` boundary đảm nhận → review code trong `{service_folder}/` theo checklist skill (gồm **AC/BR compliance**: mọi AC implement + BR enforce).",
-            f"**GHI findings ra `tracking/{wave_id}/review-findings.md`** (theo `tracking/_templates/TEMPLATE.review-findings.md`): mỗi issue = 1 row `RF-NNN` với `severity/status=open/boundary={boundary_id}/file(path:line)/type/description/suggested_fix`. Row đã fix ở vòng trước (status=resolved) → re-review xác nhận, KHÔNG xoá.",
-            "**KHÔNG spawn fix, KHÔNG tự loop** — đó là việc của MAIN orchestrator. Review chỉ đánh giá + ghi findings + trả số liệu.",
-            "Append learnings.gotchas vào KG nếu phát hiện pattern xấu (KHÔNG đụng phần design).",
+            f"Invoke skill `{_rs}` (quy trình + trục soi) và `{_rules}` (bảng **Forbidden patterns** — trục Forbidden đi TỪNG dòng).",
+            f"**Chốt phạm vi** (skill §2): bảng `## Mốc review` trong `tracking/{wave_id}/review-findings.md` chưa có dòng `{boundary_id}` → soi CẢ `{service_folder}/`; có mốc → soi `git diff <mốc>..HEAD` trong `{service_folder}/` + mở lại từng row `resolved` của boundary xác nhận.",
+            f"Soi theo trục skill §4 — gồm **AC/BR**: mọi AC của `FEAT-*` boundary đảm nhận có code + mọi BR enforce. Trục nào sạch thì nói sạch.",
+            f"**GHI findings ra `tracking/{wave_id}/review-findings.md`** (theo `tracking/_templates/TEMPLATE.review-findings.md`): mỗi issue = 1 row `RF-NNN` với `severity/status=open/boundary={boundary_id}/file(path:dòng ĐÃ ĐỌC)/type/[nguồn] description/hậu quả thật/suggested fix`. Viết không nổi `hậu quả thật` → không phải finding. Không chắc → `QUESTION` + `suggested fix` ghi cách kiểm chứng. Row `resolved` vòng trước → xác nhận, KHÔNG xoá. Cuối lượt cập nhật dòng `{boundary_id}` ở `## Mốc review` (`git rev-parse --short HEAD`, tăng `Vòng`).",
+            "**KHÔNG sửa code, KHÔNG spawn fix, KHÔNG tự loop** — hook chặn mọi ghi ngoài review-findings/KG/blockers. MAIN đọc findings, spawn fix, rồi gọi lại bạn.",
+            "Append learnings.gotchas vào KG nếu phát hiện pattern xấu MỚI (KHÔNG đụng phần design).",
             "Return RETURN SCHEMA với `review_result: pass|fail`, **`open_findings: <số row BLOCKER/MAJOR status=open>`**, `coverage_pct`.",
         ]
     elif command == "fix":
@@ -1189,14 +1192,14 @@ def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
         "Lệnh lấy prompt review từng boundary:\n```\n" + steps + "\n```\n\n"
         "Với MỖI boundary theo thứ tự (TUẦN TỰ, không song song), lặp tới sạch:\n"
         "1. **Spawn `review-{kind}-agent`** với prompt trên. Review-agent: kiểm theo checklist → "
-        f"GHI/cập nhật `tracking/{wave_id}/review-findings.md` (mỗi finding 1 row: severity/status/boundary/file/type/suggested_fix) → "
+        f"GHI/cập nhật `tracking/{wave_id}/review-findings.md` (mỗi finding 1 row: severity/status/boundary/file/type/description/hậu quả thật/suggested_fix; cuối lượt cập nhật `## Mốc review`) → "
         "return RETURN SCHEMA `{review_result, open_findings, coverage_pct}`. Review **KHÔNG** spawn fix.\n"
         "2. Đọc `open_findings` trong return:\n"
         "   - `== 0` → boundary sạch, sang bước 4.\n"
         f"   - `> 0` → đọc các row `status=open` của boundary trong `tracking/{wave_id}/review-findings.md` → "
         "**BẠN spawn `fix-{prefix}-{boundary}-agent` (Mode B)**, compose prompt = FEAT/AC boundary + danh sách finding (file/type/suggested_fix). "
         "Fix sửa code → set row `status=resolved` → return.\n"
-        "3. **Quay lại bước 1** (re-review) — review xác nhận row resolved, phát hiện thêm nếu có. Lặp tới `open_findings==0` (cap ~5 vòng; quá → STOP báo user).\n"
+        "3. **Quay lại bước 1** (re-review) — review chỉ soi phần code đổi từ mốc + xác nhận row resolved. Lặp tới `open_findings==0` (cột `Vòng` ở `## Mốc review` > 5 → STOP báo user).\n"
         "4. Ghi `{boundary, kind, review_result:pass, coverage_pct}`. Sang boundary kế.",
         "## SAU KHI MỌI BOUNDARY SẠCH — SPAWN `bug-hunter-agent` MỘT LẦN CHO CẢ WAVE\n"
         "> Review per-boundary đi **từ code lên** và chỉ nhìn thấy code ĐÃ viết. Hai chỗ nó mù hoàn "
@@ -1219,7 +1222,7 @@ def build_review_dev_wave(state: dict, matrix: list[dict], opts: dict) -> str:
 def build_bug_hunt(state: dict, matrix: list[dict], opts: dict) -> str:
     """Quét CẢ WAVE đi từ tài liệu xuống code — lăng kính ngược với review per-boundary.
 
-    Vì sao là agent RIÊNG chứ không phải một mục trong skill review: checklist review dài 16 mục, và
+    Vì sao là agent RIÊNG chứ không phải một mục trong skill review: skill review có 6-7 trục soi, và
     lăng kính "đi từ tài liệu xuống" nằm sau nó thì luôn thua trong cuộc tranh giành chú ý. Phạm vi
     cũng khác hẳn — review là per-boundary, cái này là cả wave.
     """

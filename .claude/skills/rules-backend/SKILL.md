@@ -229,6 +229,39 @@ payment:
 - **BẮT BUỘC ≥1 integration test BOOT Spring context trên Testcontainers Postgres + chạy MIGRATION + `ddl-auto: validate`** → Hibernate validate **entity ↔ schema** lúc boot: **sai tên cột / kiểu cột (vd `varchar(3)` ↔ `CHAR(3)`, `TIMESTAMPTZ` ↔ `Instant`) = test ĐỎ NGAY ở DEV** (không để lộ tới `/run-wave` lúc connect DB). Đây là chốt bắt schema-drift mà unit/mock + review tĩnh không thấy.
 - Naming `should_{expected}_when_{condition}`. Cover: success / validation fail / not found / permission fail / tenant boundary / idempotency / edge.
 
+## Forbidden patterns
+
+> Lỗi stack này hay dính. Dev né lúc viết; `review-backend` đi **từng dòng** bảng này lúc soi — cột
+> `Vì sao` thành `hậu quả thật` của finding, cột `Thay bằng` thành `suggested fix`.
+
+| Cấm | Vì sao | Thay bằng |
+|---|---|---|
+| `ddl-auto: update` / `create` / `create-drop` ngoài test | Hibernate tự đổi schema, sớm muộn mất dữ liệu | `validate` + Flyway/Liquibase |
+| Sửa file migration đã chạy ở wave trước | Checksum lệch, app không khởi động; môi trường đã chạy bản cũ không nhận thay đổi | Thêm file `V{wave}_{seq}__` mới |
+| Trả `@Entity` ra response / nhận `@Entity` làm request body | Lộ field nội bộ; lazy loading ngoài transaction; client set được `role`/`tenantId`/`status` | Request/Response DTO + MapStruct |
+| Controller gọi repository | Bỏ qua tầng nghiệp vụ: BR, ownership, transaction không chạy | Controller → service (interface) → repository |
+| `findById(id)` không kèm chủ sở hữu/tenant | User A đổi id trên URL là đọc/sửa được bản ghi của B | `findByIdAndTenantId` / Specification có điều kiện owner |
+| Lấy `userId`/`tenantId`/role từ body, param, header client | Client tự khai mình là người khác | Security context |
+| Nối chuỗi input vào JPQL/native, lấy tên cột sort từ request | SQL injection; sort theo cột tuỳ ý dò được dữ liệu | Bind parameter; whitelist cột sort |
+| `@Transactional` trên controller | Transaction kéo suốt request, giữ connection cả lúc serialize response | Đặt ở service, phạm vi hẹp nhất |
+| Gọi HTTP/downstream chậm bên trong transaction | Downstream chậm là cạn connection pool, cả service treo | Gọi ngoài transaction; outbox |
+| Publish event/ghi cache trước khi commit | Consumer nhận event của dữ liệu đã rollback | `@TransactionalEventListener(AFTER_COMMIT)` / outbox |
+| Nuốt exception, hoặc catch rồi trả 200 | Client tưởng thành công; lỗi biến mất khỏi log | Ném `BusinessException`, `@RestControllerAdvice` map đúng status |
+| `Optional.get()` trần, exception lọt ra ngoài handler | 500 kèm stack trace lộ cấu trúc nội bộ | `orElseThrow(...)` + error code từ enum |
+| Truy cập quan hệ lazy sau khi service trả về (mapper, controller) | `LazyInitializationException` lúc chạy thật; test mock không thấy | Fetch tường minh bằng `@EntityGraph`/projection trong service |
+| Repository gọi trong vòng lặp; `findAll()` không phân trang | N+1; bảng lớn lên là timeout | Bulk query; `Pageable` |
+| Hardcode secret/URL/timeout — kể cả test, yml commit | Secret vào git là đã lộ; đổi môi trường phải sửa code | Env / `@ConfigurationProperties`. Lỡ commit secret → **xoay key**, không chỉ xoá commit |
+| Log password/token/OTP/Authorization/PII/full body | Log thành kho dữ liệu nhạy cảm ai có quyền đọc log cũng thấy | Mask; log id thay vì nội dung |
+| Consumer/webhook/callback/job không idempotent | Retry là trừ tiền, tạo đơn, gửi mail hai lần | Dedup theo eventId/idempotency key (inbox) |
+| Đăng nhập/đăng ký/quên mật khẩu/gửi OTP-email-SMS không rate limit | Dò mật khẩu; bị dùng làm máy spam, tốn tiền SMS | Rate limit theo IP + tài khoản (theo ADR) |
+| Hash password MD5/SHA1/tự chế; `new Random()` sinh token | Lộ DB là lộ mật khẩu; token đoán được | BCrypt/Argon2; `SecureRandom` |
+| Upload tin tên file/content-type của client, lưu trong thư mục web | Path traversal; upload file chạy được | Giới hạn size, kiểm loại thật, tên do server sinh, lưu ngoài web root |
+| CORS `*` kèm credential; actuator mở public | Trang lạ gọi API bằng cookie của user; lộ env/heap dump | Allowlist domain; actuator sau auth hoặc port nội bộ |
+| Cột dữ liệu cá nhân "lưu sẵn cho sau này" mà không AC nào dùng | Thêm thứ để lộ mà không đổi lại gì | Chỉ thu thứ AC đòi |
+| `@Data` trên `@Entity` | hashCode đổi sau persist; toString kích lazy load + log lộ dữ liệu | `@Getter @Setter @NoArgsConstructor @AllArgsConstructor` |
+| `new RestTemplate()` / `WebClient.create()` trong business method | Không timeout, không truyền header tenant/correlation | `@HttpExchange` (`ref-backend-restclient`) |
+| H2 trong test | Che lỗi dialect/JSONB/`TIMESTAMPTZ` tới lúc chạy DB thật | Testcontainers Postgres |
+
 ## Coding checklist — verify trước khi báo done
 - [ ] Coverage ≥ 80%; không `@Disabled` thiếu blocker ref; **không H2** trong test.
 - [ ] **Gate `code_compliance` (dev-handoff)** sẽ HARD-FAIL nếu: thiếu `Dockerfile`; build file khai `com.h2database`; `application.{yml,properties}` có `jdbc:h2:` hoặc `ddl-auto: create-drop`; hoặc không có file config. → scaffold Dockerfile (multi-stage **Gradle `bootJar`→JRE** — default) + config Postgres + migration (Flyway/Liquibase) NGAY khi dev (không để handoff mới sửa).

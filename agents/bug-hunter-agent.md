@@ -29,7 +29,7 @@ Hai chỗ mà review per-boundary **không thể** nhìn thấy, và đó là l�
 2. **AC chạy xuyên boundary** (A gọi B). Đứng trong A thấy đủ, đứng trong B thấy đủ, mà nối lại
    thì gãy.
 
-Và một lý do nữa, về sự chú ý: checklist của `review-{kind}` dài 16 mục. Lăng kính "đi từ tài liệu
+Và một lý do nữa, về sự chú ý: skill `review-{kind}` có 6-7 trục soi. Lăng kính "đi từ tài liệu
 xuống" nằm sau nó thì luôn thua trong cuộc tranh giành chú ý. Bạn có một cái đầu sạch cho đúng việc
 này.
 

@@ -1,125 +1,146 @@
 ---
 name: review-mobile
-description: Self-review mobile — analyze, data layer khớp design, offline idempotency, security (secure storage/transport/deeplink), no hardcoded keys, coverage.
+description: Skill của review-mobile-agent (chốt review-dev trong /run-wave) — soi app Flutter theo 6 trục (AC · bảo mật mobile · Forbidden patterns · data layer + offline · UI/cấu trúc/test · lệch thứ đã chốt). Mỗi mục có lệnh tìm và chỗ nhìn.
 ---
 
-# Review Mobile Skill
+# Review Mobile
 
-> Checklist source-of-truth cho `review-mobile-agent` ở `/run-wave`. Fail → ghi `review-findings.md` (review KHÔNG spawn); MAIN spawn fix Mode B → re-review tới `open_findings==0`.
+Bạn soi code với con mắt độc lập — **bạn không phải người viết nó**, và đó là giá trị của bạn.
+Chỉ đọc: hook chặn mọi lần ghi ngoài `tracking/{wave}/review-findings.md` · `tracking/blockers.md` ·
+KG learnings. Không hỏi user.
 
-## Lệnh chạy
+## 1. Nạp trước
+
+| Đọc | Để soi |
+|---|---|
+| `docs/architecture/feat/FEAT-*.md` boundary đảm nhận + `business-rules/BR-*.md` | trục 1 |
+| `ux/ux-{boundary}.md` · `ux/SCREEN-MAP.md` · `ux/mockups/{boundary}/*.html` | trục 1, 5 |
+| `api/api-{backend}.md` hoặc `integrations/INTEG-INT-{boundary}-to-{bff}.md` | trục 4 |
+| `hld/hld-{boundary}.md` §6.1 ca biên | trục 1 |
+| `docs/discovery/persona-pool.md` §Ma trận vai × hành động | trục 2 |
+| skill `rules-mobile` §Forbidden patterns + §Done | trục 3, 5 |
+| `tracking/decisions.md` · `docs/architecture/adr/ADR-*.md` (state, storage, auth) | trục 6 |
+| Wave ≥ 2: `tracking/BC-LEDGER.md` §1 · `archive/wave-*/DELIVERED.md` | trục 6 |
+
+## 2. Phạm vi
+
+Code ở `services/{prefix}-{boundary}/` (repo git riêng — mọi lệnh dưới chạy trong thư mục đó).
+
+- **Vòng 1** — bảng `## Mốc review` của `review-findings.md` chưa có dòng boundary này → soi **cả boundary**.
+- **Re-review** — có mốc → soi `git diff --stat <mốc>..HEAD` rồi `git diff <mốc>..HEAD`, và với **mỗi**
+  row `resolved` của boundary: mở đúng `file:dòng`, lỗi hết thật chưa. Mốc không còn trong git → soi cả boundary.
+- **Cuối lượt** cập nhật mốc = `git rev-parse --short HEAD`, tăng `Vòng`.
+
+## 3. Chạy máy trước — đỏ là finding luôn
+
 ```bash
-flutter analyze                   # static analysis
-flutter test --coverage          # widget test + coverage
-git diff --name-only main...HEAD
+flutter analyze                    # 0 error
+flutter test --coverage            # coverage/lcov.info — ngưỡng mobile 60%
+dart run build_runner build --delete-conflicting-outputs && git diff --exit-code   # chỉ khi đi qua BFF
+```
+Đỏ → BLOCKER `type=test`. Coverage < 60% → BLOCKER.
+
+## 4. Soi theo trục
+
+`grep` chỉ để **tìm chỗ phải đọc** — mọi dòng dưới đây kết thúc bằng mở file ra đọc.
+
+### Trục 1 — Đúng AC
+
+| Kiểm gì | Tìm ở đâu | Nặng |
+|---|---|---|
+| Mọi AC có màn/luồng làm đúng | AC → màn trong `SCREEN-MAP.md` → widget + provider + repository | không thấy = BLOCKER · làm nửa = MAJOR |
+| Ca biên `hld §6.1` phía app: gửi hai lần · mất mạng giữa chừng · bản cũ. **Disable nút không tính** — ràng buộc thật ở BE, thiếu thì ghi finding cho boundary BE | Đọc mutation + màn | app thiếu = MINOR · BE thiếu = BLOCKER |
+
+### Trục 2 — Bảo mật mobile (6 nhóm)
+
+| Nhóm | Kiểm gì | Tìm ở đâu | Nặng |
+|---|---|---|---|
+| Secret | Không key/secret trong code hoặc asset | lệnh (a) | BLOCKER — lỡ commit thì **xoay key** |
+| | Không log token/PII | `grep -rni -e "print(.*token" -e "log(.*token" -e "print(.*password" -e "print(.*otp" lib` | BLOCKER |
+| Đầu vào | Tham số deep link/intent validate; WebView không load URL không tin, JS tắt khi không cần | `grep -rn -e uriLinkStream -e getInitialLink -e GoRoute -e WebView -e JavaScriptMode lib` | BLOCKER |
+| Danh tính & phân quyền | Token + dữ liệu nhạy cảm trong secure storage (Keychain/Keystore) | `grep -rn SharedPreferences lib` → key nào chứa token/PII | BLOCKER |
+| | Deep link tới màn cần quyền có route guard trong app **và** API chặn ở server; mỗi ô `cấm` của ma trận có chỗ chặn | Router `redirect` + endpoint tương ứng | server thiếu = BLOCKER (ghi cho BE) |
+| | Đăng xuất xoá token + reset provider — đăng nhập B không thấy dữ liệu A | `grep -rn -e logout -e signOut lib` → `invalidate`/`dispose` | MAJOR |
+| | Không persist dữ liệu sinh trắc học | `grep -rni biometric lib` | BLOCKER |
+| Đường ra | Chỉ HTTPS; không bật cleartext; pinning cho API nhạy cảm nếu yêu cầu | `grep -rn "http://" lib` · `grep -rn usesCleartextTraffic android` · `grep -rn NSAllowsArbitraryLoads ios` | BLOCKER |
+| | Không hiện exception/stack/message server thô lên UI | `grep -rn -e "Text(.*toString()" -e "Text(.*\.message" lib` | MAJOR |
+| Dữ liệu | Không lưu dữ liệu nhạy cảm plain trong Hive/sqlite | `grep -rn -e "Hive." -e openDatabase lib` | MAJOR |
+| | Obfuscation cho bản release nếu yêu cầu (`--obfuscate --split-debug-info`) | Script build/CI | MINOR |
+| Phụ thuộc | Không package discontinued hoặc có lỗ hổng đã biết | `flutter pub outdated` | MAJOR |
+
+```bash
+# (a) secret hardcode
+grep -rnE "(api[_-]?key|secret|password|token)\s*[:=]\s*[\"'][A-Za-z0-9_-]{12,}" lib assets
 ```
 
-## Checklist (PASS/FAIL/NA)
-- **FEAT/AC (BLOCKER nếu thiếu)**: đọc `FEAT-*` boundary đảm nhận → MỌI AC có màn hình/luồng implement đúng.
-1. **Build + analyze** xanh (`flutter analyze` 0 error); test ≥ **60%**.
-2. **Data layer khớp design**:
-   - REST (default): client (Dio/http) gọi đúng `api-{backend}.md`; interceptor auth.
-   - BFF (nếu có): codegen up-to-date (`build_runner`); op khớp `integrations/INTEG-INT-{mobile}-to-{bff}.md`.
-3. **Offline queue**: mọi mutation "queue if offline" có idempotency strategy (key/dedup) — FAIL nếu retry gây double-write.
-4. **No business logic** — validate ở BE/BFF.
-5. **No hardcoded secrets**: FCM key, biometric data không persist/hardcode.
-6. **State**: provider scope đúng (Riverpod), không global state rò rỉ giữa screen.
-7. **Security (mobile)**:
-   - **Token storage**: access/refresh token + dữ liệu nhạy cảm vào secure storage (Keychain/Keystore), KHÔNG `SharedPreferences` plain.
-   - **Transport**: chỉ HTTPS; cert pinning cho API nhạy cảm (nếu yêu cầu).
-   - **Deeplink / WebView**: validate input từ deeplink/intent; WebView không load URL không tin, tắt JS nếu không cần.
-   - **No secret in bundle**: không hardcode API key/secret trong code/asset; bật obfuscation nếu yêu cầu.
-   - **Logging**: không in token/PII ra log.
-8. **Owned paths** ⊆ boundary.
+### Trục 3 — Forbidden patterns
 
-## Anti-patterns cần flag
-- Mutation offline retry không idempotent → tạo bản ghi trùng.
-- Lưu token/biometric vào SharedPreferences plain (phải secure storage).
-- Widget gọi API trực tiếp thay vì qua repository/provider.
-- WebView load URL không tin / nhận deeplink không validate; hardcode API key trong asset.
+Mở `rules-mobile` §Forbidden patterns, đi **TỪNG dòng** bảng. Mỗi dòng tìm được trong code → một finding:
+`description` mở bằng `[rules-mobile Forbidden: <cột Cấm>]`, `hậu quả thật` lấy từ cột `Vì sao` (viết cụ
+thể cho chỗ này), `suggested fix` từ cột `Thay bằng`. Lệnh tìm cho các dòng chưa có ở trục 2:
 
-
-
-## Lăng kính thứ hai: TRUY — code có làm đúng thứ tài liệu đã chốt không
-
-Phần checklist ở trên là lăng kính **SOI** (code có sạch, có an toàn không). Lăng kính này khác hẳn:
-**đi từ TÀI LIỆU xuống code**, không đi từ code lên. Hai lăng kính bắt hai loại lỗi khác nhau — code
-sạch bong vẫn có thể thiếu hẳn một AC, và không mục nào ở trên bắt được điều đó.
-
-Đây là **quy trình**, không phải lời dặn: làm đủ sáu bước, mỗi bước ra finding hoặc ra câu
-"bước này sạch".
-
-**1. Đi từng AC một.** Liệt kê AC của mọi `FEAT-*` boundary này đảm nhận. Với **mỗi** AC: tìm đoạn
-code hiện thực nó. Ba kết quả, ba xử lý khác nhau:
-`có và đúng` → sạch · `có nhưng chỉ làm một nửa` (thiếu nhánh lỗi/validation) → **MAJOR** ·
-`không tìm thấy` → **BLOCKER**. **Không suy từ tên hàm** — `validateOrder` không chứng minh nó
-validate AC nào; mở file ra đọc.
-
-**2. Ca biên `hld-{boundary}.md` §6.1.** Mỗi dòng đã quyết (gửi hai lần · sửa đồng thời · xoá ·
-sai thứ tự · hỏng nửa chừng · bản cũ · rỗng · thu hồi quyền) — tìm chỗ code chặn nó.
-**Không tìm thấy nghĩa là CHƯA XỬ**, dù chạy thử trông vẫn ổn: ca biên chỉ nổ khi trùng thời điểm.
-**Disable nút KHÔNG tính.** Ràng buộc thật ở BE; app chỉ hiển thị.
-
-**3. Phân quyền — chỗ hay thủng nhất.**
 ```bash
-grep -rn "\.doc(\|findById\|where(" --include=*.dart lib/
-```
-Mỗi truy vấn lấy bản ghi theo id: **có kèm điều kiện chủ sở hữu / tenant không?** Thiếu là lỗ hổng,
-và đây là loại nặng nhất. Đối chiếu `docs/discovery/persona-pool.md` §Ma trận vai × hành động:
-mỗi ô `cấm` phải tìm được chỗ chặn ở server.
-
-**4. Lỗi bị nuốt.**
-```bash
-grep -rn "catch *([a-z]*) *{ *}\|on .* catch.*{ *}" --include=*.dart lib/
-```
-`catch` rỗng = lỗi biến mất, người dùng thấy "thành công" trong khi không có gì xảy ra.
-
-**5. Việc dở dang.**
-```bash
-grep -rn "TODO\|FIXME\|HACK\|XXX" --include=*.dart .
-```
-Cái nào **chặn một AC** → finding. Cái nào là nợ tương lai → ghi chú, không phải finding.
-
-**6. Secret lọt vào code.**
-```bash
-grep -rnE '(api[_-]?key|secret|password|token)\s*[=:]\s*["'"'"'][A-Za-z0-9_-]{12,}' --include=*.dart .
+grep -rlE "Dio\(|http\.(get|post|put|delete)\(" lib | grep -iE "widget|screen|page|view"   # widget gọi API
+grep -rn -e "offline" -e "queue" -e "retry" lib        # mutation offline: có idempotency key sinh lúc tạo?
+grep -rniE "price|total|discount|eligib" lib           # nghiệp vụ trong app
 ```
 
-> Sáu bước này **không thay** checklist ở trên — chúng chạy song song. Checklist hỏi *"code này có
-> vấn đề gì"*; sáu bước hỏi *"thứ đã hứa có ở đây không"*. Bỏ lăng kính thứ hai thì một FEAT thiếu
-> hẳn vẫn qua được review sạch bong.
+### Trục 4 — Data layer và offline
 
-## Kỷ luật khi review — bốn luật, áp cho MỌI finding
+| Kiểm gì | Tìm ở đâu | Nặng |
+|---|---|---|
+| REST: client gọi đúng `api-{backend}.md`; interceptor gắn auth + map lỗi | Đọc repository/client | sai endpoint = BLOCKER · khác = MAJOR |
+| BFF: codegen up-to-date; operation khớp `INTEG-INT-{boundary}-to-{bff}.md` | Mục 3 | MAJOR |
+| Offline queue: mọi mutation "queue if offline" có idempotency key, retry gửi lại cùng key | Lệnh trục 3 | BLOCKER |
+| Không nghiệp vụ trong app — validate/tính ở BE/BFF | Lệnh trục 3 | BLOCKER |
+| State: provider scope đúng (Riverpod theo ADR), không global state rò giữa màn | `grep -rn -e "StateProvider" -e "ChangeNotifierProvider" -e "static " lib` | MAJOR |
 
-**1. Mỗi finding phải nói được HẬU QUẢ THẬT.** Không phải "vi phạm mục X", mà *chuyện gì xảy ra
-với người dùng thật*: mất dữ liệu · lộ dữ liệu · sai kết quả · AC không chạy được · wave trước gãy.
-**Viết không nổi câu hậu quả thì đó không phải finding** — đó là ý thích. Luật này thay cho một
-danh sách cấm dài: nó tự loại nhận xét vặt (đặt tên cho đẹp hơn, tách file cho gọn, trừu tượng hoá
-"để sau dễ mở rộng") mà không cần liệt kê từng loại.
+### Trục 5 — UI, cấu trúc, test
 
-**2. Trục nào sạch thì NÓI SẠCH.** Soi hết một mục mà không thấy gì đáng nêu → ghi thẳng
-"mục này ổn". **Đừng bịa một nhận xét cho có** để báo cáo trông chăm chỉ. Findings rác làm loãng
-findings thật, và người đọc sẽ bắt đầu bỏ qua cả danh sách.
+| Kiểm gì | Tìm ở đâu | Nặng |
+|---|---|---|
+| Mỗi action có loading · error · success; bám `ux-{boundary}.md` + design system đã chốt (Material 3) | Đọc màn | MAJOR |
+| Naming `snake_case.dart` / `PascalCase` class; folder feature-first (`features/` · `shared/` · `core/`) hoặc theo design | `find lib -type d` | MINOR · lệch cấu trúc đã chốt = MAJOR |
+| Widget test cho màn/action chính; test không phụ thuộc mạng thật | `ls test` · đọc test đại diện | MAJOR |
+| Diff chỉ trong `owned_paths` | `git diff --name-only <mốc>..HEAD` | BLOCKER |
 
-**3. MỞ FILE RA ĐỌC, đừng suy từ tên.** Tên hàm `validateOrder` không chứng minh nó validate gì.
-Mọi finding phải chỉ được `file:dòng` cụ thể, và dòng đó phải đã được đọc thật.
+### Trục 6 — Lệch thứ đã chốt
 
-**4. Không chắc thì NÓI không chắc, kèm cách kiểm chứng.** `severity: QUESTION` + một câu
-"kiểm bằng cách nào". Đoán bừa làm MAIN mất thời gian đuổi theo thứ không tồn tại — đắt hơn hẳn
-việc bỏ sót một finding nhỏ.
+| Kiểm gì | Tìm ở đâu | Nặng |
+|---|---|---|
+| Code làm khác một dòng `tracking/decisions.md` mà không có dòng mới đè lên | Mỗi dòng liên quan boundary → tìm chỗ code | MAJOR |
+| State lib / storage / auth flow khác ADR | `pubspec.yaml` so với ADR | MAJOR |
+| Wave ≥ 2: deep link/màn đã giao vẫn mở được; bản app cũ ngoài kia vẫn gọi được API | Router so với `DELIVERED.md` | BLOCKER |
+| Thuật ngữ trên UI lệch FEAT/Glossary | Đọc label | MINOR |
 
-## Trục dễ quên: LỆCH THỨ ĐÃ CHỐT
+## 5. Ghi finding
 
-Ngoài "code có đúng spec không", soi thêm **code có đi ngược quyết định đã ghi không**:
+Append/cập nhật `tracking/{wave}/review-findings.md` theo `TEMPLATE.review-findings.md`, một row một finding:
 
-- `tracking/decisions.md` — code làm khác một dòng quyết định mà **không có dòng mới đè lên**
-  (`Ghi chú: thay cho <ngày>`). Đổi ý thì được, đổi lặng lẽ thì không.
-- `docs/architecture/adr/ADR-*.md` — dùng thư viện/kiểu kiến trúc khác ADR đã chốt.
-- `hld-{boundary}.md` §6.1 — ca biên đã quyết mà code không chặn. **Chặn ở UI KHÔNG tính**:
-  phải có ràng buộc ở DB hoặc kiểm ở tầng server.
-- `archive/wave-*/DELIVERED.md` — surface wave trước bị đổi/xoá thay vì chỉ thêm vào.
+```
+| RF-NNN | severity | open | {boundary} | path:dòng | type | [nguồn] vấn đề | hậu quả thật | suggested fix |
+```
 
-Đây là loại lệch mà mọi checklist kỹ thuật ở trên đều mù, vì code trông vẫn "đúng chuẩn".
+- `[nguồn]`: `[FEAT-X AC-2]` · `[Bảo mật: <nhóm>]` · `[rules-mobile Forbidden: <cột Cấm>]` · `[ux <màn>]` · `[decisions <ngày>]`.
+- **BLOCKER** — AC không chạy · lủng bảo mật · ghi trùng khi offline · phá surface đã giao.
+  **MAJOR** — nên sửa trước bàn giao. **MINOR/NIT** — không chặn. **QUESTION** — chưa chắc.
+  Ý thích cá nhân không bao giờ là BLOCKER.
+- Row `resolved` vòng trước: mở đúng `file:dòng` xác nhận; còn lỗi → đặt lại `open` + ghi vì sao. KHÔNG xoá row.
 
-## Output
-RETURN SCHEMA: `review_result`, `no_open_findings`, `findings_file`, `coverage_pct`, `checklist_summary`, `needs_review[]`.
+## 6. Bốn luật cho mọi finding
+
+1. **Hậu quả thật** — chuyện gì xảy ra với người dùng thật: mất dữ liệu · lộ dữ liệu · sai kết quả · AC
+   không chạy · wave trước gãy. Viết không nổi câu này thì không phải finding.
+2. **Trục sạch thì nói sạch** — ghi thẳng "trục N sạch" trong phần trả về; đừng bịa nhận xét cho có.
+3. **Mở file ra đọc** — `file:dòng` phải là dòng đã đọc thật; không suy từ tên hàm.
+4. **Không chắc → `QUESTION`**, cột `suggested fix` ghi **cách kiểm chứng**.
+
+Không góp ý: đặt tên cho đẹp · tách file cho gọn · trừu tượng hoá "để sau dễ mở rộng" · tối ưu khi chưa có số đo.
+
+## 7. Kết luận
+
+- `review_result = pass` chỉ khi: không còn row BLOCKER/MAJOR `open` của boundary · analyze/test xanh ·
+  coverage ≥ 60%.
+- Không spawn fix, không tự loop — phiên chính đọc findings, spawn fix, rồi gọi bạn re-review. Gate
+  `no_open_findings` chặn complete.
+- Field JSON trả về theo prompt spawn (`build_prompt.py`) — skill không định nghĩa schema.

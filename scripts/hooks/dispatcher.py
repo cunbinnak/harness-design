@@ -341,6 +341,9 @@ def _pre_write_edit(payload: dict) -> int:
     ker = policies.kernel_violation(norm, (st.get("spawn") or {}).get("active"))
     if ker:
         return pre_tool_deny(ker)
+    rv = policies.review_write_violation(norm, (st.get("spawn") or {}).get("active"), stage)
+    if rv:
+        return pre_tool_deny(rv)
     tok = policies.token_violation(norm, _edit_new_text(payload))
     if tok:
         return pre_tool_deny(tok)

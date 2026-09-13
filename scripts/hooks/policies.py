@@ -547,6 +547,21 @@ def _selftest() -> int:
     assert kernel_violation("knowledge-base/x.knowledge-graph.yaml", "dev-agent") is None
     assert kernel_violation("docs/domain/feat/FEAT-1.md", "domain-po-agent") is None  # phase-lock lo
 
+    # review_write_violation — vai review chỉ ghi sổ phát hiện
+    _rv = review_write_violation
+    assert _rv("services/cb-x/src/App.java", "review-backend-agent", "DEV") is not None
+    assert _rv("./services/cb-x/src/App.tsx", "review-web-agent", "REVIEW_DEV") is not None
+    assert _rv("docs/architecture/hld/hld-x.md", "bug-hunter-agent", "DEV") is not None
+    assert _rv("tracking/wave-001/test-report.md", "review-bff-agent", "DEV") is not None
+    assert _rv("tracking/wave-001/review-findings.md", "review-mobile-agent", "DEV") is None
+    assert _rv("tracking/wave-001/review-findings.md", "bug-hunter-agent", "DEV") is None
+    assert _rv("tracking/blockers.md", "bug-hunter-agent", "DEV") is None
+    assert _rv("knowledge-base/x.knowledge-graph.yaml", "review-backend-agent", "DEV") is None
+    assert _rv("knowledge-base/x.knowledge-graph.yaml", "bug-hunter-agent", "DEV") is not None  # hunter không có KG
+    assert _rv("services/cb-x/src/App.java", "fix-cb-x-agent", "DEV") is None      # fix được sửa code
+    assert _rv("services/cb-x/src/App.java", None, "DEV") is None                  # MAIN
+    assert _rv("services/cb-x/src/App.java", "review-web-agent", "TEST_EXECUTE") is None  # cờ kẹt ngoài stage review
+
     # next-step hint contextual (arg + back-edge)
     # Gợi ý phải dạy dạng KHÔNG ARG. Trước đây nó dạy `/discover D2` — mà `/discover` vốn tự suy
     # (gate wave đang đứng xanh thì tiến, đỏ thì ở lại), nên gợi ý đang dạy người dùng nhớ một cờ
@@ -758,6 +773,47 @@ def kernel_violation(rel_path: str, spawn_active: str | None) -> str | None:
         "`tracking/blockers.md` + báo lại; phiên chính quyết, không phải bạn.\n"
         "Bạn được ghi: `docs/**` (trong stage sở hữu) · `tracking/**` · `knowledge-base/**` · "
         "`services/**` · `handoff/**`."
+    )
+
+
+# ========================================================================
+# review_write_violation — vai review CHỈ ĐỌC, chỉ được ghi sổ phát hiện
+# ========================================================================
+#
+# VÌ SAO CÓ. Agent review ghi "KHÔNG sửa code" bằng văn xuôi — và văn xuôi không giữ được luật,
+# nhất là sau compact. Reviewer thấy lỗi một dòng rất dễ "sửa luôn cho nhanh", và lúc đó mất
+# đúng giá trị của nó: con mắt độc lập đã thành người viết code, không ai soi lại dòng vừa sửa,
+# và finding không bao giờ được ghi nên vòng fix → re-review bị bỏ qua.
+#
+# Chỉ áp ở DEV/REVIEW_DEV — hai stage duy nhất vai review chạy. Ngoài đó cờ `spawn.active` còn
+# kẹt (SubagentStop không fire với background Agent) cũng không chặn oan phiên chính.
+
+REVIEW_AGENT_RE = re.compile(r"^(review-(backend|bff|web|mobile)-agent|bug-hunter-agent)$")
+REVIEW_STAGES = ("DEV", "REVIEW_DEV")
+REVIEW_FINDINGS_RE = re.compile(r"^tracking/[^/]+/review-findings\.md$")
+REVIEW_KG_RE = re.compile(r"^knowledge-base/[^/]+\.knowledge-graph\.yaml$")
+
+
+def review_write_violation(rel_path: str, spawn_active: str | None, stage: str | None) -> str | None:
+    """Thông báo chặn, hoặc None. Review ghi được sổ phát hiện; review-{kind} thêm KG learnings."""
+    if not spawn_active or not rel_path or stage not in REVIEW_STAGES:
+        return None
+    if not REVIEW_AGENT_RE.match(spawn_active):
+        return None
+    norm = _norm_rel(rel_path)
+    if REVIEW_FINDINGS_RE.match(norm) or norm == "tracking/blockers.md":
+        return None
+    if spawn_active != "bug-hunter-agent" and REVIEW_KG_RE.match(norm):
+        return None
+    allowed = "`tracking/<wave>/review-findings.md` · `tracking/blockers.md`"
+    if spawn_active != "bug-hunter-agent":
+        allowed += " · `knowledge-base/<boundary>.knowledge-graph.yaml` (chỉ learnings)"
+    return (
+        f"FM-REVIEW-WRITE: `{spawn_active}` CHỈ ĐỌC — không được ghi `{norm}`.\n"
+        "Thấy lỗi thì GHI FINDING (kèm `hậu quả thật` + `suggested fix`), đừng sửa: phiên chính spawn "
+        "fix-agent, rồi bạn re-review dòng vừa sửa. Reviewer tự sửa là mất con mắt độc lập.\n"
+        f"Được ghi: {allowed}.\n"
+        "Phiên chính gặp chặn này = cờ `spawn.active` kẹt từ lượt review trước; spawn kế tiếp ghi đè cờ."
     )
 
 

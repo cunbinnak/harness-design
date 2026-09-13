@@ -12,11 +12,25 @@
 |---------|----------|--------|----------|------|------|-------------|--------------|---------------|
 | RF-001 | BLOCKER | resolved | order | OrderService.java:42 | BR | BR-ORDER-001 (không cho đặt khi hết hàng) chưa enforce trước khi save | khách đặt được món đã hết → đơn treo, phải gọi xin lỗi và hoàn tiền | check tồn kho trước `repo.save()`; ném `OUT_OF_STOCK` |
 | RF-002 | MAJOR | open | order | OrderController.java:88 | arch | logic tính tiền nằm trong controller | job/consumer gọi đường khác sẽ tính ra số tiền KHÁC — lệch tiền giữa hai đường | chuyển sang `OrderService.calculateTotal()` |
-| RF-003 | QUESTION | open | order | OrderRepo.java:31 | security | truy vấn theo id, chưa thấy điều kiện chủ sở hữu | **chưa chắc** — nếu đúng thì user A đọc được đơn của user B | kiểm bằng: gọi API bằng token A với id đơn của B, xem có trả 200 không |
+| RF-003 | QUESTION | open | order | OrderRepo.java:31 | security | [Bảo mật: phân quyền] truy vấn theo id, chưa thấy điều kiện chủ sở hữu | **chưa chắc** — nếu đúng thì user A đọc được đơn của user B | kiểm bằng: gọi API bằng token A với id đơn của B, xem có trả 200 không |
+
+## Mốc review
+
+| boundary | Đã review tới commit | Vòng |
+|----------|----------------------|------|
+| order | a1b2c3d | 2 |
+
+> Review-agent cập nhật dòng boundary của mình **cuối mỗi lượt** (`git rev-parse --short HEAD` trong
+> `services/{prefix}-{boundary}/`) và tăng `Vòng`. Lượt sau: chưa có dòng → soi cả boundary; có mốc →
+> soi `git diff <mốc>..HEAD` + xác nhận mọi row `resolved` của boundary. Mốc không còn trong git → soi
+> cả boundary. `Vòng` > 5 mà chưa sạch → phiên chính dừng, báo user.
 
 ## Notes
 - **ID** `RF-NNN` đánh số tăng dần trong wave (không reset theo boundary).
 - **file** ghi `path:line` khi xác định được dòng — giúp fix nhắm đúng chỗ, không quét cả file.
+- **description** mở đầu bằng **nguồn bị vi phạm** trong ngoặc vuông: `[FEAT-X AC-2]` · `[BR-...]` ·
+  `[Bảo mật: Đầu vào]` · `[rules-backend Forbidden: <cột Cấm>]` · `[hld §6.1 gửi hai lần]` ·
+  `[decisions <ngày>]`. Không chỉ ra được nguồn thì thường là ý thích, không phải finding.
 - **hậu quả thật** — cột QUAN TRỌNG NHẤT: *chuyện gì xảy ra với người dùng thật* (mất dữ liệu ·
   lộ dữ liệu · sai kết quả · AC không chạy · wave trước gãy). **Viết không nổi câu này thì không
   phải finding** — đó là ý thích. Cột này thay cho một danh sách cấm dài: nó tự loại nhận xét vặt.

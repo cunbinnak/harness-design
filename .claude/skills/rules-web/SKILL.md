@@ -126,6 +126,29 @@ Sub-agent `kind=web` — chốt code · sửa bug · review của `/run-wave`.
 ### Review checklist
 68. Trước khi Done, reviewer/dev kiểm tra: UI đúng UX spec · action map đúng API/integration · không hardcode secret/config · không business logic quan trọng ở FE · đủ loading/error/empty/success · route guard/role gate đúng · typecheck/build/test pass · không sửa ngoài `owned_paths`.
 
+## Forbidden patterns
+
+> Lỗi stack này hay dính. Dev né lúc viết; `review-web` đi **từng dòng** bảng này lúc soi — cột
+> `Vì sao` thành `hậu quả thật` của finding, cột `Thay bằng` thành `suggested fix`.
+
+| Cấm | Vì sao | Thay bằng |
+|---|---|---|
+| Component UI gọi `fetch`/`axios` trực tiếp | Đổi API là sửa hai chục chỗ; không mock được ở test | `api/` → `hooks/` → component |
+| `any` / `@ts-ignore` để qua typecheck | Mất tác dụng TypeScript đúng chỗ dữ liệu API đổi hình | Kiểu thật từ API spec/codegen, hoặc `unknown` + zod parse |
+| Coi validate phía client hoặc ẩn nút theo role là chốt chặn | Gọi thẳng API bằng curl là qua | BE/BFF enforce; FE chỉ phục vụ trải nghiệm |
+| Tính giá/điểm/điều kiện nghiệp vụ ở FE | Hai nơi tính là lệch số; sửa JS là đổi được kết quả | Lấy kết quả từ BE/BFF |
+| Hiện lỗi thô (stack, SQL, `error.message` của server) ra UI | Lộ cấu trúc nội bộ; người dùng không biết làm gì tiếp | Map error code → câu thông báo theo `ux-{boundary}.md` |
+| Token trong `localStorage`/`sessionStorage` | Một lỗ XSS là mất phiên | httpOnly cookie / in-memory theo auth design |
+| `dangerouslySetInnerHTML` với dữ liệu chưa sanitize | XSS | Render text; buộc phải HTML thì sanitize |
+| Secret trong `VITE_*` / `NEXT_PUBLIC_*` | Nằm nguyên trong bundle ai cũng tải được | Giữ ở server |
+| Redirect theo `?next=`/`?redirect=` không kiểm | Open redirect dùng để lừa đăng nhập | Chỉ nhận path nội bộ |
+| Chỉ render nhánh success | API lỗi là màn trắng/treo; người dùng bấm lại, gửi hai lần | Đủ loading · empty · error · success |
+| Submit không chống bấm hai lần | Tạo bản ghi trùng | Disable khi pending + idempotency key nếu contract có |
+| `className` không có stylesheet; hardcode hex/px | UI không định dạng, lệch design token | Token `ux §4` định nghĩa trong bundle / theme ui-kit |
+| Định nghĩa lại type API bằng tay | Lệch contract sau vài ngày | Type từ API spec hoặc codegen |
+| `useEffect` fetch với dependency array sai | Gọi API vô hạn, dội tải BE | Server-state lib (React Query/SWR/Apollo) |
+| Đăng xuất không xoá cache server-state | Người đăng nhập sau thấy dữ liệu người trước | `queryClient.clear()` / reset store khi logout |
+
 ## Naming & structure
 - **Component file**: `PascalCase.tsx`. **Hook**: `useXxx.ts` (camelCase). **Service/client**: `kebab-case.ts`. **Test**: `*.test.tsx` / `*.spec.ts`.
 - **Folder layout**: `pages` / `components` / `hooks` / `api(services)` / `stores` / `router` — xem `ref-frontend-pattern`.
