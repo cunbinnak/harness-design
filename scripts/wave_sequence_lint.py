@@ -9,12 +9,12 @@ Port từ ZIP `{{PROJECT-CODE}}-ADLC-DISCOVERY/scripts/wave-sequence-validate.py
 
 Hard invariants (error → chặn plan): wave_class/wave_strategy enum · target_count_per_layer ≤ 3 ·
 strategy layer-purity (horizontal-be cấm FE target; horizontal-fe cấm boundary target) · vertical →
-mỗi FEAT có parent_epic · **tổng AC (implementation-plan §Phương pháp chia wave: mục tiêu ~6 AC/wave)
-vượt cap cứng mà không có `rationale` giải thích** (đếm bằng đếm heading `### AC-n` trong mỗi
-`docs/architecture/feat/{feat_id}*.md` của `features_in_scope`; file chưa tồn tại → 0, gate khác lo
-việc đó). Có `rationale` ≥20 ký tự → hạ xuống warning, không chặn — tránh ép tách một feature liên
-đới chặt chỉ để đẹp số AC. Warning (không chặn): rare combo rationale · paired_with reciprocal ·
-exit_signal coherence · test_scope coherence.
+mỗi FEAT có parent_epic · **tổng AC vượt 6/wave (implementation-plan §Phương pháp chia wave — 6 là
+ngưỡng thật để dễ triển khai, không phải số đệm) mà không có `rationale` giải thích** (đếm bằng đếm
+heading `### AC-n` trong mỗi `docs/architecture/feat/{feat_id}*.md` của `features_in_scope`; file
+chưa tồn tại → 0, gate khác lo việc đó). Có `rationale` ≥20 ký tự → hạ xuống warning, không chặn —
+tránh ép tách một feature liên đới chặt chỉ để đẹp số AC. Warning (không chặn): rare combo rationale
+· paired_with reciprocal · exit_signal coherence · test_scope coherence.
 
 CLI:
   py scripts/wave_sequence_lint.py            # lint tất cả wave
@@ -35,7 +35,7 @@ VALID_CLASSES = {"slice", "integration"}
 VALID_STRATEGIES = {"vertical", "horizontal-be", "horizontal-fe"}
 RARE_COMBOS = {("slice", "vertical"), ("integration", "horizontal-be"), ("integration", "horizontal-fe")}
 TARGET_CAP_PER_LAYER = 3
-TARGET_AC_CAP = 10          # mục tiêu ~6 AC/wave (implementation-plan skill); >10 phải có rationale
+TARGET_AC_CAP = 6           # ~6 AC/wave là ngưỡng THẬT (implementation-plan skill), không phải đệm
 RATIONALE_MIN_LEN = 20      # ngưỡng "giải thích thật" dùng chung cho rare-combo + AC-cap override
 _AC_HEADING_RE = re.compile(r"^#{2,4}\s*AC-\d+\b", re.MULTILINE)
 EXPECTED_EXIT_SIGNAL = {
@@ -228,14 +228,15 @@ def validate_wave(spec: dict, wave_id: str, root: Path) -> tuple[list[str], list
     if total_ac > TARGET_AC_CAP:
         if len(rationale) >= RATIONALE_MIN_LEN:
             warnings.append(
-                f"{wave_id}: {total_ac} AC (mục tiêu ~6, cap {TARGET_AC_CAP}) — chấp nhận vì có "
-                "rationale, nhưng cân nhắc tách"
+                f"{wave_id}: {total_ac} AC (ngưỡng {TARGET_AC_CAP}) — chấp nhận vì có rationale, "
+                "nhưng cân nhắc tách"
             )
         else:
             errors.append(
-                f"{wave_id}: {total_ac} AC vượt cap {TARGET_AC_CAP} (mục tiêu ~6 AC/wave, "
-                "implementation-plan §Phương pháp chia wave) — tách wave theo đồ thị phụ thuộc, "
-                f"hoặc thêm `rationale` (≥{RATIONALE_MIN_LEN} ký tự) giải thích vì sao giữ nguyên"
+                f"{wave_id}: {total_ac} AC vượt ngưỡng {TARGET_AC_CAP} AC/wave "
+                "(implementation-plan §Phương pháp chia wave — chia nhỏ để dễ triển khai) — "
+                f"tách wave theo đồ thị phụ thuộc, hoặc thêm `rationale` (≥{RATIONALE_MIN_LEN} ký tự) "
+                "giải thích vì sao giữ nguyên"
             )
 
     # exit_signal coherence
@@ -421,7 +422,7 @@ contracts:
         # (f) tổng AC vượt cap, KHÔNG rationale đủ dài → error
         feat_dir = root / "docs" / "architecture" / "feat"
         feat_dir.mkdir(parents=True, exist_ok=True)
-        big_feat = "\n".join(f"### AC-{i}: x" for i in range(1, 13))  # 12 AC > cap 10
+        big_feat = "\n".join(f"### AC-{i}: x" for i in range(1, 13))  # 12 AC > ngưỡng 6
         (feat_dir / "FEAT-501-big.md").write_text(f"# FEAT-501\n\n{big_feat}\n", encoding="utf-8")
         overcap = """\
 ### §wave-001
@@ -439,7 +440,7 @@ features_in_scope:
 """
         (plans / "WAVE-SEQUENCE.md").write_text(overcap, encoding="utf-8")
         ok, errs = run_lint(root)
-        assert not ok and "vượt cap" in " ".join(errs), errs
+        assert not ok and "vượt ngưỡng" in " ".join(errs), errs
 
         # (g) tổng AC vượt cap NHƯNG có rationale đủ dài → chỉ warning, KHÔNG chặn
         overcap_ok = """\

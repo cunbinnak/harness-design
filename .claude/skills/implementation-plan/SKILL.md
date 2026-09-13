@@ -36,7 +36,7 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 3. **Topological → wave** (sprint):
    - **Wave 1 = foundation mỏng** (auth/shared + 1–2 capability core) đủ chạy **E2E sớm** (login + 1 luồng nghiệp vụ chính).
    - **Wave kế** = boundary/FEAT phụ thuộc wave trước, nhóm theo lát giá trị ship được cùng nhau; ghi rõ `dependencies` từ wave trước.
-   - **Kích thước wave: đếm tổng AC của mọi FEAT trong wave, nhắm ~6 AC/wave.** Quá tải (>~8-10 AC) → cắt tiếp thành 2 wave con theo cùng đồ thị phụ thuộc (đừng nhét cố cho gọn số wave) — wave nhiều AC là wave dev làm nửa chừng dễ bỏ sót, review khó soi hết, dogfood khó phủ. Ít AC quá (1-2) cũng không cần tách — không phải luật cứng, chỉ là ngưỡng cân bằng giữa "gọn để soi hết" và "đủ giá trị để ship".
+   - **Kích thước wave: đếm tổng AC của mọi FEAT trong wave, ngưỡng THẬT là 6 AC/wave — chia nhỏ để dễ triển khai, không phải số đệm.** `>6 AC` mà không giải thích được → **gate `wave_sequence_lint` chặn cứng `/domain`** ở chốt chia-wave (đếm heading `### AC-n` trong từng FEAT file). Cắt tiếp thành wave con theo cùng đồ thị phụ thuộc, đừng nhét cố cho gọn số wave — wave nhiều AC là wave dev làm nửa chừng dễ bỏ sót, review khó soi hết, dogfood khó phủ. Feature liên đới chặt không tách được → điền `rationale` (≥20 ký tự) trong YAML block của wave, hạ xuống chỉ cảnh báo. Ít AC quá (1-2) không cần tách.
    - Lặp tới khi **mọi** boundary/FEAT đã vào 1 wave.
 4. **Viết wave-{N}.md cho mọi wave** (theo `TEMPLATE.wave.md`).
 5. **Materialize MATRIX** (mỗi boundary: `wave` + `features[]` + `ref_skills[]` + `depends_on`) + **KG skeleton** per boundary.
@@ -54,7 +54,7 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 - [ ] Mỗi wave có goal + boundaries + features + **dependencies từ wave trước** + exit criteria.
 - [ ] **MỌI wave điền đủ `wave_class` + `wave_strategy` + `targets` + §2 block YAML** (gate `wave_sequence_lint` parse: enum + `target_count_per_layer ≤ 3` + strategy layer-purity + vertical `parent_epic` + `inherited_active` file tồn tại — sai field này chặn `/domain`).
 - [ ] Wave 1 mỏng, chạy được **E2E** (foundation + 1 lát core).
-- [ ] Mỗi wave ~6 AC (tổng AC mọi FEAT trong wave) — wave nào vượt hẳn ngưỡng này mà không tách thì ghi rõ lý do (vd AC nhỏ/liên đới chặt, tách sẽ phá tính năng dở dang).
+- [ ] Mỗi wave ≤6 AC (tổng AC mọi FEAT trong wave) — **gate thật (`wave_sequence_lint`), không phải khuyến nghị**. Vượt mà không tách được → điền `rationale` trong YAML block, không để trống.
 - [ ] **Deferred-scope khai báo tường minh**: AC/feature chủ động hoãn sang wave sau (auth/idempotency/event ở wave CRUD…) ghi vào `## 6 → Deferred to later waves` của `wave-{N}.md` (token `FEAT-NNN[:AC-M]`/`BR-NNN`). Đây là SoT để test-plan tag `@deferred` → test-execute skip → end-wave close sạch (không cần ép `test_result`).
 - [ ] MATRIX mỗi boundary đủ `kind/prefix/tech/wave/features/depends_on`; `ref_skills[]` suy từ design (event/cache/extra → ref tương ứng; CRUD thuần để rỗng); KG skeleton mọi boundary.
 - [ ] **Không có `TBD` / section trống mơ hồ** — chỗ chưa chốt ghi `Open question` (cần ai quyết + vì sao).
