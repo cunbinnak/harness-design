@@ -9,7 +9,11 @@ Port từ ZIP `{{PROJECT-CODE}}-ADLC-DISCOVERY/scripts/wave-sequence-validate.py
 
 Hard invariants (error → chặn plan): wave_class/wave_strategy enum · target_count_per_layer ≤ 3 ·
 strategy layer-purity (horizontal-be cấm FE target; horizontal-fe cấm boundary target) · vertical →
-mỗi FEAT có parent_epic. Warning (không chặn): rare combo rationale · paired_with reciprocal ·
+mỗi FEAT có parent_epic · **tổng AC (implementation-plan §Phương pháp chia wave: mục tiêu ~6 AC/wave)
+vượt cap cứng mà không có `rationale` giải thích** (đếm bằng đếm heading `### AC-n` trong mỗi
+`docs/architecture/feat/{feat_id}*.md` của `features_in_scope`; file chưa tồn tại → 0, gate khác lo
+việc đó). Có `rationale` ≥20 ký tự → hạ xuống warning, không chặn — tránh ép tách một feature liên
+đới chặt chỉ để đẹp số AC. Warning (không chặn): rare combo rationale · paired_with reciprocal ·
 exit_signal coherence · test_scope coherence.
 
 CLI:
@@ -31,6 +35,9 @@ VALID_CLASSES = {"slice", "integration"}
 VALID_STRATEGIES = {"vertical", "horizontal-be", "horizontal-fe"}
 RARE_COMBOS = {("slice", "vertical"), ("integration", "horizontal-be"), ("integration", "horizontal-fe")}
 TARGET_CAP_PER_LAYER = 3
+TARGET_AC_CAP = 10          # mục tiêu ~6 AC/wave (implementation-plan skill); >10 phải có rationale
+RATIONALE_MIN_LEN = 20      # ngưỡng "giải thích thật" dùng chung cho rare-combo + AC-cap override
+_AC_HEADING_RE = re.compile(r"^#{2,4}\s*AC-\d+\b", re.MULTILINE)
 EXPECTED_EXIT_SIGNAL = {
     "vertical": "demo_target",
     "horizontal-be": "bd_increment_milestone",
@@ -142,6 +149,17 @@ def _parse_value(v: str) -> Any:
     return v
 
 
+def _count_ac(root: Path, feat_id: str) -> int:
+    """Đếm heading `### AC-n` trong file FEAT tương ứng. File chưa tồn tại → 0 (gate khác lo việc
+    FEAT có tồn tại hay không — linter này chỉ cộng dồn cái đã đọc được, không đoán, không chặn
+    vì lý do không phải của nó)."""
+    matches = sorted((root / "docs" / "architecture" / "feat").glob(f"{feat_id}*.md"))
+    if not matches:
+        return 0
+    text = matches[0].read_text(encoding="utf-8", errors="ignore")
+    return len(_AC_HEADING_RE.findall(text))
+
+
 # ----------------------------------------------------------------- validate
 
 def validate_wave(spec: dict, wave_id: str, root: Path) -> tuple[list[str], list[str]]:
@@ -197,9 +215,28 @@ def validate_wave(spec: dict, wave_id: str, root: Path) -> tuple[list[str], list
                 warnings.append(f"{wave_id}: vertical FEAT {f.get('feat_id','?')} paired_with={p!r} không ở features_in_scope (có thể wave khác — verify)")
 
     # rare combo
+    rationale = str(spec.get("rationale", "")).strip()
     if (wave_class, wave_strategy) in RARE_COMBOS:
-        if len(str(spec.get("rationale", "")).strip()) < 20:
+        if len(rationale) < RATIONALE_MIN_LEN:
             warnings.append(f"{wave_id}: rare combo ({wave_class},{wave_strategy}) — rationale phải giải thích rõ")
+
+    # AC count per wave — mục tiêu ~6 AC/wave; đếm dedupe theo feat_id (1 FEAT có thể xuất hiện
+    # nhiều dòng nếu paired_with liệt kê cả 2 phía, không cộng đôi).
+    total_ac = 0
+    for fid in {str(f.get("feat_id")) for f in feats if f.get("feat_id")}:
+        total_ac += _count_ac(root, fid)
+    if total_ac > TARGET_AC_CAP:
+        if len(rationale) >= RATIONALE_MIN_LEN:
+            warnings.append(
+                f"{wave_id}: {total_ac} AC (mục tiêu ~6, cap {TARGET_AC_CAP}) — chấp nhận vì có "
+                "rationale, nhưng cân nhắc tách"
+            )
+        else:
+            errors.append(
+                f"{wave_id}: {total_ac} AC vượt cap {TARGET_AC_CAP} (mục tiêu ~6 AC/wave, "
+                "implementation-plan §Phương pháp chia wave) — tách wave theo đồ thị phụ thuộc, "
+                f"hoặc thêm `rationale` (≥{RATIONALE_MIN_LEN} ký tự) giải thích vì sao giữ nguyên"
+            )
 
     # exit_signal coherence
     exit_type = (spec.get("exit_signal") or {}).get("type", "")
@@ -221,26 +258,34 @@ def validate_wave(spec: dict, wave_id: str, root: Path) -> tuple[list[str], list
     return errors, warnings
 
 
-def run_lint(root: Path | None = None) -> tuple[bool, list[str]]:
-    """Gate entry: (ok, errors). WARNING không chặn. File thiếu → ok (plan_gate lo)."""
+def run_lint_full(root: Path | None = None) -> tuple[bool, list[str], list[str]]:
+    """Gate entry đầy đủ: (ok, errors, warnings). WARNING không chặn. File thiếu → ok (plan_gate lo)."""
     root = root or REPO_ROOT
     seq = root / "docs" / "plans" / "WAVE-SEQUENCE.md"
     if not seq.is_file():
-        return True, []  # plan_gate file_exists đã chặn
+        return True, [], []  # plan_gate file_exists đã chặn
     content = seq.read_text(encoding="utf-8", errors="ignore")
     waves = list_waves(content)
     if not waves:
-        return False, ["WAVE-SEQUENCE.md không có §wave-NNN YAML block — không lint được strategy/target/cap"]
+        return False, ["WAVE-SEQUENCE.md không có §wave-NNN YAML block — không lint được strategy/target/cap"], []
     all_errors: list[str] = []
+    all_warnings: list[str] = []
     for wid in waves:
         block = extract_wave_yaml(content, wid)
         if block is None:
             all_errors.append(f"{wid}: thiếu YAML block trong section §{wid}")
             continue
         spec = parse_yaml_block(block)
-        errs, _ = validate_wave(spec, wid, root)
+        errs, warns = validate_wave(spec, wid, root)
         all_errors.extend(errs)
-    return (not all_errors), all_errors
+        all_warnings.extend(warns)
+    return (not all_errors), all_errors, all_warnings
+
+
+def run_lint(root: Path | None = None) -> tuple[bool, list[str]]:
+    """Gate entry: (ok, errors) — chữ ký cũ cho `gates.py`. Warnings xem `run_lint_full`/CLI."""
+    ok, errors, _ = run_lint_full(root)
+    return ok, errors
 
 
 # ----------------------------------------------------------------- selftest
@@ -373,6 +418,51 @@ contracts:
         ok, errs = run_lint(root)
         assert not ok and "không có §wave" in " ".join(errs), errs
 
+        # (f) tổng AC vượt cap, KHÔNG rationale đủ dài → error
+        feat_dir = root / "docs" / "architecture" / "feat"
+        feat_dir.mkdir(parents=True, exist_ok=True)
+        big_feat = "\n".join(f"### AC-{i}: x" for i in range(1, 13))  # 12 AC > cap 10
+        (feat_dir / "FEAT-501-big.md").write_text(f"# FEAT-501\n\n{big_feat}\n", encoding="utf-8")
+        overcap = """\
+### §wave-001
+```yaml
+wave_class: slice
+wave_strategy: horizontal-be
+targets:
+  boundaries: ["b"]
+  web_experiences: []
+  mobile_experiences: []
+features_in_scope:
+  - feat_id: FEAT-501
+    target: boundaries/b
+```
+"""
+        (plans / "WAVE-SEQUENCE.md").write_text(overcap, encoding="utf-8")
+        ok, errs = run_lint(root)
+        assert not ok and "vượt cap" in " ".join(errs), errs
+
+        # (g) tổng AC vượt cap NHƯNG có rationale đủ dài → chỉ warning, KHÔNG chặn
+        overcap_ok = """\
+### §wave-001
+```yaml
+wave_class: slice
+wave_strategy: horizontal-be
+rationale: |
+  Feature nay co nhieu AC lien doi chat, tach ra se pha luong nghiep vu dang do dang, giu nguyen.
+targets:
+  boundaries: ["b"]
+  web_experiences: []
+  mobile_experiences: []
+features_in_scope:
+  - feat_id: FEAT-501
+    target: boundaries/b
+```
+"""
+        (plans / "WAVE-SEQUENCE.md").write_text(overcap_ok, encoding="utf-8")
+        ok, errs, warns = run_lint_full(root)
+        assert ok, errs
+        assert any("AC" in w for w in warns), warns
+
         # (e) file thiếu → ok (plan_gate lo)
         (plans / "WAVE-SEQUENCE.md").unlink()
         assert run_lint(root) == (True, [])
@@ -395,7 +485,11 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.selftest:
         return _selftest()
-    ok, errs = run_lint()
+    ok, errs, warns = run_lint_full()
+    if warns:
+        print("Cảnh báo wave-sequence-lint (không chặn):")
+        for w in warns:
+            print(f"  - {w}")
     if ok:
         print("OK: WAVE-SEQUENCE.md hợp lệ (wave-sequence-lint)")
         return 0
