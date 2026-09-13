@@ -47,6 +47,7 @@ def normalize_boundary(b: dict) -> dict:
         "purpose": b.get("purpose", ""),
         "wave": int(b.get("wave", 1)),
         "features": list(b.get("features", [])),
+        "features_by_wave": dict(b.get("features_by_wave", {})) if b.get("features_by_wave") else {},
         "ref_skills": list(b.get("ref_skills", [])),
         "tech": b.get("tech", {}),
         "depends_on": list(b.get("depends_on", [])),
@@ -77,6 +78,27 @@ def validate_boundaries(boundaries: list[dict]) -> list[str]:
         feats = b.get("features", [])
         if not isinstance(feats, list) or any(not isinstance(f, str) for f in feats):
             errors.append(f"{where}: features phải là list[str]")
+        fbw = b.get("features_by_wave")
+        if fbw:
+            # Optional — CHỈ cần khi boundary sống qua NHIỀU wave (khác `features` cùng wave lặp
+            # lại cho mọi wave nó khớp — bug đã vá ở state.py wave_features_from_matrix). Không
+            # khai thì giữ hành vi cũ (đọc `features` phẳng); khai thì phải đúng: dict[str,
+            # list[str]], mọi feat_id nêu ra phải nằm trong `features` (backlog) — feat lạ không
+            # khai ở `features` là gõ nhầm, không phải case hợp lệ.
+            if not isinstance(fbw, dict):
+                errors.append(f"{where}: features_by_wave phải là dict[str, list[str]]")
+            else:
+                feats_set = set(feats) if isinstance(feats, list) else set()
+                for wk, wv in fbw.items():
+                    if not isinstance(wk, str) or not isinstance(wv, list) or any(not isinstance(f, str) for f in wv):
+                        errors.append(f"{where}: features_by_wave[{wk!r}] phải là list[str]")
+                        continue
+                    unknown = [f for f in wv if f not in feats_set]
+                    if unknown:
+                        errors.append(
+                            f"{where}: features_by_wave[{wk!r}] có feat không nằm trong `features`: {unknown} "
+                            "(gõ nhầm, hoặc quên thêm vào backlog `features`)"
+                        )
         refs = b.get("ref_skills", [])
         if not isinstance(refs, list) or any(not isinstance(r, str) for r in refs):
             errors.append(f"{where}: ref_skills phải là list[str]")
@@ -201,6 +223,27 @@ def _selftest() -> int:
     assert any("features" in e for e in validate_boundaries([
         {"boundary_id": "a", "kind": "backend", "prefix": "x", "features": "nope"},
     ]))
+    # features_by_wave: optional, tương thích ngược (thiếu → {}); hợp lệ khi feat thuộc `features`
+    nb2 = normalize_boundary({"boundary_id": "a", "kind": "backend", "prefix": "x"})
+    assert nb2["features_by_wave"] == {}, nb2
+    nb3 = normalize_boundary({
+        "boundary_id": "a", "kind": "backend", "prefix": "x",
+        "features": ["FEAT-1", "FEAT-2"], "features_by_wave": {"1": ["FEAT-1"], "2": ["FEAT-2"]},
+    })
+    assert nb3["features_by_wave"] == {"1": ["FEAT-1"], "2": ["FEAT-2"]}, nb3
+    assert validate_boundaries([{
+        "boundary_id": "a", "kind": "backend", "prefix": "x",
+        "features": ["FEAT-1"], "features_by_wave": {"1": ["FEAT-1"]},
+    }]) == []
+    # feat trong features_by_wave nhưng KHÔNG có trong `features` (backlog) → lỗi rõ ràng
+    assert any("không nằm trong `features`" in e for e in validate_boundaries([{
+        "boundary_id": "a", "kind": "backend", "prefix": "x",
+        "features": ["FEAT-1"], "features_by_wave": {"1": ["FEAT-1"], "2": ["FEAT-GHOST"]},
+    }]))
+    assert any("features_by_wave" in e for e in validate_boundaries([{
+        "boundary_id": "a", "kind": "backend", "prefix": "x",
+        "features": ["FEAT-1"], "features_by_wave": "nope",
+    }]))
     # ref_skills: whitelist survives + bad type rejected
     nb2 = normalize_boundary({"boundary_id": "a", "kind": "backend", "prefix": "x", "ref_skills": ["ref-sample"]})
     assert nb2["ref_skills"] == ["ref-sample"], nb2

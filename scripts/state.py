@@ -265,16 +265,94 @@ def wave_features_from_matrix(wave_n: int) -> list[str]:
 
     Single source of truth = MATRIX[boundaries].features. Mirrors
     wave_boundaries_from_matrix so STATE.wave_features can't drift from the plan.
+
+    BUG THẬT ĐÃ VÁ (dogfood HRM): một boundary sống qua NHIỀU wave (rất phổ biến — boundary
+    không đổi, chỉ thêm feature theo từng wave) trước đây trả về TOÀN BỘ `features[]` cho MỌI
+    wave nó khớp — boundary `wave=1` có `features` gồm cả FEAT của wave 2/3 (kế hoạch đã ghi rõ
+    "Deferred to later waves") vẫn bị coi là feature CỦA WAVE 1, vì hàm không phân biệt được
+    "feature này thuộc wave nào" trong một list phẳng. Hệ quả thật: dev/test-plan-agent code +
+    sinh test cho FEAT chưa tới lượt, review/test không soi kịp vì coi là hợp lệ.
+
+    Fix: field TUỲ CHỌN `features_by_wave` = {"<wave_n>": [feat_id,...]} trên boundary. Có field
+    này → dùng ĐÚNG key wave_n (thiếu key = rỗng cho wave đó, KHÔNG fallback sang `features` —
+    đã khai per-wave thì phải khai đủ, im lặng fallback lại tái tạo đúng bug này). KHÔNG có field
+    này (boundary chỉ sống 1 wave, ca phổ biến nhất) → giữ nguyên hành vi cũ (đọc `features` phẳng)
+    — tương thích ngược 100%, project cũ không cần sửa gì.
     """
     out: list[str] = []
     seen: set[str] = set()
+    key = str(wave_n)
     for b in _load_matrix_boundaries():
-        if b.get("wave") == wave_n or wave_n in (b.get("waves") or []):
-            for feat in (b.get("features") or []):
-                if feat not in seen:
-                    seen.add(feat)
-                    out.append(feat)
+        if not (b.get("wave") == wave_n or wave_n in (b.get("waves") or [])):
+            continue
+        by_wave = b.get("features_by_wave")
+        feats = (by_wave or {}).get(key, []) if by_wave else (b.get("features") or [])
+        for feat in feats:
+            if feat not in seen:
+                seen.add(feat)
+                out.append(feat)
     return out
+
+
+def _selftest() -> int:
+    """Unit test wave_features_from_matrix / wave_boundaries_from_matrix trên MATRIX tạm.
+
+    `_load_matrix_boundaries()` đọc từ global `MATRIX_FILE` (bind 1 lần lúc import) — patch
+    thẳng biến đó, không patch `REPO_ROOT` (đổi `REPO_ROOT` sau import không tự cập nhật
+    `MATRIX_FILE` đã bind trước đó)."""
+    import tempfile
+
+    global MATRIX_FILE
+    orig_matrix_file = MATRIX_FILE
+    tmp = Path(tempfile.mkdtemp(prefix="state_wf_"))
+    try:
+        MATRIX_FILE = tmp / "SERVICE-BOUNDARY-MATRIX.json"
+
+        # (a) tương thích ngược: boundary 1-wave, features phẳng — hành vi CŨ giữ nguyên
+        matrix = {"boundaries": [
+            {"boundary_id": "auth", "kind": "backend", "wave": 1, "features": ["FEAT-1", "FEAT-2"]},
+        ]}
+        MATRIX_FILE.write_text(json.dumps(matrix), encoding="utf-8")
+        assert wave_features_from_matrix(1) == ["FEAT-1", "FEAT-2"]
+        assert wave_boundaries_from_matrix(1) == ["auth"]
+
+        # (b) BUG THẬT: boundary sống qua nhiều wave (waves=[1,2]), features phẳng gồm CẢ hai
+        # wave — hành vi cũ (chưa vá) sẽ trả cả FEAT-2 cho wave 1 lẫn wave 2 (leak). Đây là ca
+        # PHẢI dùng features_by_wave để tách đúng.
+        matrix = {"boundaries": [
+            {"boundary_id": "core", "kind": "backend", "waves": [1, 2],
+             "features": ["FEAT-1", "FEAT-2", "FEAT-3"],
+             "features_by_wave": {"1": ["FEAT-1"], "2": ["FEAT-2", "FEAT-3"]}},
+        ]}
+        MATRIX_FILE.write_text(json.dumps(matrix), encoding="utf-8")
+        assert wave_features_from_matrix(1) == ["FEAT-1"], wave_features_from_matrix(1)
+        assert wave_features_from_matrix(2) == ["FEAT-2", "FEAT-3"], wave_features_from_matrix(2)
+        assert wave_boundaries_from_matrix(1) == ["core"]
+        assert wave_boundaries_from_matrix(2) == ["core"]
+
+        # (c) features_by_wave khai nhưng THIẾU key cho wave đang hỏi → rỗng, KHÔNG fallback
+        # sang `features` phẳng (fallback ngầm tái tạo đúng bug leak vừa vá).
+        matrix = {"boundaries": [
+            {"boundary_id": "core", "kind": "backend", "waves": [1, 3],
+             "features": ["FEAT-1", "FEAT-9"],
+             "features_by_wave": {"1": ["FEAT-1"]}},  # thiếu key "3"
+        ]}
+        MATRIX_FILE.write_text(json.dumps(matrix), encoding="utf-8")
+        assert wave_features_from_matrix(3) == [], wave_features_from_matrix(3)
+
+        # (d) dedupe khi 2 boundary cùng wave đều đóng góp
+        matrix = {"boundaries": [
+            {"boundary_id": "core", "kind": "backend", "wave": 1, "features": ["FEAT-1"]},
+            {"boundary_id": "web", "kind": "web", "wave": 1, "features": ["FEAT-1", "FEAT-2"]},
+        ]}
+        MATRIX_FILE.write_text(json.dumps(matrix), encoding="utf-8")
+        assert wave_features_from_matrix(1) == ["FEAT-1", "FEAT-2"], wave_features_from_matrix(1)
+    finally:
+        MATRIX_FILE = orig_matrix_file
+        import shutil
+        shutil.rmtree(tmp, ignore_errors=True)
+    print("OK: state.py selftest passed (wave_features_from_matrix / features_by_wave)")
+    return 0
 
 
 def _append_decision(ref: str, rationale: str) -> None:
@@ -467,6 +545,7 @@ USAGE = """Usage:
   py scripts/state.py validate
   py scripts/state.py can <command>
   py scripts/state.py complete <command> '<evidence-json>'
+  py scripts/state.py --selftest
 """
 
 
@@ -516,6 +595,9 @@ def main(argv: list[str] | None = None) -> int:
     if not argv:
         print(USAGE)
         return 64
+
+    if argv[0] == "--selftest":
+        return _selftest()
 
     cmd = argv[0]
 
