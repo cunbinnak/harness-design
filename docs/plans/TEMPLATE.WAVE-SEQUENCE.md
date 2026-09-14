@@ -6,6 +6,11 @@ version: 1.0
 tier: T2
 owner: program-planner
 last_reviewed: "{{DATE}}"
+# Ngưỡng tổng AC mỗi wave cho PROJECT NÀY (gate `wave_sequence_lint` đếm heading `### AC-n` trong
+# FEAT của `features_in_scope`). Không khai → mặc định 6. Trần cứng = 2× ngưỡng: vượt trần thì
+# `rationale` KHÔNG override được, buộc chia nhỏ thật. Chọn theo quy mô: project vừa để 6; project
+# lớn (vài trăm AC) để 10-15, vì mỗi wave là một vòng đầy đủ dev→review→handoff→test→dogfood.
+ac_cap_per_wave: 6
 ---
 
 > Điền NGẮN GỌN: ưu tiên bảng/bullet, không văn xuôi thừa, không lặp. Doc này agent downstream đọc nhiều lần — tiết kiệm context.

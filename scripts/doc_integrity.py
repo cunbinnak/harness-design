@@ -61,8 +61,13 @@ LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
 GATE_SUFFIX = ("_proof", "_gate", "_present", "_passed", "_compat", "_decided",
                "_scope", "_stamped", "_jargon", "_parity", "_styling", "_compliance",
                "_coherence", "_transport")
-# Field của RETURN SCHEMA / evidence — trông giống tên gate nhưng không phải.
-NOT_GATES = {"open_findings", "files_changed", "needs_review", "test_result", "review_result"}
+# Field của RETURN SCHEMA / evidence / schema YAML — trông giống tên gate nhưng không phải.
+# `features_in_scope`: field trong block YAML `§wave-NNN` của WAVE-SEQUENCE.md (dính `_scope` trong
+# GATE_SUFFIX). Dương tính giả CÓ SẴN, không phải do ai vừa thêm — các lần xuất hiện cũ không khớp
+# mẫu quét (nằm trong khối YAML, hoặc dạng có hậu tố `features_in_scope[].target`), nên chưa từng
+# nổ; lần đầu ai đó viết nó dạng bare backtick trong văn xuôi là lộ.
+NOT_GATES = {"open_findings", "files_changed", "needs_review", "test_result", "review_result",
+             "features_in_scope"}
 
 
 SELF = Path(__file__).name

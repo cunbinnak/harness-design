@@ -167,9 +167,43 @@ def _count_ac(root: Path, feat_id: str) -> int:
 
 # ----------------------------------------------------------------- validate
 
-def validate_wave(spec: dict, wave_id: str, root: Path) -> tuple[list[str], list[str]]:
+_FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---", re.DOTALL)
+_AC_CAP_RE = re.compile(r"^\s*ac_cap_per_wave\s*:\s*(\d+)\s*$", re.MULTILINE)
+
+
+def project_ac_cap(content: str) -> tuple[int, str]:
+    """Ngưỡng AC/wave của PROJECT NÀY: frontmatter `ac_cap_per_wave` của WAVE-SEQUENCE.md.
+
+    VÌ SAO CẤU HÌNH ĐƯỢC: ngưỡng hợp lý phụ thuộc quy mô. 6 AC/wave đúng cho project vừa; với
+    project lớn (vd HRM: 40 FEAT / 275 AC) thì 6 ép ra ~45 wave, mà mỗi wave là một vòng đầy đủ
+    (dev → review 2 lượt → dựng Docker → sinh test → chạy test → dogfood 6 vai × 2 đợt) — chi phí
+    vận hành nuốt hết thời gian làm việc thật. Hardcode số của một project vào khung thì project
+    sau lại sai kiểu khác, nên để project tự khai, khung giữ mặc định 6.
+
+    Đặt ở frontmatter WAVE-SEQUENCE.md (không đẻ file config mới): value nằm ngay cạnh thứ nó chi
+    phối, ai đọc kế hoạch là thấy, và linter vốn đã đọc file này rồi.
+
+    Trả `(cap, nguồn)` — `nguồn` đi vào thông báo lỗi để "quên khai" hiện ra thay vì im lặng lấy
+    mặc định.
+    """
+    m = _FRONTMATTER_RE.match(content)
+    if m:
+        c = _AC_CAP_RE.search(m.group(1))
+        if c and int(c.group(1)) > 0:
+            return int(c.group(1)), "khai ở frontmatter WAVE-SEQUENCE.md"
+    return TARGET_AC_CAP, "MẶC ĐỊNH — chưa khai `ac_cap_per_wave` ở frontmatter WAVE-SEQUENCE.md"
+
+
+def validate_wave(
+    spec: dict,
+    wave_id: str,
+    root: Path,
+    ac_cap: int = TARGET_AC_CAP,
+    cap_src: str = "mặc định",
+) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
+    ac_ceiling = ac_cap * 2   # trần cứng luôn là 2× ngưỡng — rationale không override qua mức này
     wave_class = str(spec.get("wave_class", "")).strip()
     wave_strategy = str(spec.get("wave_strategy", "")).strip()
     targets = spec.get("targets") or {}
@@ -230,24 +264,24 @@ def validate_wave(spec: dict, wave_id: str, root: Path) -> tuple[list[str], list
     total_ac = 0
     for fid in {str(f.get("feat_id")) for f in feats if f.get("feat_id")}:
         total_ac += _count_ac(root, fid)
-    if total_ac > TARGET_AC_HARD_CEILING:
+    if total_ac > ac_ceiling:
         # Vượt xa (>2× cap) — KHÔNG có rationale nào cứu được. "Phụ thuộc dây chuyền" là lý do để
         # chia NHIỀU wave nối tiếp theo đúng thứ tự (A → B → C), không phải lý do nhét chung 1 wave.
         errors.append(
-            f"{wave_id}: {total_ac} AC vượt xa ngưỡng {TARGET_AC_CAP} AC/wave (>{TARGET_AC_HARD_CEILING}"
-            " — rationale KHÔNG override được mức này) — chia thành NHIỀU wave nối tiếp theo đúng "
-            "thứ tự phụ thuộc (A cần B cần C → wave(A) → wave(B) → wave(C)), không phải giữ chung 1 wave"
+            f"{wave_id}: {total_ac} AC vượt xa ngưỡng {ac_cap} AC/wave ({cap_src}) — >{ac_ceiling} thì "
+            "rationale KHÔNG override được — chia thành NHIỀU wave nối tiếp theo đúng thứ tự phụ "
+            "thuộc (A cần B cần C → wave(A) → wave(B) → wave(C)), không phải giữ chung 1 wave"
         )
-    elif total_ac > TARGET_AC_CAP:
+    elif total_ac > ac_cap:
         if len(rationale) >= RATIONALE_MIN_LEN:
             warnings.append(
-                f"{wave_id}: {total_ac} AC (ngưỡng {TARGET_AC_CAP}) — chấp nhận vì có rationale, "
+                f"{wave_id}: {total_ac} AC (ngưỡng {ac_cap} — {cap_src}) — chấp nhận vì có rationale, "
                 "nhưng cân nhắc tách"
             )
         else:
             errors.append(
-                f"{wave_id}: {total_ac} AC vượt ngưỡng {TARGET_AC_CAP} AC/wave "
-                "(implementation-plan §Phương pháp chia wave — chia nhỏ để dễ triển khai) — "
+                f"{wave_id}: {total_ac} AC vượt ngưỡng {ac_cap} AC/wave ({cap_src}; "
+                "implementation-plan §Phương pháp chia wave — chia nhỏ để dễ triển khai) — "
                 f"tách wave theo đồ thị phụ thuộc, hoặc thêm `rationale` (≥{RATIONALE_MIN_LEN} ký tự) "
                 "giải thích vì sao giữ nguyên"
             )
@@ -284,13 +318,14 @@ def run_lint_full(root: Path | None = None) -> tuple[bool, list[str], list[str]]
         return False, ["WAVE-SEQUENCE.md không có §wave-NNN YAML block — không lint được strategy/target/cap"], []
     all_errors: list[str] = []
     all_warnings: list[str] = []
+    ac_cap, cap_src = project_ac_cap(content)   # ngưỡng AC/wave theo project (frontmatter), mặc định 6
     for wid in waves:
         block = extract_wave_yaml(content, wid)
         if block is None:
             all_errors.append(f"{wid}: thiếu YAML block trong section §{wid}")
             continue
         spec = parse_yaml_block(block)
-        errs, warns = validate_wave(spec, wid, root)
+        errs, warns = validate_wave(spec, wid, root, ac_cap, cap_src)
         all_errors.extend(errs)
         all_warnings.extend(warns)
     return (not all_errors), all_errors, all_warnings
@@ -501,6 +536,49 @@ features_in_scope:
         (plans / "WAVE-SEQUENCE.md").write_text(way_overcap, encoding="utf-8")
         ok, errs = run_lint(root)
         assert not ok and "vượt xa" in " ".join(errs) and "KHÔNG override" in " ".join(errs), errs
+
+        # (i) ngưỡng CẤU HÌNH ĐƯỢC theo project: frontmatter `ac_cap_per_wave`
+        cap_dec, src_dec = project_ac_cap("---\ntype: plan\nac_cap_per_wave: 10\n---\n# x")
+        assert cap_dec == 10 and "frontmatter" in src_dec, (cap_dec, src_dec)
+        cap_def, src_def = project_ac_cap("---\ntype: plan\n---\n# x")
+        assert cap_def == TARGET_AC_CAP and "MẶC ĐỊNH" in src_def, (cap_def, src_def)
+        assert project_ac_cap("khong co frontmatter")[0] == TARGET_AC_CAP
+
+        # FEAT-501 = 12 AC. Cap mặc định 6 → error (ca f). Cap khai 10 + rationale → chỉ warning
+        # (12 ≤ trần 2×10=20), chứng minh field frontmatter THẬT SỰ được dùng chứ không chỉ khai cho đẹp.
+        fm_cap10 = """\
+---
+type: plan
+ac_cap_per_wave: 10
+---
+
+### §wave-001
+```yaml
+wave_class: slice
+wave_strategy: horizontal-be
+rationale: |
+  Feature lien doi chat, da can nhac tach nhung tach ra se pha luong nghiep vu dang do dang.
+targets:
+  boundaries: ["b"]
+  web_experiences: []
+  mobile_experiences: []
+features_in_scope:
+  - feat_id: FEAT-501
+    target: boundaries/b
+```
+"""
+        (plans / "WAVE-SEQUENCE.md").write_text(fm_cap10, encoding="utf-8")
+        ok, errs, warns = run_lint_full(root)
+        assert ok, errs
+        assert any("ngưỡng 10" in w for w in warns), warns
+
+        # (j) cùng cap 10 nhưng 21 AC (>2×10) → chặn cứng, rationale dài cũng không cứu
+        huge21 = "\n".join(f"### AC-{i}: x" for i in range(1, 22))
+        (feat_dir / "FEAT-902-21ac.md").write_text(f"# FEAT-902\n\n{huge21}\n", encoding="utf-8")
+        (plans / "WAVE-SEQUENCE.md").write_text(fm_cap10.replace("FEAT-501", "FEAT-902"), encoding="utf-8")
+        ok, errs = run_lint(root)
+        _j = " ".join(errs)
+        assert not ok and "vượt xa" in _j and "ngưỡng 10" in _j, errs
 
         # (e) file thiếu → ok (plan_gate lo)
         (plans / "WAVE-SEQUENCE.md").unlink()
