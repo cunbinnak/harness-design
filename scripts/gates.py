@@ -442,6 +442,15 @@ def check_wave_in_matrix(evidence: dict, field: str = "wave_n", root: Path | Non
             waves.add(b.get("wave"))
         for w in (b.get("waves") or []):
             waves.add(w)
+        # `features_by_wave` là SoT thật cho boundary sống qua NHIỀU wave — `wave` chỉ còn nghĩa
+        # "wave đầu tiên boundary xuất hiện", và materialize_matrix KHÔNG bao giờ sinh `waves`.
+        # Thiếu nhánh này: `start-wave` cho wave ≥2 luôn fail "không có boundary nào" dù MATRIX
+        # đã khai đủ. Port ngược từ HRM (bắt được khi start-wave 2 thật).
+        for wk in (b.get("features_by_wave") or {}):
+            try:
+                waves.add(int(wk))
+            except (TypeError, ValueError):
+                pass
     if wave_n in waves:
         return True, ""
     return False, f"wave {wave_n} không có boundary nào trong MATRIX (waves có sẵn: {sorted(waves)})"
@@ -4471,6 +4480,23 @@ def _selftest() -> int:
 
     # wave_sequence_lint (G16): wiring + force-bypass (logic test đầy đủ ở wave_sequence_lint._selftest)
     assert check_wave_sequence_lint({"force": True}) == (True, "")
+
+    # check_wave_in_matrix đọc `features_by_wave`: boundary `wave: 1` (đúng hình dạng
+    # materialize_matrix sinh ra — KHÔNG có `waves`) khai FEAT cho wave 2 → wave 2 phải mở được.
+    import tempfile as _tf, shutil as _sh
+    _wm_root = Path(_tf.mkdtemp(prefix="wim_"))
+    try:
+        (_wm_root / "harness").mkdir(parents=True, exist_ok=True)
+        (_wm_root / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(json.dumps({"boundaries": [
+            {"boundary_id": "core", "wave": 1, "features": ["F1", "F2"],
+             "features_by_wave": {"1": ["F1"], "2": ["F2"]}},
+        ]}), encoding="utf-8")
+        assert check_wave_in_matrix({"wave_n": 1}, root=_wm_root)[0] is True
+        assert check_wave_in_matrix({"wave_n": 2}, root=_wm_root)[0] is True, \
+            check_wave_in_matrix({"wave_n": 2}, root=_wm_root)
+        assert check_wave_in_matrix({"wave_n": 3}, root=_wm_root)[0] is False   # không khai → không mở
+    finally:
+        _sh.rmtree(_wm_root, ignore_errors=True)
     assert isinstance(check_wave_sequence_lint()[0], bool)
     import wave_sequence_lint as _wsl
     assert _wsl._selftest() == 0

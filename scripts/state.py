@@ -266,7 +266,11 @@ def wave_boundaries_from_matrix(wave_n: int) -> list[str]:
         bid = b.get("boundary_id") or b.get("id")
         if not bid:
             continue
-        if b.get("wave") == wave_n or wave_n in (b.get("waves") or []):
+        # `features_by_wave` là SoT thật cho boundary sống qua NHIỀU wave; `wave` chỉ còn nghĩa
+        # "wave đầu tiên boundary xuất hiện" (materialize_matrix KHÔNG bao giờ sinh `waves`). Thiếu
+        # nhánh này thì start-dev ở wave ≥2 thấy `wave_boundaries=[]`. Port ngược từ HRM.
+        if (b.get("wave") == wave_n or wave_n in (b.get("waves") or [])
+                or str(wave_n) in (b.get("features_by_wave") or {})):
             out.append(bid)
     return out
 
@@ -294,9 +298,16 @@ def wave_features_from_matrix(wave_n: int) -> list[str]:
     seen: set[str] = set()
     key = str(wave_n)
     for b in _load_matrix_boundaries():
-        if not (b.get("wave") == wave_n or wave_n in (b.get("waves") or [])):
-            continue
         by_wave = b.get("features_by_wave")
+        # BUG THẬT #2 (port ngược từ HRM): bản đầu của fix này đòi `b.wave == wave_n` TRƯỚC khi xét
+        # `features_by_wave` — mà `wave` giữ nguyên `1` (first-appearance marker), nên với wave ≥2
+        # guard luôn fail và hàm trả `[]` bất kể đã khai gì. Fix "chưa từng chạy được" cho đúng thứ
+        # nó sinh ra để phục vụ. Selftest khi đó xanh vì dùng fixture `waves: [1, 2]` VIẾT TAY —
+        # field mà `materialize_matrix` không bao giờ sinh ra.
+        matches_legacy = b.get("wave") == wave_n or wave_n in (b.get("waves") or [])
+        matches_by_wave = bool(by_wave) and key in by_wave
+        if not (matches_legacy or matches_by_wave):
+            continue
         feats = (by_wave or {}).get(key, []) if by_wave else (b.get("features") or [])
         for feat in feats:
             if feat not in seen:
@@ -327,27 +338,33 @@ def _selftest() -> int:
         assert wave_features_from_matrix(1) == ["FEAT-1", "FEAT-2"]
         assert wave_boundaries_from_matrix(1) == ["auth"]
 
-        # (b) BUG THẬT: boundary sống qua nhiều wave (waves=[1,2]), features phẳng gồm CẢ hai
-        # wave — hành vi cũ (chưa vá) sẽ trả cả FEAT-2 cho wave 1 lẫn wave 2 (leak). Đây là ca
-        # PHẢI dùng features_by_wave để tách đúng.
-        matrix = {"boundaries": [
-            {"boundary_id": "core", "kind": "backend", "waves": [1, 2],
-             "features": ["FEAT-1", "FEAT-2", "FEAT-3"],
-             "features_by_wave": {"1": ["FEAT-1"], "2": ["FEAT-2", "FEAT-3"]}},
-        ]}
-        MATRIX_FILE.write_text(json.dumps(matrix), encoding="utf-8")
+        # (b) BUG THẬT: boundary sống qua nhiều wave, features phẳng gồm CẢ hai wave — hành vi cũ
+        # trả cả FEAT-2 cho wave 1 lẫn wave 2 (leak). PHẢI dùng features_by_wave để tách đúng.
+        #
+        # Fixture DỰNG QUA `materialize_matrix.normalize_boundary` — KHÔNG viết tay. Bản trước viết
+        # tay `"waves": [1, 2]`, field mà pipeline thật KHÔNG BAO GIỜ sinh ra, nên selftest xanh
+        # trong khi fix hỏng hẳn ở wave ≥2 (HRM bắt được khi start-wave 2). Test phải chạy trên
+        # đúng hình dạng dữ liệu người dùng thật tạo ra, không phải hình dạng làm test dễ qua.
+        import materialize_matrix as _mm
+        core = _mm.normalize_boundary({
+            "boundary_id": "core", "kind": "backend", "prefix": "x", "wave": 1,
+            "features": ["FEAT-1", "FEAT-2", "FEAT-3"],
+            "features_by_wave": {"1": ["FEAT-1"], "2": ["FEAT-2", "FEAT-3"]},
+        })
+        assert "waves" not in core and core["wave"] == 1, core   # đúng hình dạng pipeline sinh
+        MATRIX_FILE.write_text(json.dumps({"boundaries": [core]}), encoding="utf-8")
         assert wave_features_from_matrix(1) == ["FEAT-1"], wave_features_from_matrix(1)
         assert wave_features_from_matrix(2) == ["FEAT-2", "FEAT-3"], wave_features_from_matrix(2)
         assert wave_boundaries_from_matrix(1) == ["core"]
-        assert wave_boundaries_from_matrix(2) == ["core"]
+        assert wave_boundaries_from_matrix(2) == ["core"], wave_boundaries_from_matrix(2)
 
         # (c) features_by_wave khai nhưng THIẾU key cho wave đang hỏi → rỗng, KHÔNG fallback
-        # sang `features` phẳng (fallback ngầm tái tạo đúng bug leak vừa vá).
-        matrix = {"boundaries": [
-            {"boundary_id": "core", "kind": "backend", "waves": [1, 3],
-             "features": ["FEAT-1", "FEAT-9"],
-             "features_by_wave": {"1": ["FEAT-1"]}},  # thiếu key "3"
-        ]}
+        # sang `features` phẳng (fallback ngầm tái tạo đúng bug leak vừa vá). Cũng dựng qua pipeline.
+        matrix = {"boundaries": [_mm.normalize_boundary({
+            "boundary_id": "core", "kind": "backend", "prefix": "x", "wave": 1,
+            "features": ["FEAT-1", "FEAT-9"],
+            "features_by_wave": {"1": ["FEAT-1"]},   # thiếu key "3"
+        })]}
         MATRIX_FILE.write_text(json.dumps(matrix), encoding="utf-8")
         assert wave_features_from_matrix(3) == [], wave_features_from_matrix(3)
 
