@@ -86,20 +86,43 @@ def _matrix_boundaries() -> list[dict]:
 def boundaries_for(n: int) -> list[str]:
     out: list[str] = []
     for b in _matrix_boundaries():
-        if b.get("wave") == n or n in (b.get("waves") or []):
-            bid = b.get("id") or b.get("boundary")
+        # Hai lỗi thật:
+        #  (1) key: MATRIX thật (materialize_matrix.normalize_boundary) dùng `boundary_id`, không
+        #      phải `id`/`boundary` — đọc sai key thì hàm trả RỖNG với mọi MATRIX thật, `/next-wave`
+        #      mở wave kế với `wave_boundaries=[]`.
+        #  (2) features_by_wave (port ngược từ HRM): boundary sống nhiều wave giữ `wave: 1`, nên phải
+        #      nhận thêm các wave khai trong `features_by_wave`, không thì wave ≥2 không có boundary.
+        in_by_wave = str(n) in (b.get("features_by_wave") or {})
+        if b.get("wave") == n or n in (b.get("waves") or []) or in_by_wave:
+            bid = b.get("boundary_id") or b.get("id") or b.get("boundary")
             if bid and bid not in out:
                 out.append(bid)
     return out
 
 
 def features_for(n: int) -> list[str]:
+    """FEAT giao ở wave `n` — nguồn cho STATE.wave_features khi mở wave kế, và cho DELIVERED.md.
+
+    Cùng luật với `state.wave_features_from_matrix` (không được lệch): boundary có
+    `features_by_wave` → đúng key wave, THIẾU key = rỗng (KHÔNG lùi về `features` — lùi âm thầm
+    dựng lại bug rò rỉ FEAT xuyên wave); không có field → `features` phẳng (boundary sống 1 wave).
+    Bản vá ở HRM lùi về `features` khi thiếu key — không port phần đó, vì nó lệch luật trên.
+    """
     out: list[str] = []
+    key = str(n)
     for b in _matrix_boundaries():
-        if b.get("wave") == n or n in (b.get("waves") or []):
-            for f in (b.get("features") or []):
-                if f not in out:
-                    out.append(f)
+        by_wave = b.get("features_by_wave") or {}
+        if by_wave:
+            if key not in by_wave:
+                continue
+            feats = by_wave.get(key) or []
+        elif b.get("wave") == n or n in (b.get("waves") or []):
+            feats = b.get("features") or []
+        else:
+            continue
+        for f in feats:
+            if f not in out:
+                out.append(f)
     return out
 
 
@@ -726,6 +749,31 @@ def _selftest() -> int:
     if fails:
         print(f"FAIL: next_wave selftest — {len(fails)} hỏng", file=sys.stderr)
         return 1
+    # boundaries_for / features_for — hai hàm quyết STATE.wave_boundaries/wave_features khi mở wave
+    # kế, mà trước đây KHÔNG CÓ MỘT CA KIỂM NÀO (smoke_test cũng không đi qua /next-wave mở wave 2).
+    # Nhờ vậy hai lỗi thật sống yên: đọc key `id`/`boundary` thay vì `boundary_id` → boundaries_for
+    # trả RỖNG với mọi MATRIX thật; và không biết `features_by_wave` → rò FEAT mọi wave vào wave 1,
+    # wave ≥2 rỗng. MATRIX dựng QUA `normalize_boundary` để đúng hình dạng pipeline sinh ra.
+    global _matrix_boundaries
+    import materialize_matrix as _mm
+    _orig_mb = _matrix_boundaries
+    try:
+        _core = _mm.normalize_boundary({"boundary_id": "core", "kind": "backend", "prefix": "x", "wave": 1,
+                                        "features": ["F1", "F2", "F3"],
+                                        "features_by_wave": {"1": ["F1"], "2": ["F2", "F3"]}})
+        _solo = _mm.normalize_boundary({"boundary_id": "solo", "kind": "web", "prefix": "x", "wave": 1,
+                                        "features": ["S1"]})
+        assert "id" not in _core and "waves" not in _core, _core      # đúng hình dạng thật
+        _matrix_boundaries = lambda: [_core, _solo]
+        assert boundaries_for(1) == ["core", "solo"], boundaries_for(1)
+        assert boundaries_for(2) == ["core"], boundaries_for(2)
+        assert boundaries_for(3) == [], boundaries_for(3)
+        assert features_for(1) == ["F1", "S1"], features_for(1)        # KHÔNG rò F2/F3 của wave 2
+        assert features_for(2) == ["F2", "F3"], features_for(2)
+        assert features_for(3) == [], features_for(3)                  # thiếu key = rỗng, không lùi
+    finally:
+        _matrix_boundaries = _orig_mb
+
     print("OK: next_wave selftest passed")
     return 0
 

@@ -805,6 +805,22 @@ def build_boundary_command(
     wave_id = (state.get("wave") or {}).get("id") or "<unknown-wave>"
     scaffold_block: list[str] = []  # scaffold refs hiển thị riêng ở SKILLS block (start-dev)
 
+    # Scope FEAT CỦA WAVE ĐANG MỞ — dùng chung cho task-list (FEAT phải code) lẫn docs_to_read.
+    # BUG THẬT (port ngược từ HRM, nghiêm trọng nhất trong họ bug `features_by_wave`):
+    # `boundary["features"]` là list PHẲNG cộng dồn MỌI wave (plan_integrity cần vậy). Dùng nó làm
+    # scope khiến prompt start-dev ở wave-002 dặn dev-agent "implement TUẦN TỰ" cả 39 FEAT của 18
+    # wave thay vì đúng FEAT của wave-002 — chính là sự cố wave-001 build cả 10 FEAT.
+    # Luật GIỐNG HỆT `state.wave_features_from_matrix` (không được lệch): có `features_by_wave` →
+    # dùng đúng key wave_n, THIẾU key = rỗng, KHÔNG lùi về `features` (lùi âm thầm dựng lại đúng
+    # bug rò rỉ). Không có field (boundary sống 1 wave) → `features` phẳng, tương thích ngược.
+    # Chưa mở wave (không có wave.number) → `features` (dựng prompt ngoài wave, không có gì để lọc).
+    _wave_n = (state.get("wave") or {}).get("number")
+    _by_wave_top = boundary.get("features_by_wave") or {}
+    if _by_wave_top and _wave_n is not None:
+        _wave_scoped_feats = list(_by_wave_top.get(str(_wave_n)) or [])
+    else:
+        _wave_scoped_feats = list(boundary.get("features") or [])
+
     if command == "start-dev":
         agent_name = f"dev-{prefix}-{boundary_id}-agent"
         skills = PRIMARY_SKILLS_PER_KIND.get(kind, [])
@@ -859,7 +875,7 @@ def build_boundary_command(
                 "  - Test của wave trước phải giữ XANH. Đỏ là **regression** — sửa ngay, "
                 "KHÔNG xoá/sửa test cho qua."
             )
-        _feats = list(boundary.get("features") or [])
+        _feats = _wave_scoped_feats
         if _feats:
             _feat_order = " → ".join(f"`{f}`" for f in _feats)
             _feat_task = (
@@ -1000,7 +1016,7 @@ def build_boundary_command(
         owned_paths_block(boundary),
         skills_block(skills, available=ref_skills, scaffold=scaffold_block, note="Primary = invoke ngay. Scaffold = BẮT BUỘC khi tạo skeleton (cây thư mục theo ref-pattern). Ref situational = invoke NGAY khi boundary có điều kiện tương ứng (cache/event/log)."),
         docs_to_read(
-            boundary_doc_refs(boundary_id, kind, boundary.get("features"), boundary.get("depends_on"))
+            boundary_doc_refs(boundary_id, kind, _wave_scoped_feats, boundary.get("depends_on"))
             + [("Wave plan (scope wave hiện tại)", f"docs/plans/{wave_id}.md")]
             + ([("FEAT/AC các wave TRƯỚC đã giao — KHÔNG được làm gãy",
                  "archive/wave-*/DELIVERED.md"),

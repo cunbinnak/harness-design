@@ -1603,8 +1603,15 @@ def derive_feature_states(state: dict, root: Path | None = None) -> list[dict]:
     wave_id = (state.get("wave") or {}).get("id")
     feats = list(state.get("wave_features") or [])
     if not feats:
+        # Nhánh lùi khi STATE chưa có wave_features. Cùng luật `state.wave_features_from_matrix`:
+        # boundary có `features_by_wave` → đúng key wave (thiếu = rỗng); không có → `features` phẳng.
+        # Đọc `features` phẳng cho boundary sống nhiều wave sẽ kéo FEAT của MỌI wave vào gate
+        # (ac_coverage đòi TC cho AC wave sau → đỏ oan; features_complete thấy cả backlog not_started).
+        _wn = str((state.get("wave") or {}).get("number"))
         for b in (state.get("wave_boundaries") or []):
-            feats += list((_matrix_boundary(b, root) or {}).get("features") or [])
+            _mb = _matrix_boundary(b, root) or {}
+            _fbw = _mb.get("features_by_wave") or {}
+            feats += list(_fbw.get(_wn) or []) if _fbw else list(_mb.get("features") or [])
     if not wave_id or not feats:
         return []
     reg_f = root / "tracking" / wave_id / "test-case-registry.md"
@@ -2799,8 +2806,15 @@ def check_ac_coverage(state: dict, evidence: dict | None = None, root: Path | No
         return False, f"thiếu 'tracking/{wave_id}/test-case-registry.md' — test-plan phải sinh trước"
     feats = list(state.get("wave_features") or [])
     if not feats:
+        # Nhánh lùi khi STATE chưa có wave_features. Cùng luật `state.wave_features_from_matrix`:
+        # boundary có `features_by_wave` → đúng key wave (thiếu = rỗng); không có → `features` phẳng.
+        # Đọc `features` phẳng cho boundary sống nhiều wave sẽ kéo FEAT của MỌI wave vào gate
+        # (ac_coverage đòi TC cho AC wave sau → đỏ oan; features_complete thấy cả backlog not_started).
+        _wn = str((state.get("wave") or {}).get("number"))
         for b in (state.get("wave_boundaries") or []):
-            feats += list((_matrix_boundary(b, root) or {}).get("features") or [])
+            _mb = _matrix_boundary(b, root) or {}
+            _fbw = _mb.get("features_by_wave") or {}
+            feats += list(_fbw.get(_wn) or []) if _fbw else list(_mb.get("features") or [])
     deferred = _wave_deferred_tokens(wave_id, root)
     rows = _parse_md_table_rows(reg.read_text(encoding="utf-8", errors="ignore"), ("tc", "feature", "ac"))
     covered: set[tuple[str, str]] = set()
@@ -4625,6 +4639,25 @@ def _selftest() -> int:
         assert "1/1 feat in-scope `passing`" in md and "| FEAT-T01 | passing" in md, md
         # (f) features_complete gate (bước 2): passing → pass; active (làm dở) → chặn ship
         assert check_features_complete(_fs_state, root=_acroot)[0] is True, "mọi feat passing → end-wave ok"
+
+        # Nhánh lùi khi STATE.wave_features RỖNG — trước đây không ca nào đi vào (mọi ca trên đều
+        # truyền wave_features đầy đủ), nên nó đọc `features` phẳng kéo FEAT của MỌI wave mà không
+        # ai biết. Boundary `wave: 1` khai features_by_wave → mỗi wave chỉ thấy FEAT của mình.
+        import tempfile as _tf2, shutil as _sh2
+        _fbroot = Path(_tf2.mkdtemp(prefix="fbw_"))
+        try:
+            (_fbroot / "harness").mkdir(parents=True, exist_ok=True)
+            (_fbroot / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(json.dumps({"boundaries": [
+                {"boundary_id": "core", "kind": "backend", "prefix": "x", "wave": 1,
+                 "features": ["FEAT-1", "FEAT-2", "FEAT-3"],
+                 "features_by_wave": {"1": ["FEAT-1"], "2": ["FEAT-2", "FEAT-3"]}},
+            ]}), encoding="utf-8")
+            for _n, _want in ((1, ["FEAT-1"]), (2, ["FEAT-2", "FEAT-3"])):
+                _st = {"wave": {"id": f"wave-00{_n}", "number": _n}, "wave_boundaries": ["core"], "wave_features": []}
+                _got = [r["feat"] for r in derive_feature_states(_st, root=_fbroot)]
+                assert _got == _want, f"nhánh lùi wave {_n}: {_got} != {_want}"
+        finally:
+            _sh2.rmtree(_fbroot, ignore_errors=True)
         _rep.write_text("| TC | Result |\n|----|--------|\n| TC-1 | PASS |\n", encoding="utf-8")  # AC-1 pass, AC-2 chưa → active
         ok, msg = check_features_complete(_fs_state, root=_acroot)
         assert (not ok) and "FEAT-T01" in msg and "LÀM DỞ" in msg, f"feat active phải chặn end-wave: {msg}"
