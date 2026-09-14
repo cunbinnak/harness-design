@@ -163,16 +163,27 @@ def complete(command: str, evidence_str: str | dict) -> dict:
     # 5. Ghi last_completed (KHÔNG lưu history array — STATE.json gọn, không phình)
     state.setdefault("workflow", {})["last_completed"] = command
 
-    # 6. Chain auto-transitions (e.g., TEST_EXECUTE -> MANUAL_TEST when test_result=pass)
-    chain = _try_auto_transition(state, machine, evidence)
-    transitions_msg = f"{command}: {old_stage} -> {new_stage}"
-    if chain:
-        transitions_msg += f" -> {chain}"
-
-    # 7. Project whitelisted evidence into top-level STATE runtime fields.
+    # 6. Project whitelisted evidence into top-level STATE runtime fields — PHẢI chạy TRƯỚC
+    #    auto-transition check bên dưới: derive_test_result() (cho command "test-execute") set
+    #    state["test_result"] ở đây; transition TEST_EXECUTE->MANUAL_TEST (trigger "_auto") cần
+    #    đúng field này trong evidence_required. Đảo ngược thứ tự (auto-transition check trước,
+    #    apply_effects sau) khiến evidence lúc check auto-transition CHƯA có test_result (evidence
+    #    gọi vào chỉ có test_cases_count, đúng cách dùng bình thường — không ai tự khai test_result
+    #    tay), nên auto-transition KHÔNG BAO GIỜ fire được ở lượt gọi thường, kẹt ở TEST_EXECUTE
+    #    (allowed_commands rỗng theo thiết kế vì lẽ ra auto-transition đã đưa đi tiếp).
     #    (stage move only updates `stage`; runtime fields like wave/wave_boundaries
     #     /active_boundary/service_prefix are populated here.)
     apply_effects(command, evidence, state)
+
+    # 7. Chain auto-transitions (e.g., TEST_EXECUTE -> MANUAL_TEST when test_result=pass)
+    #    Evidence_required cho trigger "_auto" (vd {"test_result": "any"}) phải soi được field DERIVE
+    #    ở bước 6 (vd test_result từ report, KHÔNG phải evidence gọi vào tay — không ai tự khai
+    #    test_result). Merge state vào evidence (evidence override nếu trùng key) để _evidence_matches
+    #    thấy được field derive, không chỉ field caller gõ tay.
+    chain = _try_auto_transition(state, machine, {**state, **evidence})
+    transitions_msg = f"{command}: {old_stage} -> {new_stage}"
+    if chain:
+        transitions_msg += f" -> {chain}"
 
     save_state(state, updated_by=f"complete:{command}")
     # Chốt xanh KHÔNG có nghĩa là đã phủ hết. In thẳng thứ máy không kiểm được, để "gate xanh"
