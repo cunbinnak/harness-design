@@ -241,7 +241,9 @@ def _pre_ask(payload: dict) -> int:
         st = state_mod.load_state()
     except Exception:
         return allow_silent()
-    msg = policies.ask_violation(st)
+    # `ask_violation` đọc `spawn.active` bên trong — đưa vào đúng NGƯỜI GỌI của tool-call này
+    # (theo agent_id), để phiên chính ở chốt ký không bị coi là sub-agent vì cờ kẹt / agent nền.
+    msg = policies.ask_violation({**st, "spawn": {**(st.get("spawn") or {}), "active": _caller_agent(payload, st)}})
     return pre_tool_deny(msg) if msg else allow_silent()
 
 
@@ -312,6 +314,32 @@ def _pre_bash(payload: dict) -> int:
     return allow_silent()
 
 
+def _caller_agent(payload: dict, state: dict) -> str | None:
+    """Tool-call NÀY do ai gọi: tên sub-agent, hoặc None nếu là PHIÊN CHÍNH.
+
+    VÌ SAO KHÔNG ĐỌC THẲNG `spawn.active` NỮA. Cờ đó trả lời "đang có sub-agent nào tồn tại",
+    không trả lời "tool-call này của ai". Hai câu khác nhau, và nhầm hai câu đã chặn oan thật:
+      · phiên chính chạy dev-agent NỀN → mọi Write/Edit của CHÍNH phiên chính bị `kernel_violation`
+        chặn suốt lúc agent chạy (HRM gặp khi đang vá bug khung);
+      · cờ KẸT từ phiên chết → khoá sửa kernel vĩnh viễn, `ask_violation` gọi phiên chính là sub-agent.
+
+    `agent_id` trong payload hook là field Claude Code gửi CHỈ cho tool-call của sub-agent (tài liệu
+    hooks — "In subagents only"; đã ĐO trên CLI thật: Bash của sub-agent có `agent_id`, Bash/Edit/Agent
+    của phiên chính thì không). Nên:
+      · KHÔNG có `agent_id` → phiên chính → None, bất kể cờ đang ghi gì.
+      · CÓ `agent_id` → sub-agent. Tên lấy từ `spawn.active` (harness spawn mọi agent là
+        `general-purpose` kèm prompt, nên `agent_type` KHÔNG mang tên agent harness). Cờ rỗng
+        (sub-agent ngoài harness) → vẫn trả tên khác rỗng để `kernel_violation` chặn đúng.
+
+    Giới hạn còn lại, không phải hồi quy: nhiều sub-agent chạy SONG SONG thì cờ chỉ giữ tên agent
+    spawn SAU CÙNG (lúc `_pre_task` chạy agent chưa tồn tại nên chưa có `agent_id` để ánh xạ).
+    Phụ thuộc phiên bản: CLI nào không gửi `agent_id` thì sub-agent bị coi là phiên chính.
+    """
+    if not payload.get("agent_id"):
+        return None
+    return (state.get("spawn") or {}).get("active") or payload.get("agent_type") or "sub-agent"
+
+
 def _handoff_no_code_fix(spawn_active: str | None, norm_path: str) -> bool:
     """True = chặn edit services/** vì dev-handoff-agent đang là spawn hoạt động (infra-only, #12).
 
@@ -351,16 +379,17 @@ def _pre_write_edit(payload: dict) -> int:
     # stage đó (REVIEW_DEV/MANUAL_TEST/DEV…) mọi sửa services là fix/dev-agent hợp lệ → KHÔNG chặn oan
     # dù cờ spawn.active còn kẹt (SubagentStop có thể không fire với background Agent tool → cờ stale).
     norm = policies._norm_rel(path)
-    if _handoff_no_code_fix((st.get("spawn") or {}).get("active"), norm):
+    caller = _caller_agent(payload, st)   # None = phiên chính (theo agent_id, không theo cờ)
+    if _handoff_no_code_fix(caller, norm):
         return pre_tool_deny(
             f"FM-HANDOFF-NO-CODE-FIX: dev-handoff INFRA-ONLY — KHÔNG sửa '{norm}' (code/migration/config/Dockerfile "
             "của boundary). Container chết do lỗi này → STOP, đọc `docker compose logs`, báo root-cause + "
             "spawn `fix-{boundary}-agent` (Mode B) để fix → re-run dev-handoff. dev-handoff chỉ chỉnh docker-compose.yml."
         )
-    ker = policies.kernel_violation(norm, (st.get("spawn") or {}).get("active"))
+    ker = policies.kernel_violation(norm, caller)
     if ker:
         return pre_tool_deny(ker)
-    rv = policies.review_write_violation(norm, (st.get("spawn") or {}).get("active"), stage)
+    rv = policies.review_write_violation(norm, caller, stage)
     if rv:
         return pre_tool_deny(rv)
     tok = policies.token_violation(norm, _edit_new_text(payload))
@@ -722,6 +751,28 @@ def _selftest() -> int:
         assert not _saved, f"cờ rỗng sẵn thì không ghi: {_saved}"
     finally:
         state_mod.load_state, state_mod.save_state = _orig_load, _orig_save
+
+    # _caller_agent — NGƯỜI GỌI theo `agent_id` (payload), không theo cờ `spawn.active`.
+    # Hình dạng payload lấy từ lần ĐO THẬT trên CLI: phiên chính không có `agent_id`; sub-agent có.
+    _main = {"tool_name": "Edit", "effort": "high"}
+    _sub = {"tool_name": "Edit", "agent_id": "a031499fcb728c363", "agent_type": "general-purpose"}
+    _bg = {"spawn": {"active": "start-dev"}}          # phiên chính đang chạy dev-agent NỀN
+    _stale = {"spawn": {"active": "fix"}}             # cờ kẹt từ phiên chết
+    _clean = {"spawn": {"active": None}}
+    assert _caller_agent(_main, _bg) is None, "phiên chính + agent nền → vẫn là phiên chính"
+    assert _caller_agent(_main, _stale) is None, "phiên chính + cờ kẹt → vẫn là phiên chính"
+    assert _caller_agent(_sub, _bg) == "start-dev", "sub-agent → tên lấy từ cờ"
+    assert _caller_agent(_sub, _clean) == "general-purpose", "sub-agent ngoài harness → vẫn khác rỗng"
+    assert _caller_agent({"agent_id": "x"}, _clean) == "sub-agent"
+    # Hệ quả tới luật thật: phiên chính sửa kernel lúc có agent nền → KHÔNG bị chặn (HRM gặp thật);
+    # sub-agent sửa kernel → VẪN bị chặn.
+    assert policies.kernel_violation("scripts/gates.py", _caller_agent(_main, _bg)) is None
+    assert policies.kernel_violation("scripts/gates.py", _caller_agent(_sub, _bg)) is not None
+    assert policies.kernel_violation("scripts/gates.py", _caller_agent(_sub, _clean)) is not None
+    # ask: phiên chính ở chốt ký REVIEW với cờ kẹt → được hỏi user (trước đây bị chặn oan)
+    _rev_stale = {"stage": "REVIEW", "spawn": {"active": "fix"}}
+    assert policies.ask_violation({**_rev_stale, "spawn": {"active": _caller_agent(_main, _rev_stale)}}) is None
+    assert policies.ask_violation({**_rev_stale, "spawn": {"active": _caller_agent(_sub, _rev_stale)}}) is not None
 
     print("OK: dispatcher.py selftest passed")
     return 0
