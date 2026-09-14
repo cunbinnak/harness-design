@@ -154,11 +154,30 @@ def _last_assistant_text(payload: dict) -> str:
 
 def handle_session_start(payload: dict) -> int:
     state = state_mod.load_state()
+    source = str(payload.get("source") or "").lower()
+
+    # Dọn cờ spawn.active KẸT từ phiên trước. Sub-agent KHÔNG sống qua ranh giới phiên, nên cờ còn
+    # sót lúc một phiên MỚI khởi động là rác — và là rác ĐẮT: `kernel_violation` chặn mọi sửa
+    # `scripts/ harness/ commands/ agents/ .claude/` khi cờ khác rỗng, trong khi `harness/STATE.json`
+    # lại nằm trong PROTECTED_PATHS nên KHÔNG sửa tay để gỡ được. Phiên chết/bị kill giữa chừng
+    # (SessionEnd không fire) khoá cứng việc sửa kernel của cả project, không còn đường thoát hợp lệ.
+    # Gặp thật ở project HRM: cờ "fix" kẹt lại từ một lượt spawn cũ.
+    #
+    # KHÔNG dọn khi source == "compact": compact xảy ra GIỮA phiên, sub-agent có thể đang chạy thật
+    # — dọn lúc đó là mở toang đúng lúc cần kín.
+    if source != "compact":
+        try:
+            if (state.get("spawn") or {}).get("active"):
+                state.setdefault("spawn", {})["active"] = None
+                state_mod.save_state(state, updated_by="session_start_clear_stale_spawn")
+        except Exception:
+            pass
+
     allowed = state_mod.allowed_commands(state)
     # source == "compact": phiên vừa bị nén → nhồi lại LUẬT, không chỉ trạng thái. Compact giữ được
     # "đang làm gì" nhưng làm phẳng "đang bị cấm gì" — và từ khi gỡ turn-flag, kỷ luật hành lang
     # ("chốt đỏ → DỪNG") sống hoàn toàn bằng văn xuôi, nên đó là thứ trôi đầu tiên.
-    if str(payload.get("source") or "").lower() == "compact":
+    if source == "compact":
         return inject_context(policies.reanchor_after_compact(state, allowed))
     return inject_context(policies.format_state_brief(state, allowed))
 
@@ -672,6 +691,38 @@ def _selftest() -> int:
     assert _handoff_no_code_fix(None, "services/x/A.java") is False
     # dev-handoff sửa docker-compose.yml (infra hợp lệ, không phải services/) → cho qua
     assert _handoff_no_code_fix("dev-handoff-agent", "docs/architecture/infra/docker-compose.yml") is False
+
+    # SessionStart dọn cờ `spawn.active` KẸT từ phiên trước. Vì sao đáng test: cờ kẹt khiến
+    # `kernel_violation` chặn MAIN sửa MỌI file kernel, mà `harness/STATE.json` lại nằm trong
+    # PROTECTED_PATHS nên không sửa tay để gỡ — phiên chết giữa chừng (SessionEnd không fire) là
+    # khoá cứng cả project, không còn đường thoát hợp lệ. Gặp thật ở HRM: cờ "fix" kẹt lại.
+    _saved: list[dict] = []
+    _orig_load, _orig_save = state_mod.load_state, state_mod.save_state
+    try:
+        state_mod.load_state = lambda: {"stage": "DEV", "spawn": {"active": "fix"}, "wave": {"id": "wave-001"}}
+        state_mod.save_state = lambda st, updated_by="": _saved.append({"state": st, "by": updated_by})
+        with contextlib.redirect_stdout(io.StringIO()):
+            handle_session_start({"source": "startup"})
+        assert _saved, "SessionStart phải dọn cờ kẹt"
+        assert _saved[-1]["state"]["spawn"]["active"] is None, _saved[-1]
+        assert "stale_spawn" in _saved[-1]["by"], _saved[-1]["by"]
+
+        # compact xảy ra GIỮA phiên — sub-agent có thể đang chạy THẬT, dọn lúc đó là mở toang
+        # đúng lúc cần kín.
+        _saved.clear()
+        with contextlib.redirect_stdout(io.StringIO()):
+            handle_session_start({"source": "compact"})
+        assert not _saved, f"compact KHÔNG được dọn cờ: {_saved}"
+
+        # cờ vốn đã rỗng → không ghi lại STATE vô cớ (tránh bump revision mỗi lần mở phiên)
+        _saved.clear()
+        state_mod.load_state = lambda: {"stage": "DEV", "spawn": {"active": None}}
+        with contextlib.redirect_stdout(io.StringIO()):
+            handle_session_start({"source": "startup"})
+        assert not _saved, f"cờ rỗng sẵn thì không ghi: {_saved}"
+    finally:
+        state_mod.load_state, state_mod.save_state = _orig_load, _orig_save
+
     print("OK: dispatcher.py selftest passed")
     return 0
 
