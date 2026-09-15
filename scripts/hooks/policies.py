@@ -33,14 +33,14 @@ STAGE_NEXT_GUIDE = {
     "DESIGN": "/domain (chạy tiếp: thiết kế → chia wave → rà chéo). LÙI sửa nghiệp vụ: /domain từ DOMAIN (re-ký + re-dịch)",
     "PLAN": "/domain (chạy tiếp: chia wave → rà chéo → REVIEW)",
     "REVIEW": "/approve-document (bạn ĐỌC + duyệt = KHOÁ SCOPE) → /run-wave <N> · cần sửa doc: /domain (chạy lại từ chốt liên quan)",
-    "WAVE_OPEN": "/run-wave (chạy tiếp hành lang: code → review → dựng thật → test → dogfood) · wave trước lộ chỗ thiếu tài liệu: /domain TRƯỚC (bổ sung + chia lại, bù chen vào wave này) → /approve-document → /run-wave",
+    "WAVE_OPEN": "/run-wave (chạy tiếp hành lang: code → review → dựng thật → test → dogfood) · wave trước lộ chỗ thiếu tài liệu: /domain TRƯỚC (bổ sung + chia lại, bù chen vào wave này) → /approve-document → /run-wave · thiếu năng lực/vai/event/boundary mới: /discover D1|D2|D3 trước /domain",
     "DEV": "/run-wave (chạy tiếp: boundary còn lại → review)",
     "REVIEW_DEV": "/run-wave (chạy tiếp: dựng chạy thật → test)",
     "DEV_HANDOFF": "/run-wave (chạy tiếp: sinh test case)",
     "TEST_PLAN": "/run-wave (chạy tiếp: chạy test)",
     "TEST_EXECUTE": "(tự động → MANUAL_TEST sau khi chạy)",
     "MANUAL_TEST": "/run-wave (sửa TC còn đỏ + chạy lại test, và dogfood nếu chưa) · /dogfood <vai> (chạy lại 1 lăng kính) · /next-wave (khi UAT ký + test xanh + dogfood không còn dòng `sửa ngay`)",
-    "DONE": "/next-wave (snapshot + mở wave kế) · hết WAVE-SEQUENCE mà còn việc: /domain sau khi snapshot (thêm wave) · hết việc thật: teardown",
+    "DONE": "/next-wave (snapshot + mở wave kế) · hết WAVE-SEQUENCE mà còn việc: /domain sau khi snapshot (thêm wave; cần năng lực/vai/event/boundary mới → /discover D1|D2|D3 trước) · hết việc thật: teardown",
 }
 
 

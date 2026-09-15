@@ -396,6 +396,18 @@ def main() -> int:
         ok = step("duyệt lại -> start-wave", "start-wave", {"approved": True, "wave_n": 1}, "WAVE_OPEN")
         passed.append(ok) if ok else failed.append("start-wave after re-approve")
 
+        # Chỗ thiếu ngoài phạm vi đã vạch (năng lực/vai/event/boundary mới) → quay về /discover
+        ok = step("WAVE_OPEN -> DISC_D3 (boundary mới)", "discovery-start", {"wave": "D3"}, "DISC_D3")
+        passed.append(ok) if ok else failed.append("rediscover WAVE_OPEN->DISC_D3")
+        _rp = state_mod.load_state().get("replan_open") or {}
+        rp_ok = _rp.get("from_stage") == "WAVE_OPEN" and _rp.get("unstamped", {}).get("layers") == [
+            "discovery", "domain", "design"]
+        print(f"  [{'OK  ' if rp_ok else 'FAIL'}] quay về khám phá: replan_open + hạ dấu 3 lớp  -> {_rp}")
+        passed.append(rp_ok) if rp_ok else failed.append("rediscover replan_open")
+        ok = step("DISC_D3 -> DOMAIN (ký lại khám phá)", "discovery-end", {"service_prefix": "demo", **FB3},
+                  "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("rediscover discovery-end")
+
         # DONE mà wave chưa lưu archive → /domain bị chặn (sửa tài liệu trước snapshot = mất bản wave)
         if not (REPO / "archive" / "wave-001").exists():
             patch_state({"stage": "DONE", "wave": {"id": "wave-001", "number": 1}})

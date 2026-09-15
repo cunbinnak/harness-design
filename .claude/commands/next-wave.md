@@ -47,6 +47,9 @@ Không sửa tại chỗ, không sửa trước khi snapshot. Sau lệnh này:
 /run-wave            chạy wave kế theo kế hoạch mới
 ```
 
+Chỗ thiếu cần năng lực/vai, event, boundary **mới** (chưa có trong tài liệu khám phá) → `/discover
+D1|D2|D3` trước `/domain` — quyết định phạm vi, được hỏi user.
+
 Luật chia lại: **phần bù chen vào ngay wave kế, tính năng đã xếp lùi dần ra sau**, tràn thì sinh wave
 mới. Không dồn phần bù ra cuối — các wave ở giữa sẽ xây trên nền đang thiếu. Chi tiết: skill
 `implementation-plan` §Chia lại · gate `replan_integrity`.

@@ -71,6 +71,10 @@ không dừng wave đang chạy**: đợi `/next-wave` lưu wave vào `archive/`
 | `WAVE_OPEN` | còn wave trong kế hoạch, chưa code wave kế | 1 |
 | `DONE` | hết WAVE-SEQUENCE mà còn việc → thêm wave | 1 (gate `replan_entry`: wave vừa xong phải đã có archive) |
 
+Chỗ thiếu cần **năng lực · vai · event · boundary mới** (chưa có trong tài liệu khám phá) → `/discover
+D1|D2|D3` trước — đó là quyết định phạm vi, cần hỏi user. Lúc vào, dấu ký nghiệp vụ + thiết kế bị hạ
+về DRAFT: phần sửa phải được ký lại thật ở chốt 2 và `/approve-document`.
+
 Đi đủ 9 chốt như lượt đầu, chỉ khác ở hai chỗ:
 
 - **Chốt 1** viết phần bù. Nguồn: dòng `wave sau` ở `tracking/wave-*/dogfood-report.md` ·

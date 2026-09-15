@@ -2,7 +2,7 @@
 name: discover
 description: "Khám phá D0-D3 → persona + ma trận quyền + capability + boundary + PROJECT.md. Chốt D3: rà chéo, user đọc + duyệt = ký."
 argument-hint: "(không arg — tự suy)  ·  \"<mô tả project>\" ở lần đầu  ·  <D0|D1|D2|D3> để ép đào thêm"
-when_state: [BOOTSTRAP, DISC_D0, DISC_D1, DISC_D2, DISC_D3]
+when_state: [BOOTSTRAP, DISC_D0, DISC_D1, DISC_D2, DISC_D3, WAVE_OPEN, DONE]
 sets_stage: DISC_D0
 spawn:
   agent: "discovery-hypothesis-agent · capability-mapper-agent · event-stormer-agent · charter-author-agent"
@@ -52,6 +52,26 @@ Mỗi ô `cấm` → 1 ca kiểm âm bắt buộc ở `/run-wave` + 1 phép th�
 1. **Rà chéo**: hypothesis ↔ capability ↔ persona ↔ ma trận ↔ ES ↔ boundary ↔ PROJECT. Lệch → sửa trước.
 2. **DỪNG.** Trình user: danh sách file + *mỗi file nên soi gì* · chỗ đã tự quyết (trỏ `decisions.md`) · **chỗ mình không chắc nhất**. KHÔNG tự ký, KHÔNG chạy tiếp.
 3. Góp ý → sửa → trình lại. **Duyệt** → `py scripts/approve_document.py --layer discovery` → `py scripts/harness.py discovery-end complete`.
+
+## Gọi sau khi đã chạy wave — chỗ thiếu nằm ngoài phạm vi đã vạch
+
+Phần lớn chỗ thiếu lộ ra sau một wave (tính năng · AC · luật · ca biên · thiết kế) nằm TRONG phạm vi
+đã vạch → `/domain`, không về đây. Chỉ về đây khi câu "cái này thuộc năng lực nào, vai nào, boundary
+nào?" **chưa có câu trả lời** trong tài liệu khám phá — đó là quyết định mở rộng phạm vi, cần hỏi user,
+mà `/domain` thì cấm hỏi.
+
+| Thiếu | Gọi (sau `/next-wave`, từ `WAVE_OPEN` hoặc `DONE`) |
+|---|---|
+| năng lực mới · vai mới · ô ma trận vai × hành động | `/discover D1` |
+| event mới trong event storming | `/discover D2` |
+| boundary mới | `/discover D3` |
+
+- Chỉ vào đúng tầng thiếu, bổ sung phần thiếu; tiến lên như thường — gate các tầng sau chạy lại trên tài
+  liệu cũ (còn đúng thì xanh ngay).
+- Lúc quay lại, **dấu ký của khám phá · nghiệp vụ · thiết kế bị hạ về DRAFT**: phần sửa phải được đọc
+  và ký lại thật ở chốt D3, chốt ký nghiệp vụ, `/approve-document`. Giữ dấu cũ thì gate "đã ký" xanh chay.
+- Từ `DONE`: wave vừa xong phải đã lưu archive (gate `replan_entry`).
+- Ký xong D3 → `/domain` bổ sung + chia lại (bù chen vào wave kế) → `/approve-document` → `/run-wave`.
 
 ## Chạy từng D-wave
 

@@ -1265,14 +1265,22 @@ def _all_feats(blist: list[dict]) -> set[str]:
 
 def check_replan_entry(state: dict, evidence: dict | None = None,
                        root: Path | None = None) -> tuple[bool, str]:
-    """Quay lại `/domain` từ DONE: wave vừa xong PHẢI đã nằm trong archive.
+    """Quay lại `/domain` hoặc `/discover` từ DONE: wave vừa xong PHẢI đã nằm trong archive.
 
     VÌ SAO — `/domain` mở khoá tài liệu. Sửa FEAT trước khi `next_wave.py --go` chép bản wave N vào
     archive thì DELIVERED.md của wave N đóng gói AC đã bị sửa, không phải thứ wave N thật sự giao.
     Từ WAVE_OPEN thì luôn đúng thứ tự (next_wave đã chép rồi mới mở wave), nên chỉ DONE cần kiểm.
     """
     evidence = evidence or {}
-    if evidence.get("force") is True or state.get("stage") != "DONE":
+    if evidence.get("force") is True:
+        return True, ""
+    stage = state.get("stage")
+    if stage in ("WAVE_OPEN", "DONE") and str(evidence.get("wave") or "").upper() == "D0":
+        # Không có đường vào D0: find_transition gặp evidence không khớp sẽ lấy đường đầu tiên (D1) —
+        # nói rõ thay vì rơi im lặng vào tầng khác.
+        return False, ("không quay lại D0 sau khi đã chạy wave — đổi giả thuyết gốc là đổi dự án. "
+                       "Năng lực/vai → /discover D1 · event → D2 · boundary → D3")
+    if stage != "DONE":
         return True, ""
     root = root or REPO_ROOT
     n = (state.get("wave") or {}).get("number")
@@ -3780,6 +3788,7 @@ GATE_RULES: dict[str, list[dict]] = {
     "discovery-start": [
         {"kind": "non_empty", "field": "wave"},
         {"kind": "discovery_advance"},  # nhảy tiến D{N}→D{N+1} → gate wave hiện tại (refine/first-entry: bỏ qua)
+        {"kind": "replan_entry"},  # quay lại từ DONE (năng lực/vai/event/boundary mới): wave vừa xong phải đã có archive
     ],
     "discovery-end": [
         # Discovery là lớp thượng nguồn nhất — ký TẠI ĐÂY, không đợi /approve-document ở REVIEW
@@ -5048,6 +5057,10 @@ def _selftest() -> int:
         _ok, _m = check_replan_entry({"stage": "DONE", "wave": {"number": 3}}, root=_rp)
         assert not _ok and "next_wave.py --go" in _m, _m
         assert check_replan_entry({"stage": "WAVE_OPEN", "wave": {"number": 3}}, root=_rp)[0] is True
+        _ok, _m = check_replan_entry({"stage": "WAVE_OPEN", "wave": {"number": 3}}, {"wave": "D0"}, root=_rp)
+        assert not _ok and "D0" in _m, _m
+        assert check_replan_entry({"stage": "WAVE_OPEN"}, {"wave": "D1"}, root=_rp)[0] is True
+        assert check_replan_entry({"stage": "DISC_D0"}, {"wave": "D0"}, root=_rp)[0] is True  # khám phá lần đầu không bị đụng
         # wave_not_closed: không mở lại wave có archive
         _ok, _m = check_wave_not_closed({"wave_n": 2}, root=_rp)
         assert not _ok and "Wave kế là 3" in _m, _m

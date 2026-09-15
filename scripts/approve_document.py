@@ -99,6 +99,48 @@ def run(layer: str = "design", root: Path | None = None) -> tuple[int, int]:
     return scanned, changed
 
 
+# Lớp nghiệp vụ ký bằng `domain_approve.py` (kèm soi jargon) nên KHÔNG nằm trong STAMP_PLANS — thêm vào
+# đó là mở đường ký lớp nghiệp vụ bỏ qua soi jargon. Chỉ dùng để HẠ dấu.
+_DOMAIN_GLOBS = ("docs/domain/epics/EP-*.md", "docs/domain/feat/FEAT-*.md",
+                 "docs/domain/business-rules/BR-*.md", "docs/domain/journeys/JOURNEY-*.md",
+                 "docs/domain/personas/PERSONA-*.md")
+_SIGNED = ("APPROVED", "ACTIVE")
+
+
+def unstamp(layers: tuple[str, ...], root: Path | None = None) -> int:
+    """Hạ dấu ký về DRAFT cho các lớp (`discovery` · `domain` · `design`). Trả số file đổi.
+
+    VÌ SAO — dấu ký chỉ là dòng `status: APPROVED`; ký lại không đổi nội dung nên máy không phân biệt
+    được "đã ký bản sau khi sửa" với "dấu cũ còn sót". Quay lại sửa tài liệu sau khi đã chạy wave mà
+    giữ dấu cũ thì mọi gate `*_stamped` xanh chay, phần sửa chưa ai đọc. Hạ dấu lúc quay lại → gate ở
+    chốt ký của lớp đó đỏ tới khi ký thật. Chỉ hạ APPROVED/ACTIVE; DEPRECATED và lifecycle khác giữ nguyên.
+    """
+    root = root or REPO_ROOT
+    globs: list[str] = []
+    for layer in layers:
+        if layer == "domain":
+            globs += list(_DOMAIN_GLOBS)
+        else:
+            globs += [g for g, _, _ in STAMP_PLANS[layer]]
+    changed = 0
+    for g in globs:
+        for p in sorted(root.glob(g)):
+            if not p.is_file() or p.name.startswith(("TEMPLATE", "_TEMPLATE")) or p.name == "README.md":
+                continue
+            text = p.read_text(encoding="utf-8", errors="ignore")
+            if not text.startswith("---"):
+                continue
+            end = text.find("\n---", 3)
+            if end <= 0:
+                continue
+            m = _STATUS_RE.search(text[:end])
+            if not m or m.group(0).split(":", 1)[1].strip().strip("\"'").upper() not in _SIGNED:
+                continue
+            p.write_text(_STATUS_RE.sub(r"\1 DRAFT", text[:end], count=1) + text[end:], encoding="utf-8")
+            changed += 1
+    return changed
+
+
 def _selftest() -> int:
     import shutil
     import tempfile
@@ -144,6 +186,17 @@ def _selftest() -> int:
         assert run("discovery", d) == (5, 0)          # idempotent
         # ký discovery KHÔNG đụng lớp design và ngược lại
         assert run("design", d) == (3, 0)
+
+        # unstamp: hạ đúng lớp được gọi, APPROVED/ACTIVE → DRAFT, DEPRECATED + TEMPLATE giữ nguyên
+        (d / "docs/domain/feat").mkdir(parents=True)
+        (d / "docs/domain/feat/FEAT-1.md").write_text("---\nstatus: APPROVED\n---\n# f\n", encoding="utf-8")
+        assert unstamp(("domain", "design"), d) == 3          # FEAT-1 + hld-x + api-x
+        assert "status: DRAFT" in (d / "docs/domain/feat/FEAT-1.md").read_text(encoding="utf-8")
+        assert "status: DRAFT" in (d / "docs/architecture/api/api-x.md").read_text(encoding="utf-8")
+        assert "status: DEPRECATED" in (d / "docs/architecture/api/api-old.md").read_text(encoding="utf-8")
+        assert "status: APPROVED" in (d / "docs/architecture/PROJECT.md").read_text(encoding="utf-8")  # discovery không gọi
+        assert unstamp(("discovery",), d) == 5
+        assert unstamp(("discovery", "domain", "design"), d) == 0   # idempotent
         print("OK: approve_document.py selftest passed")
         return 0
     finally:

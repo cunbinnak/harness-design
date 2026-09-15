@@ -413,6 +413,22 @@ def _append_decision(ref: str, rationale: str) -> None:
         )
 
 
+def _open_replan(state: dict, layers: tuple[str, ...]) -> None:
+    """Vào lượt chia lại sau khi đã chạy wave (từ WAVE_OPEN/DONE).
+
+    Hai việc, cùng một lý do — phần sửa phải được NGƯỜI đọc lại trước khi chạy wave kế:
+      · `replan_open` → gate `replan_approved` chặn start-wave tới khi /approve-document. Cờ `approved`
+        của start-wave là evidence tự truyền, một mình nó không chặn được.
+      · hạ dấu ký các lớp sắp sửa về DRAFT → gate `*_stamped` ở chốt ký của từng lớp đỏ tới khi ký
+        lại thật. Giữ dấu cũ thì các gate đó xanh chay dù phần sửa chưa ai đọc.
+    """
+    import approve_document
+    n = approve_document.unstamp(layers, REPO_ROOT)
+    state["replan_open"] = {"from_stage": state.get("previous_stage"),
+                            "wave": (state.get("wave") or {}).get("id"),
+                            "unstamped": {"layers": list(layers), "files": n}}
+
+
 def apply_effects(command: str, evidence: dict, state: dict) -> None:
     """Mutate `state` in place to reflect runtime fields a command establishes.
 
@@ -425,6 +441,11 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
         wave = evidence.get("wave")
         if wave:
             state.setdefault("spawn", {})["active"] = f"discovery-{wave}"
+        # Quay lại khám phá sau khi đã chạy wave: chỗ thiếu nằm NGOÀI phạm vi đã vạch (năng lực/vai/
+        # event/boundary mới) — quyết định mở rộng phạm vi, nên đi qua chỗ được hỏi user. Cả ba lớp
+        # phía sau đều sẽ được ký lại khi đi qua chốt của chúng.
+        if state.get("previous_stage") in ("WAVE_OPEN", "DONE"):
+            _open_replan(state, ("discovery", "domain", "design"))
 
     elif command == "discovery-end":
         # D3 charter-author chốt service_prefix (derive PROJECT). Audit force override.
@@ -442,12 +463,9 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
         mode = evidence.get("mode")
         if mode:
             state.setdefault("spawn", {})["active"] = f"{command}-{mode}"
-        # Quay lại từ WAVE_OPEN/DONE = chia lại kế hoạch sau khi wave đã chạy. Đánh dấu để start-wave
-        # đòi /approve-document lại (gate replan_approved) — cờ `approved` của start-wave là evidence
-        # tự truyền, không chặn được việc chạy thẳng wave kế khi phần đổi chưa ai đọc.
+        # Quay lại từ WAVE_OPEN/DONE = bổ sung trong phạm vi đã vạch + chia lại kế hoạch.
         if state.get("previous_stage") in ("WAVE_OPEN", "DONE"):
-            state["replan_open"] = {"from_stage": state["previous_stage"],
-                                    "wave": (state.get("wave") or {}).get("id")}
+            _open_replan(state, ("domain", "design"))
 
     elif command == "domain-approve":
         # Ký business doc (target rỗng = all). Stamp `status: APPROVED` do scripts/domain_approve.py lo

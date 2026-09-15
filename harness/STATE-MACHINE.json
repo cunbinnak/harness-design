@@ -89,11 +89,12 @@
       "agent_behavior": "flat_orchestration_by_main_agent"
     },
     "WAVE_OPEN": {
-      "description": "Wave đã materialize agents + KG + MATRIX. Chờ start dev. Wave trước lộ chỗ thiếu tài liệu → quay lại /domain (domain-po/domain-ba) bổ sung + chia lại: bù chen vào wave này, tính năng đã xếp lùi ra sau.",
+      "description": "Wave đã materialize agents + KG + MATRIX. Chờ start dev. Wave trước lộ chỗ thiếu tài liệu → quay lại /domain (domain-po/domain-ba) bổ sung + chia lại: bù chen vào wave này, tính năng đã xếp lùi ra sau. Chỗ thiếu nằm NGOÀI phạm vi đã vạch (năng lực/vai → D1, event → D2, boundary → D3) → /discover trước (được hỏi user), rồi /domain.",
       "allowed_commands": [
         "start-dev",
         "domain-po",
-        "domain-ba"
+        "domain-ba",
+        "discovery-start"
       ],
       "allowed_spawn": false,
       "read_only_spawn_always": true
@@ -154,12 +155,13 @@
       "agent_behavior": "fix_bugs_mode_a"
     },
     "DONE": {
-      "description": "Wave đã đóng mềm. /next-wave: snapshot wave vừa xong → còn wave trong WAVE-SEQUENCE thì mở wave kế (WAVE_OPEN). Hết wave mà còn việc → /domain (sau snapshot) thêm wave; hết việc thật → teardown về BOOTSTRAP. KHÔNG reset tài liệu.",
+      "description": "Wave đã đóng mềm. /next-wave: snapshot wave vừa xong → còn wave trong WAVE-SEQUENCE thì mở wave kế (WAVE_OPEN). Hết wave mà còn việc → /domain (sau snapshot) thêm wave; hết việc thật → teardown về BOOTSTRAP. KHÔNG reset tài liệu. Thiếu năng lực/vai/event/boundary mới → /discover D1/D2/D3 (sau snapshot).",
       "allowed_commands": [
         "next-wave",
         "done-wave",
         "domain-po",
-        "domain-ba"
+        "domain-ba",
+        "discovery-start"
       ],
       "allowed_spawn": false,
       "read_only_spawn_always": true
@@ -517,6 +519,60 @@
         "mode": "any"
       },
       "note": "nhu tren, tai lieu BR/PERSONA"
+    },
+    {
+      "from": "WAVE_OPEN",
+      "to": "DISC_D1",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D1"
+      },
+      "note": "quay lai kham pha sau khi da chay wave: nang luc / vai / ma tran vai x hanh dong moi — quyet dinh mo rong pham vi nen di qua cho duoc hoi user. Ha dau ky discovery+domain+design ve DRAFT, dat replan_open. Tien tiep D3 -> discovery-end -> /domain chia lai -> approve-document -> start-wave."
+    },
+    {
+      "from": "WAVE_OPEN",
+      "to": "DISC_D2",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D2"
+      },
+      "note": "quay lai kham pha sau khi da chay wave: event moi trong event storming — quyet dinh mo rong pham vi nen di qua cho duoc hoi user. Ha dau ky discovery+domain+design ve DRAFT, dat replan_open. Tien tiep D3 -> discovery-end -> /domain chia lai -> approve-document -> start-wave."
+    },
+    {
+      "from": "WAVE_OPEN",
+      "to": "DISC_D3",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D3"
+      },
+      "note": "quay lai kham pha sau khi da chay wave: boundary moi (BOUNDARY-MAP + CHARTER) — quyet dinh mo rong pham vi nen di qua cho duoc hoi user. Ha dau ky discovery+domain+design ve DRAFT, dat replan_open. Tien tiep D3 -> discovery-end -> /domain chia lai -> approve-document -> start-wave."
+    },
+    {
+      "from": "DONE",
+      "to": "DISC_D1",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D1"
+      },
+      "note": "quay lai kham pha sau khi da chay wave: nang luc / vai / ma tran vai x hanh dong moi — quyet dinh mo rong pham vi nen di qua cho duoc hoi user. Ha dau ky discovery+domain+design ve DRAFT, dat replan_open. Tien tiep D3 -> discovery-end -> /domain chia lai -> approve-document -> start-wave. Gate replan_entry: wave vua xong phai da co archive."
+    },
+    {
+      "from": "DONE",
+      "to": "DISC_D2",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D2"
+      },
+      "note": "quay lai kham pha sau khi da chay wave: event moi trong event storming — quyet dinh mo rong pham vi nen di qua cho duoc hoi user. Ha dau ky discovery+domain+design ve DRAFT, dat replan_open. Tien tiep D3 -> discovery-end -> /domain chia lai -> approve-document -> start-wave. Gate replan_entry: wave vua xong phai da co archive."
+    },
+    {
+      "from": "DONE",
+      "to": "DISC_D3",
+      "trigger": "discovery-start",
+      "evidence_required": {
+        "wave": "D3"
+      },
+      "note": "quay lai kham pha sau khi da chay wave: boundary moi (BOUNDARY-MAP + CHARTER) — quyet dinh mo rong pham vi nen di qua cho duoc hoi user. Ha dau ky discovery+domain+design ve DRAFT, dat replan_open. Tien tiep D3 -> discovery-end -> /domain chia lai -> approve-document -> start-wave. Gate replan_entry: wave vua xong phai da co archive."
     }
   ]
 }

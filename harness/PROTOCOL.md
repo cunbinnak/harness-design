@@ -44,7 +44,9 @@ REVIEW → WAVE_OPEN → DEV → REVIEW_DEV → DEV_HANDOFF → TEST_PLAN → TE
 
 **Chia lại sau khi đã chạy wave.** Wave đang chạy không đụng tới. Chạy xong mà lộ chỗ thiếu tài liệu:
 `/next-wave` lưu wave vào `archive/` → `/domain` (từ `WAVE_OPEN`, hoặc `DONE` khi hết WAVE-SEQUENCE)
-bổ sung + chia lại → `/approve-document` → `/run-wave`. Luật chia lại: **phần bù chen vào ngay wave kế,
+bổ sung + chia lại → `/approve-document` → `/run-wave`. Chỗ thiếu cần năng lực/vai (D1), event (D2),
+boundary (D3) mới → `/discover D1|D2|D3` trước (quyết định phạm vi, được hỏi user), ký lại D3 rồi mới
+`/domain`. Lúc quay lại, dấu ký các lớp sắp sửa bị hạ về DRAFT để phải ký lại thật. Luật chia lại: **phần bù chen vào ngay wave kế,
 tính năng đã xếp lùi dần ra sau**, tràn thì sinh wave mới; wave đã đóng bất biến; không FEAT nào rơi
 mất. Gate: `replan_entry` (DONE: phải có archive trước) · `replan_integrity` (chốt chia-wave) ·
 `replan_approved` + `wave_not_closed` (start-wave).
