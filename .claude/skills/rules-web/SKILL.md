@@ -21,6 +21,8 @@ Sub-agent `kind=web` — chốt code · sửa bug · review của `/run-wave`.
 
 ## Quy ước bắt buộc
 1. **Component**: implement theo **mockup HTML** `docs/architecture/ux/mockups/{boundary}/*.html` (SoT về look — mở browser đối chiếu, bám app shell/spacing/primitives) + `ux-{boundary}.md` (SoT về behavior/states/API), đúng design fidelity.
+   - **Lắp theo bản kê của mockup, không đoán từ ảnh**: mỗi mockup ghi rõ màn gồm những component nào (`data-ds`, mã từ `DESIGN-SYSTEM.md` §4) và trạng thái nào (`data-state`). Code chỉ lắp đúng các component đó.
+   - **Gắn cùng thẻ trong code**: khung gốc của trang `data-screen="<mã màn>"` · root element của component `data-ds="<C#>"` · view trạng thái `data-state="empty|loading|error"`. Giữ thẻ trong bản build (nhẹ, vô hại, là thứ để máy đối chiếu). Gate `screen_markers` ở dev-handoff chặn nếu màn trong wave thiếu thẻ.
 2. **Wire actions**: mọi element actionable map đúng endpoint/op trong integration design; handle **loading / error / success** đủ trạng thái.
 3. **Auth**: theo auth flow đã chốt (token/refresh/route guard); KHÔNG embed credential.
 4. **Role gate**: dùng `roles[]` claim từ JWT.
@@ -89,7 +91,7 @@ Sub-agent `kind=web` — chốt code · sửa bug · review của `/run-wave`.
 43. **Responsive theo breakpoint chuẩn của project**; không hardcode media query rải rác nếu design system đã có token.
 44. **Dùng design token/theme** cho spacing, color, typography; không dùng màu/spacing tùy tiện. Hai nhánh theo **ADR ui-kit**:
     - **ADR chọn component library (mặc định khuyến nghị: Ant Design 5)**: dùng component của library (Button/Table/Modal/DatePicker/Form...), **map design-tokens vào theme** (antd `ConfigProvider` token: colorPrimary/borderRadius/fontFamily... lấy giá trị từ `design-tokens.css`) — KHÔNG tự dựng lại primitives mà library đã có; custom CSS chỉ cho layout đặc thù. Gate `web_styling` nhận diện library → miễn yêu cầu `var(--...)`.
-    - **ADR không chọn library (plain CSS)**: COPY `docs/architecture/ux/domain-tokens.css` vào `src/` + import ở entry — token phải được ĐỊNH NGHĨA trong bundle (`var(--...)` không định nghĩa = resolve rỗng = unstyled); style qua `var(--color-/--font-/--space-...)`, KHÔNG hardcode hex/px. Gate `web_styling` chặn cả 2 lỗi.
+    - **ADR không chọn library (plain CSS)**: COPY `docs/architecture/ux/design-tokens.css` vào `src/` + import ở entry — token phải được ĐỊNH NGHĨA trong bundle (`var(--...)` không định nghĩa = resolve rỗng = unstyled); style qua `var(--color-/--font-/--space-...)`, KHÔNG hardcode hex/px. Gate `web_styling` chặn cả 2 lỗi.
 45. **Không inline style phức tạp** trừ case rất nhỏ hoặc dynamic style có lý do.
     - **UI primitives dùng chung** (chỉ khi KHÔNG dùng component library): Button/Input/Card/Badge/Modal/Toast style 1 lần (từ token, đủ hover/focus-visible/disabled theo `ux §Visual polish`), page compose lại — KHÔNG style ad-hoc per-page; element tương tác thiếu `:hover`/`:focus-visible` = thiếu polish, reviewer flag.
 46. **Không phá layout khi text dài**: handle overflow, ellipsis, wrap, empty label.

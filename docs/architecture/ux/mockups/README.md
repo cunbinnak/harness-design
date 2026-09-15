@@ -19,11 +19,35 @@ Màn thuộc boundary nào (khi có nhiều FE boundary): theo FEAT `target_expe
 ## Luật (gate `design_gate` + skill `ux-design` enforce)
 
 1. **HTML TĨNH 100%** — mở bằng `file://` là xem được. KHÔNG JS framework, KHÔNG build step, KHÔNG CDN/font ngoài.
-2. **Mọi màu / spacing / chữ / bo góc / bóng qua `var(--...)`** từ `../..design-tokens.css` (link relative). KHÔNG hardcode hex/px trang trí — gate chặn mockup không reference token. Cần token mới → thêm vào design-tokens.css (SoT), không bịa giá trị tại chỗ.
+2. **Mọi màu / spacing / chữ / bo góc / bóng qua `var(--...)`** từ `../../design-tokens.css` (link relative). KHÔNG hardcode hex/px trang trí — gate chặn mockup không reference token. Cần token mới → thêm vào design-tokens.css (SoT), không bịa giá trị tại chỗ.
 3. **Nội dung THẬT** — text, số liệu mẫu đúng nghiệp vụ (không lorem ipsum), đúng ngôn ngữ sản phẩm.
 4. **State phụ trong cùng file** — dưới màn chính thêm section cho loading / empty / error / permission-denied (khớp bảng Screen states ở `ux-{boundary}.md`).
 5. **Responsive bằng media query thật** — thu nhỏ browser là thấy layout mobile.
 6. **Đủ interaction states** — `:hover` + `:focus-visible` cho mọi element tương tác.
+7. **Bản kê máy đọc được** — mockup là bản vẽ cho người, nhưng phải mang thẻ để code FE lắp đúng
+   component và máy đối chiếu được. Không có thẻ thì mockup chỉ còn là ảnh để nhìn, và code FE viết
+   lại từ đầu bằng mắt:
+   - `data-screen="<mã màn>"` trên khung gốc của màn — **đúng** giá trị cột `screen` trong `SCREEN-MAP.md`.
+   - `data-ds="<mã component>"` trên **mỗi** khối — đúng mã cột `#` trong `DESIGN-SYSTEM.md` §4
+     (`C1`, `C3`…). Khối không có mã trong §4 là **khối lạ**: thêm dòng vào §4 trước, đừng vẽ tại chỗ.
+   - `data-state="empty" | "loading" | "error"` trên section trạng thái phụ (luật 4).
+
+   ```html
+   <main data-screen="S2">
+     <section data-ds="C3"> … bảng nhân viên … </section>
+     <section data-ds="C3" data-state="empty"> … chưa có nhân viên nào … </section>
+     <section data-ds="C3" data-state="loading"> … </section>
+     <section data-ds="C3" data-state="error"> … </section>
+   </main>
+   ```
+
+   Gate `design_gate` kiểm: `data-screen` khớp SCREEN-MAP · mọi `data-ds` có trong §4 · cột
+   "Dùng ở màn" của §4 khớp **hai chiều** với các `data-ds` thật trong mockup · màn dùng component có
+   cột **Khuôn §5** (`rỗng` / `đang tải` / `lỗi`) phải có `data-state` tương ứng. Code FE gắn đúng
+   các thẻ này (gate `screen_markers` ở dev-handoff).
+
+   `EXAMPLE.reference.html` là thư viện archetype về **look**, không mang bản kê — đừng chép từ đó mà
+   quên gắn thẻ.
 
 ## Ai dùng
 

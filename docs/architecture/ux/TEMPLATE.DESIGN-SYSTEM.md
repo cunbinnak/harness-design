@@ -52,13 +52,23 @@ thiếu token thì **thêm vào SoT**, không gõ thẳng giá trị tại chỗ
 > `rushed` sẽ tìm thấy ở đợt sau.
 >
 > Không để ô trống. Component không dùng ở màn nào → **xoá dòng**, đừng giữ cho đủ bộ.
+>
+> **Ba cột này là thứ máy đọc**, không chỉ để người đọc:
+> - Cột `#` (`C1`, `C3`…) là giá trị của thẻ `data-ds` — gắn trên khối trong mockup VÀ trong code FE.
+> - Cột **Dùng ở màn** ghi đúng mã cột `screen` của `SCREEN-MAP.md`, ngăn cách bằng dấu phẩy. Gate đối
+>   chiếu **hai chiều** với các `data-ds` thật trong mockup: khai mà không vẽ, hay vẽ mà không khai, đều đỏ.
+> - Cột **Khuôn §5** ghi khuôn màn phải có khi dùng component này — chỉ lấy từ `rỗng` / `đang tải` /
+>   `lỗi` (đúng tên ba khuôn §5), ngăn cách `·`; không áp dụng thì ghi `—`. Màn dùng component đó phải có
+>   `data-state="empty"` / `"loading"` / `"error"` tương ứng.
+>   **Tách riêng khỏi cột Trạng thái bắt buộc có chủ đích:** chữ "rỗng" ở trường nhập nghĩa là ô trống,
+>   không phải khuôn "chưa có dữ liệu" của màn. Để máy suy từ chữ tự do thì nó đòi sai.
 
-| # | Component | Dùng ở màn | Trạng thái bắt buộc |
-|---|---|---|---|
-| C1 | Nút chính | {{S1, S2}} | thường · hover · **đang gửi (khoá lại)** · bị vô hiệu |
-| C2 | Trường nhập | {{S1}} | rỗng · đang gõ · **sai (có câu báo lỗi tiếng Việt)** · chỉ đọc |
-| C3 | Bảng/danh sách | {{S2}} | có dữ liệu · **rỗng** · **đang tải** · lỗi tải |
-| C4 | {{...}} | {{...}} | {{...}} |
+| # | Component | Dùng ở màn | Trạng thái bắt buộc | Khuôn §5 |
+|---|---|---|---|---|
+| C1 | Nút chính | {{S1, S2}} | thường · hover · **đang gửi (khoá lại)** · bị vô hiệu | — |
+| C2 | Trường nhập | {{S1}} | rỗng · đang gõ · **sai (có câu báo lỗi tiếng Việt)** · chỉ đọc | — |
+| C3 | Bảng/danh sách | {{S2}} | có dữ liệu · **rỗng** · **đang tải** · lỗi tải | rỗng · đang tải · lỗi |
+| C4 | {{...}} | {{...}} | {{...}} | {{rỗng · đang tải · lỗi, hoặc —}} |
 
 ## 5. Ba khuôn dùng chung
 

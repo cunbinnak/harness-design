@@ -942,7 +942,11 @@ def build_boundary_command(
                 "  - `ux/DESIGN-SYSTEM.md` §4 kho component → chỉ lắp từ danh sách đó, **đủ trạng thái bắt "
                 "buộc** của từng khối (thiếu \"đang gửi\" = người dùng bấm hai lần).\n"
                 "  - `ux/SCREEN-MAP.md` + `mockups/` → user **đã chốt** bản đó: đúng thông tin bắt buộc, "
-                "đúng thứ tự ưu tiên, đủ ba khuôn rỗng/lỗi/đang tải. Làm khác đi → `decide.py` một dòng."
+                "đúng thứ tự ưu tiên, đủ ba khuôn rỗng/lỗi/đang tải. Làm khác đi → `decide.py` một dòng.\n"
+                "  - **Bản kê trong mockup** (`data-screen` · `data-ds` · `data-state`) → đọc nó để biết màn "
+                "gồm ĐÚNG những component nào của `DESIGN-SYSTEM.md` §4 và những trạng thái nào — lắp theo "
+                "đó, không đoán từ ảnh. Gắn **cùng thẻ** trong code: khung trang `data-screen`, root component "
+                "`data-ds`, view trạng thái `data-state`. Gate `screen_markers` ở dev-handoff chặn màn thiếu thẻ."
             )
         _not_now = (
             "**KHÔNG làm ở chốt này:** tối ưu hiệu năng · làm UI đẹp hơn mức đủ dùng · viết test cho hàm "

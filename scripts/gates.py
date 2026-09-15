@@ -362,6 +362,77 @@ def check_web_styling(state: dict, evidence: dict | None = None, root: Path | No
     return True, ""
 
 
+_FE_SRC_EXTS = (".tsx", ".ts", ".jsx", ".js", ".vue", ".svelte", ".html")
+
+
+def check_screen_markers(state: dict, evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """dev-handoff: code FE của mỗi màn TRONG WAVE phải mang bản kê của mockup (web).
+
+    VÌ SAO — mockup HTML trước đây chỉ là ảnh để nhìn: prompt FE nói "token là thứ DUY NHẤT chép nguyên
+    từ thiết kế sang code", còn khối/component/trạng thái thì agent nhìn rồi viết lại, và không máy nào
+    đối chiếu. Giờ mockup mang bản kê (`data-screen` · `data-ds` mã §4 · `data-state`), code FE gắn cùng
+    thẻ, gate này đòi: mỗi màn trong wave có `data-screen` của nó, đủ mọi `data-ds` và `data-state` mà
+    mockup màn đó khai.
+
+    GIỚI HẠN, nói thẳng: kiểm TĨNH trên toàn `src/` — thẻ có mặt ở đâu đó trong code, chưa chứng minh nó
+    nằm đúng trang. Kiểm theo từng trang trên app đang chạy là việc khác (cần đo bằng trình duyệt thật +
+    đăng nhập). Đây là sàn tất định, không phải trần.
+
+    Phạm vi = màn có FEAT thuộc `wave_features` — không đòi màn của wave sau. Chưa có §4 / SCREEN-MAP /
+    wave_features → cho qua (gate thiết kế và start-wave lo, không báo trùng). force=true → bypass.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    comps = _design_system_components(root)
+    smap = root / "docs" / "architecture" / "ux" / "SCREEN-MAP.md"
+    wave_feats = {str(f).upper() for f in (state.get("wave_features") or [])}
+    if comps is None or not smap.is_file() or not wave_feats:
+        return True, ""
+    rows = _parse_md_table_rows(smap.read_text(encoding="utf-8", errors="ignore"), ("screen", "boundary", "mockup"))
+    proj_prefix = ((state.get("project") or {}).get("service_prefix")) or ""
+    problems: list[str] = []
+    for bid in state.get("wave_boundaries") or []:
+        b = _matrix_boundary(bid, root)
+        if ((b or {}).get("kind") or _kind_of(bid, root)) != "web":
+            continue
+        prefix = (b or {}).get("prefix") or proj_prefix
+        src = root / "services" / f"{prefix}-{bid}" / "src"
+        if not src.is_dir():
+            continue  # chưa scaffold → infra_proof bắt
+        code = "\n".join(
+            p.read_text(encoding="utf-8", errors="ignore") for p in src.rglob("*")
+            if p.is_file() and p.suffix.lower() in _FE_SRC_EXTS and "node_modules" not in p.parts)
+        c_screens, c_ds, c_states = _mockup_manifest(code)
+        for r in rows:
+            sid = (r.get("screen") or "").strip().strip("`")
+            if not sid or (r.get("boundary") or "").strip().strip("`") != bid:
+                continue
+            feats = {m.group(0).upper() for m in _FEAT_TOKEN_RE.finditer(r.get("feat") or "")}
+            if not feats & wave_feats:
+                continue
+            mk = re.search(r"[\w./-]+\.html", r.get("mockup") or "")
+            if not mk:
+                continue
+            rel = mk.group(0).lstrip("./")
+            mp = root / rel
+            if not mp.is_file():
+                mp = root / "docs" / "architecture" / "ux" / rel
+            if not mp.is_file():
+                continue  # mockup thiếu → design_gate đã chặn
+            _, m_ds, m_states = _mockup_manifest(mp.read_text(encoding="utf-8", errors="ignore"))
+            miss = ([] if sid in c_screens else [f'data-screen="{sid}"'])
+            miss += [f'data-ds="{c}"' for c in sorted(m_ds - c_ds)]
+            miss += [f'data-state="{s}"' for s in sorted(m_states - c_states)]
+            if miss:
+                problems.append(f"{bid}: màn `{sid}` (trong wave) — code FE thiếu {', '.join(miss)}")
+    if problems:
+        return False, ("; ".join(problems) + " — lắp đúng component theo bản kê của mockup và gắn cùng thẻ "
+                       "(rules-web rule 1)")
+    return True, ""
+
+
 def check_coverage_per_kind(
     evidence: dict, state: dict, field: str = "coverage_pct"
 ) -> tuple[bool, str]:
@@ -879,6 +950,58 @@ def _required_design_files(boundary_id: str, kind: str) -> list[str]:
     ]
 
 
+_DS_ATTR_RE = re.compile(r"data-ds\s*=\s*\{?\s*[\"'`]([^\"'`]+)[\"'`]")
+_SCREEN_ATTR_RE = re.compile(r"data-screen\s*=\s*\{?\s*[\"'`]([^\"'`]+)[\"'`]")
+_STATE_ATTR_RE = re.compile(r"data-state\s*=\s*\{?\s*[\"'`]([^\"'`]+)[\"'`]")
+_KHUON_TO_STATE = {"rỗng": "empty", "đang tải": "loading", "lỗi": "error"}
+
+
+def _design_system_components(root: Path) -> dict[str, dict] | None:
+    """§4 DESIGN-SYSTEM.md → {mã C#: {"screens": set mã màn, "states": set empty|loading|error}}.
+
+    `states` đọc từ cột **Khuôn §5** (cột 5), KHÔNG từ cột "Trạng thái bắt buộc": chữ "rỗng" ở trường
+    nhập nghĩa là ô trống, không phải khuôn "chưa có dữ liệu" của màn — suy từ chữ tự do là đòi sai.
+    Không có cột 5 (DESIGN-SYSTEM cũ) → không đòi `data-state` nào.
+
+    None khi thiếu file hoặc §4 chưa có dòng thật: `design_system_closed` đã chặn chuyện đó, báo thêm ở
+    chỗ khác chỉ là báo trùng. (Parse riêng, không gọi `rows()` lồng trong `check_design_system_closed`
+    — tách hàm đó ra thì phải kiểm lại một gate không có selftest trực tiếp.)
+    """
+    f = root / DESIGN_SYSTEM
+    if not f.is_file():
+        return None
+    text = re.sub(r"<!--.*?-->", "", f.read_text(encoding="utf-8", errors="ignore"), flags=re.S)
+    m = re.search(r"^##\s*4\..*?$(.*?)(?=^##\s|\Z)", text, re.M | re.S)
+    if not m:
+        return None
+    comps: dict[str, dict] = {}
+    seen_sep = False
+    for line in m.group(1).splitlines():
+        s = line.strip()
+        if not s.startswith("|"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if all(re.fullmatch(r":?-{2,}:?", c) for c in cells if c):
+            seen_sep = True
+            continue
+        if not seen_sep or len(cells) < 3 or any("{{" in c for c in cells):
+            continue
+        cid = cells[0].strip("*` ")
+        if not cid:
+            continue
+        screens = {x.strip("*` ") for x in re.split(r"[,;·]", cells[2]) if x.strip("*` ")}
+        states = {_KHUON_TO_STATE[k] for k in (t.strip("*` ").lower() for t in re.split(r"[,;·]", cells[4]))
+                  if k in _KHUON_TO_STATE} if len(cells) > 4 else set()
+        comps[cid] = {"screens": screens, "states": states}
+    return comps or None
+
+
+def _mockup_manifest(html: str) -> tuple[set[str], set[str], set[str]]:
+    """Bản kê trong HTML/JSX → (data-screen, data-ds, data-state). Dùng chung cho mockup và code FE."""
+    return (set(_SCREEN_ATTR_RE.findall(html)), set(_DS_ATTR_RE.findall(html)),
+            set(_STATE_ATTR_RE.findall(html)))
+
+
 def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = None) -> list[str]:
     """Thiết kế theo MÀN: SCREEN-MAP.md là mục lục gắn màn ↔ boundary ↔ FEAT ↔ mockup.
 
@@ -911,12 +1034,17 @@ def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = 
     problems: list[str] = []
     covered: set[str] = set()
     mapped_feats: set[str] = set()
+    # Bản kê mockup (data-screen/data-ds/data-state) chỉ kiểm khi §4 đã có dòng thật.
+    ds_comps = _design_system_components(root)
+    screen_ds: dict[str, set[str]] = {}
+    all_sids: set[str] = set()
     for r in rows:
         sid = (r.get("screen") or "").strip().strip("`")
         bid = (r.get("boundary") or "").strip().strip("`")
         cell = (r.get("mockup") or "").strip()
         if not sid or sid == "—":
             continue
+        all_sids.add(sid)
         # màn tuân thủ FEAT: token cột feat phải trace FEAT thật (chỉ check khi feat/ đã author)
         for m_f in _FEAT_TOKEN_RE.finditer(r.get("feat") or ""):
             fid = m_f.group(0).upper()
@@ -942,6 +1070,46 @@ def _screen_map_problems(boundaries: list[tuple[str, str]], root: Path | None = 
         t = p.read_text(encoding="utf-8", errors="ignore")
         if "design-tokens.css" not in t and "var(--" not in t:
             problems.append(f"mockup `{rel}` (màn `{sid}`) KHÔNG dùng design token (link design-tokens.css / var(--...))")
+        # Bản kê: mockup phải nói RÕ màn gồm component nào (§4) và khuôn nào — không có thì mockup chỉ
+        # là ảnh để nhìn, code FE viết lại từ đầu bằng mắt và máy không đối chiếu được gì. (Chỉ web.)
+        if bid in web_ids and ds_comps is not None:
+            m_screens, m_ds, m_states = _mockup_manifest(t)
+            if sid not in m_screens:
+                problems.append(
+                    f"mockup `{rel}` thiếu `data-screen=\"{sid}\"` — bản kê phải mang đúng mã màn của SCREEN-MAP")
+            if not m_ds:
+                problems.append(
+                    f"mockup `{rel}` (màn `{sid}`) không có `data-ds` nào — chưa gắn bản kê, code FE không có gì để lắp theo")
+            unknown = sorted(m_ds - set(ds_comps))
+            if unknown:
+                problems.append(
+                    f"mockup `{rel}` (màn `{sid}`) dùng khối lạ {unknown} — không có trong DESIGN-SYSTEM.md §4; "
+                    "thêm dòng §4 trước, đừng vẽ tại chỗ")
+            need: set[str] = set()
+            for c in m_ds & set(ds_comps):
+                need |= ds_comps[c]["states"]
+            missing = sorted(need - m_states)
+            if missing:
+                problems.append(
+                    f"mockup `{rel}` (màn `{sid}`) thiếu `data-state` {missing} — component trên màn khai các khuôn này ở cột Khuôn §5")
+            screen_ds[sid] = m_ds
+    # §4 "Dùng ở màn" ↔ data-ds thật trong mockup — HAI chiều. Khai mà không vẽ = §4 nói dối về màn;
+    # vẽ mà không khai = §4 không còn là kho đóng, vai picky/dogfood đối chiếu thiếu.
+    if ds_comps is not None:
+        for cid, info in sorted(ds_comps.items()):
+            for s in sorted(info["screens"]):
+                if s not in all_sids:
+                    problems.append(
+                        f"DESIGN-SYSTEM §4 `{cid}` ghi dùng ở màn `{s}` — màn không có trong SCREEN-MAP (sai mã màn?)")
+                elif s in screen_ds and cid not in screen_ds[s]:
+                    problems.append(
+                        f"DESIGN-SYSTEM §4 khai `{cid}` dùng ở màn `{s}` nhưng mockup màn đó không có "
+                        f"`data-ds=\"{cid}\"` — khai mà không vẽ")
+        for s, ds in sorted(screen_ds.items()):
+            for cid in sorted(ds & set(ds_comps)):
+                if s not in ds_comps[cid]["screens"]:
+                    problems.append(
+                        f"mockup màn `{s}` dùng `{cid}` nhưng §4 cột 'Dùng ở màn' của `{cid}` không ghi `{s}` — vẽ mà không khai")
     for bid in sorted(web_ids - covered):
         problems.append(
             f"boundary {bid!r} (web) KHÔNG có màn nào trong SCREEN-MAP (boundary trắng design — "
@@ -3485,6 +3653,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "health_proof"},  # app PHẢI trả 2xx ở /health/ready (health-proof.json HARNESS capture) — State=running chưa đủ
         {"kind": "code_compliance"},  # backend boundary: cấm H2 + bắt Dockerfile/config (G11) — chặn 'test xanh nhờ H2'
         {"kind": "web_styling"},   # web boundary PHẢI có styling thật (CSS/tailwind/CSS-in-JS) — chặn FE unstyled (0 CSS) không theo ux §4
+        {"kind": "screen_markers"},  # màn trong wave: code FE mang đúng bản kê mockup (data-screen/data-ds/data-state)
         {"kind": "api_contract_proof"},  # endpoint khai api-{b}.md phải có trong runtime OpenAPI (api-proof.json) — chặn contract drift
     ],
     "test-plan": [
@@ -3599,6 +3768,8 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_wave_sequence_lint(evidence)
         if kind == "web_styling":
             return check_web_styling(state, evidence)
+        if kind == "screen_markers":
+            return check_screen_markers(state, evidence)
         if kind == "dogfood_done":
             return check_dogfood_done(state, evidence)
         if kind == "backward_compat":
@@ -3866,7 +4037,7 @@ def _selftest() -> int:
         probs = _screen_map_problems(_fe, _mkroot)
         assert probs and "design token" in probs[0], probs
         (_mkd / "rooms-day.html").write_text(
-            '<html><head><link rel="stylesheet" href="../..design-tokens.css"></head>'
+            '<html><head><link rel="stylesheet" href="../../design-tokens.css"></head>'
             '<body><div style="color: var(--color-text)">x</div></body></html>', encoding="utf-8")
         assert _screen_map_problems(_fe, _mkroot) == [], _screen_map_problems(_fe, _mkroot)
         # (e) web boundary không có màn nào trong map → fail (boundary trắng design)
@@ -4511,6 +4682,78 @@ def _selftest() -> int:
         assert check_wave_in_matrix({"wave_n": 3}, root=_wm_root)[0] is False   # không khai → không mở
     finally:
         _sh.rmtree(_wm_root, ignore_errors=True)
+
+    # Bản kê mockup (_screen_map_problems / design_gate) + screen_markers (dev-handoff)
+    _bk = Path(_tf.mkdtemp(prefix="bke_"))
+    try:
+        _ux = _bk / "docs" / "architecture" / "ux"
+        (_ux / "mockups" / "shop-web").mkdir(parents=True, exist_ok=True)
+        _ds4 = ("# DS\n\n## 4. Kho component\n\n"
+                "| # | Component | Dùng ở màn | Trạng thái bắt buộc | Khuôn §5 |\n|---|---|---|---|---|\n"
+                "| C1 | Nút chính | S2 | thường · đang gửi | — |\n"
+                # C2 CÓ chữ "rỗng" và "lỗi" ở cột trạng thái nhưng Khuôn §5 = — → KHÔNG được đòi data-state
+                "| C2 | Trường nhập | S2 | rỗng · sai (có câu báo lỗi) | — |\n"
+                "| C3 | Bảng | S2 | có dữ liệu · rỗng · đang tải · lỗi tải | rỗng · đang tải · lỗi |\n")
+        (_ux / "DESIGN-SYSTEM.md").write_text(_ds4, encoding="utf-8")
+        _smap = ("| screen | route | boundary | feat | mockup |\n|--|--|--|--|--|\n"
+                 "| S2 | /emp | shop-web | FEAT-001 | `mockups/shop-web/s2.html` |\n")
+        (_ux / "SCREEN-MAP.md").write_text(_smap, encoding="utf-8")
+        _good = ('<link href="../../design-tokens.css"><main data-screen="S2">'
+                 '<section data-ds="C1"></section><section data-ds="C2"></section><section data-ds="C3"></section>'
+                 '<section data-ds="C3" data-state="empty"></section><section data-ds="C3" data-state="loading"></section>'
+                 '<section data-ds="C3" data-state="error"></section></main>')
+        _s2 = _ux / "mockups" / "shop-web" / "s2.html"
+        _fe_w = [("shop-web", "web")]
+        _s2.write_text(_good, encoding="utf-8")
+        assert _screen_map_problems(_fe_w, _bk) == [], _screen_map_problems(_fe_w, _bk)
+        # thiếu data-screen
+        _s2.write_text(_good.replace('data-screen="S2"', ""), encoding="utf-8")
+        assert any("data-screen" in x for x in _screen_map_problems(_fe_w, _bk))
+        # khối lạ (C9 không có trong §4)
+        _s2.write_text(_good.replace('data-ds="C1"', 'data-ds="C9"'), encoding="utf-8")
+        assert any("khối lạ" in x and "C9" in x for x in _screen_map_problems(_fe_w, _bk))
+        # khai mà không vẽ (§4 nói C1 ở S2, mockup bỏ C1)
+        _s2.write_text(_good.replace('<section data-ds="C1"></section>', ""), encoding="utf-8")
+        assert any("khai mà không vẽ" in x for x in _screen_map_problems(_fe_w, _bk))
+        # thiếu khuôn: C3 khai rỗng·đang tải·lỗi, mockup bỏ section loading
+        _s2.write_text(_good.replace('<section data-ds="C3" data-state="loading"></section>', ""), encoding="utf-8")
+        assert any("data-state" in x and "loading" in x for x in _screen_map_problems(_fe_w, _bk))
+        # vẽ mà không khai: §4 chuyển C1 sang màn S3, mockup S2 vẫn dùng C1
+        (_ux / "DESIGN-SYSTEM.md").write_text(_ds4.replace("| C1 | Nút chính | S2 |", "| C1 | Nút chính | S3 |"),
+                                              encoding="utf-8")
+        (_ux / "SCREEN-MAP.md").write_text(
+            _smap + "| S3 | /x | shop-web | FEAT-001 | `mockups/shop-web/s3.html` |\n", encoding="utf-8")
+        (_ux / "mockups" / "shop-web" / "s3.html").write_text(
+            '<link href="../../design-tokens.css"><main data-screen="S3"><b data-ds="C1"></b></main>', encoding="utf-8")
+        _s2.write_text(_good, encoding="utf-8")
+        assert any("vẽ mà không khai" in x for x in _screen_map_problems(_fe_w, _bk))
+        # không có DESIGN-SYSTEM §4 → không kiểm bản kê (design_system_closed lo)
+        (_ux / "DESIGN-SYSTEM.md").unlink()
+        (_ux / "SCREEN-MAP.md").write_text(_smap, encoding="utf-8")
+        _s2.write_text('<link href="../../design-tokens.css"><main>chưa gắn thẻ</main>', encoding="utf-8")
+        assert _screen_map_problems(_fe_w, _bk) == [], _screen_map_problems(_fe_w, _bk)
+
+        # screen_markers: code FE của màn trong wave phải mang bản kê của mockup
+        (_ux / "DESIGN-SYSTEM.md").write_text(_ds4, encoding="utf-8")
+        _s2.write_text(_good, encoding="utf-8")
+        (_bk / "harness").mkdir(parents=True, exist_ok=True)
+        (_bk / "harness" / "SERVICE-BOUNDARY-MATRIX.json").write_text(json.dumps({"boundaries": [
+            {"boundary_id": "shop-web", "kind": "web", "prefix": "x"}]}), encoding="utf-8")
+        _src = _bk / "services" / "x-shop-web" / "src"
+        _src.mkdir(parents=True, exist_ok=True)
+        _page = ('export const P = () => <main data-screen="S2"><div data-ds="C1"/><div data-ds="C2"/>'
+                 '<div data-ds="C3"/><div data-state="empty"/><div data-state="loading"/><div data-state="error"/></main>')
+        (_src / "EmpPage.tsx").write_text(_page, encoding="utf-8")
+        _stw = {"wave_boundaries": ["shop-web"], "wave_features": ["FEAT-001"], "project": {"service_prefix": "x"}}
+        assert check_screen_markers(_stw, root=_bk) == (True, ""), check_screen_markers(_stw, root=_bk)
+        (_src / "EmpPage.tsx").write_text(_page.replace('data-ds="C3"', ""), encoding="utf-8")
+        _ok, _msg = check_screen_markers(_stw, root=_bk)
+        assert _ok is False and 'data-ds="C3"' in _msg, _msg
+        # màn không thuộc wave → không đòi
+        assert check_screen_markers({**_stw, "wave_features": ["FEAT-999"]}, root=_bk)[0] is True
+        assert check_screen_markers(_stw, {"force": True}, root=_bk) == (True, "")
+    finally:
+        _sh.rmtree(_bk, ignore_errors=True)
     assert isinstance(check_wave_sequence_lint()[0], bool)
     import wave_sequence_lint as _wsl
     assert _wsl._selftest() == 0

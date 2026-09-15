@@ -53,7 +53,9 @@ RETIRED = (
 # `/apply-cr` trong nháy ngược là cách viết PHỔ BIẾN NHẤT của lệnh trong tài liệu, loại nó ra làm
 # công cụ mù đúng chỗ cần soi nhất — đo được 20 chỗ `apply-cr` sống sót qua ba lượt quét chỉ vì
 # một ký tự backtick đứng trước.
-SLASH = re.compile(r"(?<![\w-])/(" + "|".join(sorted(RETIRED, key=len, reverse=True)) + r")\b")
+# Lookbehind loại thêm `.`: `../design-tokens.css` là đường dẫn tương đối, không phải lệnh — báo oan
+# chỗ đó từng khiến tài liệu viết lệch thành `../..design-tokens.css` (đường dẫn hỏng) chỉ để né.
+SLASH = re.compile(r"(?<![\w.-])/(" + "|".join(sorted(RETIRED, key=len, reverse=True)) + r")\b")
 # Cột đầu có thể gộp nhiều tên (`| `/design` · `/plan` · `/review-document` | … |`).
 MIGRATION_ROW = re.compile(r"^\s*\|\s*`/[a-z-]+`(?:\s*[·,]\s*`/[a-z-]+`)*\s*\|")
 GATEISH = re.compile(r"`([a-z_]{4,})`")
