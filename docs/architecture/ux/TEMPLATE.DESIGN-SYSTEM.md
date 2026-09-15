@@ -15,13 +15,15 @@ status: DRAFT
 
 ## 1. Ý đồ thị giác
 
-> Ba tính từ + **neo tham chiếu thật**. Neo là hiện vật user chỉ ra ("nhìn như app X"), không phải
-> gu tự bịa. Không có neo thì mọi tranh luận "đẹp/xấu" về sau không có gì để đối chiếu.
+> Ba tính từ + **neo tham chiếu thật**. Neo là sản phẩm/template có thật, không phải gu tự bịa: ưu
+> tiên cái user chỉ ra ("nhìn như app X"); user không chỉ thì agent tự tìm 2-3 mẫu cùng loại (skill
+> `ux-design` bước Research). Không có neo thì mọi tranh luận "đẹp/xấu" về sau không có gì để đối chiếu.
+> Gate đòi ô **Neo tham chiếu** có ít nhất một URL — tên suông ("tham khảo Ant Design") không kiểm lại được.
 
 | | |
 |---|---|
 | Ba tính từ | {{vd: gọn · rõ · không màu mè}} |
-| Neo tham chiếu | {{app/trang user chỉ ra + vì sao họ thấy dễ nhìn}} |
+| Neo tham chiếu | {{tên sản phẩm/template + URL + điểm vay mượn (bố cục, kiểu bảng, màu…) — mỗi mẫu một dòng, ngăn cách `·`}} |
 | Tránh | {{cái user nói "nhìn là ngợp"}} |
 | Dùng ở đâu | {{ngoài nắng / trong xưởng / văn phòng → ảnh hưởng cỡ chữ, tương phản}} |
 

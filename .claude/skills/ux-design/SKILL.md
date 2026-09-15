@@ -51,7 +51,13 @@ Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/run-wave đối chi�
 - **Elevation + depth**: card/modal dùng `--shadow-*` + `--radius-*` nhất quán — phân lớp rõ, không phẳng lì cũng không bóng đổ hỗn loạn.
 
 ## Phương pháp
-1. **Research** — nếu domain/UX chưa rõ + có WebSearch: UX pattern cho product type (form/table/dashboard), WCAG 2.1 AA, enterprise design system (Ant/Material/Atlassian), mobile-first. KHÔNG bịa nguồn.
+1. **Research — BẮT BUỘC, không chỉ khi "chưa rõ"**: trước khi chốt token hay vẽ mockup đầu tiên, chủ động tìm THẬT sản phẩm/template cùng loại qua WebSearch/trình duyệt.
+   - **Từ khoá tự suy TỪ CHÍNH dự án đang làm** (đọc `PROJECT.md`/domain + loại màn sắp vẽ). KHÔNG dùng lại cụm từ/link cố định của lần trước hay của dự án khác — vd dự án quản lý kho thì tìm "warehouse/inventory dashboard UI", dự án đặt lịch thì tìm "booking/scheduling app UI".
+   - Lấy **ít nhất 2-3 tham chiếu CỤ THỂ** (không mô tả chung chung "hiện đại, sạch sẽ"). Ghi **tên sản phẩm/template + URL + đặc điểm cụ thể định vay mượn** (bố cục thẻ số liệu, cách dùng màu xu hướng, kiểu bảng, spacing…) vào `DESIGN-SYSTEM.md` §1 làm **neo tham chiếu** — kể cả khi user chưa đưa ví dụ nào.
+   - User đưa ví dụ/link cụ thể → **ưu tiên đúng cái đó**; agent tìm THÊM để bổ sung góc nhìn, không thay thế link user đã cho.
+   - Trang chặn bot (Cloudflare/403…) → thử nguồn khác (blog tổng hợp, ảnh chụp trên trang review, Dribbble, tìm ảnh). KHÔNG bỏ bước này, KHÔNG ghi nguồn chưa thật sự xem qua.
+   - Tham khảo cùng lúc: UX pattern cho loại sản phẩm (form/table/dashboard), WCAG 2.1 AA, design system doanh nghiệp (Ant/Material/Atlassian), mobile-first.
+   - Vì sao bắt buộc: không có mẫu thật thì giao diện ra theo gu của agent, và người vận hành phải tự đi tìm mẫu rồi bắt làm lại. Gate `design_system_closed` đòi ô neo §1 có ít nhất một URL.
 2. **SCREEN-MAP trước** (mục lục màn): từ FEAT `has_ui_touchpoint` + journeys derive danh sách MÀN → gán boundary theo luật (hint → persona → hỏi) → ghi bảng SCREEN-MAP.md. Đây là kế hoạch thiết kế — user thấy được toàn cảnh màn nào thuộc đâu trước khi vẽ.
 3. **Thiết kế TỪNG MÀN** (đơn vị công việc — đi theo SCREEN-MAP, ưu tiên màn trong flow FEAT Must):
    - Đọc đúng tài liệu của màn: FEAT:AC trong row + `api-{be}.md` mà flow gọi + journey liên quan.
@@ -87,7 +93,7 @@ Ghi vào `ux-{boundary}.md §4` (dev implement + review-web/run-wave đối chi�
 
 | § | Khai gì | Ai dùng về sau |
 |---|---|---|
-| §1 | **Ba tính từ + neo tham chiếu THẬT** user chỉ ra ("nhìn như app X") | chỗ đối chiếu khi cãi nhau đẹp/xấu — không có neo thì tranh luận không có đáy |
+| §1 | **Ba tính từ + neo tham chiếu THẬT** — ưu tiên user chỉ ra ("nhìn như app X"); KHÔNG có thì agent tự tìm (bước Research) và ghi tên + URL + đặc điểm vay mượn, không để trống | chỗ đối chiếu khi cãi nhau đẹp/xấu — không có neo thì tranh luận không có đáy |
 | §3 | **Cặp tương phản** (hex chữ / hex nền / loại) | gate **tự tính tỉ số WCAG**, không tin lời khai |
 | §4 | **Kho component ĐÓNG** — mỗi khối: dùng ở màn nào + **trạng thái bắt buộc** | vai `picky` ở `/dogfood` đi kiểm đúng cột này trên app đã render |
 | §5 | **Ba khuôn** rỗng / lỗi / đang tải | năm màn không được đẻ ra năm kiểu báo lỗi |

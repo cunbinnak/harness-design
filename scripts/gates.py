@@ -2178,6 +2178,14 @@ def check_design_system_closed(evidence: dict | None = None,
     intent = rows(r"1\.")
     if not intent:
         errs.append("§1 ý đồ thị giác chưa điền (ba tính từ + neo tham chiếu THẬT user chỉ ra)")
+    else:
+        # Neo phải kiểm lại được: tên suông ("tham khảo Ant Design") thì không ai mở ra đối chiếu,
+        # và không phân biệt được mẫu đã thật sự xem với mẫu agent nhớ mang máng.
+        anchor = next((c for c in intent if c and "neo" in c[0].lower()), None)
+        if anchor is None or not re.search(r"https?://\S+", " ".join(anchor[1:])):
+            errs.append("§1 ô 'Neo tham chiếu' chưa có URL nào — ghi tên sản phẩm/template + URL + điểm "
+                        "vay mượn. User không chỉ mẫu thì tự tìm 2-3 mẫu cùng loại (skill ux-design, "
+                        "bước Research); tên suông không đối chiếu lại được")
 
     # §3 tương phản — TÍNH, không tin lời khai
     pairs = rows(r"3\.")
@@ -5070,6 +5078,46 @@ def _selftest() -> int:
         assert check_replan_approved({}) == (True, "")
     finally:
         _sh.rmtree(_rp, ignore_errors=True)
+
+    # design_system_closed: §1 neo có URL · §3 tương phản tính thật · §4 không ô trống · §5 đủ khuôn
+    _dsr = Path(_tf.mkdtemp(prefix="dsc_"))
+    try:
+        (_dsr / "docs" / "discovery").mkdir(parents=True, exist_ok=True)
+        (_dsr / "docs" / "discovery" / "BOUNDARY-MAP.md").write_text(
+            "## 1. Backend boundaries\n\n| id | x |\n|---|---|\n| `core` | a |\n\n"
+            "## 2. Web experiences\n\n| id | x |\n|---|---|\n| `shop-web` | b |\n", encoding="utf-8")
+        _good_ds = (
+            "# DS\n\n## 1. Ý đồ\n\n| | |\n|---|---|\n| Ba tính từ | gọn · rõ |\n"
+            "| Neo tham chiếu | SmartHR https://example.com/smarthr — bố cục thẻ số liệu |\n\n"
+            "## 3. Tương phản\n\n| Cặp | Chữ | Nền | Loại | Dùng ở |\n|---|---|---|---|---|\n"
+            "| chính | `#1f2937` | `#ffffff` | thường | mọi màn |\n\n"
+            "## 4. Kho\n\n| # | Component | Dùng ở màn | Trạng thái bắt buộc | Khuôn §5 |\n|---|---|---|---|---|\n"
+            "| C1 | Nút | S1 | thường · đang gửi | — |\n\n"
+            "## 5. Khuôn\n\n| Khuôn | Hiện gì | Làm gì |\n|---|---|---|\n"
+            "| Rỗng | a | b |\n| Lỗi | a | b |\n| Đang tải | a | b |\n")
+        _dsf = _dsr / "docs" / "architecture" / "ux" / "DESIGN-SYSTEM.md"
+        _dsf.parent.mkdir(parents=True, exist_ok=True)
+        _dsf.write_text(_good_ds, encoding="utf-8")
+        assert check_design_system_closed(root=_dsr) == (True, ""), check_design_system_closed(root=_dsr)
+        # neo chỉ có tên, không URL → đỏ
+        _dsf.write_text(_good_ds.replace(" https://example.com/smarthr", ""), encoding="utf-8")
+        _ok, _m = check_design_system_closed(root=_dsr)
+        assert not _ok and "Neo tham chiếu" in _m and "URL" in _m, _m
+        # ô neo còn placeholder {{…}} → dòng bị bỏ qua → cũng đỏ
+        _dsf.write_text(_good_ds.replace("SmartHR https://example.com/smarthr — bố cục thẻ số liệu",
+                                         "{{tên + URL}}"), encoding="utf-8")
+        assert not check_design_system_closed(root=_dsr)[0]
+        # tương phản tính thật: xám nhạt trên trắng → đỏ
+        _dsf.write_text(_good_ds.replace("`#1f2937`", "`#d1d5db`"), encoding="utf-8")
+        _ok, _m = check_design_system_closed(root=_dsr)
+        assert not _ok and "tương phản" in _m, _m
+        # backend-only → vacuous
+        (_dsr / "docs" / "discovery" / "BOUNDARY-MAP.md").write_text(
+            "## 1. Backend boundaries\n\n| id | x |\n|---|---|\n| `core` | a |\n", encoding="utf-8")
+        _dsf.unlink()
+        assert check_design_system_closed(root=_dsr) == (True, "")
+    finally:
+        _sh.rmtree(_dsr, ignore_errors=True)
     assert isinstance(check_wave_sequence_lint()[0], bool)
     import wave_sequence_lint as _wsl
     assert _wsl._selftest() == 0
