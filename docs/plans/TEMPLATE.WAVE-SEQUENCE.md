@@ -7,9 +7,10 @@ tier: T2
 owner: program-planner
 last_reviewed: "{{DATE}}"
 # Ngưỡng tổng AC mỗi wave cho PROJECT NÀY (gate `wave_sequence_lint` đếm heading `### AC-n` trong
-# FEAT của `features_in_scope`). Không khai → mặc định 6. Trần cứng = 2× ngưỡng: vượt trần thì
-# `rationale` KHÔNG override được, buộc chia nhỏ thật. Chọn theo quy mô: project vừa để 6; project
-# lớn (vài trăm AC) để 10-15, vì mỗi wave là một vòng đầy đủ dev→review→handoff→test→dogfood.
+# FEAT của `features_in_scope`). Không khai → mặc định 6. Ngưỡng là KHUYẾN KHÍCH: tách ra mà đứt
+# luồng thì giữ tròn luồng, vượt ngưỡng kèm `rationale` nói luồng nào đứt; vượt không lý do thì gate
+# chặn. Chọn theo quy mô: project vừa để 6; project lớn (vài trăm AC) để 10-15, vì mỗi wave là một
+# vòng đầy đủ dev→review→handoff→test→dogfood.
 ac_cap_per_wave: 6
 ---
 
@@ -91,6 +92,11 @@ features_in_scope:
     target: web-experiences/customer-app  # encode layer (FE)
     parent_epic: EP-001
     paired_with: FEAT-001
+
+# CHỈ khi chia lại sau khi đã đóng wave (có archive/wave-*): phần bù (FEAT mới, hoặc FEAT đã giao có
+# AC mới) mặc định CHEN VÀO wave kế. Đặt nó ở wave xa hơn → ghi lý do cho đúng FEAT đó (≥20 ký tự),
+# gate `replan_integrity` đọc field này. Lượt chia wave đầu tiên: bỏ trống / xoá field.
+placement_rationale: {}
 
 contracts:                                # tham chiếu docs/architecture/ (KHÔNG hash/sign)
   produce:

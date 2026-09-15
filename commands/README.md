@@ -37,7 +37,7 @@ Bốn thứ đổi từ cửa-người-gõ thành cơ chế agent tự chạy:
 | `decide` | `py scripts/decide.py`, nhắc trong NON-NEGOTIABLES của mọi prompt spawn. Script từ chối dòng mà lý do không dẫn được về artifact nào |
 | `log-bug` | **bỏ hẳn** — TC đỏ ở `test-report.md`, phát hiện dogfood ở `dogfood-report.md` §2 |
 | `fix-bugs` | lượt sửa trong `/run-wave`: `build_prompt.py fix --tc TC-NNN` → sửa → chạy lại `test-execute`. Không chốt riêng |
-| `apply-cr` | thay đổi sau ship = wave sau (`/domain` vốn đã là back-edge) |
+| `apply-cr` | thay đổi sau ship = wave sau: `/next-wave` rồi `/domain` bổ sung + chia lại (bù chen vào wave kế) |
 
 ## Đã gỡ trước đó
 

@@ -2,7 +2,7 @@
 name: domain
 description: "Nốt nửa sau tài liệu, một mạch 9 chốt: nghiệp vụ → ký → dịch → thiết kế → UX → chia wave → rà chéo. Dừng ở REVIEW."
 argument-hint: "(không arg — chạy tiếp từ chốt đang đứng)  ·  hoặc gợi ý phạm vi: \"đặt lịch\""
-when_state: [DOMAIN_AUTHORING, DESIGN, PLAN, REVIEW]
+when_state: [DOMAIN_AUTHORING, DESIGN, PLAN, REVIEW, WAVE_OPEN, DONE]
 spawn:
   agent: "domain-po-agent · domain-ba-agent · domain-translator-agent · solution-architect-agent · ux-designer-agent · program-planner-agent · review-document-agent"
   skills: [domain-po, domain-ba, domain-translator, technical-design, ux-design, implementation-plan, business-analysis]
@@ -60,6 +60,28 @@ Xong chốt 9 → dừng ở `REVIEW`, chờ `/approve-document`.
 Hai chế độ hỏi như `/discover`. **Hỏi TRƯỚC khi viết.** Discovery chưa đủ để suy → STOP, báo user quay lại `/discover`.
 
 Ba lớp: business `docs/domain/**` → **ký** (`status: APPROVED`) → dịch `docs/architecture/{epics,feat,business-rules}`. Ký trước, dịch sau.
+
+## Gọi sau khi đã chạy wave — bổ sung + chia lại
+
+Kế hoạch không cố định từ đầu. Chạy xong một wave mà lộ chỗ thiếu tài liệu thì **không sửa tại chỗ,
+không dừng wave đang chạy**: đợi `/next-wave` lưu wave vào `archive/`, rồi gọi `/domain`.
+
+| Đang ở | Nghĩa | Vào chốt |
+|---|---|---|
+| `WAVE_OPEN` | còn wave trong kế hoạch, chưa code wave kế | 1 |
+| `DONE` | hết WAVE-SEQUENCE mà còn việc → thêm wave | 1 (gate `replan_entry`: wave vừa xong phải đã có archive) |
+
+Đi đủ 9 chốt như lượt đầu, chỉ khác ở hai chỗ:
+
+- **Chốt 1** viết phần bù. Nguồn: dòng `wave sau` ở `tracking/wave-*/dogfood-report.md` ·
+  `tracking/blockers.md` · chỗ thiếu người vận hành báo. Sửa thứ đã giao → FEAT mới, hoặc thêm AC vào
+  FEAT cũ; không sửa lặng lẽ AC đã giao.
+- **Chốt 8** chia lại: **phần bù chen vào ngay wave kế, tính năng đã xếp lùi dần ra sau**, tràn thì
+  sinh wave mới. Không dồn phần bù ra cuối — các wave ở giữa sẽ xây trên nền đang thiếu. Wave đã đóng
+  không đổi. Gate `replan_integrity` kiểm (skill `implementation-plan` §Chia lại).
+
+Xong chốt 9 → `/approve-document` lại (gate `replan_approved` chặn `start-wave` tới khi duyệt) →
+`/run-wave` chạy wave kế theo kế hoạch mới.
 
 ## Chốt 9 — rà chéo
 

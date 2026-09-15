@@ -30,11 +30,26 @@ py scripts/next_wave.py --go                                     # snapshot + m�
 py scripts/harness.py next-wave complete '{"wave_n": <N+1>}'     # → WAVE_OPEN
 ```
 
-Hết WAVE-SEQUENCE → `next_wave.py` báo là hết và **không mở gì**; lúc đó teardown:
+Hết WAVE-SEQUENCE → `next_wave.py` báo là hết và **không mở gì**. Còn việc → `/domain` thêm wave (xem
+dưới). Hết việc thật → teardown:
 
 ```bash
 py scripts/harness.py done-wave complete '{"teardown_ok": true}'  # → BOOTSTRAP
 ```
+
+## Wave vừa chạy lộ chỗ thiếu tài liệu
+
+Không sửa tại chỗ, không sửa trước khi snapshot. Sau lệnh này:
+
+```
+/domain              từ WAVE_OPEN (còn wave) hoặc DONE (hết wave) — bổ sung + CHIA LẠI
+/approve-document    bạn duyệt phần đổi
+/run-wave            chạy wave kế theo kế hoạch mới
+```
+
+Luật chia lại: **phần bù chen vào ngay wave kế, tính năng đã xếp lùi dần ra sau**, tràn thì sinh wave
+mới. Không dồn phần bù ra cuối — các wave ở giữa sẽ xây trên nền đang thiếu. Chi tiết: skill
+`implementation-plan` §Chia lại · gate `replan_integrity`.
 
 ## `next_wave.py --go` làm gì
 

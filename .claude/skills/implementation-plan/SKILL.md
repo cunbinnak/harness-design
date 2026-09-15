@@ -37,13 +37,37 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 3. **Topological → wave** (sprint):
    - **Wave 1 = foundation mỏng** (auth/shared + 1–2 capability core) đủ chạy **E2E sớm** (login + 1 luồng nghiệp vụ chính).
    - **Wave kế** = boundary/FEAT phụ thuộc wave trước, nhóm theo lát giá trị ship được cùng nhau; ghi rõ `dependencies` từ wave trước.
-   - **Kích thước wave: đếm tổng AC của mọi FEAT trong wave — chia nhỏ để dễ triển khai.** Ngưỡng là **`ac_cap_per_wave` khai ở frontmatter `WAVE-SEQUENCE.md`** (không khai → mặc định **6**). Chọn theo quy mô: project vừa để 6; project lớn vài trăm AC để 10-15 — vì mỗi wave là một vòng đầy đủ dev → review 2 lượt → dựng Docker → sinh test → chạy test → dogfood 6 vai × 2 đợt, nên ngưỡng quá nhỏ ở project lớn đẻ ra hàng chục wave mà chi phí vận hành nuốt hết thời gian làm việc thật. Gate `wave_sequence_lint` chặn theo **hai bậc** (đếm heading `### AC-n` trong từng FEAT file, không đọc văn xuôi để quyết):
-     - `cap < AC ≤ 2×cap` mà không giải thích → chặn; điền `rationale` (≥20 ký tự) trong YAML block của wave → hạ xuống chỉ cảnh báo.
-     - `AC > 2×cap` → **chặn LUÔN, `rationale` không cứu được** dù viết dài cỡ nào. "Phụ thuộc dây chuyền A cần B cần C" KHÔNG phải lý do hợp lệ để giữ chung một wave — đó chính xác là lý do để chia thành **nhiều wave nối tiếp đúng thứ tự** (wave(A) → wave(B) → wave(C)), việc `implementation-plan` vốn đã hướng dẫn (Topological → wave). Gặp mức này thì chia lại, không tìm cách viết rationale để lách.
-     Cắt tiếp thành wave con theo cùng đồ thị phụ thuộc, đừng nhét cố cho gọn số wave — wave nhiều AC là wave dev làm nửa chừng dễ bỏ sót, review khó soi hết, dogfood khó phủ. Ít AC quá (1-2) không cần tách.
+   - **Kích thước wave: đếm tổng AC của mọi FEAT trong wave — chia nhỏ để dễ triển khai.** Ngưỡng là **`ac_cap_per_wave` khai ở frontmatter `WAVE-SEQUENCE.md`** (không khai → mặc định **6**). Chọn theo quy mô: project vừa để 6; project lớn vài trăm AC để 10-15 — vì mỗi wave là một vòng đầy đủ dev → review 2 lượt → dựng Docker → sinh test → chạy test → dogfood 6 vai × 2 đợt, nên ngưỡng quá nhỏ ở project lớn đẻ ra hàng chục wave mà chi phí vận hành nuốt hết thời gian làm việc thật.
+     - **Ngưỡng là KHUYẾN KHÍCH, luồng mới là luật.** Chia nhỏ theo ngưỡng thì dễ triển khai; nhưng tách ra mà **đứt luồng** (nửa luồng ở wave này, nửa kia ở wave sau, không demo được luồng nào trọn) thì **giữ tròn luồng**, vượt ngưỡng cũng được.
+     - Gate `wave_sequence_lint` (đếm heading `### AC-n` trong từng FEAT file): vượt ngưỡng **mà không nói lý do** → chặn. Điền `rationale` (≥20 ký tự) trong YAML block của wave nói **luồng nào sẽ đứt nếu tách** → cho qua, chỉ cảnh báo. Vượt hơn 2× ngưỡng vẫn cho qua nếu có lý do, nhưng cảnh báo mạnh hơn — cỡ đó thường là nhiều luồng gộp lại, rà xem tách theo luồng được không.
+     - "Nhét cho gọn số wave" KHÔNG phải lý do — đó không phải đứt luồng. Wave nhiều AC là wave dev làm nửa chừng dễ bỏ sót, review khó soi hết, dogfood khó phủ. Ít AC quá (1-2) không cần tách.
    - Lặp tới khi **mọi** boundary/FEAT đã vào 1 wave.
 4. **Viết wave-{N}.md cho mọi wave** (theo `TEMPLATE.wave.md`).
 5. **Materialize MATRIX** (mỗi boundary: `wave` + `features[]` + `ref_skills[]` + `depends_on`) + **KG skeleton** per boundary.
+
+## Chia lại sau khi đã chạy wave
+
+Kế hoạch không cố định từ đầu. Chạy xong wave k (`/next-wave` đã lưu `archive/wave-k/`) mà phát hiện thiếu tài liệu → quay lại `/domain` bổ sung, rồi tới chốt này **chia lại**. Nhận biết: có thư mục `archive/wave-*`. Wave kế = wave đóng gần nhất + 1.
+
+**Phần bù CHEN VÀO NGAY WAVE KẾ, tính năng đã xếp LÙI DẦN ra sau.** Không gom phần bù thành một wave để cuối cùng mới làm — các wave ở giữa sẽ xây trên nền đang thiếu, luồng đứt.
+
+```
+Kế hoạch cũ          Sau khi chia lại (vừa đóng wave 2, phát hiện thiếu X)
+wave 3: A, B, C      wave 3: X, A, B     ← X chen vào wave kế
+wave 4: D, E         wave 4: C, D        ← C bị đẩy xuống
+                     wave 5: E           ← tràn qua wave cuối → sinh wave mới
+```
+
+1. **Wave đã đóng bất biến** — không đổi FEAT của wave ≤ k trong MATRIX/WAVE-SEQUENCE. Cần sửa thứ đã giao → đó là phần bù, đưa vào wave kế (FEAT mới, hoặc thêm AC vào FEAT cũ rồi xếp FEAT đó vào wave kế).
+2. **Phần bù** = FEAT mới + FEAT đã giao có AC mới → đặt ở **wave k+1**. Chỉ đặt xa hơn khi có lý do thật (vd phụ thuộc thứ chưa làm) — ghi trong block §wave của WAVE-SEQUENCE:
+   ```yaml
+   placement_rationale:
+     FEAT-hrm-044: "cần FEAT-hrm-031 (bảng lương) giao ở wave 4 mới tính được"
+   ```
+3. **Đẩy lùi giữ luật chia wave** — thứ tự phụ thuộc, ngưỡng AC (khuyến khích; tròn luồng thắng con số). Tràn → thêm wave mới ở cuối (WAVE-SEQUENCE + `wave-{N}.md` + `features_by_wave`).
+4. **Không rơi mất** — mọi FEAT đã xếp cho wave sau trong kế hoạch cũ phải còn chỗ trong kế hoạch mới, hoặc ghi `status: deferred|dropped` ở FEAT kèm lý do. Nguồn phần bù cần quét: dòng `wave sau` ở `tracking/wave-*/dogfood-report.md`, `tracking/blockers.md`, và chỗ thiếu người vận hành báo.
+
+Gate `replan_integrity` (chốt chia-wave) kiểm cả ba luật 1, 2, 4 bằng cách so MATRIX sống với MATRIX trong `archive/`. Xong chốt này → `/approve-document` lại (gate `replan_approved` chặn `start-wave` tới khi duyệt) → `/run-wave` chạy wave kế theo kế hoạch mới.
 
 ## Flow (/domain)
 - Iterate với user: trình bày WAVE-SEQUENCE (toàn dự án) + tất cả wave-{N}.md + MATRIX → "OK chưa? chỉnh gì?" → sửa. Lặp tới khi user confirm (không giới hạn số vòng).
@@ -58,7 +82,8 @@ WAVE-SEQUENCE theo `docs/plans/TEMPLATE.WAVE-SEQUENCE.md` (clone ADLC, adapt sin
 - [ ] Mỗi wave có goal + boundaries + features + **dependencies từ wave trước** + exit criteria.
 - [ ] **MỌI wave điền đủ `wave_class` + `wave_strategy` + `targets` + §2 block YAML** (gate `wave_sequence_lint` parse: enum + `target_count_per_layer ≤ 3` + strategy layer-purity + vertical `parent_epic` + `inherited_active` file tồn tại — sai field này chặn `/domain`).
 - [ ] Wave 1 mỏng, chạy được **E2E** (foundation + 1 lát core).
-- [ ] Mỗi wave ≤6 AC (tổng AC mọi FEAT trong wave) — **gate thật (`wave_sequence_lint`), không phải khuyến nghị**. Vượt mà không tách được → điền `rationale` trong YAML block, không để trống.
+- [ ] Mỗi wave trong ngưỡng `ac_cap_per_wave` (tổng AC mọi FEAT trong wave). Vượt vì tách ra thì đứt luồng → điền `rationale` nói luồng nào đứt; vượt không lý do thì gate `wave_sequence_lint` chặn.
+- [ ] Chia lại sau khi đã đóng wave (có `archive/wave-*`): wave đã đóng không đổi · phần bù ở wave kế (hoặc có `placement_rationale`) · không FEAT nào rơi mất (gate `replan_integrity`).
 - [ ] **Deferred-scope khai báo tường minh**: AC/feature chủ động hoãn sang wave sau (auth/idempotency/event ở wave CRUD…) ghi vào `## 6 → Deferred to later waves` của `wave-{N}.md` (token `FEAT-NNN[:AC-M]`/`BR-NNN`). Đây là SoT để test-plan tag `@deferred` → test-execute skip → end-wave close sạch (không cần ép `test_result`).
 - [ ] MATRIX mỗi boundary đủ `kind/prefix/tech/wave/features/depends_on`; `ref_skills[]` suy từ design (event/cache/extra → ref tương ứng; CRUD thuần để rỗng); KG skeleton mọi boundary.
 - [ ] **Không có `TBD` / section trống mơ hồ** — chỗ chưa chốt ghi `Open question` (cần ai quyết + vì sao).

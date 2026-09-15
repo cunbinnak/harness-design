@@ -29,6 +29,10 @@ LÀM GÌ
                       knowledge-base · mọi thứ trong docs/
     5. Hết wave     → báo là hết, KHÔNG tự mở
 
+SAU LỆNH NÀY, nếu wave vừa chạy lộ chỗ thiếu tài liệu: `/domain` gọi được từ WAVE_OPEN (còn wave) và
+DONE (hết wave) — bổ sung + chia lại, phần bù chen vào wave kế. Snapshot phải xong TRƯỚC khi mở khoá
+tài liệu, nên thứ tự luôn là lệnh này rồi mới `/domain` (gate `replan_entry` chặn chiều ngược ở DONE).
+
 Usage:
   py scripts/next_wave.py            # xem trước, không ghi gì
   py scripts/next_wave.py --go
@@ -527,8 +531,8 @@ def do_go(state: dict, n: int) -> int:
         print(f"  !!  dogfood: {len(unplanned)} phát hiện đẩy `wave sau` mà WAVE-SEQUENCE.md "
               f"CHƯA nhắc tới ({', '.join(unplanned[:6])}).")
         print("      Đẩy sang wave sau mà không có chỗ nhận thì là bỏ đi, chỉ gọi tên khác thôi.")
-        print("      Muốn nhận thật → lùi `/domain` (chốt chia-wave) thêm vào WAVE-SEQUENCE; "
-              "`docs/plans/**` chỉ mở khoá ở đó.")
+        print("      Muốn nhận thật → sau lệnh này gọi `/domain` bổ sung tài liệu + chia lại: phần bù "
+              "CHEN VÀO wave kế, tính năng đã xếp lùi ra sau (gate `replan_integrity`).")
         print("      Không chặn — từ chối là quyền của bạn, nhưng từ chối trong im lặng thì "
               "wave sau không biết mình đứng trên nền gì.")
 
@@ -546,8 +550,9 @@ def do_go(state: dict, n: int) -> int:
     bs, has_next = plan(n)
     if not has_next:
         print(f"\n  Hết WAVE-SEQUENCE — wave {n} là wave cuối. KHÔNG tự mở wave mới.")
-        print("  Còn phát hiện `wave sau` chưa được nhận → lùi `/domain` (chốt chia-wave) "
-              "để thêm vào WAVE-SEQUENCE.md.")
+        print(f"  Còn việc (phát hiện `wave sau`, chỗ thiếu tài liệu) → `/domain` bổ sung + thêm wave "
+              f"{n + 1} (wave {n} đã lưu archive nên mở khoá tài liệu an toàn).")
+        print("  Hết việc thật → `done-wave` teardown.")
         return 0
 
     nxt = n + 1
@@ -567,7 +572,9 @@ Wave {nxt} đã mở — KHÔNG file nào bị reset, vết wave {n} nằm nguy�
   Tôn trọng  : luồng lõi wave ≤{n} phải giữ chạy được — dogfood đọc
                {ARCHIVE}/wave-*/DELIVERED.md cho lượt regression
 
-  Tiếp: /run-wave""")
+  Tiếp: /run-wave
+        · wave vừa rồi lộ chỗ thiếu tài liệu → /domain TRƯỚC: bổ sung + chia lại, phần bù chen vào
+          wave {nxt}, tính năng đã xếp lùi ra sau → /approve-document → /run-wave""")
     return 0
 
 

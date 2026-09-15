@@ -10,7 +10,7 @@
 2. **Edit chỉ trong `owned_paths`** của `active_boundary`. PreToolUse hook block; đừng cố lách.
 3. **Stage transition CHỈ qua slash command.** KHÔNG sửa `stage` trong STATE.json bằng tay. Một lệnh được chạy **nhiều** `harness <cmd> complete` (hành lang `/run-wave` gộp 7 chốt) — thứ chặn "đi tiếp khi chưa đủ điều kiện" là **gate của từng chốt**, chạy đủ như cũ. **Chốt nào đỏ → DỪNG ngay tại đó**, báo user thiếu gì, KHÔNG bỏ qua, KHÔNG `force`.
 4. **Quyết định non-trivial → artifact ngay** (ADR / FEAT / CR / KG). Không để chỉ tồn tại trong chat.
-5. **Cross-boundary change** phải qua chốt rà chéo của `/domain` + `/approve-document` trước khi code. Sau khi wave đã ship: thay đổi = **wave sau**, không sửa tại chỗ.
+5. **Cross-boundary change** phải qua chốt rà chéo của `/domain` + `/approve-document` trước khi code. Sau khi wave đã ship: thay đổi = **wave sau**, không sửa tại chỗ — `/next-wave` lưu archive rồi `/domain` bổ sung + chia lại, **phần bù chen vào ngay wave kế, tính năng đã xếp lùi ra sau** (không dồn ra cuối).
 6. **Không bypass test** (`--no-verify`, skip), không hardcode secrets. **Doc upstream PHASE-LOCKED** (hook enforce, không còn honor-system): mỗi lớp doc chỉ sửa được ở stage SỞ HỮU + REVIEW — discovery/PROJECT→DISC_*, epic/journey/persona→DOMAIN (business thuần), **feat/BR→DOMAIN+DESIGN** (dual-owner: narrative/AC do DOMAIN dịch, field kỹ thuật `enforcement_location`/`consumes_contracts` do DESIGN điền — gate `todo_resolved`), adr/hld/api/data-model/ux/events/integrations→DESIGN, plans→PLAN. Muốn sửa khi đã qua stage → **LÙI** về stage sở hữu (`/domain` gọi được từ DESIGN/PLAN/REVIEW — tự chạy tiếp từ chốt đang đứng) rồi tiến lại (re-gate); sau ship → wave kế. (TEMPLATE.*/README + infra/KG/tracking/services KHÔNG khoá.)
 
 > Vi phạm sẽ bị hook block. Refusal message tham chiếu `harness/PROTOCOL.md` § Failure Modes (FM-ID).
@@ -50,7 +50,7 @@
 
 **Bỏ có chủ đích (multi-repo plumbing, single-repo không cần):** contract-signing/hash-drift (D4), `_shared/*` placeholder-enrich layer (D3.5), `/sync-to-specs`/SPECS hub, SYSTEM-TOPOLOGY/CONTRACT-MAP tách rời, multi-role Authority sign-off, BLOCKED state. **FEAT KHÔNG sinh ở Discovery** (cả ZIP lẫn harness — DOMAIN sở hữu).
 
-**Flow stage (17 state):** `BOOTSTRAP → DISC_D0 → DISC_D1 → DISC_D2 → DISC_D3 → DOMAIN_AUTHORING → DESIGN ↺ → PLAN → REVIEW → WAVE_OPEN → DEV → REVIEW_DEV → DEV_HANDOFF → TEST_PLAN → TEST_EXECUTE → MANUAL_TEST → DONE`. `DESIGN`/`PLAN` là chốt bên trong `/domain` (tự làm UX nếu có boundary web/mobile). **Back-edge (lùi sửa doc phase-locked):** `/domain` gọi được từ DESIGN/PLAN/REVIEW — tự chạy tiếp từ chốt đang đứng; tiến lại re-gate. `next-wave`: `MANUAL_TEST → DONE → WAVE_OPEN` khi WAVE-SEQUENCE còn wave (**KHÔNG reset** — snapshot `archive/wave-N/` + đánh dấu kết quả theo wave); hết wave → teardown `DONE → BOOTSTRAP` (docs giữ nguyên). Boundary MỚI → `/discover D3`.
+**Flow stage (17 state):** `BOOTSTRAP → DISC_D0 → DISC_D1 → DISC_D2 → DISC_D3 → DOMAIN_AUTHORING → DESIGN ↺ → PLAN → REVIEW → WAVE_OPEN → DEV → REVIEW_DEV → DEV_HANDOFF → TEST_PLAN → TEST_EXECUTE → MANUAL_TEST → DONE`. `DESIGN`/`PLAN` là chốt bên trong `/domain` (tự làm UX nếu có boundary web/mobile). **Back-edge (lùi sửa doc phase-locked):** `/domain` gọi được từ DESIGN/PLAN/REVIEW — tự chạy tiếp từ chốt đang đứng; tiến lại re-gate. `next-wave`: `MANUAL_TEST → DONE → WAVE_OPEN` khi WAVE-SEQUENCE còn wave (**KHÔNG reset** — snapshot `archive/wave-N/` + đánh dấu kết quả theo wave); hết wave → teardown `DONE → BOOTSTRAP` (docs giữ nguyên). **Chia lại sau khi chạy wave:** `/domain` gọi được từ `WAVE_OPEN` (sau snapshot) và `DONE` (hết wave mà còn việc) → đi lại 9 chốt → `/approve-document` → `/run-wave`; wave đã đóng bất biến, phần bù chen vào wave kế (gate `replan_integrity`). Boundary MỚI → `/discover D3`.
 
 ---
 
@@ -110,7 +110,7 @@
 | Bước | Lệnh | Tác dụng |
 |---|---|---|
 | **1. Khám phá** | `/discover` | Giả thuyết → persona + **ma trận vai x hành động** → event storming → boundary + `PROJECT.md`. Không arg — tự suy: gate wave đang đứng **xanh thì tiến**, **đỏ thì ở lại** đào đúng chỗ thiếu. Arg `D0..D3` chỉ để ép đào thêm khi gate đã xanh. **Chỗ được hỏi nhiều nhất — không trần số câu.** Hết D3: agent rà chéo cả lớp → **DỪNG, bạn ĐỌC và đánh giá** → bạn duyệt = chữ ký (`status: APPROVED`) → mới sang Domain |
-| **2. Tài liệu** | `/domain` | **Nốt nửa sau, một mạch 9 chốt**: Epic/Feature/BR/Journey (nghiệp vụ, plain VN) → bạn OK = **ký** → dịch sang bản kỹ thuật → ADR/HLD/API/data-model/events/tích hợp → **UX nếu có boundary web/mobile** → chia wave (WAVE-SEQUENCE + MATRIX + KG) → **rà chéo toàn bộ**. Dừng ở REVIEW. Gọi lại = chạy tiếp từ chốt đang đứng. KHÔNG hỏi lại user — suy từ tài liệu `/discover`; mơ hồ → `decide.py` |
+| **2. Tài liệu** | `/domain` | **Nốt nửa sau, một mạch 9 chốt**: Epic/Feature/BR/Journey (nghiệp vụ, plain VN) → bạn OK = **ký** → dịch sang bản kỹ thuật → ADR/HLD/API/data-model/events/tích hợp → **UX nếu có boundary web/mobile** → chia wave (WAVE-SEQUENCE + MATRIX + KG) → **rà chéo toàn bộ**. Dừng ở REVIEW. Gọi lại = chạy tiếp từ chốt đang đứng. **Gọi sau `/next-wave`** = bổ sung tài liệu + chia lại kế hoạch (bù chen vào wave kế). KHÔNG hỏi lại user — suy từ tài liệu `/discover`; mơ hồ → `decide.py` |
 | **3. Chốt** | `/approve-document` | Bạn **ĐỌC + đánh giá** toàn bộ tài liệu → duyệt = **KHOÁ SCOPE** (ký lớp design/contract). Đây là chỗ kết thúc phần tài liệu; mở cổng wave |
 | **4. Chạy wave** | `/run-wave [<N>]` | **Một mạch 7 chốt**: dựng wave → code từng boundary → review tới sạch → dựng chạy thật → sinh test → chạy test → dogfood. Gate đỏ = **DỪNG đúng chốt đó**. Gọi lại = chạy tiếp từ chốt đang đứng. Còn bug thì tự sửa + re-test |
 | | `/dogfood [<vai>]` | Chạy lại **một** lăng kính (lượt đầu đã nằm trong `/run-wave`) |
@@ -124,7 +124,7 @@
 | `/decide` | `py scripts/decide.py`, nhắc trong NON-NEGOTIABLES của mọi prompt spawn. Mơ hồ → chọn phương án **dẫn về một tài liệu cụ thể** → ghi (kèm cột *giả định*) → đi tiếp. Script **từ chối** dòng không dẫn được về artifact nào |
 | `/log-bug` | **bỏ hẳn, không thay bằng gì.** TC đỏ nằm ở `test-report.md`; phát hiện dogfood nằm ở `dogfood-report.md` §2 kèm ô `Xử`. Sổ bug là bản sao thứ ba của cùng một sự thật |
 | `/fix-bugs` | lượt sửa trong `/run-wave`: `build_prompt.py fix --tc TC-NNN` → sửa → chạy lại `test-execute`. Không chốt riêng, không sổ phải đóng bằng tay |
-| `/apply-cr` | thay đổi = wave sau (`/domain` vốn đã là back-edge) |
+| `/apply-cr` | thay đổi = wave sau: `/next-wave` rồi `/domain` bổ sung + chia lại |
 | `/design` · `/plan` · `/review-document` | ba chốt bên trong `/domain` (thiết kế · chia wave · rà chéo) |
 
 

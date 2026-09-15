@@ -655,8 +655,22 @@ def build_plan(state: dict, matrix: list[dict], opts: dict) -> str:
             "**Contract graph (gate `contract_graph_parity`):** MATRIX `depends_on`/`consumed_by` phải khớp 2 chiều với api-*.md `consumers[]` + INTEG-INT + events subscribers — cạnh gọi nhau không có contract doc / contract khai cạnh không có trong MATRIX = chặn.",
             "Sau confirm: return RETURN SCHEMA `user_confirmed: true`. Gate plan: WAVE-SEQUENCE + MATRIX + wave files + KG + lint (integrity/coherence/contract-graph) → transition PLAN→REVIEW. Rồi /approve-document → start-wave 1.",
         ]),
-        RETURN_SCHEMA_TEMPLATE,
     ]
+    closed = sorted(int(p.name[5:]) for p in (REPO / "archive").glob("wave-*")
+                    if p.is_dir() and p.name[5:].isdigit()) if (REPO / "archive").is_dir() else []
+    if closed:
+        k = closed[-1]
+        parts.append(
+            f"## ĐÂY LÀ LƯỢT CHIA LẠI — đã đóng wave {', '.join(map(str, closed))}\n\n"
+            f"Không chia từ đầu. Theo skill `implementation-plan` §Chia lại sau khi đã chạy wave:\n"
+            f"- Wave ≤ {k} ĐÃ ĐÓNG — không đổi FEAT của chúng. Bản lúc đóng: `archive/wave-{k:03d}/`.\n"
+            f"- Phần bù (FEAT mới · FEAT đã giao có AC mới) **chen vào wave {k + 1}**; tính năng đã xếp "
+            f"lùi dần ra sau, tràn thì thêm wave mới. Đặt phần bù xa hơn chỉ khi có lý do thật → "
+            "`placement_rationale` trong block §wave.\n"
+            "- Không FEAT nào của kế hoạch cũ rơi mất (còn chỗ, hoặc `status: deferred|dropped` kèm lý do).\n"
+            "- Quét nguồn phần bù: dòng `wave sau` ở `tracking/wave-*/dogfood-report.md` · `tracking/blockers.md`.\n"
+            "- Gate `replan_integrity` so MATRIX sống với MATRIX trong `archive/`.")
+    parts.append(RETURN_SCHEMA_TEMPLATE)
     return "\n\n".join(parts)
 
 

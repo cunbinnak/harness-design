@@ -442,6 +442,12 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
         mode = evidence.get("mode")
         if mode:
             state.setdefault("spawn", {})["active"] = f"{command}-{mode}"
+        # Quay lại từ WAVE_OPEN/DONE = chia lại kế hoạch sau khi wave đã chạy. Đánh dấu để start-wave
+        # đòi /approve-document lại (gate replan_approved) — cờ `approved` của start-wave là evidence
+        # tự truyền, không chặn được việc chạy thẳng wave kế khi phần đổi chưa ai đọc.
+        if state.get("previous_stage") in ("WAVE_OPEN", "DONE"):
+            state["replan_open"] = {"from_stage": state["previous_stage"],
+                                    "wave": (state.get("wave") or {}).get("id")}
 
     elif command == "domain-approve":
         # Ký business doc (target rỗng = all). Stamp `status: APPROVED` do scripts/domain_approve.py lo
@@ -463,6 +469,8 @@ def apply_effects(command: str, evidence: dict, state: dict) -> None:
             )
 
     elif command == "approve-document":
+        # Duyệt xong → phần chia lại đã được đọc, start-wave hết bị chặn.
+        state.pop("replan_open", None)
         # Audit force override gate doc_review (vd doc-review chưa chạy nhưng user chủ động approve).
         if evidence.get("force") is True:
             _append_decision("approve-document --force", evidence.get("reason") or "(no reason given)")

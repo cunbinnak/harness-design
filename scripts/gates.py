@@ -1206,6 +1206,217 @@ def check_plan_integrity(evidence: dict) -> tuple[bool, str]:
     return False, "plan-integrity fail: " + "; ".join(errors)
 
 
+# ========================================================================
+# Chia lại kế hoạch sau khi wave đã chạy — quay lại /domain từ WAVE_OPEN / DONE
+# ========================================================================
+#
+# Luật của người vận hành: wave đang chạy thì không đụng; chạy xong phát hiện thiếu thì bổ sung tài
+# liệu và chia lại. Phần bù CHEN VÀO NGAY WAVE KẾ, các tính năng đã xếp thì lùi dần ra sau; tràn qua
+# wave cuối thì sinh wave mới. KHÔNG gom phần bù thành một wave để cuối cùng mới làm — làm vậy thì các
+# wave ở giữa xây trên nền đang thiếu, luồng đứt.
+#
+# Chỗ ghi nhận "đã đóng" là `archive/wave-NNN/` (next_wave.py sinh, cũng là cờ chống đóng hai lần),
+# nên mọi gate ở đây đọc archive — không đọc lời khai trong STATE.
+
+_ARCHIVE_WAVE_RE = re.compile(r"^wave-(\d+)$")
+
+
+def _closed_waves(root: Path) -> list[int]:
+    d = root / "archive"
+    if not d.is_dir():
+        return []
+    return sorted(int(m.group(1)) for p in d.iterdir()
+                  if p.is_dir() and (m := _ARCHIVE_WAVE_RE.match(p.name)))
+
+
+def _matrix_list(path: Path) -> list[dict]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    blist = data.get("boundaries", []) if isinstance(data, dict) else data
+    return [b for b in blist if isinstance(b, dict)] if isinstance(blist, list) else []
+
+
+def _feats_of_wave(blist: list[dict], n: int) -> set[str]:
+    """FEAT của wave `n` trên một MATRIX bất kỳ — cùng luật `state.wave_features_from_matrix`:
+    có `features_by_wave` thì đúng key, thiếu key = rỗng; không có field thì `features` phẳng."""
+    out: set[str] = set()
+    for b in blist:
+        by_wave = b.get("features_by_wave") or {}
+        if by_wave:
+            feats = by_wave.get(str(n)) or []
+        elif b.get("wave") == n or n in (b.get("waves") or []):
+            feats = b.get("features") or []
+        else:
+            continue
+        out |= {str(f).upper() for f in feats}
+    return out
+
+
+def _all_feats(blist: list[dict]) -> set[str]:
+    out: set[str] = set()
+    for b in blist:
+        out |= {str(f).upper() for f in (b.get("features") or [])}
+        for feats in (b.get("features_by_wave") or {}).values():
+            out |= {str(f).upper() for f in (feats or [])}
+    return out
+
+
+def check_replan_entry(state: dict, evidence: dict | None = None,
+                       root: Path | None = None) -> tuple[bool, str]:
+    """Quay lại `/domain` từ DONE: wave vừa xong PHẢI đã nằm trong archive.
+
+    VÌ SAO — `/domain` mở khoá tài liệu. Sửa FEAT trước khi `next_wave.py --go` chép bản wave N vào
+    archive thì DELIVERED.md của wave N đóng gói AC đã bị sửa, không phải thứ wave N thật sự giao.
+    Từ WAVE_OPEN thì luôn đúng thứ tự (next_wave đã chép rồi mới mở wave), nên chỉ DONE cần kiểm.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True or state.get("stage") != "DONE":
+        return True, ""
+    root = root or REPO_ROOT
+    n = (state.get("wave") or {}).get("number")
+    if n and not (root / "archive" / f"wave-{int(n):03d}").is_dir():
+        return False, (
+            f"wave {n} chưa được lưu vào archive — chạy `py scripts/next_wave.py --go` trước rồi mới "
+            "quay lại /domain. Sửa tài liệu trước khi lưu thì bản đặc tả của wave vừa giao bị ghi đè, "
+            "DELIVERED.md đóng gói nhầm AC đã sửa")
+    return True, ""
+
+
+def check_replan_approved(state: dict, evidence: dict | None = None) -> tuple[bool, str]:
+    """start-wave: đã quay lại /domain chia lại kế hoạch thì phải qua `/approve-document` lại.
+
+    VÌ SAO — cờ `approved` của start-wave là evidence MAIN tự truyền. Không có dấu này thì chia lại
+    xong chạy thẳng wave kế, phần đổi chưa ai đọc — đúng thứ khoá scope sinh ra để chặn.
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    rp = state.get("replan_open")
+    if rp:
+        return False, (
+            f"đã quay lại /domain chia lại kế hoạch (từ {rp.get('from_stage', '?')}) nhưng chưa "
+            "/approve-document — bạn đọc và duyệt phần đổi trước, rồi mới chạy wave kế")
+    return True, ""
+
+
+def check_wave_not_closed(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """start-wave: không mở lại wave đã đóng (có `archive/wave-N/`)."""
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    try:
+        n = int(evidence.get("wave_n"))
+    except (TypeError, ValueError):
+        return True, ""  # int_min lo
+    if (root / "archive" / f"wave-{n:03d}").is_dir():
+        nxt = (max(_closed_waves(root)) + 1) if _closed_waves(root) else 1
+        return False, (f"wave {n} ĐÃ ĐÓNG (có archive/wave-{n:03d}/) — không mở lại. Wave kế là {nxt}; "
+                       "phần bù cho wave cũ đi vào wave kế, không sửa tại chỗ")
+    return True, ""
+
+
+def check_replan_integrity(evidence: dict | None = None, root: Path | None = None) -> tuple[bool, str]:
+    """plan: chia lại kế hoạch sau khi đã đóng ≥1 wave phải đúng ba luật.
+
+    1. **Wave đã đóng bất biến** — FEAT của wave j ≤ k (k = wave đóng gần nhất) trên MATRIX sống phải
+       đúng bằng MATRIX lúc đóng wave j (`archive/wave-j/`). Đổi quá khứ = DELIVERED.md và regression
+       không còn đối chiếu được.
+    2. **Không rơi mất** — FEAT đã xếp cho wave sau trong kế hoạch cũ (archive wave k) phải còn trong
+       MATRIX sống, hoặc FEAT đã ghi status deferred/dropped. Viết lại kế hoạch mà không quét lại thì
+       mục đã xếp biến mất im lặng.
+    3. **Bù chen vào wave kế (k+1)** — FEAT MỚI (không có trong kế hoạch cũ) và FEAT đã giao mà có AC
+       MỚI phải nằm ở wave k+1. Đặt xa hơn chỉ được khi `placement_rationale` của WAVE-SEQUENCE ghi
+       lý do cho đúng FEAT đó (vd phụ thuộc thứ chưa làm) — luật mặc định là chen, không dồn ra cuối.
+
+    Chưa đóng wave nào → vacuous pass (lượt chia wave đầu tiên).
+    """
+    evidence = evidence or {}
+    if evidence.get("force") is True:
+        return True, ""
+    root = root or REPO_ROOT
+    closed = _closed_waves(root)
+    if not closed:
+        return True, ""
+    k = closed[-1]
+    nxt = k + 1
+    live = _matrix_list(root / "harness" / "SERVICE-BOUNDARY-MATRIX.json")
+    if not live:
+        return True, ""  # plan_gate lo MATRIX
+    old = _matrix_list(root / "archive" / f"wave-{k:03d}" / "harness" / "SERVICE-BOUNDARY-MATRIX.json")
+    problems: list[str] = []
+
+    # 1. wave đã đóng bất biến
+    delivered: set[str] = set()
+    for j in closed:
+        snap = _matrix_list(root / "archive" / f"wave-{j:03d}" / "harness" / "SERVICE-BOUNDARY-MATRIX.json")
+        if not snap:
+            continue
+        was, now = _feats_of_wave(snap, j), _feats_of_wave(live, j)
+        delivered |= was
+        if was != now:
+            diff = sorted(was ^ now)
+            problems.append(f"wave {j} ĐÃ ĐÓNG nhưng FEAT của nó trên MATRIX bị đổi ({', '.join(diff[:6])}) "
+                            "— quá khứ không sửa; phần bù đưa vào wave kế")
+
+    # 2. không rơi mất
+    if old:
+        waves_old = {int(w) for b in old for w in (b.get("features_by_wave") or {}) if str(w).isdigit()}
+        waves_old |= {int(b["wave"]) for b in old if isinstance(b.get("wave"), int)}
+        planned_later = set().union(set(), *(_feats_of_wave(old, w) for w in waves_old if w >= nxt)) - delivered
+        missing = []
+        for fid in sorted(planned_later - _all_feats(live)):
+            f = _feat_file_for(fid, root)
+            st = ""
+            if f is not None:
+                st = str(planning_lint.parse_frontmatter(
+                    f.read_text(encoding="utf-8", errors="ignore")).get("status") or "").strip().lower()
+            if st not in planning_lint._FEAT_OPTOUT_STATUSES:
+                missing.append(fid)
+        if missing:
+            problems.append(f"FEAT đã xếp trong kế hoạch cũ bị rơi khỏi MATRIX: {', '.join(missing[:6])} — "
+                            "xếp lại vào wave sau, hoặc ghi `status: deferred|dropped` ở FEAT kèm lý do")
+
+    # 3. phần bù chen vào wave kế
+    rationale: dict[str, str] = {}
+    seq = root / "docs" / "plans" / "WAVE-SEQUENCE.md"
+    if seq.is_file():
+        import wave_sequence_lint as _wsl
+        content = seq.read_text(encoding="utf-8", errors="ignore")
+        for wid in _wsl.list_waves(content):
+            block = _wsl.extract_wave_yaml(content, wid)
+            pr = (_wsl.parse_yaml_block(block) if block else {}).get("placement_rationale") or {}
+            if isinstance(pr, dict):
+                rationale.update({str(a).upper(): str(b or "") for a, b in pr.items()})
+    in_next = _feats_of_wave(live, nxt)
+    fills: dict[str, str] = {}
+    if old:
+        for fid in sorted(_all_feats(live) - _all_feats(old)):
+            fills[fid] = "FEAT mới"
+    for fid in sorted(delivered):
+        f_now = _feat_file_for(fid, root)
+        f_old = _feat_file_for(fid, root / "archive" / f"wave-{k:03d}")
+        if f_now is None or f_old is None:
+            continue
+        added = (set(_AC_HEADING_RE.findall(f_now.read_text(encoding="utf-8", errors="ignore")))
+                 - set(_AC_HEADING_RE.findall(f_old.read_text(encoding="utf-8", errors="ignore"))))
+        if added:
+            fills[fid] = f"đã giao, thêm {', '.join(sorted(added))}"
+    far = [f"{fid} ({why})" for fid, why in fills.items()
+           if fid not in in_next and len(rationale.get(fid, "").strip()) < 20]
+    if far:
+        problems.append(
+            f"phần bù chưa nằm ở wave kế ({nxt}): {', '.join(far[:6])} — bù CHEN VÀO wave {nxt}, các tính "
+            "năng đã xếp lùi dần ra sau (tràn thì sinh wave mới). Không dồn ra cuối: các wave ở giữa sẽ xây "
+            "trên nền đang thiếu. Có lý do thật để đặt xa hơn (vd phụ thuộc thứ chưa làm) → ghi "
+            "`placement_rationale: {FEAT-x: <lý do ≥20 ký tự>}` trong block §wave của WAVE-SEQUENCE")
+    if problems:
+        return False, "chia lại kế hoạch sai luật: " + "; ".join(problems)
+    return True, ""
+
+
 # Status (cột cuối row BOUNDARY-MAP) loại bỏ khỏi yêu-cầu-coverage MATRIX (đã chốt không làm).
 _BMAP_EXCLUDED_STATUSES = ("deferred", "out-of-scope", "out of scope", "dropped")
 
@@ -3578,9 +3789,11 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "domain-po": [
         {"kind": "non_empty", "field": "mode"},   # EPIC|FEATURE|JOURNEY — viết business doc ở docs/domain/
+        {"kind": "replan_entry"},  # quay lại từ DONE: wave vừa xong phải đã nằm trong archive
     ],
     "domain-ba": [
         {"kind": "non_empty", "field": "mode"},   # BR|PERSONA — viết business doc ở docs/domain/
+        {"kind": "replan_entry"},
     ],
     "domain-approve": [
         {"kind": "domain_no_jargon"},   # ký doc business: phải plain nghiệp vụ (no jargon). Target rỗng = all
@@ -3609,6 +3822,7 @@ GATE_RULES: dict[str, list[dict]] = {
         {"kind": "plan_gate"},       # WAVE-SEQUENCE + MATRIX + wave files + KG (force bypass + audit)
         {"kind": "planning_lint"},   # re-check + ADR ≥2 alternatives (ADR có sau DESIGN) (force bypass)
         {"kind": "plan_integrity"},  # MATRIX FEAT-id backing + FEAT mồ côi + depends_on no-cycle/no-dangling (force bypass)
+        {"kind": "replan_integrity"},  # chia lại sau khi đã đóng wave: quá khứ bất biến · không rơi mất · bù chen vào wave kế
         {"kind": "matrix_coherence"},  # MATRIX phủ mọi boundary BOUNDARY-MAP đúng kind (force bypass)
         {"kind": "api_transport"},   # tenant-id qua header/JWT, KHÔNG query (G6 — chống drift BUG-012) (force bypass)
         {"kind": "wave_sequence_lint"},  # WAVE-SEQUENCE §wave-NNN: enum/cap≤3/strategy-invariant (G16) (force bypass)
@@ -3633,7 +3847,9 @@ GATE_RULES: dict[str, list[dict]] = {
     ],
     "start-wave": [
         {"kind": "flag", "field": "approved", "expected": True},
+        {"kind": "replan_approved"},  # đã quay lại /domain chia lại thì phải /approve-document lại
         {"kind": "int_min", "field": "wave_n", "min": 1},
+        {"kind": "wave_not_closed"},  # không mở lại wave đã có archive
         {"kind": "file_exists", "path": "harness/SERVICE-BOUNDARY-MATRIX.json"},
         {"kind": "wave_in_matrix", "field": "wave_n"},
     ],
@@ -3810,6 +4026,14 @@ def _run_rule(rule: dict, state: dict, evidence: dict) -> tuple[bool, str]:
             return check_plan_integrity(evidence)
         if kind == "matrix_coherence":
             return check_matrix_boundary_coherence(evidence)
+        if kind == "replan_entry":
+            return check_replan_entry(state, evidence)
+        if kind == "replan_approved":
+            return check_replan_approved(state, evidence)
+        if kind == "wave_not_closed":
+            return check_wave_not_closed(evidence)
+        if kind == "replan_integrity":
+            return check_replan_integrity(evidence)
     except KeyError as e:
         return False, f"Rule {kind} missing field: {e}"
     return False, f"Unknown gate kind: {kind!r}"
@@ -4754,6 +4978,85 @@ def _selftest() -> int:
         assert check_screen_markers(_stw, {"force": True}, root=_bk) == (True, "")
     finally:
         _sh.rmtree(_bk, ignore_errors=True)
+
+    # Chia lại sau khi đã chạy wave: replan_entry · replan_approved · wave_not_closed · replan_integrity
+    _rp = Path(_tf.mkdtemp(prefix="rpl_"))
+    try:
+        def _mx(p: Path, fbw: dict) -> None:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps({"boundaries": [
+                {"boundary_id": "core", "kind": "backend", "wave": 1, "features": sorted({f for v in fbw.values() for f in v}),
+                 "features_by_wave": fbw}]}), encoding="utf-8")
+
+        def _ft(root: Path, fid: str, acs: int, status: str = "") -> None:
+            d = root / "docs" / "architecture" / "feat"
+            d.mkdir(parents=True, exist_ok=True)
+            fm = f"---\nid: {fid}\n" + (f"status: {status}\n" if status else "") + "---\n"
+            (d / f"{fid}.md").write_text(fm + "".join(f"### AC-{i}\n" for i in range(1, acs + 1)), encoding="utf-8")
+
+        _live = _rp / "harness" / "SERVICE-BOUNDARY-MATRIX.json"
+        # lượt chia đầu (chưa có archive) → không áp luật chia lại
+        _mx(_live, {"1": ["F1"], "2": ["F2"], "3": ["F3"]})
+        assert check_replan_integrity(root=_rp) == (True, "")
+        # đóng wave 1 và 2: archive giữ MATRIX + FEAT lúc đóng
+        for _n in (1, 2):
+            _mx(_rp / "archive" / f"wave-00{_n}" / "harness" / "SERVICE-BOUNDARY-MATRIX.json",
+                {"1": ["F1"], "2": ["F2"], "3": ["F3"], "4": ["F4"]})
+            for _f in ("F1", "F2", "F3", "F4"):
+                _ft(_rp / "archive" / f"wave-00{_n}", _f, 2)
+        for _f in ("F1", "F2", "F3", "F4"):
+            _ft(_rp, _f, 2)
+        # đúng luật: X (mới) chen vào wave 3, F3 lùi xuống 4, F4 tràn sang wave 5 mới
+        _mx(_live, {"1": ["F1"], "2": ["F2"], "3": ["X", "F3"], "4": ["F4"]})
+        _ft(_rp, "X", 2)
+        assert check_replan_integrity(root=_rp) == (True, ""), check_replan_integrity(root=_rp)
+        _mx(_live, {"1": ["F1"], "2": ["F2"], "3": ["X"], "4": ["F3"], "5": ["F4"]})
+        assert check_replan_integrity(root=_rp) == (True, ""), check_replan_integrity(root=_rp)
+        # dồn phần bù ra cuối → đỏ
+        _mx(_live, {"1": ["F1"], "2": ["F2"], "3": ["F3"], "4": ["F4"], "5": ["X"]})
+        _ok, _m = check_replan_integrity(root=_rp)
+        assert not _ok and "X (FEAT mới)" in _m and "wave kế (3)" in _m, _m
+        # … trừ khi có placement_rationale đúng FEAT đó
+        (_rp / "docs" / "plans").mkdir(parents=True, exist_ok=True)
+        (_rp / "docs" / "plans" / "WAVE-SEQUENCE.md").write_text(
+            "### §wave-005\n```yaml\nwave_class: slice\nplacement_rationale:\n"
+            "  X: \"can F4 giao o wave 4 moi tinh duoc\"\n```\n", encoding="utf-8")
+        assert check_replan_integrity(root=_rp) == (True, ""), check_replan_integrity(root=_rp)
+        (_rp / "docs" / "plans" / "WAVE-SEQUENCE.md").unlink()
+        # sửa wave đã đóng (đổi FEAT wave 2) → đỏ
+        _mx(_live, {"1": ["F1"], "2": ["F2", "X"], "3": ["F3"], "4": ["F4"]})
+        _ok, _m = check_replan_integrity(root=_rp)
+        assert not _ok and "wave 2 ĐÃ ĐÓNG" in _m, _m
+        # FEAT kế hoạch cũ rơi mất (F4 biến khỏi MATRIX) → đỏ; ghi status deferred → xanh
+        _mx(_live, {"1": ["F1"], "2": ["F2"], "3": ["X", "F3"]})
+        _ok, _m = check_replan_integrity(root=_rp)
+        assert not _ok and "rơi khỏi MATRIX: F4" in _m, _m
+        _ft(_rp, "F4", 2, status="deferred")
+        assert check_replan_integrity(root=_rp) == (True, ""), check_replan_integrity(root=_rp)
+        _ft(_rp, "F4", 2)
+        # FEAT đã giao có AC MỚI mà không xếp vào wave kế → đỏ; xếp F2 vào wave 3 → xanh
+        _mx(_live, {"1": ["F1"], "2": ["F2"], "3": ["X", "F3"], "4": ["F4"]})
+        _ft(_rp, "F2", 3)
+        _ok, _m = check_replan_integrity(root=_rp)
+        assert not _ok and "F2 (đã giao, thêm AC-3)" in _m, _m
+        _mx(_live, {"1": ["F1"], "2": ["F2"], "3": ["X", "F3", "F2"], "4": ["F4"]})
+        assert check_replan_integrity(root=_rp) == (True, ""), check_replan_integrity(root=_rp)
+        assert check_replan_integrity({"force": True}, root=_rp) == (True, "")
+
+        # replan_entry: từ DONE phải có archive của wave vừa xong
+        assert check_replan_entry({"stage": "DONE", "wave": {"number": 2}}, root=_rp) == (True, "")
+        _ok, _m = check_replan_entry({"stage": "DONE", "wave": {"number": 3}}, root=_rp)
+        assert not _ok and "next_wave.py --go" in _m, _m
+        assert check_replan_entry({"stage": "WAVE_OPEN", "wave": {"number": 3}}, root=_rp)[0] is True
+        # wave_not_closed: không mở lại wave có archive
+        _ok, _m = check_wave_not_closed({"wave_n": 2}, root=_rp)
+        assert not _ok and "Wave kế là 3" in _m, _m
+        assert check_wave_not_closed({"wave_n": 3}, root=_rp) == (True, "")
+        # replan_approved: đã chia lại mà chưa duyệt → chặn start-wave
+        assert not check_replan_approved({"replan_open": {"from_stage": "WAVE_OPEN"}})[0]
+        assert check_replan_approved({}) == (True, "")
+    finally:
+        _sh.rmtree(_rp, ignore_errors=True)
     assert isinstance(check_wave_sequence_lint()[0], bool)
     import wave_sequence_lint as _wsl
     assert _wsl._selftest() == 0

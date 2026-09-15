@@ -31,10 +31,23 @@ BOOTSTRAP → DISC_D0 → DISC_D1 → DISC_D2 → DISC_D3 → DOMAIN_AUTHORING �
 ```
 **Back-half** (wave execution):
 ```
-REVIEW → WAVE_OPEN → DEV → REVIEW_DEV → DEV_HANDOFF → TEST_PLAN → TEST_EXECUTE → (auto) MANUAL_TEST → DONE → BOOTSTRAP
- start-wave  start-dev↻      ↑ fix Mode B loop                                    ↑ fix-bugs/run-wave↻      │
-                                                              DONE → DOMAIN_AUTHORING (lùi `/domain` ở wave sau: nghiệp vụ → ký → dịch)
+REVIEW → WAVE_OPEN → DEV → REVIEW_DEV → DEV_HANDOFF → TEST_PLAN → TEST_EXECUTE → (auto) MANUAL_TEST → DONE
+ start-wave  start-dev↻      ↑ fix Mode B loop                                    ↑ run-wave↻
+   ↑                                                                                                  │
+   │  DONE --next-wave (snapshot archive/wave-N)--> WAVE_OPEN ←───────────────────────────────────────┘
+   │                                                   │ chạy wave kế (/run-wave)
+   │                                                   │ HOẶC wave vừa rồi lộ chỗ thiếu tài liệu:
+   │                                                   ▼
+   └── /approve-document ← … ← /domain (bổ sung + CHIA LẠI) ← WAVE_OPEN · DONE (hết wave mà còn việc)
+   DONE --done-wave--> BOOTSTRAP   (hết việc thật)
 ```
+
+**Chia lại sau khi đã chạy wave.** Wave đang chạy không đụng tới. Chạy xong mà lộ chỗ thiếu tài liệu:
+`/next-wave` lưu wave vào `archive/` → `/domain` (từ `WAVE_OPEN`, hoặc `DONE` khi hết WAVE-SEQUENCE)
+bổ sung + chia lại → `/approve-document` → `/run-wave`. Luật chia lại: **phần bù chen vào ngay wave kế,
+tính năng đã xếp lùi dần ra sau**, tràn thì sinh wave mới; wave đã đóng bất biến; không FEAT nào rơi
+mất. Gate: `replan_entry` (DONE: phải có archive trước) · `replan_integrity` (chốt chia-wave) ·
+`replan_approved` + `wave_not_closed` (start-wave).
 
 Chi tiết transitions + evidence required: xem `harness/STATE-MACHINE.json`.
 

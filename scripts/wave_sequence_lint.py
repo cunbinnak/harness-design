@@ -9,14 +9,16 @@ Port từ ZIP `{{PROJECT-CODE}}-ADLC-DISCOVERY/scripts/wave-sequence-validate.py
 
 Hard invariants (error → chặn plan): wave_class/wave_strategy enum · target_count_per_layer ≤ 3 ·
 strategy layer-purity (horizontal-be cấm FE target; horizontal-fe cấm boundary target) · vertical →
-mỗi FEAT có parent_epic · **tổng AC vượt 6/wave** (implementation-plan §Phương pháp chia wave — 6 là
-ngưỡng thật để dễ triển khai, không phải số đệm; đếm heading `### AC-n` trong mỗi
-`docs/architecture/feat/{feat_id}*.md` của `features_in_scope`, file chưa tồn tại → 0, gate khác lo
-việc đó) — **hai bậc, KHÔNG một `rationale` dài là thoát được hết**:
-  - **6 < AC ≤ 12** (2×) mà không có `rationale` ≥20 ký tự → error, có rationale đủ dài → hạ warning.
-  - **AC > 12** → **error LUÔN, rationale không cứu được** — "phụ thuộc dây chuyền A cần B cần C" là
-    lý do để chia **nhiều wave nối tiếp theo đúng thứ tự**, không phải lý do nhét chung một wave; một
-    đoạn văn dài không đổi được sự thật đó, nên không cho văn xuôi thắng số đếm ở mức lệch quá xa.
+mỗi FEAT có parent_epic · **tổng AC vượt ngưỡng/wave mà không nói lý do** (đếm heading `### AC-n`
+trong mỗi `docs/architecture/feat/{feat_id}*.md` của `features_in_scope`, file chưa tồn tại → 0, gate
+khác lo việc đó).
+
+Ngưỡng AC là **KHUYẾN KHÍCH, không phải trần cứng** (luật của người vận hành): chia nhỏ thì dễ triển
+khai, nhưng tách ra mà ĐỨT LUỒNG thì giữ tròn luồng quan trọng hơn con số. Nên:
+  - vượt ngưỡng mà KHÔNG có `rationale` ≥20 ký tự → error (buộc phải cân nhắc, không vượt im lặng);
+  - có rationale (vì sao tách ra thì đứt luồng) → warning ở MỌI mức. Vượt quá 2× ngưỡng thì warning
+    nói mạnh hơn: nhiều khả năng đang gộp nhiều luồng, không phải một luồng không tách được.
+Trước đây >2× là error kể cả có rationale — chặn đúng trường hợp một luồng thật sự không tách được.
 Warning (không chặn): rare combo rationale · paired_with reciprocal · exit_signal coherence ·
 test_scope coherence.
 
@@ -39,8 +41,7 @@ VALID_CLASSES = {"slice", "integration"}
 VALID_STRATEGIES = {"vertical", "horizontal-be", "horizontal-fe"}
 RARE_COMBOS = {("slice", "vertical"), ("integration", "horizontal-be"), ("integration", "horizontal-fe")}
 TARGET_CAP_PER_LAYER = 3
-TARGET_AC_CAP = 6           # ~6 AC/wave là ngưỡng THẬT (implementation-plan skill), không phải đệm
-TARGET_AC_HARD_CEILING = 12  # 2× cap — vượt mức này thì rationale KHÔNG cứu được, luôn error
+TARGET_AC_CAP = 6           # ngưỡng khuyến khích mặc định (implementation-plan skill) — project khai lại được
 RATIONALE_MIN_LEN = 20      # ngưỡng "giải thích thật" dùng chung cho rare-combo + AC-cap override
 _AC_HEADING_RE = re.compile(r"^#{2,4}\s*AC-\d+\b", re.MULTILINE)
 EXPECTED_EXIT_SIGNAL = {
@@ -203,7 +204,6 @@ def validate_wave(
 ) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
-    ac_ceiling = ac_cap * 2   # trần cứng luôn là 2× ngưỡng — rationale không override qua mức này
     wave_class = str(spec.get("wave_class", "")).strip()
     wave_strategy = str(spec.get("wave_strategy", "")).strip()
     targets = spec.get("targets") or {}
@@ -264,26 +264,23 @@ def validate_wave(
     total_ac = 0
     for fid in {str(f.get("feat_id")) for f in feats if f.get("feat_id")}:
         total_ac += _count_ac(root, fid)
-    if total_ac > ac_ceiling:
-        # Vượt xa (>2× cap) — KHÔNG có rationale nào cứu được. "Phụ thuộc dây chuyền" là lý do để
-        # chia NHIỀU wave nối tiếp theo đúng thứ tự (A → B → C), không phải lý do nhét chung 1 wave.
-        errors.append(
-            f"{wave_id}: {total_ac} AC vượt xa ngưỡng {ac_cap} AC/wave ({cap_src}) — >{ac_ceiling} thì "
-            "rationale KHÔNG override được — chia thành NHIỀU wave nối tiếp theo đúng thứ tự phụ "
-            "thuộc (A cần B cần C → wave(A) → wave(B) → wave(C)), không phải giữ chung 1 wave"
-        )
-    elif total_ac > ac_cap:
-        if len(rationale) >= RATIONALE_MIN_LEN:
+    if total_ac > ac_cap:
+        if len(rationale) < RATIONALE_MIN_LEN:
+            errors.append(
+                f"{wave_id}: {total_ac} AC vượt ngưỡng {ac_cap} AC/wave ({cap_src}) — chia nhỏ theo "
+                "đồ thị phụ thuộc cho dễ triển khai; nếu tách ra thì ĐỨT LUỒNG thì giữ nguyên và ghi "
+                f"`rationale` (≥{RATIONALE_MIN_LEN} ký tự) nói luồng nào sẽ đứt"
+            )
+        elif total_ac > ac_cap * 2:
             warnings.append(
-                f"{wave_id}: {total_ac} AC (ngưỡng {ac_cap} — {cap_src}) — chấp nhận vì có rationale, "
-                "nhưng cân nhắc tách"
+                f"{wave_id}: {total_ac} AC — gấp hơn 2× ngưỡng {ac_cap} ({cap_src}). Cho qua vì có "
+                "rationale, nhưng cỡ này thường là NHIỀU luồng gộp lại chứ không phải một luồng không "
+                "tách được — rà lại xem có tách theo luồng được không"
             )
         else:
-            errors.append(
-                f"{wave_id}: {total_ac} AC vượt ngưỡng {ac_cap} AC/wave ({cap_src}; "
-                "implementation-plan §Phương pháp chia wave — chia nhỏ để dễ triển khai) — "
-                f"tách wave theo đồ thị phụ thuộc, hoặc thêm `rationale` (≥{RATIONALE_MIN_LEN} ký tự) "
-                "giải thích vì sao giữ nguyên"
+            warnings.append(
+                f"{wave_id}: {total_ac} AC (ngưỡng {ac_cap} — {cap_src}) — cho qua vì có rationale "
+                "giữ tròn luồng"
             )
 
     # exit_signal coherence
@@ -512,8 +509,9 @@ features_in_scope:
         assert ok, errs
         assert any("AC" in w for w in warns), warns
 
-        # (h) vượt XA ngưỡng (>hard ceiling) — rationale dài cỡ nào cũng KHÔNG cứu được
-        huge_feat = "\n".join(f"### AC-{i}: x" for i in range(1, 21))  # 20 AC > ceiling 12
+        # (h) vượt XA ngưỡng (>2×) CÓ rationale giữ tròn luồng → cho qua, cảnh báo mạnh hơn.
+        # Ngưỡng là khuyến khích: tách ra mà đứt luồng thì luồng thắng con số.
+        huge_feat = "\n".join(f"### AC-{i}: x" for i in range(1, 21))  # 20 AC > 2×6
         (feat_dir / "FEAT-901-huge.md").write_text(f"# FEAT-901\n\n{huge_feat}\n", encoding="utf-8")
         way_overcap = """\
 ### §wave-001
@@ -534,8 +532,15 @@ features_in_scope:
 ```
 """
         (plans / "WAVE-SEQUENCE.md").write_text(way_overcap, encoding="utf-8")
+        ok, errs, warns = run_lint_full(root)
+        assert ok, errs
+        assert any("2× ngưỡng" in w and "NHIỀU luồng" in w for w in warns), warns
+        # cùng 20 AC nhưng KHÔNG rationale → vẫn chặn (không được vượt im lặng)
+        (plans / "WAVE-SEQUENCE.md").write_text(
+            way_overcap.replace(way_overcap[way_overcap.index("rationale: |"):way_overcap.index("targets:")], ""),
+            encoding="utf-8")
         ok, errs = run_lint(root)
-        assert not ok and "vượt xa" in " ".join(errs) and "KHÔNG override" in " ".join(errs), errs
+        assert not ok and "ĐỨT LUỒNG" in " ".join(errs), errs
 
         # (i) ngưỡng CẤU HÌNH ĐƯỢC theo project: frontmatter `ac_cap_per_wave`
         cap_dec, src_dec = project_ac_cap("---\ntype: plan\nac_cap_per_wave: 10\n---\n# x")
@@ -572,13 +577,13 @@ features_in_scope:
         assert ok, errs
         assert any("ngưỡng 10" in w for w in warns), warns
 
-        # (j) cùng cap 10 nhưng 21 AC (>2×10) → chặn cứng, rationale dài cũng không cứu
+        # (j) cùng cap 10, 21 AC (>2×10) có rationale → cho qua, cảnh báo nêu đúng ngưỡng khai
         huge21 = "\n".join(f"### AC-{i}: x" for i in range(1, 22))
         (feat_dir / "FEAT-902-21ac.md").write_text(f"# FEAT-902\n\n{huge21}\n", encoding="utf-8")
         (plans / "WAVE-SEQUENCE.md").write_text(fm_cap10.replace("FEAT-501", "FEAT-902"), encoding="utf-8")
-        ok, errs = run_lint(root)
-        _j = " ".join(errs)
-        assert not ok and "vượt xa" in _j and "ngưỡng 10" in _j, errs
+        ok, errs, warns = run_lint_full(root)
+        assert ok, errs
+        assert any("ngưỡng 10" in w and "2×" in w for w in warns), warns
 
         # (e) file thiếu → ok (plan_gate lo)
         (plans / "WAVE-SEQUENCE.md").unlink()

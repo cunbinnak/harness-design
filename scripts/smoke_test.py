@@ -371,6 +371,39 @@ def main() -> int:
         ok = step("DESIGN -> DOMAIN (lùi domain-po)", "domain-po", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
         passed.append(ok) if ok else failed.append("back-edge DESIGN->DOMAIN")
 
+        # ============================================================
+        # Chia lại sau khi đã chạy wave: WAVE_OPEN/DONE → /domain → … → approve lại → start-wave
+        # ============================================================
+        print("\n## 4. Chia lại sau khi chạy wave\n")
+        state_mod.complete("domain-end", FB3)
+        state_mod.complete("design-end", FB3)
+        state_mod.complete("plan", FB3)
+        state_mod.complete("approve-document", {"approved": True, "force": True, "reason": "smoke setup"})
+        state_mod.complete("start-wave", {"approved": True, "wave_n": 1})
+        ok = step("WAVE_OPEN -> DOMAIN (chia lại)", "domain-po", {"mode": "FEATURE"}, "DOMAIN_AUTHORING")
+        passed.append(ok) if ok else failed.append("replan WAVE_OPEN->DOMAIN")
+        rp_ok = bool((state_mod.load_state().get("replan_open") or {}).get("from_stage") == "WAVE_OPEN")
+        print(f"  [{'OK  ' if rp_ok else 'FAIL'}] domain-po từ WAVE_OPEN đánh dấu replan_open")
+        passed.append(rp_ok) if rp_ok else failed.append("replan_open flag")
+        state_mod.complete("domain-end", FB3)
+        state_mod.complete("design-end", FB3)
+        state_mod.complete("plan", FB3)
+        result = state_mod.complete("start-wave", {"approved": True, "wave_n": 1})
+        ok = not result["ok"] and "approve-document" in result.get("error", "")
+        print(f"  [{'OK  ' if ok else 'FAIL'}] start-wave bị chặn khi chưa duyệt lại  {result.get('error', '')[:50]}")
+        passed.append(ok) if ok else failed.append("replan_approved blocks start-wave")
+        state_mod.complete("approve-document", {"approved": True, "force": True, "reason": "smoke setup"})
+        ok = step("duyệt lại -> start-wave", "start-wave", {"approved": True, "wave_n": 1}, "WAVE_OPEN")
+        passed.append(ok) if ok else failed.append("start-wave after re-approve")
+
+        # DONE mà wave chưa lưu archive → /domain bị chặn (sửa tài liệu trước snapshot = mất bản wave)
+        if not (REPO / "archive" / "wave-001").exists():
+            patch_state({"stage": "DONE", "wave": {"id": "wave-001", "number": 1}})
+            result = state_mod.complete("domain-po", {"mode": "FEATURE"})
+            ok = not result["ok"] and "next_wave.py --go" in result.get("error", "")
+            print(f"  [{'OK  ' if ok else 'FAIL'}] DONE chưa snapshot -> /domain bị chặn   {result.get('error', '')[:50]}")
+            passed.append(ok) if ok else failed.append("replan_entry blocks DONE without archive")
+
     finally:
         # Restore original STATE + MATRIX + decisions.md (force-bypass ghi audit)
         STATE_FILE.write_text(original, encoding="utf-8")

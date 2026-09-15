@@ -89,9 +89,11 @@
       "agent_behavior": "flat_orchestration_by_main_agent"
     },
     "WAVE_OPEN": {
-      "description": "Wave đã materialize agents + KG + MATRIX. Chờ start dev.",
+      "description": "Wave đã materialize agents + KG + MATRIX. Chờ start dev. Wave trước lộ chỗ thiếu tài liệu → quay lại /domain (domain-po/domain-ba) bổ sung + chia lại: bù chen vào wave này, tính năng đã xếp lùi ra sau.",
       "allowed_commands": [
-        "start-dev"
+        "start-dev",
+        "domain-po",
+        "domain-ba"
       ],
       "allowed_spawn": false,
       "read_only_spawn_always": true
@@ -152,10 +154,12 @@
       "agent_behavior": "fix_bugs_mode_a"
     },
     "DONE": {
-      "description": "Wave đã đóng mềm. /next-wave: snapshot wave vừa xong → còn wave trong WAVE-SEQUENCE thì mở wave kế (WAVE_OPEN), hết wave thì teardown về BOOTSTRAP. KHÔNG reset tài liệu.",
+      "description": "Wave đã đóng mềm. /next-wave: snapshot wave vừa xong → còn wave trong WAVE-SEQUENCE thì mở wave kế (WAVE_OPEN). Hết wave mà còn việc → /domain (sau snapshot) thêm wave; hết việc thật → teardown về BOOTSTRAP. KHÔNG reset tài liệu.",
       "allowed_commands": [
         "next-wave",
-        "done-wave"
+        "done-wave",
+        "domain-po",
+        "domain-ba"
       ],
       "allowed_spawn": false,
       "read_only_spawn_always": true
@@ -477,6 +481,42 @@
         "mode": "any"
       },
       "note": "back-edge: lui sua product qua domain-ba; tien lai domain-end re-gate"
+    },
+    {
+      "from": "WAVE_OPEN",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-po",
+      "evidence_required": {
+        "mode": "any"
+      },
+      "note": "chia lai ke hoach sau khi wave truoc da chay (next-wave da snapshot): bo sung tai lieu, bu chen vao wave ke, tinh nang da xep lui ra sau. Di tiep domain-end -> design-end -> plan (gate replan_integrity) -> approve-document -> start-wave (gate replan_approved)."
+    },
+    {
+      "from": "WAVE_OPEN",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-ba",
+      "evidence_required": {
+        "mode": "any"
+      },
+      "note": "nhu tren, tai lieu BR/PERSONA"
+    },
+    {
+      "from": "DONE",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-po",
+      "evidence_required": {
+        "mode": "any"
+      },
+      "note": "het WAVE-SEQUENCE ma con viec: them wave. Gate replan_entry: wave vua xong phai da co archive (next_wave.py --go) truoc khi mo khoa tai lieu."
+    },
+    {
+      "from": "DONE",
+      "to": "DOMAIN_AUTHORING",
+      "trigger": "domain-ba",
+      "evidence_required": {
+        "mode": "any"
+      },
+      "note": "nhu tren, tai lieu BR/PERSONA"
     }
   ]
 }
